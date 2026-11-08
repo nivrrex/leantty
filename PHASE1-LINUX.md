@@ -51,4 +51,22 @@
 
 ## 仓库状态实测
 
-（见交付提交后 append 的 git ls-remote 与 git log 输出。）
+```
+$ git ls-remote origin
+2cc1b5cbb5d7aa336ae43c820313a9130823a208	HEAD
+2cc1b5cbb5d7aa336ae43c820313a9130823a208	refs/heads/main
+8e2dbdc38b0e336b21264520e8ee6f2ef5a80ea0	refs/tags/skeleton-ready
+0a1e58df8534cfee8fb8d11de42faa4010fe49ce	refs/tags/verify-baseline
+
+$ git log --oneline -n 10
+2cc1b5c deliver: app bin entry, phase-1 DECISIONS, PHASE1-LINUX.md
+accd4dd implement: phase 1 Linux vt/pty/render/app + tests
+8e2dbdc skeleton: workspace crates vt/pty/render/app with env-var build contract
+ae2d5f5 chore(vt-verify): lift vendor/libghostty-rs to repo root; scripts read ZIG/GHOSTTY_SOURCE_DIR env vars
+0a1e58d import: libghostty-rs vendor + Linux V1-V8 baseline
+
+$ git status
+位于分支 main
+您的分支与上游分支 'origin/main' 一致。
+（工作区干净，无未提交改动）
+```
