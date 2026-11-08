@@ -1,0 +1,10 @@
+2026/11/08 周日 11:53:34.04 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-953d476ccf79d4b7\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-953d476ccf79d4b7\out\zig-cache 
+2026/11/08 周日 11:53:34.20 INJECT -Dtarget=x86_64-windows-gnu 
+2026/11/08 周日 12:05:42.91 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9610729e528eef74\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9610729e528eef74\out\zig-cache 
+2026/11/08 周日 12:05:43.12 INJECT -Dtarget=x86_64-windows-gnu 
+2026/11/08 周日 12:11:31.99 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-b87576bd360e03f2\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-b87576bd360e03f2\out\zig-cache 
+2026/11/08 周日 12:11:32.15 INJECT -Dtarget=x86_64-windows-gnu 
+2026/11/08 周日 12:16:46.70 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-cdc59dd39545982c\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-cdc59dd39545982c\out\zig-cache 
+2026/11/08 周日 12:16:46.87 INJECT -Dtarget=x86_64-windows-gnu 
+2026/11/08 周日 12:39:14.89 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9caef4986700e8d7\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9caef4986700e8d7\out\zig-cache 
+2026/11/08 周日 12:39:15.07 INJECT -Dtarget=x86_64-windows-gnu 

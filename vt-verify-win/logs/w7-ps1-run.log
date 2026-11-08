@@ -1,0 +1,42 @@
+cargo.exe :    Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+����λ�� C:\vt\checks\w7_scroll.ps1:12 �ַ�: 1
++ & cargo test --test v9_scroll -- --nocapture *>&1 | Tee-Object -FileP ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling vt...cks\v3_project):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.33s
+     Running tests\v9_scroll.rs (target\debug\deps\v9_scroll-e785a5361991107b.exe)
+
+running 1 test
+[    0.014] a) 60 行输出后: scrollback_rows=Ok(37), 视口行数=24, 首行=Some("line 38"), 末行=Some("")
+[    0.015] b) Delta(5) �? scrollback_rows=Ok(37), 首行=Some("line 38"), 末行=Some("")
+[    0.016] c) Top �? scrollback_rows=Ok(37), 首行=Some("line 01"), 末行=Some("line 24")
+[    0.017] c) Bottom �? scrollback_rows=Ok(37), 首行=Some("line 38"), 末行=Some("")
+[    0.018] d) Row(3) �? scrollback_rows=Ok(37), 首行=Some("line 04"), 末行=Some("line 27")
+[    0.025] e) alt �? scrollback_rows=Ok(0), 首行=Some("")
+[    0.028] e) alt �?Delta(3) �? scrollback_rows=Ok(0), 首行=Some("")
+[    0.029] e) 回主屏后: scrollback_rows=Ok(37), 首行=Some("line 38")
+test v9_scroll_semantics_probe ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+cargo.exe :    Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+����λ�� C:\vt\checks\w7_scroll.ps1:14 �ַ�: 1
++ & cargo test --test v8_snapshot -- --nocapture *>&1 | Tee-Object -Fil ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling vt...cks\v3_project):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.72s
+     Running tests\v8_snapshot.rs (target\debug\deps\v8_snapshot-2058f2ce1d2bafea.exe)
+
+running 2 tests
+test v8_owned_snapshot ... ok
+BENCH 80x24 快照中位数耗时: 991.2µs (30 次取�?
+BENCH 200x60 快照中位数耗时: 6.4071ms (30 次取�?
+test v8_snapshot_bench ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+W7 DONE

@@ -1,0 +1,19 @@
+W1 evidence excerpt (verbatim) from the 10:12 run: zig invoked by build.rs WITHOUT
+-Dtarget (native auto-detect) selected the msvc ABI target and failed because this
+host has no Windows SDK / UCRT headers (no Windows Kits dir, no cl.exe, vswhere empty).
+
+  install
+  +- install ghostty-vt
+     +- compile lib ghostty-vt debug native-native-msvc
+        +- compile lib highway debug native-native-msvc failure
+  error: error: failed to find libc installation: LibCStdLibHeaderNotFound
+  ...
+  failed command: "...zig.exe" build-lib ... -target x86_64-native-msvc -mcpu baseline ... -lc ...
+
+  +- compile lib simdutf debug native-native-msvc failure
+  error: error: failed to find libc installation: LibCStdLibHeaderNotFound
+  ...
+  translate-c generated failure
+  error: failed detecting libc: LibCStdLibHeaderNotFound
+  ...
+  Build Summary: 42/51 steps succeeded (3 failed)

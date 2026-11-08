@@ -1,0 +1,8 @@
+[    0.014] a) 60 行输出后: scrollback_rows=Ok(37), 视口行数=24, 首行=Some("line 38"), 末行=Some("")
+[    0.015] b) Delta(5) 后: scrollback_rows=Ok(37), 首行=Some("line 38"), 末行=Some("")
+[    0.015] c) Top 后: scrollback_rows=Ok(37), 首行=Some("line 01"), 末行=Some("line 24")
+[    0.016] c) Bottom 后: scrollback_rows=Ok(37), 首行=Some("line 38"), 末行=Some("")
+[    0.018] d) Row(3) 后: scrollback_rows=Ok(37), 首行=Some("line 04"), 末行=Some("line 27")
+[    0.025] e) alt 屏: scrollback_rows=Ok(0), 首行=Some("")
+[    0.026] e) alt 屏 Delta(3) 后: scrollback_rows=Ok(0), 首行=Some("")
+[    0.029] e) 回主屏后: scrollback_rows=Ok(37), 首行=Some("line 38")

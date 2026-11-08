@@ -1,0 +1,241 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling winapi-x86_64-pc-windows-gnu v0.4.0
+   Compiling autocfg v1.5.1
+   Compiling winapi v0.3.9
+   Compiling proc-macro2-diagnostics v0.11.0
+   Compiling thiserror v1.0.69
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling memoffset v0.6.5
+   Compiling anyhow v1.0.104
+   Compiling winreg v0.10.1
+   Compiling pin-utils v0.1.1
+   Compiling bitflags v1.3.2
+   Compiling serial-core v0.4.0
+   Compiling lazy_static v1.5.1
+   Compiling cfg-if v1.0.5
+   Compiling serial-windows v0.4.0
+   Compiling nix v0.25.1
+   Compiling shared_library v0.1.9
+   Compiling shell-words v1.1.1
+   Compiling serial v0.4.0
+   Compiling downcast-rs v1.2.1
+   Compiling log v0.4.35
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling bitflags v2.13.2
+warning: linker stdout: E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtbegin.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\rustcXZ2G1b\symbols.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.0fvs03hmolm5ub4i4wzd635d2.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.0mj8yev78dos8nb0a2ig4o22u.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.0o10dqn2ls7w5asj2v879hdv6.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.0w2dsiwf702ccdv95gviwsxij.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.10kghxbory7sop1murrem654f.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.14smeovsycjep8fodhqb056oe.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.14z7i2929blc6brft02txn1hp.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.1qhabmy8sve967n4ltjc4ibed.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.1unfloi0d1ktirl2gjwxvw2wh.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.247ysfzpnqzttpffv8ij5dmns.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.29x8165extg2tjt498pk0ac0x.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.2mosqybkuherm785uqn59kke2.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.2mp6wji6l19wgfceejk2sd67d.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.2npfj34ff62nl948r9t9wxddk.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.2sugvcmzokxvoto6ms6x2zuws.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.38wr1owa9ru96koc6tjknrpq1.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.3g14glbt8kmnpgisnaz2ywj4s.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.3hlu5bjpzhwxu4ycev9gqhx9q.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.3oalepsdrxda6miubxn3a79nv.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.3tk9md7l5x5yuoc9souu6v5c8.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.4g80q90zpf1f6heja2d4ttqoc.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.4h4x7d9fk3vua7qvwarnop3to.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.4ikqdg8uuia25v3ag2piuk5a5.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.4ozuibbf0ghysx1h2uq9e9ap9.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.4wq6nwzw8yiklmerfrfx09hnp.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.5femwu2ojug3yejzhanoeetdl.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.5h6ltjx5f7sc9uwxn1bllwjm5.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.5hofvqtfyv1xf5s1ctt58dhg8.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.5p8kap3m3c36a4koyb3u43h29.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.5ue9wqq4zh7va4ck9in9fb1gg.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.612yyaab7bfx7d1ey875028z5.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.694hq7ubn1y5x8ubyam8kuf5f.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.6bcwbv19gslel6xjsv8j31b4c.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.6kcjism4cx299xsmvveqol31q.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.6lw7ozsbr4o44duzk74lqh29z.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.6t2bug5pbxuzyuq902zqgz6nq.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.6zothbk3enksscipolpxai7f3.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.76sufh1wxhr3l5ttjkhs91d0t.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7h1e5xr977g8cf77c1xp1vil3.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7k1ltrk3bw1gno085rn1ftdtj.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7nvtthzjf7e5v809s0ssi22z9.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7oxrubv9gowmgn7e4rdowimqd.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7rrm2pjvmuuwk09yypdhni0ly.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7uxdr3qkqmowsbkvreg1mlusy.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7x5arnjpra256khddjjpnb2cw.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.7y4yximrorfkfrri5xw16zd16.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.84qc6zzvx568he7he15oo29cb.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.84t612q9zgoz6hvbpadgrboxk.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.8gnb530fv62gdc5dx56v743cp.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.8jnymqkkxhqhp61a78ftpk621.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.973t8qd08m58qwy3lk3e6x85o.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.9cj2ulvcf3alagple238xxllc.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.9lmjc4i0qg1kt96cqx2chltjz.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.aa8cb9lmbqk642wvd007n0yft.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.afraoas1txl8kympmrnszfy92.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.amuan5o5d1t9zee1gqexyifyi.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.apy8srzfdogpgazdhoyixlz7q.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.ax8nldmwbyfztdafnv7r6oajf.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.b1kyd9csb0s9ejho75ofcf0a9.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.bcxondp8w27kr0ra8dsseok9t.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.biwcs96e7hilsyxmo564rlmxw.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.bmgkk7fb82u6uqjya0iahskkg.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.bozx217sozf3diwig6s8usw1a.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.bp4461ndor6md9nllt706c5pn.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.buv6eo4vzrcc5nepjfs7aqyx8.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.by3dm874vl40i3d9vlssspuk2.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.c0v0pxgd7oxtuafhqqwftbeye.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.c381nsl8krygntog2psf9hvnd.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.c8ed1b19owi9x9fboxqsbqmni.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.ch6938t3i9lnrv6v4y2b06ykd.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.cq18y8gi85d6vahcg5e8teipg.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.cssw1ytt4v67ev3l9noj1uqgb.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.d0qbkuy10m8smdw19xkx8spda.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.d2g5mmg7y3skp1m2p90cfe934.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.d3cdzpzutbl7qnvio2seetvaw.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.do9dsdsrjg0vmvcs7yj91isr0.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.ds4w8rlhtjoxv4n2gfqjlyyh4.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.dvt0cs0sx7gf7sz9kyaxkgwp8.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.e2gnczwogs1f8zccu2dzo682k.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.e9kvzool7vaiowg4wosl0xptw.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.eaojmk28f2fywxtxitzrumgtl.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.eehf7g8bu5q6derda35r8q4pc.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.ejih27sq23gixu5v1ji7jjjge.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.ekmk82s3207yv55hul4secind.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.el4584p40x9l16kax0wo4rlsc.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.eqot39p8xukbne1sp9t8plmav.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.etp7g6424zbd63k7kp6wdm4pf.0vgdwdf.rcgu.o␍
+         C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-d200aace2b0f546c\build_script_build-d200aace2b0f546c.76w90szluka7f958n8l4hd73a.0vgdwdf.rcgu.o␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd-f903e3d16df36da5.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libpanic_unwind-5d616eb723ebf0a3.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libobject-55a10e71341da3ce.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libmemchr-613699589e151b5c.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libaddr2line-b6c62d449144cfc1.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libgimli-4abf61f095a5cbcd.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcfg_if-cf8c0f5d2e32ea85.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libwindows_link-09741329a47ec176.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_demangle-e99c7a54316047dc.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd_detect-49fdcc216f141583.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libhashbrown-1e601951b61974c8.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_std_workspace_alloc-a2ebee595202316c.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libminiz_oxide-73eb2368f7777905.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libadler2-0636ce38193a1257.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libunwind-cfd7a43bea82d7dc.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\liblibc-510ab74f594f9da4.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_std_workspace_core-407d45ea9c6f51d8.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\liballoc-c6934c651061f32a.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcore-d9c7ef74bee84a19.rlib␍
+         E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcompiler_builtins-cddac46a750db0bd.rlib␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libntdll.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libuserenv.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libws2_32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libdbghelp.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/libgcc_eh.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib\libpthread.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmsvcrt.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingwex.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingw32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/libgcc.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmsvcrt.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingwex.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libuser32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/default-manifest.o␍
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtend.o
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `libghostty-vt-sys` (build script) generated 1 warning
+   Compiling thiserror-impl v1.0.69
+   Compiling int-enum v1.3.0
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.8.1
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+error: linking with `C:\vt\checks\log-linker.bat` failed: exit code: 1
+  |
+  = note: "cmd" "/c" "C:\\vt\\checks\\log-linker.bat" "-fno-use-linker-plugin" "-Wl,--dynamicbase" "-Wl,--disable-auto-image-base" "-m64" "-Wl,--high-entropy-va" "C:\\vt\\checks\\v3_project\\target\\debug\\deps\\rustcLZ4Ttm\\symbols.o" "<9 object files omitted>" "-Wl,-Bstatic" "C:\\vt\\checks\\v3_project\\target\\debug\\deps/{liblibghostty_vt-92507880a980665d,libbitflags-4db3071c69d76674,liblibghostty_vt_sys-dafac0fcffecab6c}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-gnu\\lib/{libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,libwindows_link-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "-Wl,-Bdynamic" "-lkernel32" "-lkernel32" "-lkernel32" "-lntdll" "-luserenv" "-lws2_32" "-ldbghelp" "-lgcc_eh" "-l:libpthread.a" "-lmsvcrt" "-lmingwex" "-lmingw32" "-lgcc" "-lmsvcrt" "-lmingwex" "-luser32" "-lkernel32" "-Wl,--nxcompat" "-L" "C:\\vt\\checks\\v3_project\\target\\debug\\build\\libghostty-vt-sys-cdc59dd39545982c\\out\\ghostty-install\\lib" "-L" "C:\\vt\\checks\\v3_project\\target\\debug\\build\\libghostty-vt-sys-cdc59dd39545982c\\out\\ghostty-install\\bin" "-L" "E:\\dev\\rust\\cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\winapi-x86_64-pc-windows-gnu-0.4.0\\lib" "-o" "C:\\vt\\checks\\v3_project\\target\\debug\\deps\\vt_downstream-1bd61b78708305d7.exe" "-Wl,--gc-sections" "-nodefaultlibs" "-Wl,--trace"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0xd58): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x2667): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x4137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x5277): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0xb1e7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x1fa29): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x2bc47): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x3cd09): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x415a7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x63137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x6ee67): additional relocation overflows omitted from the output
+          collect2.exe: error: ld returned 1 exit status
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2.o
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtbegin.o
+          C:\vt\checks\v3_project\target\debug\deps\rustcLZ4Ttm\symbols.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.07ubac15q9kvjmlss9o5j67rc.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.1kx0zsebwoqy3e6dycycwegpe.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.1qy91v5okrhkfzg6pkes95fpj.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.2r6zjs5v8bqvyi4m0bpgb5c9h.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.5jjkrex4svmik0yzjh4jvthiq.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.6prc4swwches0q4vr6g8eycp0.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.av4ujwm6yzwrkp1avusq13c4h.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.comqmxkluq8hqi6yc7skvors8.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\vt_downstream-1bd61b78708305d7.7j37o1ohlt8bddrux08a3owey.0935f5h.rcgu.o
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt-92507880a980665d.rlib
+          C:\vt\checks\v3_project\target\debug\deps\libbitflags-4db3071c69d76674.rlib
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd-f903e3d16df36da5.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libpanic_unwind-5d616eb723ebf0a3.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libobject-55a10e71341da3ce.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libmemchr-613699589e151b5c.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libaddr2line-b6c62d449144cfc1.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libgimli-4abf61f095a5cbcd.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcfg_if-cf8c0f5d2e32ea85.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libwindows_link-09741329a47ec176.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_demangle-e99c7a54316047dc.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd_detect-49fdcc216f141583.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libhashbrown-1e601951b61974c8.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_std_workspace_alloc-a2ebee595202316c.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libminiz_oxide-73eb2368f7777905.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libadler2-0636ce38193a1257.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libunwind-cfd7a43bea82d7dc.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\liblibc-510ab74f594f9da4.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_std_workspace_core-407d45ea9c6f51d8.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\liballoc-c6934c651061f32a.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcore-d9c7ef74bee84a19.rlib
+          E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcompiler_builtins-cddac46a750db0bd.rlib
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libntdll.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libuserenv.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libws2_32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libdbghelp.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/libgcc_eh.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib\libpthread.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmsvcrt.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingwex.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingw32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/libgcc.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmsvcrt.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingwex.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libuser32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libkernel32.a
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/default-manifest.o
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtend.o
+          
+
+error: could not compile `vt-downstream` (bin "vt-downstream") due to 1 previous error

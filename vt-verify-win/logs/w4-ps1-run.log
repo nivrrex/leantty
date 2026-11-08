@@ -1,0 +1,23 @@
+cargo.exe :    Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+ËùÔÚÎ»ÖÃ C:\vt\checks\w4_grid.ps1:12 ×Ö·û: 1
++ & cargo test --test v4_grid -- --nocapture *>&1 | Tee-Object -FilePat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling li...ghostty-vt-sys):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9m 12s
+     Running tests\v4_grid.rs (target\debug\deps\v4_grid-960f8f92410acb60.exe)
+
+running 6 tests
+test v4b_sgr_red ... ok
+test v4a_plain_text ... ok
+test v4e_wide_chars ... ok
+test v4c_clear_screen ... ok
+test v4f_alternate_screen ... ok
+test v4d_scrollback ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+W4 DONE

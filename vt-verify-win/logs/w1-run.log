@@ -1,0 +1,27 @@
+       Fresh unicode-ident v1.0.24
+       Fresh version_check v0.9.5
+       Fresh bitflags v2.11.1
+       Fresh proc-macro2 v1.0.106
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+     Running `E:\dev\build\billy-target\debug\build\libghostty-vt-sys-6899697a8d1383f6\build-script-build`
+       Fresh proc-macro2-diagnostics v0.10.1
+       Fresh int-enum v1.2.0
+error: failed to run custom build command for `libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)`
+
+Caused by:
+  process didn't exit successfully: `E:\dev\build\billy-target\debug\build\libghostty-vt-sys-6899697a8d1383f6\build-script-build` (exit code: 101)
+  --- stdout
+  cargo:rerun-if-env-changed=LIBGHOSTTY_VT_SYS_CPU
+  cargo:rerun-if-env-changed=LIBGHOSTTY_VT_SYS_OPTIMIZE
+  cargo:rerun-if-env-changed=GHOSTTY_SOURCE_DIR
+  cargo:rerun-if-env-changed=GHOSTTY_ZIG_SYSTEM_DIR
+  cargo:rerun-if-env-changed=ZIG
+  cargo:rerun-if-env-changed=TARGET
+  cargo:rerun-if-env-changed=HOST
+  cargo:rerun-if-env-changed=DEBUG
+  cargo:rerun-if-env-changed=OPT_LEVEL
+  cargo:rerun-if-changed=build.rs
+  cargo:rustc-env=LIBGHOSTTY_VT_SYS_INCLUDE_DIR=E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install\include
+W1 BUILD OK

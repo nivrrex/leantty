@@ -1,0 +1,4 @@
+2026/11/08 周日 14:23:59.72 zig build "-Demit-lib-vt=true" "-Doptimize=ReleaseFast" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\release\build\libghostty-vt-sys-6a76427d9415a153\out\ghostty-install --cache-dir E:\dev\build\billy-target\release\build\libghostty-vt-sys-6a76427d9415a153\out\zig-cache 
+2026/11/08 周日 14:23:59.92 INJECT -Dtarget=x86_64-windows-gnu 
+2026/11/08 周日 14:28:34.96 zig build "-Demit-lib-vt=true" "-Doptimize=ReleaseFast" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\release\build\libghostty-vt-sys-1873497183111f54\out\ghostty-install --cache-dir E:\dev\build\billy-target\release\build\libghostty-vt-sys-1873497183111f54\out\zig-cache 
+2026/11/08 周日 14:28:35.09 INJECT -Dtarget=x86_64-windows-gnu 

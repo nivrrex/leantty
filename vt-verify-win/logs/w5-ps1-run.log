@@ -1,0 +1,89 @@
+cargo.exe :    Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+����λ�� C:\vt\checks\w5_conpty.ps1:12 �ַ�: 1
++ & cargo test --test v5_conpty -- --nocapture --test-threads=1 *>&1 |  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling vt...cks\v3_project):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: value assigned to `eof_at` is never read
+   --> tests\v5_conpty.rs:447:44
+    |
+447 |         let mut eof_at: Option<Duration> = None;
+    |                                            ^^^^ this value is reassigned later and never used
+...
+451 |                     eof_at = Some(t0.elapsed());
+    |                     --------------------------- `eof_at` is overwritten here before the previous value is read
+    |
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+warning: `vt-downstream` (test "v5_conpty") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.76s
+     Running tests\v5_conpty.rs (target\debug\deps\v5_conpty-d4ae5f7f34757b25.exe)
+
+running 2 tests
+test w5_conpty_cmd_round ... [0.0007472] [cmd] spawn cmd.exe [] cwd=C:\vt
+[0.8698528] [cmd] startup bytes: 204 hex: 1b 5b 32 4a 1b 5b 6d 1b 5b 48 4d 69 63 72 6f 73 6f 66 74 20 57 69 6e 64 6f 77 73 20 5b e7 89 88 e6 9c ac 20 31 30 2e 30 2e 31 39 30 34 34 2e 34 35 32 39 5d 1b 5d 30 3b 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07 1b 5b 3f 32 35 68 0d 0a 28 63 29 20 4d 69 63 72 6f 73 6f 66 74 20 43 6f 72 70 6f 72 61 74 69 6f 6e e3 80 82 e4 bf 9d e7 95 99 e6 89 80 e6 9c 89 e6 9d 83 e5 88 a9 e3 80 82 0d 0a 1b 5b 34 31 58 0d 0a 43 3a 5c 76 74 3e 1b 5b 33 35 58 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[0.8699814] [cmd] marker ESC[6n (DSR cursor query): 0 times
+[0.8700438] [cmd] marker ESC[?9001h: 0 times
+[0.8701131] [cmd] marker ESC[?1004h: 0 times
+[0.8701826] [cmd] marker OSC (ESC]): 2 times
+[0.8753239] [cmd] startup fed to Terminal; first grid line: "Microsoft Windows [版本 10.0.19044.4529]"
+[0.8754656] [cmd] ESC[6n not present in startup; no-reply probe skipped
+[0.8756337] [cmd] on_pty_write/on_device_attributes callback log bytes so far: 16
+[0.875736] [cmd] WRITE(cmd): 63 68 63 70 0d
+[1.8315569] [cmd] after cmd "chcp\r": PTY output 129 bytes hex=63 68 63 70 0d 0a 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 20 2d 20 63 68 63 70 07 e6 b4 bb e5 8a a8 e4 bb a3 e7 a0 81 e9 a1 b5 3a 20 39 33 36 0d 0a 0d 0a 43 3a 5c 76 74 3e 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[1.8323022] [cmd] after cmd "chcp\r" grid text: "Microsoft Windows [版本 10.0.19044.4529]\n(c) Microsoft Corporation。保留所有权利。\n\nC:\\vt>chcp\n活动代码�? 936\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[1.8324626] [cmd] WRITE(cmd): 65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d
+[2.6595902000000002] [cmd] after cmd "echo 你好\r": PTY output 37 bytes hex=65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d 0a e4 bd a0 e5 a5 bd 20 20 0d 0a 20 20 20 20 20 20 0d 0a 43 3a 5c 76 74 3e
+[2.66033] [cmd] after cmd "echo 你好\r" grid text: "Microsoft Windows [版本 10.0.19044.4529]\n(c) Microsoft Corporation。保留所有权利。\n\nC:\\vt>chcp\n活动代码�? 936\n\nC:\\vt>echo 你好\n你好\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[2.6613957] [cmd] ASSERT PASS: row 6 has �?�?each 2 cells with SpacerTail
+[2.6615732] [cmd] WRITE(cmd): 63 68 63 70 20 36 35 30 30 31 0d
+[3.6568871] [cmd] after cmd "chcp 65001\r": PTY output 290 bytes hex=63 68 63 70 20 36 35 30 30 31 0d 0a 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 20 2d 20 63 68 63 70 20 20 36 35 30 30 31 07 1b 5b 32 35 6c 1b 5b 48 1b 5b 3f 32 35 68 1b 5b 32 35 6c 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 43 3a 5c 76 74 3e 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 33 3b 37 48 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07 1b 5b 3f 32 35 68
+[3.661537] [cmd] after cmd "chcp 65001\r" grid text: "Active code page: 65001\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[3.6616942999999997] [cmd] WRITE(cmd): 65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d
+[4.4877147] [cmd] after cmd "echo 你好\r": PTY output 37 bytes hex=65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d 0a e4 bd a0 e5 a5 bd 20 20 0d 0a 20 20 20 20 20 20 0d 0a 43 3a 5c 76 74 3e
+[4.4888536] [cmd] after cmd "echo 你好\r" grid text: "Active code page: 65001\n\nC:\\vt>echo 你好\n你好\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[4.4904984] [cmd] ASSERT PASS: row 2 has �?�?each 2 cells with SpacerTail
+[4.5002861] [cmd] after resize Terminal: cols=120 rows=40
+[5.1426093] [cmd] post-resize PTY redraw bytes: 270 hex=1b 5b 32 35 6c 1b 5b 48 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 43 3a 5c 76 74 3e 65 63 68 6f 20 e4 bd a0 e5 a5 bd 1b 5b 4b 0d 0a e4 bd a0 e5 a5 bd 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 43 3a 5c 76 74 3e 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 36 3b 37 48 1b 5b 3f 32 35 68
+[5.1682033] [cmd] WRITE(mode-cmd): 6d 6f 64 65 0d
+[5.93682] [cmd] mode output text: "mode\r\n\u{1b}]0;管理�? C:\\Windows\\system32\\cmd.exe - mode\u{7}\u{1b}[25l\r\nStatus for device COM1:    \r\n-----------------------    \r\n    Baud:            115200\r\n    Parity:          None  \r\n    Data Bits:       8     \r\n    Stop Bits:       1     \r\n    Timeout:         OFF   \r\n    XON/XOFF:        OFF   \r\n    CTS handshaking: OFF   \r\n    DSR handshaking: OFF   \r\n    DSR sensitivity: OFF   \r\n    DTR circuit:     ON    \r\n    RTS circuit:     ON    \u{1b}[22;1H\u{1b}[?25h\u{1b}[25l\r\nStatus for device CON:   \r\n----------------------   \r\n    Lines:          40   \r\n    Columns:        120  \r\n    Keyboard rate:  31   \r\n    Keyboard delay: 1    \r\n    Code page:      65001\u{1b}[31;1H\u{1b}[?25h\r\nC:\\vt>\u{1b}]0;管理�? C:\\Windows\\system32\\cmd.exe\u{7}"
+[5.9374348] [cmd] ASSERT PASS: Terminal and PTY sides agree 120x40
+[5.9375313] [cmd] WRITE(exit): 65 78 69 74 0d
+[15.0334505] [cmd] EOF wait timeout 15s
+[15.0336908] [cmd] after exit cmd: wait returned Ok(ExitStatus { code: 0, signal: None }) after 9.0959282s
+[135.0530073] [cmd] reader thread join still pending after 120s; detaching watcher
+[135.0532187] [cmd] total elapsed 135.0532026s
+ok
+test w5_conpty_powershell_round ... [0.0008564] [powershell] spawn powershell.exe ["-NoLogo"] cwd=C:\vt
+[1.5902593999999999] [powershell] startup bytes: 99 hex: 1b 5b 32 4a 1b 5b 6d 1b 5b 48 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 53 79 73 74 65 6d 33 32 5c 57 69 6e 64 6f 77 73 50 6f 77 65 72 53 68 65 6c 6c 5c 76 31 2e 30 5c 70 6f 77 65 72 73 68 65 6c 6c 2e 65 78 65 07 1b 5b 3f 32 35 68 50 53 20 43 3a 5c 76 74 3e 20
+[1.5905489] [powershell] marker ESC[6n (DSR cursor query): 0 times
+[1.5907510999999999] [powershell] marker ESC[?9001h: 0 times
+[1.590972] [powershell] marker ESC[?1004h: 0 times
+[1.5911882] [powershell] marker OSC (ESC]): 1 times
+[1.5949962] [powershell] startup fed to Terminal; first grid line: "PS C:\\vt>"
+[1.6150090000000001] [powershell] ESC[6n not present in startup; no-reply probe skipped
+[1.6152372000000002] [powershell] on_pty_write/on_device_attributes callback log bytes so far: 16
+[1.6153313] [powershell] WRITE(cmd): 5b 43 6f 6e 73 6f 6c 65 5d 3a 3a 4f 75 74 70 75 74 45 6e 63 6f 64 69 6e 67 0d
+[2.5355873] [powershell] after cmd "[Console]::OutputEncoding\r": PTY output 688 bytes hex=1b 5b 3f 32 35 6c 1b 5b 39 31 6d 1b 5b 31 3b 39 48 3e 20 1b 5b 39 33 6d 5b 1b 5b 3f 32 35 68 1b 5b 32 35 6c 1b 5b 6d 1b 5b 31 3b 39 48 3e 20 5b 43 6f 6e 73 6f 6c 65 5d 3a 3a 1b 5b 39 37 6d 4f 75 74 70 75 74 45 6e 63 6f 1b 5b 3f 32 35 68 1b 5b 32 35 6c 1b 5b 6d 1b 5b 31 3b 31 31 48 5b 43 6f 6e 73 6f 6c 65 5d 3a 3a 1b 5b 39 37 6d 4f 75 74 70 75 74 45 6e 63 6f 64 69 6e 67 0d 0a 1b 5b 3f 32 35 68 1b 5b 32 35 6c 1b 5b 6d 1b 5b 34 3b 31 48 42 6f 64 79 4e 61 6d 65 20 20 20 20 20 20 20 20 20 20 3a 20 67 62 32 33 31 32 1b 5b 33 36 58 0d 0a 45 6e 63 6f 64 69 6e 67 4e 61 6d 65 20 20 20 20 20 20 3a 20 e7 ae 80 e4 bd 93 e4 b8 ad e6 96 87 28 47 42 32 33 31 32 29 1b 5b 32 36 58 0d 0a 48 65 61 64 65 72 4e 61 6d 65 20 20 20 20 20 20 20 20 3a 20 67 62 32 33 31 32 1b 5b 33 36 58 0d 0a 57 65 62 4e 61 6d 65 20 20 20 20 20 20 20 20 20 20 20 3a 20 67 62 32 33 31 32 1b 5b 33 36 58 0d 0a 57 69 6e 64 6f 77 73 43 6f 64 65 50 61 67 65 20 20 20 3a 20 39 33 36 1b 5b 33 39 58 0d 0a 49 73 42 72 6f 77 73 65 72 44 69 73 70 6c 61 79 20 20 3a 20 54 72 75 65 1b 5b 33 38 58 0d 0a 49 73 42 72 6f 77 73 65 72 53 61 76 65 20 20 20 20 20 3a 20 54 72 75 65 1b 5b 33 38 58 0d 0a 49 73 4d 61 69 6c 4e 65 77 73 44 69 73 70 6c 61 79 20 3a 20 54 72 75 65 1b 5b 33 38 58 0d 0a 49 73 4d 61 69 6c 4e 65 77 73 53 61 76 65 20 20 20 20 3a 20 54 72 75 65 1b 5b 33 38 58 0d 0a 49 73 53 69 6e 67 6c 65 42 79 74 65 20 20 20 20 20 20 3a 20 46 61 6c 73 65 1b 5b 33 37 58 0d 0a 45 6e 63 6f 64 65 72 46 61 6c 6c 62 61 63 6b 20 20 20 3a 20 53 79 73 74 65 6d 2e 54 65 78 74 2e 49 6e 74 65 72 6e 61 6c 45 6e 63 6f 64 65 72 42 65 73 74 46 69 74 46 61 6c 6c 62 61 63 6b 0d 0a 44 65 63 6f 64 65 72 46 61 6c 6c 62 61 63 6b 20 20 20 3a 20 53 79 73 74 65 6d 2e 54 65 78 74 2e 49 6e 74 65 72 6e 61 6c 44 65 63 6f 64 65 72 42 65 73 74 46 69 74 46 61 6c 6c 62 61 63 6b 0d 0a 49 73 52 65 61 64 4f 6e 6c 79 20 20 20 20 20 20 20 20 3a 20 54 72 75 65 1b 5b 33 38 58 0d 0a 43 6f 64 65 50 61 67 65 20 20 20 20 20 20 20 20 20 20 3a 20 39 33 36 1b 5b 33 39 58 1b 5b 32 31 3b 31 48 1b 5b 3f 32 35 68 50 53 20 43 3a 5c 76 74 3e 20
+[2.556048] [powershell] after cmd "[Console]::OutputEncoding\r" grid text: "PS C:\\vt> [Console]::OutputEncoding\n\n\nBodyName          : gb2312\nEncodingName      : 简体中�?GB2312)\nHeaderName        : gb2312\nWebName           : gb2312\nWindowsCodePage   : 936\nIsBrowserDisplay  : True\nIsBrowserSave     : True\nIsMailNewsDisplay : True\nIsMailNewsSave    : True\nIsSingleByte      : False\nEncoderFallback   : System.Text.InternalEncoderBestFitFallback\nDecoderFallback   : System.Text.InternalDecoderBestFitFallback\nIsReadOnly        : True\nCodePage          : 936\n\n\n\nPS C:\\vt>\n\n\n\n"
+[2.5563453000000003] [powershell] WRITE(cmd): 63 68 63 70 20 36 35 30 30 31 0d
+[3.4667043] [powershell] after cmd "chcp 65001\r": PTY output 222 bytes hex=1b 5b 3f 32 35 6c 1b 5b 39 33 6d 63 68 63 70 1b 5b 6d 20 1b 5b 39 37 6d 36 35 30 30 31 0d 0a 1b 5b 3f 32 35 68 1b 5b 32 35 6c 1b 5b 6d 1b 5b 48 1b 5b 3f 32 35 68 1b 5b 32 35 6c 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 50 53 20 43 3a 5c 76 74 3e 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 32 3b 31 31 48 1b 5b 3f 32 35 68
+[3.4718969] [powershell] after cmd "chcp 65001\r" grid text: "Active code page: 65001\nPS C:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[3.4721053] [powershell] WRITE(cmd): 65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d
+[4.3137401] [powershell] after cmd "echo 你好\r": PTY output 73 bytes hex=1b 5b 3f 32 35 6c 0d 50 53 20 43 3a 5c 76 74 3e 20 1b 5b 39 33 6d 65 63 68 6f 1b 5b 6d 20 0d 0a e4 bd a0 e5 a5 bd 1b 5b 31 31 58 0d 0a 50 53 20 43 3a 5c 76 74 3e 20 20 20 20 20 20 1b 5b 34 3b 31 31 48 1b 5b 3f 32 35 68
+[4.3146764] [powershell] after cmd "echo 你好\r" grid text: "Active code page: 65001\nPS C:\\vt> echo\n你好\nPS C:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[4.3155892] [powershell] ASSERT PASS: row 2 has �?�?each 2 cells with SpacerTail
+[4.3237386] [powershell] after resize Terminal: cols=120 rows=40
+[4.9440037] [powershell] post-resize PTY redraw bytes: 279 hex=1b 5b 32 35 6c 1b 5b 48 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 50 53 20 43 3a 5c 76 74 3e 20 1b 5b 39 33 6d 65 63 68 6f 1b 5b 4b 1b 5b 6d 0d 0a e4 bd a0 e5 a5 bd 1b 5b 4b 0d 0a 50 53 20 43 3a 5c 76 74 3e 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 34 3b 31 31 48 1b 5b 3f 32 35 68
+[4.9660518] [powershell] WRITE(mode-cmd): 6d 6f 64 65 0d
+[5.7713317] [powershell] mode output text: "\u{1b}[?25l\u{1b}[93mmode\r\n\u{1b}[?25h\u{1b}[m\u{1b}[25l\r\nStatus for device COM1:    \r\n-----------------------    \r\n    Baud:            115200\r\n    Parity:          None  \r\n    Data Bits:       8     \r\n    Stop Bits:       1     \r\n    Timeout:         OFF   \r\n    XON/XOFF:        OFF   \r\n    CTS handshaking: OFF   \r\n    DSR handshaking: OFF   \r\n    DSR sensitivity: OFF   \r\n    DTR circuit:     ON    \r\n    RTS circuit:     ON    \u{1b}[20;1H\u{1b}[?25h\r\nStatus for device CON:   \r\n----------------------   \r\n    Lines:          40   \r\n    Columns:        120  \r\n    Keyboard rate:  31   \r\n    Keyboard delay: 1    \r\n    Code page:      65001\r\n\u{1b}[25X\r\nPS C:\\vt>\u{1b}[16X\u{1b}[1C"
+[5.7727113] [powershell] ASSERT PASS: Terminal and PTY sides agree 120x40
+[5.7728321000000005] [powershell] exit order A: drop(master) -> wait(child)
+[5.812975] [powershell] drop-master-first: wait returned Ok(ExitStatus { code: 3221225786, signal: None }) after 285.2µs
+[5.8132741] [powershell] reader thread join returned (EOF observed after the long latency)
+[5.8133928] [powershell] total elapsed 5.8133906s
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 140.91s
+
+W5 DONE

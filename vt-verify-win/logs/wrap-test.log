@@ -1,0 +1,2 @@
+2026/11/08 周日 10:40:27.99 zig build -Demit-lib-vt=true --prefix E:xout 
+2026/11/08 周日 10:40:28.30 INJECT -Dtarget=x86_64-windows-gnu 

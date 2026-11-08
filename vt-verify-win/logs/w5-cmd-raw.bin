@@ -1,0 +1,99 @@
+[2J[m[HMicrosoft Windows [版本 10.0.19044.4529]]0;C:\Windows\system32\cmd.exe[?25h
+(c) Microsoft Corporation。保留所有权利。
+[41X
+C:\vt>[35X]0;管理员: C:\Windows\system32\cmd.exechcp
+]0;管理员: C:\Windows\system32\cmd.exe - chcp活动代码页: 936
+
+C:\vt>]0;管理员: C:\Windows\system32\cmd.exeecho 你好
+你好  
+      
+C:\vt>chcp 65001
+]0;管理员: C:\Windows\system32\cmd.exe - chcp  65001[25l[H[?25h[25lActive code page: 65001[K
+[K
+C:\vt>[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[3;7H]0;管理员: C:\Windows\system32\cmd.exe[?25hecho 你好
+你好  
+      
+C:\vt>[25l[HActive code page: 65001[K
+[K
+C:\vt>echo 你好[K
+你好[K
+[K
+C:\vt>[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[6;7H[?25hmode
+]0;管理员: C:\Windows\system32\cmd.exe - mode[25l
+Status for device COM1:    
+-----------------------    
+    Baud:            115200
+    Parity:          None  
+    Data Bits:       8     
+    Stop Bits:       1     
+    Timeout:         OFF   
+    XON/XOFF:        OFF   
+    CTS handshaking: OFF   
+    DSR handshaking: OFF   
+    DSR sensitivity: OFF   
+    DTR circuit:     ON    
+    RTS circuit:     ON    [22;1H[?25h[25l
+Status for device CON:   
+----------------------   
+    Lines:          40   
+    Columns:        120  
+    Keyboard rate:  31   
+    Keyboard delay: 1    
+    Code page:      65001[31;1H[?25h
+C:\vt>]0;管理员: C:\Windows\system32\cmd.exeexit
+]0;C:\Windows\system32\cmd.exe

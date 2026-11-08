@@ -1,0 +1,2 @@
+2026/11/08 周日 12:43:56.76 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9caef4986700e8d7\out\ghostty-install --cache-dir C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-9caef4986700e8d7\out\zig-cache --system C:\vt\zig-system 
+2026/11/08 周日 12:43:56.85 INJECT -Dtarget=x86_64-windows-gnu 

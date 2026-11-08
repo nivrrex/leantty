@@ -1,0 +1,195 @@
+=== W1a Rust target / linker ===
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-pc-windows-gnu
+release: 1.99.1
+LLVM version: 23.1.1
+CARGO_TARGET_DIR=E:\dev\build\billy-target
+default linker probe (rustc -C link-arg=-Wl,--version):
+
+warning: linker stderr: collect2 version 16.2.0
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe -m i386pep -
+Bdynamic -o C:\vt\logs\w1-linker-probe.exe E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w
+64-mingw32/lib/../lib/crt2.o E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtbegin.o -LE:/dev/mingw64/bin/..
+/lib/gcc/x86_64-w64-mingw32/16.2.0 -LE:/dev/mingw64/bin/../lib/gcc -LE:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/1
+6.2.0/../../../../x86_64-w64-mingw32/lib/../lib -LE:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../l
+ib -LE:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib -LE:/dev/mingw64/bin/..
+/lib/gcc/x86_64-w64-mingw32/16.2.0/../../.. --dynamicbase --disable-auto-image-base --high-entropy-va C:\vt\logs\rustcA
+QEHxA\symbols.o C:\vt\logs\w1-linker-probe.w1_linker_probe.b645213e0cdc0b97-cgu.0.rcgu.o C:\vt\logs\w1-linker-probe.4h7
+gvb5x0m9vto23x6f1by2ja.rcgu.o -Bstatic E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc
+-windows-gnu\lib\libstd-f903e3d16df36da5.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x8
+6_64-pc-windows-gnu\lib\libpanic_unwind-5d616eb723ebf0a3.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gn
+u\lib\rustlib\x86_64-pc-windows-gnu\lib\libobject-55a10e71341da3ce.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-
+windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libmemchr-613699589e151b5c.rlib E:\dev\rust\rustup\toolchains\stable-
+x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libaddr2line-b6c62d449144cfc1.rlib E:\dev\rust\rustup\toolc
+hains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libgimli-4abf61f095a5cbcd.rlib E:\dev\rust\rus
+tup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcfg_if-cf8c0f5d2e32ea85.rlib E:\de
+v\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libwindows_link-09741329a47
+ec176.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_de
+mangle-e99c7a54316047dc.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-g
+nu\lib\libstd_detect-49fdcc216f141583.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_6
+4-pc-windows-gnu\lib\libhashbrown-1e601951b61974c8.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\
+rustlib\x86_64-pc-windows-gnu\lib\librustc_std_workspace_alloc-a2ebee595202316c.rlib E:\dev\rust\rustup\toolchains\stab
+le-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libminiz_oxide-73eb2368f7777905.rlib E:\dev\rust\rustup\
+toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libadler2-0636ce38193a1257.rlib E:\dev\ru
+st\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libunwind-cfd7a43bea82d7dc.rlib
+ E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\liblibc-510ab74f594f9
+da4.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\librustc_std_
+workspace_core-407d45ea9c6f51d8.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-w
+indows-gnu\lib\liballoc-c6934c651061f32a.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x8
+6_64-pc-windows-gnu\lib\libcore-d9c7ef74bee84a19.rlib E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\ru
+stlib\x86_64-pc-windows-gnu\lib\libcompiler_builtins-cddac46a750db0bd.rlib -Bdynamic -lkernel32 -lkernel32 -lkernel32 -
+lntdll -luserenv -lws2_32 -ldbghelp -lgcc_eh -l:libpthread.a -lmsvcrt -lmingwex -lmingw32 -lgcc -lmsvcrt -lmingwex -lus
+er32 -lkernel32 --nxcompat --gc-sections --version E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../
+x86_64-w64-mingw32/lib/../lib/default-manifest.o E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/crtend.o
+warning: linker stdout: GNU ld (Binutils for MinGW-W64 x86_64, built by Brecht Sanders, r3) 2.47.20260726鈵?         Co
+pyright (C) 2026 Free Software Foundation, Inc.鈵?         This program is free software; you may redistribute it under
+ the terms of鈵?         the GNU General Public License version 3 or (at your option) a later version.鈵?         This 
+program has absolutely no warranty.
+=== W1 build (cargo clean -p first to force build.rs rerun) ===
+cargo.exe :        Fresh unicode-ident v1.0.24
+所在位置 C:\vt\checks\w1_build.ps1:23 字符: 1
++ & cargo build --workspace -v *>&1 | Tee-Object -FilePath "$root\logs\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (       Fresh unicode-ident v1.0.24:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+       Fresh version_check v0.9.5
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+       Fresh bitflags v2.11.1
+       Fresh proc-macro2 v1.0.106
+     Running `E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\bin\rustc.exe --crate-name build_script_build 
+--edition=2024 'crates\libghostty-vt-sys\build.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future
+-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --cfg 'feature="default"' --cfg 'feature="kitty-gra
+phics"' --cfg 'feature="vendored"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("bindgen-tool", "def
+ault", "kitty-graphics", "link-dynamic", "pkg-config", "vendored"))' -C metadata=14c0f5c240745d97 -C extra-filename=-68
+99697a8d1383f6 --out-dir 'E:\dev\build\billy-target\debug\build\libghostty-vt-sys-6899697a8d1383f6' -C 'incremental=E:\
+dev\build\billy-target\debug\incremental' -L 'dependency=E:\dev\build\billy-target\debug\deps'`
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh proc-macro2-diagnostics v0.10.1
+       Fresh int-enum v1.2.0
+     Running `E:\dev\build\billy-target\debug\build\libghostty-vt-sys-6899697a8d1383f6\build-script-build`
+     Running `E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\bin\rustc.exe --crate-name libghostty_vt_sys -
+-edition=2024 'crates\libghostty-vt-sys\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,futur
+e-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --cfg 'feature="default"' 
+--cfg 'feature="kitty-graphics"' --cfg 'feature="vendored"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, va
+lues("bindgen-tool", "default", "kitty-graphics", "link-dynamic", "pkg-config", "vendored"))' -C metadata=63f2dc85f5540
+485 -C extra-filename=-ae3df4fc93a765ec --out-dir 'E:\dev\build\billy-target\debug\deps' -C 'incremental=E:\dev\build\b
+illy-target\debug\incremental' -L 'dependency=E:\dev\build\billy-target\debug\deps' -L 'native=E:\dev\build\billy-targe
+t\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install\lib' -L 'native=E:\dev\build\billy-target\debug\bu
+ild\libghostty-vt-sys-040a5d2207557161\out\ghostty-install\bin' -l 'static:+verbatim=ghostty-vt-static.lib'`
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+     Running `E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\bin\rustc.exe --crate-name libghostty_vt --edi
+tion=2024 'crates\libghostty-vt\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incomp
+at --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --cfg 'feature="default"' --cfg 'f
+eature="kitty-graphics"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("allocator_api", "default", "k
+itty-graphics", "link-dynamic", "log", "png", "tracing"))' -C metadata=2b058221056bd946 -C extra-filename=-a943ae2f4dac
+ff4b --out-dir 'E:\dev\build\billy-target\debug\deps' -C 'incremental=E:\dev\build\billy-target\debug\incremental' -L '
+dependency=E:\dev\build\billy-target\debug\deps' --extern 'bitflags=E:\dev\build\billy-target\debug\deps\libbitflags-ea
+5205145957631a.rmeta' --extern 'int_enum=E:\dev\build\billy-target\debug\deps\int_enum-5eea5b8f02448c6c.dll' --extern '
+libghostty_vt_sys=E:\dev\build\billy-target\debug\deps\liblibghostty_vt_sys-ae3df4fc93a765ec.rmeta' -L 'native=E:\dev\b
+uild\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install\lib' -L 'native=E:\dev\build\billy
+-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install\bin'`
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5m 00s
+=== W1a zig invocations (via ZIG wrapper log) ===
+2026/11/08 周日 10:40:47.50 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install --cache-dir E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\zig-cache 
+2026/11/08 周日 10:40:47.57 INJECT -Dtarget=x86_64-windows-gnu 
+no -Dtarget captured
+build.rs maps x86_64-pc-windows-gnu -> x86_64-windows-gnu in zig_target();
+native build passes no -Dtarget, so zig defaults to native-native-msvc (see first-attempt error).
+=== W1 /MD vs /MT ===
+occurrences of /MD or /MT in build.rs: 0 (0 = not distinguished; CRT is zig's call)
+=== W1b artifacts ===
+install dir: E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install
+
+
+
+Rel                                        Bytes
+---                                        -----
+bin\ghostty-vt.dll                       9956864
+bin\ghostty-vt.pdb                      12922880
+include\ghostty\vt.h                        6967
+include\ghostty\vt\allocator.h             11408
+include\ghostty\vt\build_info.h             3354
+include\ghostty\vt\color.h                 14598
+include\ghostty\vt\color_scheme.h           2174
+include\ghostty\vt\device.h                 4679
+include\ghostty\vt\focus.h                  2044
+include\ghostty\vt\formatter.h              7695
+include\ghostty\vt\grid_ref.h               8028
+include\ghostty\vt\grid_ref_tracked.h       4766
+include\ghostty\vt\io.h                     4950
+include\ghostty\vt\key.h                    2228
+include\ghostty\vt\kitty_graphics.h        39912
+include\ghostty\vt\modes.h                  8388
+include\ghostty\vt\mouse.h                  3777
+include\ghostty\vt\osc.h                   14910
+include\ghostty\vt\paste.h                 10126
+include\ghostty\vt\point.h                  1729
+include\ghostty\vt\render.h                69784
+include\ghostty\vt\screen.h                11336
+include\ghostty\vt\search.h                19650
+include\ghostty\vt\selection.h             43555
+include\ghostty\vt\sgr.h                   10743
+include\ghostty\vt\size_report.h            3247
+include\ghostty\vt\snapshot.h              33787
+include\ghostty\vt\style.h                  2987
+include\ghostty\vt\sys.h                    9771
+include\ghostty\vt\terminal.h             141025
+include\ghostty\vt\types.h                 13060
+include\ghostty\vt\unicode.h                6358
+include\ghostty\vt\wasm.h                   5680
+include\ghostty\vt\key\encoder.h            9149
+include\ghostty\vt\key\event.h             13432
+include\ghostty\vt\mouse\encoder.h          6226
+include\ghostty\vt\mouse\event.h            4923
+lib\ghostty-vt-static.lib               28468430
+lib\ghostty-vt.lib                         56892
+share\pkgconfig\libghostty-vt-static.pc      374
+share\pkgconfig\libghostty-vt.pc             351
+
+
+--- libraries ---
+ghostty-vt.dll  9956864 bytes
+ghostty-vt-static.lib  28468430 bytes
+ghostty-vt.lib  56892 bytes
+header count: 35
+include\ghostty\vt.h
+include\ghostty\vt\allocator.h
+include\ghostty\vt\build_info.h
+include\ghostty\vt\color.h
+include\ghostty\vt\color_scheme.h
+include\ghostty\vt\device.h
+include\ghostty\vt\focus.h
+include\ghostty\vt\formatter.h
+include\ghostty\vt\grid_ref.h
+include\ghostty\vt\grid_ref_tracked.h
+include\ghostty\vt\io.h
+include\ghostty\vt\key.h
+include\ghostty\vt\kitty_graphics.h
+include\ghostty\vt\modes.h
+include\ghostty\vt\mouse.h
+include\ghostty\vt\osc.h
+include\ghostty\vt\paste.h
+include\ghostty\vt\point.h
+include\ghostty\vt\render.h
+include\ghostty\vt\screen.h
+include\ghostty\vt\search.h
+include\ghostty\vt\selection.h
+include\ghostty\vt\sgr.h
+include\ghostty\vt\size_report.h
+include\ghostty\vt\snapshot.h
+include\ghostty\vt\style.h
+include\ghostty\vt\sys.h
+include\ghostty\vt\terminal.h
+include\ghostty\vt\types.h
+include\ghostty\vt\unicode.h
+include\ghostty\vt\wasm.h
+include\ghostty\vt\key\encoder.h
+include\ghostty\vt\key\event.h
+include\ghostty\vt\mouse\encoder.h
+include\ghostty\vt\mouse\event.h
+W1 DONE

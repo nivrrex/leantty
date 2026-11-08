@@ -1,0 +1,14 @@
+-- /e/dev/build/billy-target/release/build/libghostty-vt-sys-1873497183111f54/out/ghostty-install
+-rw-r--r-- 1 Admin 197121 12577616 Nov  8 14:33 ghostty-vt-static.lib
+-rw-r--r-- 1 Admin 197121    56892 Nov  8 14:33 ghostty-vt.lib
+bin/:
+-rwxr-xr-x 1 Admin 197121 2471424 Nov  8 14:33 ghostty-vt.dll
+-rw-r--r-- 1 Admin 197121 8179712 Nov  8 14:33 ghostty-vt.pdb
+include count: 32
+-- /e/dev/build/billy-target/release/build/libghostty-vt-sys-6a76427d9415a153/out/ghostty-install
+-rw-r--r-- 1 Admin 197121 12577620 Nov  8 14:28 ghostty-vt-static.lib
+-rw-r--r-- 1 Admin 197121    56892 Nov  8 14:28 ghostty-vt.lib
+bin/:
+-rwxr-xr-x 1 Admin 197121 2471424 Nov  8 14:28 ghostty-vt.dll
+-rw-r--r-- 1 Admin 197121 8179712 Nov  8 14:28 ghostty-vt.pdb
+include count: 32

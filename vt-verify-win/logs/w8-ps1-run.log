@@ -1,0 +1,96 @@
+=== W8 workspace release  ===
+cargo.exe :    Compiling proc-macro2 v1.0.106
+所在位置 C:\vt\checks\w8_release.ps1:10 字符: 1
++ & cargo build --release *>&1 | Tee-Object -FilePath "$root\logs\w8-re ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling proc-macro2 v1.0.106:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling version_check v0.9.5
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling bitflags v2.11.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling syn v2.0.117
+   Compiling int-enum v1.2.0
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+    Finished `release` profile [optimized] target(s) in 4m 30s
+=== W8 zig ===
+2026/11/08 周日 14:23:59.72 zig build "-Demit-lib-vt=true" "-Doptimize=ReleaseFast" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\release\build\libghostty-vt-sys-6a76427d9415a153\out\ghostty-install --cache-dir E:\dev\build\billy-target\release\build\libghostty-vt-sys-6a76427d9415a153\out\zig-cache 
+2026/11/08 周日 14:23:59.92 INJECT -Dtarget=x86_64-windows-gnu 
+=== W8  ===
+ghostty-vt-static.lib 12577620 bytes
+ghostty-vt.lib 56892 bytes
+=== W8 V8 release, 30 ===
+cargo.exe :    Compiling proc-macro2 v1.0.107
+所在位置 C:\vt\checks\w8_release.ps1:22 字符: 1
++ & cargo test --release --test v8_snapshot -- --nocapture *>&1 | Tee-O ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling proc-macro2 v1.0.107:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling winapi-x86_64-pc-windows-gnu v0.4.0
+   Compiling winapi v0.3.9
+   Compiling autocfg v1.5.1
+   Compiling thiserror v1.0.69
+   Compiling proc-macro2-diagnostics v0.11.0
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling memoffset v0.6.5
+   Compiling anyhow v1.0.104
+   Compiling winreg v0.10.1
+   Compiling cfg-if v1.0.5
+   Compiling serial-core v0.4.0
+   Compiling lazy_static v1.5.1
+   Compiling serial-windows v0.4.0
+   Compiling pin-utils v0.1.1
+   Compiling bitflags v1.3.2
+   Compiling serial v0.4.0
+   Compiling nix v0.25.1
+   Compiling shared_library v0.1.9
+   Compiling shell-words v1.1.1
+   Compiling bitflags v2.13.2
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling downcast-rs v1.2.1
+   Compiling log v0.4.35
+   Compiling int-enum v1.3.0
+   Compiling thiserror-impl v1.0.69
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.8.1
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+    Finished `release` profile [optimized] target(s) in 4m 52s
+     Running tests\v8_snapshot.rs (E:\dev\build\billy-target\release\deps\v8_snapshot-14abcd5c901d6e6b.exe)
+
+running 2 tests
+test v8_owned_snapshot ... ok
+BENCH 80x24 蹇収涓綅鏁拌�楁椂: 168.4碌s (30 娆″彇鏍?
+BENCH 200x60 蹇収涓綅鏁拌�楁椂: 1.0828ms (30 娆″彇鏍?
+test v8_snapshot_bench ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+=== W8 100MB release===
+cargo.exe :    Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+所在位置 C:\vt\checks\w8_release.ps1:25 字符: 1
++ & cargo test --release --test w8_throughput -- --nocapture *>&1 | Tee ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling vt...cks\v3_project):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `release` profile [optimized] target(s) in 2.77s
+     Running tests\w8_throughput.rs (E:\dev\build\billy-target\release\deps\w8_throughput-db42f515acb1edab.exe)
+
+running 1 test
+THROUGHPUT feed=104857600 bytes (1600 x 65536B) elapsed=396.1196ms throughput=252.45 MiB/s
+THROUGHPUT-MBPS 252.4490
+THROUGHPUT scrollback_rows=Ok(620)
+test w8_feed_100mb_ascii_throughput ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+W8 DONE
