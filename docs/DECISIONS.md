@@ -7,3 +7,13 @@
 - 决策：骨架阶段 CpuRenderer::render 为占位实现，softbuffer/fontdb/fontdue 接线在实现阶段完成。依据：规格将渲染实现列入阶段（三）。待验证假设：Devuan 5 本机具备 softbuffer 所需的 X11/EGL 开发库（cargo check 时验证）。
 - 决策：依赖版本不固定精确号（Cargo.toml 用宽松要求），与规格一致。已验证事实：portable-pty 0.8.1 与 vt-verify 基线一致。
 - 未解决问题：winit/softbuffer/fontdb/fontdue 的实际解析版本以 Cargo.lock 为准（骨架提交时落盘）。
+- 决策：app 事件循环用 winit 0.30 的 run_app + ApplicationHandler（EventLoop::run/create_window 在 0.30.13 已 deprecated，clippy -D warnings 不可留）。已验证事实：clippy --workspace --all-targets -D warnings 通过。
+- 决策：softbuffer Context 用 EventLoop::owned_display_handle 创建，Surface 用 Rc<Window> 共享句柄，规避闭包自引用借用冲突。已验证事实：编译通过。
+- 决策：键盘映射为阶段1 子集（NamedKey 命名键 + ASCII 字母数字，其余忽略）。工程判断：全量键位映射超出阶段1 范围。
+- 决策：阶段1 网格像素尺寸固定 8x16（CELL_W/CELL_H），字体度量接入留待后续阶段。工程判断。
+- 决策：render 每格光栅化首字符（等宽网格假设），宽字符续格不单独画。已验证事实：合成快照像素断言通过；真实宽字符渲染效果列入 PHASE1-LINUX.md 手动清单。
+- 决策：on_pty_write 回调经 channel 中转写 PTY（回调在 feed 调用栈内同步触发，不能直接借用 writer）。已验证事实：编译+接线结构通过；运行级验证列入手动清单。
+- 决策：app 增加 bin 入口（src/main.rs），shell 取自 SHELL 环境变量、未设置回退 /bin/sh。已验证事实：clippy --all-targets 通过。
+- 决策：pty 测试中 writer() 借用与写操作在同一表达式内完成，避免跨语句可变借用冲突。工程判断。
+- 未解决问题：app 事件循环无运行级自动化测试（容器无显示器）；GUI 行为列手动清单。
+- 已验证事实：依赖解析版本 winit 0.30.13 / softbuffer 0.4.8 / fontdb 0.21.0 / fontdue 0.9.5 / portable-pty 0.8.1 / anyhow 1（Cargo.lock）。
