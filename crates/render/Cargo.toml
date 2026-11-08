@@ -1,0 +1,12 @@
+[package]
+name = "render"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+vt = { path = "../vt" }
+softbuffer.workspace = true
+fontdb.workspace = true
+fontdue.workspace = true
+thiserror.workspace = true
