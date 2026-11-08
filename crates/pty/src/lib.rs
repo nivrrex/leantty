@@ -1,5 +1,8 @@
 //! pty crate：跨平台 PTY 抽象。
 //!
+//! 注：`pub mod unix` 不加 cfg 门控——unix.rs 仅用 portable-pty 跨平台 API，
+//! 在 Windows 上同样编译；app 的 join_thread_timeout 引用依赖此布局。
+//!
 //! ## close 契约
 //! `close()` 必须先释放 PTY 主端再回收子进程：先等子进程退出会让主端
 //! EOF 延迟（Windows 验证数据约 83s），Unix 实现同样遵守该顺序。
@@ -17,7 +20,7 @@ use std::io::{Read, Write};
 #[cfg(unix)]
 pub use unix::NativePty;
 #[cfg(windows)]
-pub use windows::WindowsPty;
+pub use windows::WindowsPty as NativePty;
 
 /// PTY 抽象。实现须遵守模块级 close 与读线程契约。
 pub trait Pty {
