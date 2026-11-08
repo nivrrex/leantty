@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/v4_grid.rs (checks/v3_project/target/debug/deps/v4_grid-92a233cd62ba7a64)
+
+running 6 tests
+test v4a_plain_text ... ok
+test v4b_sgr_red ... ok
+test v4c_clear_screen ... ok
+test v4e_wide_chars ... ok
+test v4f_alternate_screen ... ok
+test v4d_scrollback ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

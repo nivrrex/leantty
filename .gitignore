@@ -1,0 +1,7 @@
+target/
+*.pdb
+/vt-verify/toolchain/
+/vt-verify/zig-system/
+/vt-verify/zig-system-link
+/vt-verify/vendor/ghostty-src/
+/vt-verify/build*.log

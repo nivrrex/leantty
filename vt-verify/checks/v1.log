@@ -1,0 +1,4 @@
+   Compiling libghostty-vt-sys v0.2.1 (/root/Desktop/tty/vt-verify/vendor/libghostty-rs/crates/libghostty-vt-sys)
+   Compiling libghostty-vt v0.2.1 (/root/Desktop/tty/vt-verify/vendor/libghostty-rs/crates/libghostty-vt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 57.88s
+V1 PASS: cargo build --workspace OK

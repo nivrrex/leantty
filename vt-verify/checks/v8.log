@@ -1,0 +1,11 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/v8_snapshot.rs (checks/v3_project/target/debug/deps/v8_snapshot-efb6d1f08e729fed)
+
+running 2 tests
+test v8_owned_snapshot ... ok
+BENCH 80x24 快照中位数耗时: 1.177959ms (30 次取样)
+BENCH 200x60 快照中位数耗时: 7.096398ms (30 次取样)
+test v8_snapshot_bench ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+

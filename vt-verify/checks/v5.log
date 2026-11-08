@@ -1,0 +1,25 @@
+编号 | 能力 | 绑定 | API | 位置(相对 src/) | 上游 C API(vt.h)
+---|---|---|---|---|---
+1  | 遍历视口行与单元格              | 有 | RowIterator::new             | render.rs | ghostty_render_state_row_iterator_new/next; ghostty_render_state_row_cells_new/next (render.h)
+2  | 单元格字符与宽度/续格标记    | 有 | fn graphemes                 | render.rs | ghostty_grid_ref_graphemes (grid_ref.h); ghostty_cell_get (screen.h)
+2  | 单元格宽度/续格                   | 有 | fn wide                      | screen.rs | ghostty_cell_get wide 字段 (screen.h)
+3  | 前景/背景色与样式                | 有 | fn fg_color                  | render.rs | ghostty_render_state_row_cells_get (render.h)
+3  | 样式属性(bold/underline/inverse...)  | 有 | pub struct Style             | style.rs | ghostty_style_default (style.h)
+4  | 光标位置                             | 有 | fn cursor_x                  | terminal.rs | ghostty_terminal_get TERMINAL_OPT_CURSOR (terminal.h)
+4  | 光标可见性/样式                   | 有 | fn cursor_visible            | render.rs | ghostty_render_state_get CURSOR_* (render.h)
+5  | 脏行/脏标记                         | 有 | fn next_dirty                | render.rs | ghostty_render_state_row_iterator_next_dirty (render.h)
+6  | 滚动偏移                             | 有 | fn viewport_row              | render.rs | ghostty_render_state_get ROW_ITERATOR 相关 (render.h)
+6  | scrollback 总行数                     | 有 | fn scrollback_rows           | terminal.rs | ghostty_terminal_get TERMINAL_OPT_HISTORY_ROWS 类 (terminal.h)
+7  | 滚动操作(按行/顶/底)             | 有 | fn scroll_viewport           | terminal.rs | ghostty_terminal_scroll_viewport (terminal.h:3585)
+8  | resize                                   | 有 | fn resize                    | terminal.rs | ghostty_terminal_resize (terminal.h:3289)
+9  | alternate screen 状态                  | 有 | fn active_screen             | terminal.rs | ghostty_terminal_get SCREEN 类 (terminal.h)
+10 | 选区/可复制文本提取             | 有 | fn format_selection_buf      | selection.rs | ghostty_terminal_select_word/select_line (selection.h:771)
+11 | 终端模式标志(mouse/paste/app-cursor) | 有 | fn mode                      | terminal.rs | ghostty_terminal_get MODE + modes.h 常量 (terminal.h/modes.h)
+
+== 上游有、绑定未封装的代表性 API（按任务要求标注）==
+  ghostty_terminal_vt_write_until : 已封装 terminal.rs
+  ghostty_terminal_continuation_write : 已封装 terminal.rs
+  ghostty_formatter_format_alloc : 已封装 fmt.rs
+  ghostty_key_encoder_setopt_from_terminal : 已封装 key.rs
+  ghostty_terminal_compress : 已封装 terminal.rs
+  ghostty_terminal_point_from_grid_ref : 已封装 terminal.rs

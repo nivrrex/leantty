@@ -1,0 +1,9 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running tests/v7_key.rs (checks/v3_project/target/debug/deps/v7_key-c698e1309c1d2e8f)
+
+running 2 tests
+test v7_keys_application_cursor_mode ... ok
+test v7_keys_normal_mode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

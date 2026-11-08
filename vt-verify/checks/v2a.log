@@ -1,0 +1,13 @@
+     Removed 10273 files, 1.7GiB total
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling version_check v0.9.5
+   Compiling libghostty-vt-sys v0.2.1 (/root/Desktop/tty/vt-verify/vendor/libghostty-rs/crates/libghostty-vt-sys)
+   Compiling bitflags v2.11.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling syn v2.0.117
+   Compiling int-enum v1.2.0
+   Compiling libghostty-vt v0.2.1 (/root/Desktop/tty/vt-verify/vendor/libghostty-rs/crates/libghostty-vt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 53.70s
+V2a PASS: 清理后重建成功
