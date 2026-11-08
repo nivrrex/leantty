@@ -1,0 +1,47 @@
+cargo.exe :     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.79s
+À˘‘⁄Œª÷√ C:\vt\checks\w6_keyencoder.ps1:12 ◊÷∑˚: 1
++ & cargo test --test v7_key *>&1 | Tee-Object -FilePath "$root\logs\w6 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.79s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running tests\v7_key.rs (target\debug\deps\v7_key-1dfab5223ba39c39.exe)
+
+running 2 tests
+test v7_keys_application_cursor_mode ... ok
+test v7_keys_normal_mode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+cargo.exe :     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+À˘‘⁄Œª÷√ C:\vt\checks\w6_keyencoder.ps1:14 ◊÷∑˚: 1
++ & cargo test --test v6_ctrlc -- --nocapture *>&1 | Tee-Object -FilePa ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.22s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running tests\v6_ctrlc.rs (target\debug\deps\v6_ctrlc-f7a629a9213b8ae6.exe)
+
+running 1 test
+[    0.624] startup output: 1b 5b 32 4a 1b 5b 6d 1b 5b 48 4d 69 63 72 6f 73 6f 66 74 20 57 69 6e 64 6f 77 73 20 5b e7 89 88 e6 9c ac 20 31 30 2e 30 2e 31 39 30 34 34 2e 34 35 32 39 5d 1b 5d 30 3b 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07 1b 5b 3f 32 35 68 0d 0a 28 63 29 20 4d 69 63 72 6f 73 6f 66 74 20 43 6f 72 70 6f 72 61 74 69 6f 6e e3 80 82 e4 bf 9d e7 95 99 e6 89 80 e6 9c 89 e6 9d 83 e5 88 a9 e3 80 82 0d 0a 1b 5b 34 31 58 0d 0a 43 3a 5c 76 74 3e 1b 5b 33 35 58 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[    0.624] WRITE: ping -t 127.0.0.1
+[    1.398] ping output: 201 bytes: 70 69 6e 67 20 2d 74 20 31 32 37 2e 30 2e 30 2e 31 0d 0a 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 20 2d 20 70 69 6e 67 20 20 2d 74 20 31 32 37 2e 30 2e 30 2e 31 07 0d 0a e6 ad a3 e5 9c a8 20 50 69 6e 67 20 31 32 37 2e 30 2e 30 2e 31 20 e5 85 b7 e6 9c 89 20 33 32 20 e5 ad 97 e8 8a 82 e7 9a 84 e6 95 b0 e6 8d ae 3a 20 20 20 20 20 20 20 20 0d 0a e6 9d a5 e8 87 aa 20 31 32 37 2e 30 2e 30 2e 31 20 e7 9a 84 e5 9b 9e e5 a4 8d 3a 20 e5 ad 97 e8 8a 82 3d 33 32 20 e6 97 b6 e9 97 b4 3c 31 6d 73 20 54 54 4c 3d 31 32 38 0d 0a
+[    1.398] WRITE: \x03 (Ctrl-C)
+[    2.407] after Ctrl-C: 58 bytes within 1.0091726s: e6 9d a5 e8 87 aa 20 31 32 37 2e 30 2e 30 2e 31 20 e7 9a 84 e5 9b 9e e5 a4 8d 3a 20 e5 ad 97 e8 8a 82 3d 33 32 20 e6 97 b6 e9 97 b4 3c 31 6d 73 20 54 54 4c 3d 31 32 38 0d 0a
+[    2.407] after Ctrl-C text: "Êù•Ëá™ 127.0.0.1 ÁöÑÂõûÂ§? Â≠óËäÇ=32 Êó∂Èó¥<1ms TTL=128\r\n"
+[    2.407] output contains ^C/Ctrl marker: false
+[    3.246] after Ctrl-C echo output text: "Êù•Ëá™ 127.0.0.1 ÁöÑÂõûÂ§? Â≠óËäÇ=32 Êó∂Èó¥<1ms TTL=128\r\n"
+thread 'w6_conpty_ctrl_c_interrupts_ping' (7680) panicked at tests\v6_ctrlc.rs:153:5:
+shell should still be interactive after Ctrl-C, got "Êù•Ëá™ 127.0.0.1 ÁöÑÂõûÂ§? Â≠óËäÇ=32 Êó∂Èó¥<1ms TTL=128\r\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test w6_conpty_ctrl_c_interrupts_ping ... FAILED
+
+failures:
+
+failures:
+    w6_conpty_ctrl_c_interrupts_ping
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.29s
+
+error: test failed, to rerun pass `--test v6_ctrlc`
+W6 CTRL-C FAIL

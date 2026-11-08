@@ -1,2 +1,5 @@
 # 仅 Windows agent 修改。
+# W3 实测：GNU ld --gc-sections 与 zig COFF 对象对 ___chkstk_ms 的引用交互
+# 致归档抽取未解析；--no-gc-sections 后写覆盖 rustc 自带的 --gc-sections。
 [target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "link-arg=-Wl,--no-gc-sections"]

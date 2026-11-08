@@ -1,0 +1,70 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling winapi-x86_64-pc-windows-gnu v0.4.0
+   Compiling winapi v0.3.9
+   Compiling autocfg v1.5.1
+   Compiling thiserror v1.0.69
+   Compiling proc-macro2-diagnostics v0.11.0
+   Compiling memoffset v0.6.5
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling winreg v0.10.1
+   Compiling anyhow v1.0.104
+   Compiling pin-utils v0.1.1
+   Compiling bitflags v1.3.2
+   Compiling serial-core v0.4.0
+   Compiling cfg-if v1.0.5
+   Compiling lazy_static v1.5.1
+   Compiling serial-windows v0.4.0
+   Compiling shared_library v0.1.9
+   Compiling nix v0.25.1
+   Compiling serial v0.4.0
+   Compiling shell-words v1.1.1
+   Compiling downcast-rs v1.2.1
+   Compiling bitflags v2.13.2
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling log v0.4.35
+warning: linker stderr: E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\build\libghostty-vt-sys-f14794f217a772d5\build_script_build-f14794f217a772d5.4h4x7d9fk3vua7qvwarnop3to.117dnz6.rcgu.o: reference to ___chkstk_ms
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd-f903e3d16df36da5.rlib(std-f903e3d16df36da5.std.6dc08216e95b97e0-cgu.0.rcgu.o): reference to ___chkstk_ms
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libobject-55a10e71341da3ce.rlib(object-55a10e71341da3ce.object.2abbfe3bddad708d-cgu.0.rcgu.o): reference to ___chkstk_ms
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libcompiler_builtins-cddac46a750db0bd.rlib(compiler_builtins-cddac46a750db0bd.compiler_builtins.9bc7e4a6ea362399-cgu.207.rcgu.o): definition of ___chkstk_ms
+         E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingw32.a(lib64_libmingw32_a-pseudo-reloc.o): reference to ___chkstk_ms
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `libghostty-vt-sys` (build script) generated 1 warning
+   Compiling thiserror-impl v1.0.69
+   Compiling int-enum v1.3.0
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.8.1
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+error: linking with `x86_64-w64-mingw32-gcc` failed: exit code: 1
+  |
+  = note: "x86_64-w64-mingw32-gcc" "-fno-use-linker-plugin" "-Wl,--dynamicbase" "-Wl,--disable-auto-image-base" "-m64" "-Wl,--high-entropy-va" "C:\\vt\\checks\\v3_project\\target\\debug\\deps\\rustcu4guq2\\symbols.o" "<9 object files omitted>" "-Wl,-Bstatic" "C:\\vt\\checks\\v3_project\\target\\debug\\deps/{liblibghostty_vt-484fe1f6f8eddd65,libbitflags-ccca54809aa38c96,liblibghostty_vt_sys-dafac0fcffecab6c}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-gnu\\lib/{libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,libwindows_link-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "-Wl,-Bdynamic" "-lkernel32" "-lkernel32" "-lkernel32" "-lntdll" "-luserenv" "-lws2_32" "-ldbghelp" "-lgcc_eh" "-l:libpthread.a" "-lmsvcrt" "-lmingwex" "-lmingw32" "-lgcc" "-lmsvcrt" "-lmingwex" "-luser32" "-lkernel32" "-Wl,--nxcompat" "-L" "C:\\vt\\checks\\v3_project\\target\\debug\\build\\libghostty-vt-sys-b87576bd360e03f2\\out\\ghostty-install\\lib" "-L" "C:\\vt\\checks\\v3_project\\target\\debug\\build\\libghostty-vt-sys-b87576bd360e03f2\\out\\ghostty-install\\bin" "-L" "E:\\dev\\rust\\cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\winapi-x86_64-pc-windows-gnu-0.4.0\\lib" "-o" "C:\\vt\\checks\\v3_project\\target\\debug\\deps\\vt_downstream-ee546995d4e4da9f.exe" "-Wl,--gc-sections" "-nodefaultlibs" "-Wl,-y,___chkstk_ms"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/Users/Admin/AppData/Local/zig/o/0cde0591f0208ae403c69cacf28bb9c7/compiler_rt.obj): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/5d753ebadfa1f5b4b724be373ecfdfe1/wuffs-v0.4.obj): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/ec3237958995bd5796d1d5f819951b22/simdutf.obj): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/beadd2c0b88e3a6512ce776b04de1d27/highway_zcu.obj): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libstd-f903e3d16df36da5.rlib(std-f903e3d16df36da5.std.6dc08216e95b97e0-cgu.0.rcgu.o): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:\dev\rust\rustup\toolchains\stable-x86_64-pc-windows-gnu\lib\rustlib\x86_64-pc-windows-gnu\lib\libobject-55a10e71341da3ce.rlib(object-55a10e71341da3ce.object.2abbfe3bddad708d-cgu.0.rcgu.o): reference to ___chkstk_ms
+          E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/bin/ld.exe: E:/dev/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/16.2.0/../../../../x86_64-w64-mingw32/lib/../lib/libmingw32.a(lib64_libmingw32_a-pseudo-reloc.o): reference to ___chkstk_ms
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0xd58): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x2667): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x4137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x5277): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0xb1e7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x1fa29): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x2bc47): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x3cd09): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x415a7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x63137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-static_zcu.obj):ghostty-vt-static:(.text+0x6ee67): additional relocation overflows omitted from the output
+          collect2.exe: error: ld returned 1 exit status
+          
+
+error: could not compile `vt-downstream` (bin "vt-downstream") due to 1 previous error

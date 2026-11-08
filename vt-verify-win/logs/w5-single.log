@@ -1,0 +1,38 @@
+
+running 1 test
+test w5_conpty_cmd_round ... [0.0016828] [cmd] spawn cmd.exe [] cwd=C:\vt
+[0.9018652] [cmd] startup bytes: 204 hex: 1b 5b 32 4a 1b 5b 6d 1b 5b 48 4d 69 63 72 6f 73 6f 66 74 20 57 69 6e 64 6f 77 73 20 5b e7 89 88 e6 9c ac 20 31 30 2e 30 2e 31 39 30 34 34 2e 34 35 32 39 5d 1b 5d 30 3b 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07 1b 5b 3f 32 35 68 0d 0a 28 63 29 20 4d 69 63 72 6f 73 6f 66 74 20 43 6f 72 70 6f 72 61 74 69 6f 6e e3 80 82 e4 bf 9d e7 95 99 e6 89 80 e6 9c 89 e6 9d 83 e5 88 a9 e3 80 82 0d 0a 1b 5b 34 31 58 0d 0a 43 3a 5c 76 74 3e 1b 5b 33 35 58 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[0.9038355] [cmd] marker ESC[6n (DSR cursor query): 0 times
+[0.9039569] [cmd] marker ESC[?9001h: 0 times
+[0.90403] [cmd] marker ESC[?1004h: 0 times
+[0.9041026] [cmd] marker OSC (ESC]): 2 times
+[0.9083596] [cmd] startup fed to Terminal; first grid line: "Microsoft Windows [版本 10.0.19044.4529]"
+[0.908476] [cmd] ESC[6n not present in startup; no-reply probe skipped
+[0.9085798] [cmd] on_pty_write/on_device_attributes callback log bytes so far: 16
+[0.9086689] [cmd] WRITE(cmd): 63 68 63 70 0d
+[1.8494669] [cmd] after cmd "chcp\r": PTY output 129 bytes hex=63 68 63 70 0d 0a 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 20 2d 20 63 68 63 70 07 e6 b4 bb e5 8a a8 e4 bb a3 e7 a0 81 e9 a1 b5 3a 20 39 33 36 0d 0a 0d 0a 43 3a 5c 76 74 3e 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[1.8502454] [cmd] after cmd "chcp\r" grid text: "Microsoft Windows [版本 10.0.19044.4529]\n(c) Microsoft Corporation。保留所有权利。\n\nC:\\vt>chcp\n活动代码页: 936\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[1.8503813] [cmd] WRITE(cmd): 65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d
+[2.6710484] [cmd] after cmd "echo 你好\r": PTY output 37 bytes hex=65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d 0a e4 bd a0 e5 a5 bd 20 20 0d 0a 20 20 20 20 20 20 0d 0a 43 3a 5c 76 74 3e
+[2.6717207] [cmd] after cmd "echo 你好\r" grid text: "Microsoft Windows [版本 10.0.19044.4529]\n(c) Microsoft Corporation。保留所有权利。\n\nC:\\vt>chcp\n活动代码页: 936\n\nC:\\vt>echo 你好\n你好\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[2.672655] [cmd] ASSERT PASS: row 6 has 你/好 each 2 cells with SpacerTail
+[2.6728007] [cmd] WRITE(cmd): 63 68 63 70 20 36 35 30 30 31 0d
+[3.6133703] [cmd] after cmd "chcp 65001\r": PTY output 292 bytes hex=63 68 63 70 20 36 35 30 30 31 0d 0a 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 20 2d 20 63 68 63 70 20 20 36 35 30 30 31 07 1b 5b 32 35 6c 1b 5b 48 1b 5b 3f 32 35 68 1b 5b 32 35 6c 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 32 3b 31 48 1b 5b 3f 32 35 68 0d 0a 43 3a 5c 76 74 3e 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 20 43 3a 5c 57 69 6e 64 6f 77 73 5c 73 79 73 74 65 6d 33 32 5c 63 6d 64 2e 65 78 65 07
+[3.6170782] [cmd] after cmd "chcp 65001\r" grid text: "Active code page: 65001\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[3.6172208] [cmd] WRITE(cmd): 65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d
+[4.4830265] [cmd] after cmd "echo 你好\r": PTY output 37 bytes hex=65 63 68 6f 20 e4 bd a0 e5 a5 bd 0d 0a e4 bd a0 e5 a5 bd 20 20 0d 0a 20 20 20 20 20 20 0d 0a 43 3a 5c 76 74 3e
+[4.4836737] [cmd] after cmd "echo 你好\r" grid text: "Active code page: 65001\n\nC:\\vt>echo 你好\n你好\n\nC:\\vt>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+[4.4845862] [cmd] ASSERT PASS: row 2 has 你/好 each 2 cells with SpacerTail
+[4.4972817] [cmd] after resize Terminal: cols=120 rows=40
+[5.1203682] [cmd] post-resize PTY redraw bytes: 270 hex=1b 5b 32 35 6c 1b 5b 48 41 63 74 69 76 65 20 63 6f 64 65 20 70 61 67 65 3a 20 36 35 30 30 31 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 43 3a 5c 76 74 3e 65 63 68 6f 20 e4 bd a0 e5 a5 bd 1b 5b 4b 0d 0a e4 bd a0 e5 a5 bd 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 43 3a 5c 76 74 3e 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 0d 0a 1b 5b 4b 1b 5b 36 3b 37 48 1b 5b 3f 32 35 68
+[5.1326543000000004] [cmd] WRITE(mode-cmd): 6d 6f 64 65 0d
+[5.8911111] [cmd] mode output text: "mode\r\n\u{1b}]0;管理员: C:\\Windows\\system32\\cmd.exe - mode\u{7}\u{1b}[25l\r\nStatus for device COM1:    \r\n-----------------------    \r\n    Baud:            115200\r\n    Parity:          None  \r\n    Data Bits:       8     \r\n    Stop Bits:       1     \r\n    Timeout:         OFF   \r\n    XON/XOFF:        OFF   \r\n    CTS handshaking: OFF   \r\n    DSR handshaking: OFF   \r\n    DSR sensitivity: OFF   \r\n    DTR circuit:     ON    \r\n    RTS circuit:     ON    \u{1b}[22;1H\u{1b}[?25h\r\nStatus for device CON: \r\n---------------------- \r\n    Lines:          40 \r\n    Columns:        120\r\n    Keyboard rate:  31   \r\n    Keyboard delay: 1    \r\n    Code page:      65001\r\n\u{1b}[25X\r\n\u{1b}[25X\r\nC:\\vt>\u{1b}[19X\u{1b}]0;管理员: C:\\Windows\\system32\\cmd.exe\u{7}"
+[5.8929192] [cmd] ASSERT PASS: Terminal and PTY sides agree 120x40
+[5.8930731] [cmd] WRITE(exit): 65 78 69 74 0d
+[15.012444] [cmd] EOF wait timeout 15s
+[15.0126251] [cmd] after exit cmd: wait returned Ok(ExitStatus { code: 0, signal: None }) after 9.1194404s
+[97.978499] [cmd] total elapsed 97.9784827s
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 98.02s
+

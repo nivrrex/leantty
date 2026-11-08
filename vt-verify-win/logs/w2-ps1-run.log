@@ -1,0 +1,119 @@
+=== W2a env ===
+GHOSTTY_SOURCE_DIR=C:\vt\vendor\ghostty-src
+GHOSTTY_ZIG_SYSTEM_DIR=C:\vt\zig-system
+zig-system subdir count: 24
+=== W2b firewall block ===
+
+Name    Enabled
+----    -------
+Domain    False
+Private   False
+Public    False
+
+
+
+(original profiles recorded above; restored in finally)
+profiles enabled for the duration of the block (original state: all Disabled)
+per-program rule added: E:\dev\rust\cargo\bin\cargo.exe
+per-program rule added: E:\dev\rust\cargo\bin\rustc.exe
+per-program rule added: C:\vt\toolchain\zig\zig.exe
+per-program rule added: C:\Program Files\Git\cmd\git.exe
+full outbound block rule added: W2_BLOCK_ALL_OUTBOUND
+self-heal task W2_UNBLOCK scheduled at 11:23
+=== block proof A: zig fetch of UNCACHED reachable URL (must fail) ===
+zig.exe : error: unrecognized 'Content-Type' header: 'application/json'
+所在位置 C:\vt\checks\w2_offline.ps1:51 字符: 5
++     & "$root\toolchain\zig\zig.exe" fetch "https://ziglang.org/downlo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (error: unrecogn...plication/json':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error: the following build command exited with code 1:
+C:\Users\Admin\AppData\Local\zig\o\d993f94251da39bc1a2943eb4c306f72\maker.exe fetch --zig-lib=C:\vt\toolchain\zig\lib -
+-zig=C:\vt\toolchain\zig\zig.exe --global-cache=C:\Users\Admin\AppData\Local\zig --seed=0x34996fa5 https://ziglang.org/
+download/index.json
+zig fetch exit=1 (nonzero = blocked)
+=== block proof B: cargo search --registry crates-io (must fail) ===
+serde = "1.0.229"              # A generic serialization/deserialization framework
+serde-saphyr = "2.1.1"         # YAML (de)serializer for Serde, emphasizing panic-free parsing, fast builds and good error report鈥?clickhouse = "0.15.3"          # Official Rust client for ClickHouse DB
+serde_yml = "0.0.13"           # DEPRECATED 鈥?`serde_yml` is unmaintained. This release is a thin compatibility shim that forward鈥?serde_valid = "3.2.0"          # JSON Schema based validation tool using serde.
+serde_toon_format = "0.2.0"    # Serde-compatible TOON v4.1 encoder/decoder
+serde_json = "1.0.154"         # A JSON serialization file format
+yaml_serde = "0.10.7"          # serde_yaml maintained by The YAML Organization
+cargo search exit=0 (nonzero = blocked)
+=== block proof C: curl during full block (must fail) ===
+curl during block: 200
+curl exit=0 (nonzero = blocked)
+=== W2 offline build (cargo clean + --offline) ===
+cargo.exe :    Compiling proc-macro2 v1.0.106
+所在位置 C:\vt\checks\w2_offline.ps1:65 字符: 5
++     & cargo build --workspace --offline *>&1 | Tee-Object -FilePath " ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling proc-macro2 v1.0.106:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling version_check v0.9.5
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling bitflags v2.11.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling syn v2.0.117
+   Compiling int-enum v1.2.0
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9m 57s
+=== restore: remove all W2 firewall rules + self-heal task + profile states ===
+Set-NetFirewallProfile : 无法处理对参数“Enabled”的参数转换。无法将值“False”转换为类型“Microsoft.PowerShell.Cmdletization
+.GeneratedTypes.NetSecurity.GpoBoolean”。错误:“从“System.Boolean”到“Microsoft.PowerShell.Cmdletization.GeneratedTypes.Ne
+tSecurity.GpoBoolean”的强制转换无效。”
+所在位置 C:\vt\checks\w2_offline.ps1:73 字符: 60
++ ...    Set-NetFirewallProfile -Name $pr.Name -Enabled ([bool]$pr.Enabled)
++                                                       ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Set-NetFirewallProfile]，ParameterBindingArgumentTransformationExceptio
+    n
+    + FullyQualifiedErrorId : ParameterArgumentTransformationError,Set-NetFirewallProfile
+ 
+Set-NetFirewallProfile : 无法处理对参数“Enabled”的参数转换。无法将值“False”转换为类型“Microsoft.PowerShell.Cmdletization
+.GeneratedTypes.NetSecurity.GpoBoolean”。错误:“从“System.Boolean”到“Microsoft.PowerShell.Cmdletization.GeneratedTypes.Ne
+tSecurity.GpoBoolean”的强制转换无效。”
+所在位置 C:\vt\checks\w2_offline.ps1:73 字符: 60
++ ...    Set-NetFirewallProfile -Name $pr.Name -Enabled ([bool]$pr.Enabled)
++                                                       ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Set-NetFirewallProfile]，ParameterBindingArgumentTransformationExceptio
+    n
+    + FullyQualifiedErrorId : ParameterArgumentTransformationError,Set-NetFirewallProfile
+ 
+Set-NetFirewallProfile : 无法处理对参数“Enabled”的参数转换。无法将值“False”转换为类型“Microsoft.PowerShell.Cmdletization
+.GeneratedTypes.NetSecurity.GpoBoolean”。错误:“从“System.Boolean”到“Microsoft.PowerShell.Cmdletization.GeneratedTypes.Ne
+tSecurity.GpoBoolean”的强制转换无效。”
+所在位置 C:\vt\checks\w2_offline.ps1:73 字符: 60
++ ...    Set-NetFirewallProfile -Name $pr.Name -Enabled ([bool]$pr.Enabled)
++                                                       ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Set-NetFirewallProfile]，ParameterBindingArgumentTransformationExceptio
+    n
+    + FullyQualifiedErrorId : ParameterArgumentTransformationError,Set-NetFirewallProfile
+ 
+rules remaining (expect 0): 0
+
+Name    Enabled
+----    -------
+Domain     True
+Private    True
+Public     True
+
+
+
+=== restore proof: curl works again ===
+curl after restore: 200
+=== W2 zig invocation (wrapper log: --system present?) ===
+2026/11/08 周日 11:13:13.51 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install --cache-dir E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\zig-cache --system C:\vt\zig-system 
+2026/11/08 周日 11:13:13.60 INJECT -Dtarget=x86_64-windows-gnu 
+=== W2c hash dirs: line endings / path length ===
+LongPathsEnabled(registry): 1
+zig-system subdir count: 24
+dir names containing CR/LF: 0 (expect 0)
+longest zig-system dir path length: 79
+sample aro-0.0.0-JSD1QtuBNwCASyBtNF3pqTl_W3oAJQGEVyFAtrBSE_Pa/build.zig : C=14FF0784FBE012686C0ABECB1F56A7F2490F200B05FA46974F0BFC441D3276EA Z=14FF0784FBE012686C0ABECB1F56A7F2490F200B05FA46974F0BFC441D3276EA : IDENTICAL
+sample translate_c-2.0.0-Q_BUWltOBwBYABF84EUL208pIFeUIwbBs29FmVBaafN5/build.zig : C=44669951A4237A81957C6E6237579001C8685DFAFE8B4552C50A5CB195438AC6 Z=44669951A4237A81957C6E6237579001C8685DFAFE8B4552C50A5CB195438AC6 : IDENTICAL
+CR-containing files among first 50 zig/zon sources: 0 (0 = copy introduced no CRLF conversion)
+W2 DONE

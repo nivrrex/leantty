@@ -1,0 +1,30 @@
+left-region diff idx=84 px=4 py=5 val=ff950000
+left-region diff idx=85 px=5 py=5 val=ffc10000
+left-region diff idx=86 px=6 py=5 val=ff010000
+left-region diff idx=114 px=2 py=7 val=ff7c0000
+left-region diff idx=115 px=3 py=7 val=ffe50000
+left-region diff idx=116 px=4 py=7 val=fff50000
+left-region diff idx=117 px=5 py=7 val=ff270000
+left-region diff idx=146 px=2 py=9 val=ff140000
+left-region diff idx=147 px=3 py=9 val=fffc0000
+left-region diff idx=148 px=4 py=9 val=ffbc0000
+left-region diff idx=178 px=2 py=11 val=ff980000
+left-region diff idx=179 px=3 py=11 val=ffce0000
+left-region diff idx=180 px=4 py=11 val=fff80000
+left-region diff idx=181 px=5 py=11 val=ff490000
+left-region diff idx=209 px=1 py=13 val=ff400000
+left-region diff idx=210 px=2 py=13 val=fff90000
+left-region diff idx=211 px=3 py=13 val=ff2b0000
+left-region diff idx=212 px=4 py=13 val=ff820000
+left-region diff idx=213 px=5 py=13 val=ffe10000
+left-region diff idx=214 px=6 py=13 val=ff0c0000
+left-region diff idx=240 px=0 py=15 val=ff0a0000
+left-region diff idx=241 px=1 py=15 val=ffdc0000
+left-region diff idx=242 px=2 py=15 val=ff8b0000
+left-region diff idx=244 px=4 py=15 val=ff090000
+left-region diff idx=245 px=5 py=15 val=ffdf0000
+left-region diff idx=246 px=6 py=15 val=ff910000
+bg=ff000000 left_diffs=40 right_has_diff=true
+font=Consolas size=14 fb=(32,16)
+X metrics: advance_w=7.6972656 advance_h=0 bounds.xmin=0.123046875 bounds.ymin=0 bounds.w=7.4101563 bounds.h=8.93457 bitmap=8x9
+X ink span relative to origin: [0, 7] (cell origin offset should be >=0 for no left bleed)

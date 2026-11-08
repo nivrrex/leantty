@@ -1,0 +1,72 @@
+default routes before cut:
+  if=10 gw=172.16.0.1 metric=0 pub=No
+self-heal task W2B_RESTORE scheduled (C:\vt\checks\w2b_restore.bat contents saved)
+=== cutting default route(s) ===
+
+=== block proof A: zig fetch uncached URL (must fail) ===
+zig.exe : error: server connection failed: Unexpected
+所在位置 C:\vt\checks\w2b_route.ps1:31 字符: 5
++     & "$root\toolchain\zig\zig.exe" fetch "https://ziglang.org/downlo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (error: server c...led: Unexpected:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error: the following build command exited with code 1:
+C:\Users\Admin\AppData\Local\zig\o\d993f94251da39bc1a2943eb4c306f72\maker.exe fetch --zig-lib=C:\vt\toolchain\zig\lib -
+-zig=C:\vt\toolchain\zig\zig.exe --global-cache=C:\Users\Admin\AppData\Local\zig --seed=0x4741f3e9 https://ziglang.org/
+download/index.json
+zig fetch exit=1 (nonzero = blocked)
+=== block proof B: cargo search --registry crates-io (must fail) ===
+cargo.exe : error: failed to retrieve search results from the registry at https://crates.io
+所在位置 C:\vt\checks\w2b_route.ps1:36 字符: 5
++     & cargo search serde --registry crates-io 2>&1 | Select-Object -F ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (error: failed t...tps://crates.io:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Caused by:
+  [6] Could not resolve hostname (Could not resolve host: crates.io)
+cargo search exit=101 (nonzero = blocked)
+=== block proof C: curl (must fail) ===
+curl.exe : curl: (6) Could not resolve host: ziglang.org
+所在位置 C:\vt\checks\w2b_route.ps1:40 字符: 5
++     & curl.exe -sS -m 15 -o NUL -w "curl during cut: %{http_code}`n"  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (curl: (6) Could...st: ziglang.org:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+curl during cut: 000
+curl exit=6 (nonzero = blocked)
+=== W2 offline build under real network cut ===
+cargo.exe :    Compiling proc-macro2 v1.0.106
+所在位置 C:\vt\checks\w2b_route.ps1:45 字符: 5
++     & cargo build --workspace --offline *>&1 | Tee-Object -FilePath " ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling proc-macro2 v1.0.106:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling version_check v0.9.5
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling bitflags v2.11.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling syn v2.0.117
+   Compiling int-enum v1.2.0
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6m 41s
+=== restore routes ===
+route: 错误的跃点数值 0
+default routes after restore:
+=== W2 zig invocation (--system present?) ===
+2026/11/08 周日 11:30:01.42 zig build "-Demit-lib-vt=true" "-Doptimize=Debug" "-Dcpu=baseline" "-Demit-xcframework=false" "-Dapp-runtime=none" --prefix E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\ghostty-install --cache-dir E:\dev\build\billy-target\debug\build\libghostty-vt-sys-040a5d2207557161\out\zig-cache --system C:\vt\zig-system 
+2026/11/08 周日 11:30:01.52 INJECT -Dtarget=x86_64-windows-gnu 
+=== W2c hash dirs: line endings / path length ===
+LongPathsEnabled(registry): 1
+zig-system subdir count: 24
+dir names containing CR/LF: 0 (expect 0)
+longest zig-system dir path length: 79
+sample aro-0.0.0-JSD1QtuBNwCASyBtNF3pqTl_W3oAJQGEVyFAtrBSE_Pa/build.zig : C=14FF0784FBE012686C0ABECB1F56A7F2490F200B05FA46974F0BFC441D3276EA Z=14FF0784FBE012686C0ABECB1F56A7F2490F200B05FA46974F0BFC441D3276EA : IDENTICAL
+sample translate_c-2.0.0-Q_BUWltOBwBYABF84EUL208pIFeUIwbBs29FmVBaafN5/build.zig : C=44669951A4237A81957C6E6237579001C8685DFAFE8B4552C50A5CB195438AC6 Z=44669951A4237A81957C6E6237579001C8685DFAFE8B4552C50A5CB195438AC6 : IDENTICAL
+CR-containing files among first 50 zig/zon sources: 0 (0 = copy introduced no CRLF conversion)
+W2B DONE

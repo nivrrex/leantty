@@ -1,0 +1,129 @@
+=== W3 downstream build ===
+cargo.exe :     Updating crates.io index
+ËùÔÚÎ»ÖÃ C:\vt\checks\w3_downstream.ps1:13 ×Ö·û: 1
++ & cargo build *>&1 | Tee-Object -FilePath "$root\logs\w3-build.log"
++ ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Updating crates.io index:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Locking 37 packages to highest Rust 1.99.1 compatible versions
+      Adding portable-pty v0.8.1 (available: v0.9.0)
+ Downloading crates ...
+  Downloaded anyhow v1.0.104
+  Downloaded bitflags v1.3.2
+  Downloaded lazy_static v1.5.1
+  Downloaded memoffset v0.6.5
+  Downloaded portable-pty v0.8.1
+  Downloaded downcast-rs v1.2.1
+  Downloaded serial-core v0.4.0
+  Downloaded shell-words v1.1.1
+  Downloaded winreg v0.10.1
+  Downloaded pin-utils v0.1.1
+  Downloaded serial-windows v0.4.0
+  Downloaded thiserror-impl v1.0.69
+  Downloaded log v0.4.35
+  Downloaded libc v0.2.191
+  Downloaded serial v0.4.0
+  Downloaded filedescriptor v0.8.3
+  Downloaded proc-macro2-diagnostics v0.11.0
+  Downloaded int-enum v1.3.0
+  Downloaded thiserror v1.0.69
+  Downloaded nix v0.25.1
+  Downloaded shared_library v0.1.9
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling winapi-x86_64-pc-windows-gnu v0.4.0
+   Compiling autocfg v1.5.1
+   Compiling winapi v0.3.9
+   Compiling proc-macro2-diagnostics v0.11.0
+   Compiling thiserror v1.0.69
+   Compiling memoffset v0.6.5
+   Compiling anyhow v1.0.104
+   Compiling winreg v0.10.1
+   Compiling libghostty-vt-sys v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling lazy_static v1.5.1
+   Compiling serial-core v0.4.0
+   Compiling cfg-if v1.0.5
+   Compiling bitflags v1.3.2
+   Compiling pin-utils v0.1.1
+   Compiling serial-windows v0.4.0
+   Compiling nix v0.25.1
+   Compiling shared_library v0.1.9
+   Compiling downcast-rs v1.2.1
+   Compiling serial v0.4.0
+   Compiling shell-words v1.1.1
+   Compiling bitflags v2.13.2
+   Compiling log v0.4.35
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling thiserror-impl v1.0.69
+   Compiling int-enum v1.3.0
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.8.1
+   Compiling libghostty-vt v0.2.1 (C:\vt\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt-downstream v0.1.0 (C:\vt\checks\v3_project)
+error: linking with `x86_64-w64-mingw32-gcc` failed: exit code: 1
+  |
+  = note: "x86_64-w64-mingw32-gcc" "-fno-use-linker-plugin" "-Wl,--dynamicbase" "-Wl,--disable-auto-image-base" "-m64" 
+"-Wl,--high-entropy-va" "C:\\vt\\checks\\v3_project\\target\\debug\\deps\\rustcsH6PrZ\\symbols.o" "<9 object files omit
+ted>" "-Wl,-Bstatic" "C:\\vt\\checks\\v3_project\\target\\debug\\deps/{liblibghostty_vt-d7fd3720f2c910c2,libbitflags-32
+a749e75b87d990,liblibghostty_vt_sys-dafac0fcffecab6c}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-gnu\\lib/{libst
+d-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,libwindows_link-*,librustc_demangle
+-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,lib
+rustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "-Wl,-Bdynamic" "-lkernel32" "-lkernel32"
+ "-lkernel32" "-lntdll" "-luserenv" "-lws2_32" "-ldbghelp" "-lgcc_eh" "-l:libpthread.a" "-lmsvcrt" "-lmingwex" "-lmingw
+32" "-lgcc" "-lmsvcrt" "-lmingwex" "-luser32" "-lkernel32" "-Wl,--nxcompat" "-L" "C:\\vt\\checks\\v3_project\\target\\d
+ebug\\build\\libghostty-vt-sys-953d476ccf79d4b7\\out\\ghostty-install\\lib" "-L" "C:\\vt\\checks\\v3_project\\target\\d
+ebug\\build\\libghostty-vt-sys-953d476ccf79d4b7\\out\\ghostty-install\\bin" "-L" "E:\\dev\\rust\\cargo\\registry\\src\\
+index.crates.io-1949cf8c6b5b557f\\winapi-x86_64-pc-windows-gnu-0.4.0\\lib" "-o" "C:\\vt\\checks\\v3_project\\target\\de
+bug\\deps\\vt_downstream-3699f9b1e7932fa0.exe" "-Wl,--gc-sections" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0xd58): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbol
+ `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x2667): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbo
+l `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x4137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbo
+l `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x5277): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbo
+l `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0xb1e7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symbo
+l `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x1fa29): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symb
+ol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x2bc47): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symb
+ol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x3cd09): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symb
+ol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x415a7): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symb
+ol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x63137): relocation truncated to fit: IMAGE_REL_AMD64_REL32 against undefined symb
+ol `___chkstk_ms'
+          C:\vt\checks\v3_project\target\debug\deps\liblibghostty_vt_sys-dafac0fcffecab6c.rlib(C:/vt/checks/v3_project/
+target/debug/build/libghostty-vt-sys-953d476ccf79d4b7/out/zig-cache/o/7aa61455f0a304cd97c74ecde4062d9c/ghostty-vt-stati
+c_zcu.obj):ghostty-vt-static:(.text+0x6ee67): additional relocation overflows omitted from the output
+          collect2.exe: error: ld returned 1 exit status
+          
+error: could not compile `vt-downstream` (bin "vt-downstream") due to 1 previous error
+W3 BUILD FAIL

@@ -1,0 +1,103 @@
+[2J[m[H]0;管理员: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe[?25hPS C:\vt> [?25l[91m[1;9H> [93m[[?25h[25l[m[1;9H> [Console]::[97mOutputEnco[?25h[25l[m[1;11H[Console]::[97mOutputEncoding
+[?25h[25l[m[4;1HBodyName          : gb2312[36X
+EncodingName      : 简体中文(GB2312)[26X
+HeaderName        : gb2312[36X
+WebName           : gb2312[36X
+WindowsCodePage   : 936[39X
+IsBrowserDisplay  : True[38X
+IsBrowserSave     : True[38X
+IsMailNewsDisplay : True[38X
+IsMailNewsSave    : True[38X
+IsSingleByte      : False[37X
+EncoderFallback   : System.Text.InternalEncoderBestFitFallback
+DecoderFallback   : System.Text.InternalDecoderBestFitFallback
+IsReadOnly        : True[38X
+CodePage          : 936[39X[21;1H[?25hPS C:\vt> [?25l[93mchcp[m [97m65001
+[?25h[25l[m[H[?25h[25lActive code page: 65001[K
+PS C:\vt>[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[2;11H[?25h[?25lPS C:\vt> [93mecho[m 
+你好[11X
+PS C:\vt>      [4;11H[?25h[25l[HActive code page: 65001[K
+PS C:\vt> [93mecho[K[m
+你好[K
+PS C:\vt>[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[4;11H[?25h[?25l[93mmode
+[?25h[m[25l
+Status for device COM1:    
+-----------------------    
+    Baud:            115200
+    Parity:          None  
+    Data Bits:       8     
+    Stop Bits:       1     
+    Timeout:         OFF   
+    XON/XOFF:        OFF   
+    CTS handshaking: OFF   
+    DSR handshaking: OFF   
+    DSR sensitivity: OFF   
+    DTR circuit:     ON    
+    RTS circuit:     ON    [20;1H[?25h
+Status for device CON:   
+----------------------   
+    Lines:          40   
+    Columns:        120  
+    Keyboard rate:  31   
+    Keyboard delay: 1    
+    Code page:      65001
+[25X
+PS C:\vt>[16X[1C

@@ -1,5 +1,8 @@
 //! pty/unix：起 /bin/sh，echo 中文入网格且汉字占 2 格；resize 双侧一致；
 //! close 顺序不卡死（带超时）。
+//!
+//! 门控：/bin/sh 与 Unix 行为，Windows 上编译跳过（shared: 最小修正）。
+#![cfg(unix)]
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
