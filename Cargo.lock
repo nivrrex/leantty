@@ -74,6 +74,7 @@ version = "0.1.0"
 dependencies = [
  "pty",
  "render",
+ "softbuffer",
  "thiserror 2.0.21",
  "vt",
  "winit",
@@ -1262,6 +1263,7 @@ dependencies = [
  "anyhow",
  "portable-pty",
  "thiserror 2.0.21",
+ "vt",
 ]
 
 [[package]]

@@ -8,5 +8,6 @@ rust-version.workspace = true
 pty = { path = "../pty" }
 render = { path = "../render" }
 vt = { path = "../vt" }
+softbuffer.workspace = true
 winit.workspace = true
 thiserror.workspace = true

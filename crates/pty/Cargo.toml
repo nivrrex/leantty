@@ -8,3 +8,6 @@ rust-version.workspace = true
 anyhow = "1"
 portable-pty.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+vt = { path = "../vt" }
