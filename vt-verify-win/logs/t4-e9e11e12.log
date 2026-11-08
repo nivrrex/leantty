@@ -1,0 +1,76 @@
+   Compiling pty v0.1.0 (C:\dev\tty\crates\pty)
+warning: unused doc comment
+   --> crates\pty\tests\pty_windows.rs:435:1
+    |
+435 | / /// E8：FFI 机制验证——AttachConsole 到 ping 进程所在控制台 +
+436 | | /// GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)，验证 ping -t 是否可中断。
+    | |________________________________________________________________________^
+437 | / unsafe extern "system" {
+438 | |     fn AttachConsole(dw_process_id: u32) -> i32;
+439 | |     fn GenerateConsoleCtrlEvent(dw_ctrl_event: u32, dw_process_group_id: u32) -> i32;
+440 | |     fn FreeConsole() -> i32;
+441 | | }
+    | |_- rustdoc does not generate documentation for extern blocks
+    |
+    = help: use `//` for a plain comment
+    = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pty` (test "pty_windows") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.53s
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 1 test
+test t4_e9_cmd_timeout_ctrl_c ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 11.71s
+
+warning: unused doc comment
+   --> crates\pty\tests\pty_windows.rs:435:1
+    |
+435 | / /// E8：FFI 机制验证——AttachConsole 到 ping 进程所在控制台 +
+436 | | /// GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)，验证 ping -t 是否可中断。
+    | |________________________________________________________________________^
+437 | / unsafe extern "system" {
+438 | |     fn AttachConsole(dw_process_id: u32) -> i32;
+439 | |     fn GenerateConsoleCtrlEvent(dw_ctrl_event: u32, dw_process_group_id: u32) -> i32;
+440 | |     fn FreeConsole() -> i32;
+441 | | }
+    | |_- rustdoc does not generate documentation for extern blocks
+    |
+    = help: use `//` for a plain comment
+    = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pty` (test "pty_windows") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 1 test
+test t4_e11_powershell_testconnection_ctrl_c ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 12.57s
+
+warning: unused doc comment
+   --> crates\pty\tests\pty_windows.rs:435:1
+    |
+435 | / /// E8：FFI 机制验证——AttachConsole 到 ping 进程所在控制台 +
+436 | | /// GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)，验证 ping -t 是否可中断。
+    | |________________________________________________________________________^
+437 | / unsafe extern "system" {
+438 | |     fn AttachConsole(dw_process_id: u32) -> i32;
+439 | |     fn GenerateConsoleCtrlEvent(dw_ctrl_event: u32, dw_process_group_id: u32) -> i32;
+440 | |     fn FreeConsole() -> i32;
+441 | | }
+    | |_- rustdoc does not generate documentation for extern blocks
+    |
+    = help: use `//` for a plain comment
+    = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pty` (test "pty_windows") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 1 test
+test t4_e12_cmd_sort_full_data ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 2.81s
+

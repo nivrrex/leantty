@@ -1,0 +1,20 @@
+  |     +- WriteFile props.zig (+2 more reused dependencies)
+  |     +- translate-c generated failure
+  +- install generated to share/pkgconfig/libghostty-vt.pc transitive failure
+  |  +- run exe pkg-config-generator failure
+  +- install generated to share/pkgconfig/libghostty-vt-static.pc transitive failure
+  |  +- run exe pkg-config-generator failure
+  +- install generated to ghostty-vt-static.lib transitive failure
+     +- run exe combine_archives (ghostty-vt-fat.lib) transitive failure
+        +- compile lib ghostty-vt-static debug x86_64-windows-gnu transitive failure
+        |  +- WriteFile props.zig (+2 more reused dependencies)
+        |  +- WriteFile props.zig (+2 more reused dependencies)
+        |  +- translate-c generated (+2 more reused dependencies)
+        +- compile lib ghostty-vt-static debug x86_64-windows-gnu (+12 more reused dependencies)
+
+  error: the following build command exited with code 1:
+  C:\dev\tty\vt-verify-win\probe_render\target\debug\build\libghostty-vt-sys-b96c6212c42845fd\out\zig-global-cache\o\d993f94251da39bc1a2943eb4c306f72\maker.exe build --zig-lib=C:\vt\toolchain\zig\lib --zig=C:\vt\toolchain\zig\zig.exe --global-cache=C:\dev\tty\vt-verify-win\probe_render\target\debug\build\libghostty-vt-sys-b96c6212c42845fd\out\zig-global-cache --seed=0xd8c90bde -Dtarget=x86_64-windows-gnu -Demit-lib-vt=true -Doptimize=Debug -Dcpu=baseline -Demit-xcframework=false -Dapp-runtime=none --prefix C:\dev\tty\vt-verify-win\probe_render\target\debug\build\libghostty-vt-sys-b96c6212c42845fd\out\ghostty-install --cache-dir C:\dev\tty\vt-verify-win\probe_render\target\debug\build\libghostty-vt-sys-b96c6212c42845fd\out\zig-cache --system C:\vt\zig-system
+
+  thread 'main' (32) panicked at C:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt-sys\build.rs:486:5:
+  zig build failed with status exit code: 1
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

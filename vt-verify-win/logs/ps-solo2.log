@@ -1,0 +1,18 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.54s
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 1 test
+test pty_powershell_echo_cn ... 
+thread 'pty_powershell_echo_cn' (8128) panicked at crates\pty\tests\pty_windows.rs:120:5:
+powershell PTY 输出应含 你好，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;管理员: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\u{7}\u{1b}[?25h"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    pty_powershell_echo_cn
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.35s
+
+error: test failed, to rerun pass `-p pty --test pty_windows`

@@ -1,0 +1,13 @@
+ZIG=C:\dev\tty\scripts\windows\zig-inject-target.cmd (wrapper over ZIG_REAL=C:\vt\toolchain\zig\zig.exe)
+GHOSTTY_SOURCE_DIR=C:\vt\vendor\ghostty-src
+GHOSTTY_ZIG_SYSTEM_DIR=C:\vt\zig-system
+   Compiling libghostty-vt-sys v0.2.1 (C:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling fontdb v0.21.0
+   Compiling pty v0.1.0 (C:\dev\tty\crates\pty)
+   Compiling winit v0.30.13
+   Compiling libghostty-vt v0.2.1 (C:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt v0.1.0 (C:\dev\tty\crates\vt)
+   Compiling render v0.1.0 (C:\dev\tty\crates\render)
+   Compiling app v0.1.0 (C:\dev\tty\crates\app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.11s
+build.ps1 OK

@@ -1,0 +1,17 @@
+=== PS round 1 ===
+test pty_powershell_echo_cn ... 
+thread 'pty_powershell_echo_cn' (11088) panicked at crates\pty\tests\pty_windows.rs:120:5:
+powershell PTY 输出应含 你好，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;管理员: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\u{7}\u{1b}[?25h"
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 32.01s
+=== PS round 2 ===
+thread 'ctrl_c_probe_powershell_ping' (2860) panicked at crates\pty\tests\pty_windows.rs:200:5:
+test pty_powershell_echo_cn ... 
+thread 'pty_powershell_echo_cn' (1504) panicked at crates\pty\tests\pty_windows.rs:120:5:
+powershell PTY 输出应含 你好，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;管理员: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\u{7}\u{1b}[?25h"
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 15 filtered out; finished in 27.00s
+=== PS round 3 ===
+thread 'ctrl_c_probe_powershell_ping' (6888) panicked at crates\pty\tests\pty_windows.rs:200:5:
+test pty_powershell_echo_cn ... 
+thread 'pty_powershell_echo_cn' (1544) panicked at crates\pty\tests\pty_windows.rs:120:5:
+powershell PTY 输出应含 你好，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;管理员: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\u{7}\u{1b}[?25h"
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 15 filtered out; finished in 25.80s

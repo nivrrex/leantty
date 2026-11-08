@@ -1,0 +1,4 @@
+
+thread 'main' (6500) panicked at crates\app\src\lib.rs:135:60:
+pty spawn: PortablePty(CreateProcessW `"C:\\dev\\tty\\cmd.exe /K \"chcp 65001\"\0"` in cwd `Some("C:\\Users\\Admin\0")` failed: 系统找不到指定的文件。 (os error 2))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

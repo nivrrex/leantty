@@ -1,0 +1,6 @@
+
+  Id MainWindowTitle Responding
+  -- --------------- ----------
+7568 tty                   True
+
+
