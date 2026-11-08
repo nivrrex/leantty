@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-libghostty-vt = { path = "../../vendor/libghostty-rs/crates/libghostty-vt" }
+libghostty-vt = { path = "../../../vendor/libghostty-rs/crates/libghostty-vt" }
 portable-pty = "0.8"

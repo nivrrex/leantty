@@ -2,8 +2,11 @@
 # V3：下游 cargo 工程（path 依赖）编译链接 + ldd 检查无 Zig 运行时依赖。
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+REPO_ROOT=$(cd "$ROOT/.." && pwd)
+: "${ZIG:?ZIG 环境变量未设置：请指向 zig 可执行文件}"
+: "${GHOSTTY_SOURCE_DIR:?GHOSTTY_SOURCE_DIR 环境变量未设置：请指向 ghostty 源码目录}"
 cd "$ROOT/checks/v3_project"
-GHOSTTY_SOURCE_DIR="$ROOT/vendor/ghostty-src" ZIG="$ROOT/toolchain/zig/zig" \
+GHOSTTY_SOURCE_DIR="$GHOSTTY_SOURCE_DIR" ZIG="$ZIG" \
     cargo build
 BIN=target/debug/vt-downstream
 "$BIN" | grep -q "downstream link ok"

@@ -2,8 +2,11 @@
 # V5：接口清单核对（可重复执行）。
 # 对 11 项语义能力逐项检查 Rust 绑定 API 是否存在，并标注上游 C 头文件对应 API。
 set -u
-SRC=/root/Desktop/tty/vt-verify/vendor/libghostty-rs/crates/libghostty-vt/src
-UP=/root/Desktop/tty/vt-verify/vendor/ghostty-src/include/ghostty/vt
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+REPO_ROOT=$(cd "$ROOT/.." && pwd)
+SRC="$REPO_ROOT/vendor/libghostty-rs/crates/libghostty-vt/src"
+: "${GHOSTTY_SOURCE_DIR:?GHOSTTY_SOURCE_DIR 环境变量未设置：请指向 ghostty 源码目录}"
+UP="$GHOSTTY_SOURCE_DIR/include/ghostty/vt"
 
 check() { # <编号> <能力> <绑定符号> <绑定文件:行> <上游对应>
   local sym="$3" loc="$4" up="$5"
