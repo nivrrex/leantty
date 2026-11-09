@@ -20,3 +20,4 @@
 - 问题（已验证事实）：合并 win 分支后 crates/pty/tests/pty_windows.rs 缺文件级 cfg 门控，引用 pty::windows::join_thread_timeout / WindowsPty::resolve_program / NativePty::child_pid，Linux 上 cargo test --workspace 编译失败（E0432/E0433/E0599 四处）；cargo build --workspace 不受影响（不编译 tests）。
 - 处理（已验证事实）：用户裁决 C 明示豁免"不得编辑 Windows 专属文件"限制，仅限一处——pty_windows.rs 头部加 #![cfg(windows)]（与 pty_unix.rs 的 #![cfg(unix)] 对称），不做其他修改；提交信息 "shared: gate pty_windows.rs with cfg(windows) (user-approved exemption)"。
 - 影响（工程判断）：Windows 侧 merge origin/main 时该文件头部已有 #![cfg(windows)]，若其后续编辑覆盖头部需保留门控；豁免仅此一处，不构成先例。
+- 已验证事实：门控提交因 edit 与 bash 并行竞态晚于 DECISIONS 登记提交（49c61bc 仅含登记），门控改动以同信息单独补提交；后续步骤先确认落盘再暂存，避免同类竞态。
