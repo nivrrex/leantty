@@ -227,12 +227,13 @@ mod blit_tests {
     const FG: u32 = 0xFF00_00FF;
 
     fn metrics(xmin: i32, ymin: i32, width: usize, height: usize) -> fontdue::Metrics {
-        let mut m = fontdue::Metrics::default();
-        m.xmin = xmin;
-        m.ymin = ymin;
-        m.width = width;
-        m.height = height;
-        m
+        fontdue::Metrics {
+            xmin,
+            ymin,
+            width,
+            height,
+            ..Default::default()
+        }
     }
 
     /// 负 xmin + 超宽位图：只画本格，右邻格像素不变。
@@ -245,7 +246,7 @@ mod blit_tests {
         blit(&mut fb, width, (0, 0, 8, 4), &m, &bitmap, FG);
         // 本格 [0,8) 列有着色
         assert!(
-            fb[0..8].iter().any(|&p| p == FG),
+            fb[0..8].contains(&FG),
             "本格内应有前景像素"
         );
         // 右邻格 [8,16) 列全背景
@@ -267,7 +268,7 @@ mod blit_tests {
         blit(&mut fb, width, (0, 0, 8, 4), &m, &bitmap, FG);
         // 本格行 [0,4) 有着色
         assert!(
-            fb[0..32].iter().any(|&p| p == FG),
+            fb[0..32].contains(&FG),
             "本格内应有前景像素"
         );
         // 下邻格行 [4,8) 全背景
