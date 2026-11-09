@@ -173,10 +173,13 @@ fn blit(
             }
             let px = cell_x as i32 + gx + metrics.xmin;
             let py = cell_y as i32 + gy + metrics.ymin;
-            if px < 0 || py < 0 || px >= width as i32 || px >= (cell_x + cell_w) as i32 {
-                continue;
-            }
-            if py >= (cell_y + cell_h) as i32 {
+            // 裁剪：只绘制落在当前单元格矩形 [cell_x, cell_x+cell_w) x [cell_y, cell_y+cell_h) 内的像素；
+            // 负 xmin/ymin 或超宽超高位图不得侵入邻格。
+            if px < cell_x as i32
+                || px >= (cell_x + cell_w) as i32
+                || py < cell_y as i32
+                || py >= (cell_y + cell_h) as i32
+            {
                 continue;
             }
             let idx = (py as u32 * width + px as u32) as usize;
@@ -214,4 +217,65 @@ fn load_font(family: &str, size: f32) -> Result<Font, Error> {
     let _ = size;
     Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))
+}
+
+#[cfg(test)]
+mod blit_tests {
+    use super::blit;
+
+    const BG: u32 = 0xFF00_0000;
+    const FG: u32 = 0xFF00_00FF;
+
+    fn metrics(xmin: i32, ymin: i32, width: usize, height: usize) -> fontdue::Metrics {
+        let mut m = fontdue::Metrics::default();
+        m.xmin = xmin;
+        m.ymin = ymin;
+        m.width = width;
+        m.height = height;
+        m
+    }
+
+    /// 负 xmin + 超宽位图：只画本格，右邻格像素不变。
+    #[test]
+    fn blit_clips_negative_offset_and_oversize_width_to_cell() {
+        let width = 16u32; // 两格各 8 宽，高 4
+        let mut fb = vec![BG; (width * 4) as usize];
+        let m = metrics(-3, 0, 20, 2); // 负偏移 + 超宽
+        let bitmap = vec![255u8; 20 * 2];
+        blit(&mut fb, width, (0, 0, 8, 4), &m, &bitmap, FG);
+        // 本格 [0,8) 列有着色
+        assert!(
+            fb[0..8].iter().any(|&p| p == FG),
+            "本格内应有前景像素"
+        );
+        // 右邻格 [8,16) 列全背景
+        let invaded = fb[8..16].iter().filter(|&&p| p != BG).count();
+        assert_eq!(
+            invaded, 0,
+            "右邻格应全为背景色，被侵入像素 {}",
+            invaded
+        );
+    }
+
+    /// 位图超出格高：下邻格像素不变。
+    #[test]
+    fn blit_clips_oversize_height_to_cell() {
+        let width = 8u32; // 单格宽 8，fb 高 8（上下两格各 4）
+        let mut fb = vec![BG; (width * 8) as usize];
+        let m = metrics(0, 2, 4, 8); // py 覆盖 [2,10)，格高 4 → [4,8) 越界
+        let bitmap = vec![255u8; 4 * 8];
+        blit(&mut fb, width, (0, 0, 8, 4), &m, &bitmap, FG);
+        // 本格行 [0,4) 有着色
+        assert!(
+            fb[0..32].iter().any(|&p| p == FG),
+            "本格内应有前景像素"
+        );
+        // 下邻格行 [4,8) 全背景
+        let invaded = fb[32..64].iter().filter(|&&p| p != BG).count();
+        assert_eq!(
+            invaded, 0,
+            "下邻格应全为背景色，被侵入像素 {}",
+            invaded
+        );
+    }
 }
