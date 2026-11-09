@@ -41,17 +41,24 @@ e2e（scripts/e2e/run_all.sh，12 PASS / 0 FAIL）：
 3. case3 abc+Backspace+d → abd
 4. case4 sleep 100 + Ctrl-C + 标记串（证明前台进程被中断）
 5. case5 Ctrl-D 后 app 5s 内退出
-6. case6 wmctrl 发 WM_DELETE 后 app 559ms 退出
+6. case6 关窗：wmctrl -c 在 run_all 序列环境下 WM_DELETE 消息丢失（工具层实测结论，见下）；e2e 改用 python3-xlib 直发标准 WM_DELETE，app 退出正常。
 7. case7 resize 640x480 → cols=80/rows=30 且 stty size 输出一致
 8. case8 vim 交替屏 on/off
 
-## 3. e2e 无法自动覆盖的项（原因）
+## 3. case6 关窗工具链取证（已验证事实）
+
+- 现象：run_all 序列环境下 case6（wmctrl -c 关窗）app 5s 未退出；单独探针/手动序列同命令稳定通过。
+- 逐段实测：winit CloseRequested 插桩计数 0（消息未到达 app）；xev 监听无 ClientMessage；app 进程健康（wchan do_epoll_wait）；WID 经 xprop _NET_WM_PID 验证归属正确；wmctrl exit=0。
+- 二分排除：case1 前序用例、windowactivate/focus、type x、xev 监听、时序 sleep 2 均逐一证伪（D 实验含 xev 仍通过）。
+- 对照：同环境 python3-xlib 直发标准 WM_DELETE（WM_PROTOCOLS/WM_DELETE_WINDOW + CurrentTime）后 app 正常退出。结论：wmctrl -c 消息在序列环境下丢失，app 无缺陷；e2e 改用 wm_send.py 直发。
+
+## 4. e2e 无法自动覆盖的项（原因）
 
 - 真实 GPU/字体渲染观感（Xvfb 无 GPU，softbuffer 为 CPU surface；字体度量差异由 case2 宽格标记与像素断言覆盖，观感不可自动比对）
 - 真实输入法（IME 组词上屏，属阶段 2 范围）
 - 并发压力/长时间运行稳定性（阶段 1 范围外）
 
-## 4. 用户本机确认清单（≤5 条，仅限 Xvfb 无法验证项）
+## 5. 用户本机确认清单（≤5 条，仅限 Xvfb 无法验证项）
 
 1. 真实桌面会话起 `target/release/app`，键入中文（输入法）→ 组词上屏正常。
 2. 真实 GPU 环境字符边缘/反锯齿观感无异常。
