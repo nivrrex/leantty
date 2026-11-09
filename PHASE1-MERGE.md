@@ -58,4 +58,33 @@
 
 ## 仓库状态实测
 
-见交付提交后 append 的 git log --oneline -n 12、git status 与 git ls-remote origin 输出。
+以下为 5405372（本文档提交）推送后的实测；本节为文档自指补记，补记提交本身会推进 main 顶端，顶端 hash 以推送后 ls-remote 为准。
+
+```
+$ git log --oneline -n 12
+5405372 deliver: PHASE1-MERGE.md (win phase1 merge, 3 requests, Linux acceptance, exemption record)
+be5460d fix: clippy in render blit tests (field_reassign_with_default, manual_contains)
+9cb99a8 request 3: render blit clips to cell rect on all four edges + unit tests
+53339c3 request 2: render bg-cell assertion per-pixel by (row*width+col)
+8291c81 request 1: platform default shell fallback as testable fn
+2fd6013 docs: DECISIONS 登记门控提交拆分（竞态补记）
+b092fc7 shared: gate pty_windows.rs with cfg(windows) (user-approved exemption)
+49c61bc shared: gate pty_windows.rs with cfg(windows) (user-approved exemption)
+9369c72 merge: win phase1 (Windows pty/build/scripts)
+24c1333 docs: PHASE1-WIN.md 阶段1 Windows 交付记录
+0446484 verify-win: Windows 阶段探针、runner 与实测日志（含 Ctrl-C E1-E8、render 帧图、app 起窗）
+62f5db2 windows: ConPTY pty 实现 + 构建脚本 + rustflags + T3/T5/T6 测试 + Ctrl-C 实测数据（未解决按规格记录）
+
+$ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+
+$ git ls-remote origin
+5405372a2b7ad8742bad17630395a175d264553c	HEAD
+5405372a2b7ad8742bad17630395a175d264553c	refs/heads/main
+24c133312bf96dff72caf1997be1964148e28274	refs/heads/win
+be5460d5b99b531e4aedda3eac353393283127e2	refs/tags/phase1-merged
+8e2dbdc38b0e336b21264520e8ee6f2ef5a80ea0	refs/tags/skeleton-ready
+0a1e58df8534cfee8fb8d11de42faa4010fe49ce	refs/tags/verify-baseline
+```
