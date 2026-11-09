@@ -145,21 +145,47 @@ impl ApplicationHandler for AppHandler {
             f64::from(config.cols) * f64::from(CELL_W),
             f64::from(config.rows) * f64::from(CELL_H),
         )));
-        let window = Rc::new(
-            event_loop
-                .create_window(attrs)
-                .expect("create_window"),
-        );
-        let context = softbuffer::Context::new(event_loop.owned_display_handle())
-            .expect("softbuffer context");
-        let surface =
-            softbuffer::Surface::new(&context, window.clone()).expect("softbuffer surface");
-
-        let mut vt = VtTerminal::new(config.cols, config.rows).expect("VtTerminal::new");
+        // 启动失败路径：记录原因并退出事件循环，不 panic（外部输入/系统调用须覆盖失败路径）。
+        let window = Rc::new(match event_loop.create_window(attrs) {
+            Ok(w) => w,
+            Err(e) => {
+                eprintln!("create_window: {}", e);
+                return;
+            }
+        });
+        let context = match softbuffer::Context::new(event_loop.owned_display_handle()) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("softbuffer context: {}", e);
+                return;
+            }
+        };
+        let surface = match softbuffer::Surface::new(&context, window.clone()) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("softbuffer surface: {}", e);
+                return;
+            }
+        };
+        let mut vt = match VtTerminal::new(config.cols, config.rows) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("VtTerminal::new: {}", e);
+                return;
+            }
+        };
         let mut pty = NativePty::new();
-        pty.spawn(&config.shell, config.cols, config.rows).expect("pty spawn");
-        let reader = pty.take_reader().expect("take_reader");
-
+        if let Err(e) = pty.spawn(&config.shell, config.cols, config.rows) {
+            eprintln!("pty spawn: {}", e);
+            return;
+        }
+        let reader = match pty.take_reader() {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("take_reader: {}", e);
+                return;
+            }
+        };
         // 1. PTY 读线程 → channel → 主线程喂 vt
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let reader_thread = std::thread::spawn(move || {
@@ -176,17 +202,22 @@ impl ApplicationHandler for AppHandler {
                 }
             }
         });
-
+        self.reader_thread = Some(reader_thread);
         // 5. on_pty_write → channel → 主线程写 PTY
         let (pty_write_tx, pty_write_rx) = mpsc::channel::<Vec<u8>>();
-        vt.on_pty_write(move |_term, data| {
+        if let Err(e) = vt.on_pty_write(move |_term, data| {
             let _ = pty_write_tx.send(data.to_vec());
-        })
-        .expect("on_pty_write");
-
-        let renderer = CpuRenderer::new(config.font_family, config.font_size)
-            .expect("CpuRenderer::new");
-
+        }) {
+            eprintln!("on_pty_write: {}", e);
+            return;
+        }
+        let renderer = match CpuRenderer::new(config.font_family, config.font_size) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("CpuRenderer::new: {}", e);
+                return;
+            }
+        };
         self.window = Some(window);
         self.surface = Some(surface);
         self.vt = Some(vt);
@@ -194,7 +225,6 @@ impl ApplicationHandler for AppHandler {
         self.renderer = Some(renderer);
         self.rx = Some(rx);
         self.pty_write_rx = Some(pty_write_rx);
-        self.reader_thread = Some(reader_thread);
     }
 
     fn window_event(

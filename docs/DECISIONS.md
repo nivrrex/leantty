@@ -21,3 +21,7 @@
 - 处理（已验证事实）：用户裁决 C 明示豁免"不得编辑 Windows 专属文件"限制，仅限一处——pty_windows.rs 头部加 #![cfg(windows)]（与 pty_unix.rs 的 #![cfg(unix)] 对称），不做其他修改；提交信息 "shared: gate pty_windows.rs with cfg(windows) (user-approved exemption)"。
 - 影响（工程判断）：Windows 侧 merge origin/main 时该文件头部已有 #![cfg(windows)]，若其后续编辑覆盖头部需保留门控；豁免仅此一处，不构成先例。
 - 已验证事实：门控提交因 edit 与 bash 并行竞态晚于 DECISIONS 登记提交（49c61bc 仅含登记），门控改动以同信息单独补提交；后续步骤先确认落盘再暂存，避免同类竞态。
+- 决策：render 字体查询用 fontdb generic 链 [Family::Monospace, Family::Name(family)]（Query.families 优先列表）。已验证事实：fontdb 0.21 的 Family::Name 不解析 fontconfig "monospace" 别名（office-pc 实测 family 'monospace' not found in system fonts 致 app panic）；Family::Monospace 由 fontdb 按 generic 解析。
+- 决策：app resumed 启动失败路径（create_window/softbuffer context/surface/VtTerminal::new/pty spawn/take_reader/on_pty_write/CpuRenderer::new）由 expect panic 改为 eprintln 记录 + return 退出事件循环；读线程句柄在 spawn 后立即存入 handler，失败路径由 run() 尾部 join_thread_timeout + close 清理。依据：编码约束（外部输入/系统调用覆盖失败路径）。已验证事实：cargo check --workspace --all-targets 通过；office-pc 字体缺失场景的优雅退出为本设计目标（本开发机字体齐备未复现 panic 路径，工程判断）。
+- 决策：main.rs 补齐规格 2b 的 --font/--font-size 命令行覆盖（阶段1 骨架遗留），并加 APP_COLS/APP_ROWS/APP_FONT_FAMILY/APP_FONT_SIZE 环境变量层；优先级 CLI > 环境变量 > 默认常量；数值解析失败回落默认（外部输入校验）。已验证事实：cargo check 通过。
+- 偏差登记：规格 2b 仅提命令行 --font/--font-size；实现为 CLI 优先于环境变量的双层（工程判断：批处理场景以环境变量注入更简洁）。

@@ -201,7 +201,7 @@ fn load_font(family: &str, size: f32) -> Result<Font, Error> {
     let mut db = Database::new();
     db.load_system_fonts();
     let query = fontdb::Query {
-        families: &[Family::Name(family)],
+        families: &[Family::Monospace, Family::Name(family)],
         ..Default::default()
     };
     let id = db
