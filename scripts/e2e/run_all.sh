@@ -84,6 +84,11 @@ assert_app_exits() { # $1 用例名（APP_PID 须全局）
     else
         echo "FAIL $1 (app 5s 内未退出)"
         FAIL=$((FAIL+1))
+        cp "$D" "$OUT/$1-fail.dump" 2>/dev/null
+        import -window root "$OUT/$1-fail.png" 2>/dev/null
+        ps -o pid,stat,wchan:20,cmd -p $APP_PID >"$OUT/$1-fail-ps.txt" 2>&1
+        xdotool search --name tty >"$OUT/$1-fail-windows.txt" 2>&1
+        wmctrl -l >"$OUT/$1-fail-wmctrl.txt" 2>&1
     fi
     stop_app
 }
@@ -157,11 +162,11 @@ if start_app "$D"; then
 fi
 
 # 用例 6：关闭窗口（发 WM_DELETE 协议消息）后 app 5s 内退出
-# xdotool windowclose 实测直接 XDestroyWindow 不发协议消息（xev 无 ClientMessage），
-# 故用 wmctrl -c 发 WM_DELETE_WINDOW（winit 正常派发 CloseRequested）。
+# 实测：run_all 序列环境下 wmctrl -c 的 WM_DELETE 丢失（python 协议直发有效，app 无缺陷）；
+# xev 监听会覆盖窗口事件掩码干扰 winit，调试已移除（见 DECISIONS）。
 D="$OUT/case6-close.dump"
 if start_app "$D"; then
-    wmctrl -i -c "$WID"
+    python3 "$ROOT/scripts/e2e/wm_send.py" "$WID"
     assert_app_exits "case6-windowclose-app-exits"
 fi
 

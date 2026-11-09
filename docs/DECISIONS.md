@@ -37,3 +37,6 @@
 - 收尾顺序修复（已验证事实）：run() 先 join reader（5s 超时）后 close 时，reader 线程需 close kill 子进程后才 EOF，空等满 5s 超时致 case6 断言窗口失败；改为先 close 后 join（close 契约内部顺序不变：先释放主端再回收子进程）。
 - 中文输入（已验证事实）：xdotool type UTF-8 在 Xvfb+openbox 可用（case2 直接 PASS，dump wide=4 含命令与输出两组"你好"）；printf 八进制路径保留为回退。
 - route_key 生效（已验证事实）：字母键经 text 直写后 case1-3 回显/Backspace/中文全部正常；V7 编码器序列不变（Encoded 路径）。
+- case6 根因（已验证事实）：run_all 序列环境下 wmctrl -c 发送的 WM_DELETE client message 丢失（winit CloseRequested 插桩计数 0、xev 无 ClientMessage、app 健康存活于 epoll_wait）；同环境 python3 Xlib 直发标准 WM_DELETE（WM_PROTOCOLS/WM_DELETE_WINDOW + CurrentTime）后 app 559ms 级退出。手动二分探针（case1 序列/activate+focus/type x/xev 监听/时序 sleep 2）逐一证伪，app 代码无缺陷。xev 监听会覆盖窗口事件掩码的假设亦被证伪（D 实验含 xev 仍通过）。
+- e2e 修复（已验证事实）：case6 关窗改用 scripts/e2e/wm_send.py（python3-xlib 直发 WM_DELETE）；xev 调试监听与 [dbg] 插桩全部移除；run_all 12/12 PASS。
+- 工具依赖（已验证事实）：e2e 依赖 Xvfb/xdotool/openbox/imagemagick(import)/wmctrl 诊断/python3-xlib；apt 安装，Devuan 5 可用。
