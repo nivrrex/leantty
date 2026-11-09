@@ -33,3 +33,7 @@
 - 钩子（已验证事实）：APP_DUMP_SNAPSHOT 环境变量（默认关闭）每帧写快照文本（行列数、宽格/续格统计、alternate 标记、行文本），供 e2e 断言而不依赖 OCR。
 - e2e 验证（已验证事实）：Xvfb+openbox+xdotool 输入 echo hello_e2e，截图显示命令与输出完整回显（修复前对比： encoded 0B）。
 - 偏差登记：无（Pty/Renderer trait 未改；新增 Wake trait 为 app 内部抽象）。
+- case6 根因（已验证事实）：xev 实测 xdotool windowclose 不发 WM_DELETE client message（无 ClientMessage 事件，仅 Unmap/DestroyNotify），winit 收不到协议消息故不派发 CloseRequested；wmctrl -i -c 发 WM_DELETE_WINDOW 后 app 559ms 退出（close requested → pty closed → reader joined 日志链完整）。e2e case6 改用 wmctrl。
+- 收尾顺序修复（已验证事实）：run() 先 join reader（5s 超时）后 close 时，reader 线程需 close kill 子进程后才 EOF，空等满 5s 超时致 case6 断言窗口失败；改为先 close 后 join（close 契约内部顺序不变：先释放主端再回收子进程）。
+- 中文输入（已验证事实）：xdotool type UTF-8 在 Xvfb+openbox 可用（case2 直接 PASS，dump wide=4 含命令与输出两组"你好"）；printf 八进制路径保留为回退。
+- route_key 生效（已验证事实）：字母键经 text 直写后 case1-3 回显/Backspace/中文全部正常；V7 编码器序列不变（Encoded 路径）。
