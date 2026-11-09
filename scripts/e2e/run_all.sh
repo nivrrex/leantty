@@ -5,6 +5,8 @@ set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 OUT="$ROOT/scripts/e2e/out"
 mkdir -p "$OUT"
+# per-case 日志与 app-run.log 追加写入，跨 run 残留会污染断言（如 stderr 不含 wake），每次开头清空
+rm -f "$OUT"/case*.log "$OUT"/app-run.log
 DISPLAY_NO=99
 APP_BIN="$ROOT/target/release/app"
 
@@ -24,8 +26,9 @@ export DISPLAY=:$DISPLAY_NO
 PASS=0; FAIL=0
 WID=""; APP_PID=""
 
-start_app() { # $1 = dump 路径
-    APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$OUT/app-run.log" 2>&1 &
+start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）
+    local log=${2:-$OUT/app-run.log}
+    APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
     APP_PID=$!
     local i=0
     WID=""
@@ -93,6 +96,15 @@ assert_app_exits() { # $1 用例名（APP_PID 须全局）
     stop_app
 }
 
+assert_no_wake() { # $1 用例名 $2 日志文件（app stderr 不含 wake）
+    if grep -q wake "$2" 2>/dev/null; then
+        echo "FAIL $1 (stderr 含 wake: $(grep wake "$2" | head -2))"
+        FAIL=$((FAIL+1))
+    else
+        echo "PASS $1"; PASS=$((PASS+1))
+    fi
+}
+
 # 用例 1：echo hello_e2e 回显
 D="$OUT/case1-hello.dump"
 if start_app "$D"; then
@@ -156,18 +168,22 @@ fi
 
 # 用例 5：Ctrl-D 退出 shell 后 app 5s 内退出
 D="$OUT/case5-ctrld.dump"
-if start_app "$D"; then
+L="$OUT/case5-ctrl-d.log"
+if start_app "$D" "$L"; then
     xdotool key --window "$WID" ctrl+d
     assert_app_exits "case5-ctrl-d-app-exits"
+    assert_no_wake "case5-ctrl-d-no-wake" "$L"
 fi
 
 # 用例 6：关闭窗口（发 WM_DELETE 协议消息）后 app 5s 内退出
 # 实测：run_all 序列环境下 wmctrl -c 的 WM_DELETE 丢失（python 协议直发有效，app 无缺陷）；
 # xev 监听会覆盖窗口事件掩码干扰 winit，调试已移除（见 DECISIONS）。
 D="$OUT/case6-close.dump"
-if start_app "$D"; then
+L="$OUT/case6-close.log"
+if start_app "$D" "$L"; then
     python3 "$ROOT/scripts/e2e/wm_send.py" "$WID"
     assert_app_exits "case6-windowclose-app-exits"
+    assert_no_wake "case6-windowclose-no-wake" "$L"
 fi
 
 # 用例 7：resize 双侧一致（窗口 640x480 像素 → 80x30 格；stty size 一致）

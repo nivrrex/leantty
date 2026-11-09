@@ -86,9 +86,37 @@ impl ProxyWaker {
 
 impl Wake for ProxyWaker {
     fn wake(&self) -> Result<(), Error> {
-        self.proxy
-            .send_event(())
-            .map_err(|e| Error::App(format!("wake proxy: {}", e)))
+        // send_event 失败仅一种形态：事件循环已销毁（EventLoopClosed）。
+        // 归入 Error::EventLoopClosed，由调用方按正常关闭处理。
+        self.proxy.send_event(()).map_err(|_| Error::EventLoopClosed)
+    }
+}
+
+/// 读线程主体（抽出为可测函数）：读 PTY → channel → wake。
+/// wake 返回 EventLoopClosed（事件循环已销毁，app 正常关闭路径）时静默退出；
+/// 其他错误经 report 上报后退出。
+pub fn reader_body<R: std::io::Read>(
+    reader: &mut R,
+    tx: &mpsc::Sender<Vec<u8>>,
+    waker: &dyn Wake,
+    report: &mut dyn FnMut(&str),
+) {
+    let mut buf = [0u8; 4096];
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                if tx.send(buf[..n].to_vec()).is_err() {
+                    break;
+                }
+                if let Err(e) = waker.wake() {
+                    if !matches!(e, Error::EventLoopClosed) {
+                        report(&format!("wake: {}", e));
+                    }
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -170,6 +198,9 @@ pub enum Error {
     /// PTY 错误。
     #[error("pty error: {0}")]
     Pty(#[from] pty::Error),
+    /// 事件循环已关闭（app 正常关闭路径，读线程静默退出，不上报）。
+    #[error("event loop closed")]
+    EventLoopClosed,
     /// 终端错误。
     #[error("vt error: {0}")]
     Vt(#[from] vt::Error),
@@ -253,7 +284,7 @@ impl ApplicationHandler for AppHandler {
             eprintln!("pty spawn: {}", e);
             return;
         }
-        let reader = match pty.take_reader() {
+        let mut reader = match pty.take_reader() {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("take_reader: {}", e);
@@ -272,22 +303,7 @@ impl ApplicationHandler for AppHandler {
         // 1. PTY 读线程 → channel → 主线程喂 vt
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let reader_thread = std::thread::spawn(move || {
-            let mut reader = reader;
-            let mut buf = [0u8; 4096];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => {
-                        if tx.send(buf[..n].to_vec()).is_err() {
-                            break;
-                        }
-                        if let Err(e) = waker.wake() {
-                            eprintln!("wake: {}", e);
-                            break;
-                        }
-                    }
-                }
-            }
+            reader_body(&mut reader, &tx, waker.as_ref(), &mut |m| eprintln!("{}", m));
         });
         self.reader_thread = Some(reader_thread);
         // 5. on_pty_write → channel → 主线程写 PTY
