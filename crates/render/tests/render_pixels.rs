@@ -53,21 +53,33 @@ fn render_char_cell_differs_from_bg() {
     let fb = renderer.framebuffer();
     assert_eq!(fb.len(), 32 * 16, "帧缓冲像素数应等于尺寸");
 
-    // 背景格（左半 16 列）应全为背景色
+    // 背景格（左格）与有字符格（右格）逐像素断言：按 (row*width+col) 索引，
+    // 替代连续切片 fb[..16*16]（行主序宽帧缓冲上连续切片实为前 8 整行，含右格字形像素）。
+    let width = 32u32;
+    let left_col_end = 16u32; // 左格列范围 [0,16)，右格 [16,32)
     let bg = fb[0];
-    let bg_region = &fb[..16 * 16];
+    let mut bg_cell_all_bg = true;
+    let mut char_cell_has_fg = false;
+    for row in 0..16u32 {
+        for col in 0..width {
+            let px = fb[(row * width + col) as usize];
+            if col < left_col_end {
+                if px != bg {
+                    bg_cell_all_bg = false;
+                }
+            } else if px != bg {
+                char_cell_has_fg = true;
+            }
+        }
+    }
     assert!(
-        bg_region.iter().all(|&p| p == bg),
-        "背景格区域应全为背景色 {:08x}，发现差异像素",
+        bg_cell_all_bg,
+        "背景格（左格）内像素应全为背景色 {:08x}，发现差异像素",
         bg
     );
-
-    // 有字符格（右半 16 列）至少一像素与背景不同
-    let char_region = &fb[16 * 16..];
     assert!(
-        char_region.iter().any(|&p| p != bg),
-        "有字符格应含与背景不同的像素（前景光栅化），实际全为 {:08x}",
-        bg
+        char_cell_has_fg,
+        "有字符格（右格）内至少应有一个与背景不同的像素（前景光栅化）"
     );
 }
 
