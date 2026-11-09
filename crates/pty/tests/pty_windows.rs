@@ -4,6 +4,9 @@
 //! T4：Ctrl-C 按规格顺序的分项实测（powershell ping -t → cmd 另一长命令 → 连写两次 \x03
 //! → flush 确认 → portable-pty 写入路径 → app 层键盘映射）。
 //! T5：on_pty_write 回写（喂 ESC[6n，断言回写字节到达 PTY 写端）。
+//!
+//! 门控：ConPTY 与 Windows API，Linux 上编译跳过（与 pty_unix.rs 的 #![cfg(unix)] 对称）。
+#![cfg(windows)]
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
