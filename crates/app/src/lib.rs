@@ -60,10 +60,10 @@ pub fn route_key(text: Option<&str>, key: Option<vt::Key>, mods: Mods) -> KeyRou
     if mods.intersects(Mods::CTRL | Mods::ALT) {
         return KeyRoute::Encoded { key, mods };
     }
-    if let Some(t) = text {
-        if !t.is_empty() {
-            return KeyRoute::Text(t.to_string());
-        }
+    if let Some(t) = text
+        && !t.is_empty()
+    {
+        return KeyRoute::Text(t.to_string());
     }
     KeyRoute::Encoded { key, mods }
 }
@@ -148,13 +148,14 @@ impl App {
         event_loop
             .run_app(&mut handler)
             .map_err(|e| Error::App(format!("event loop: {}", e)))?;
-        // run_app 返回后回收：读线程带超时 join，再 close（先释放主端再回收子进程）。
+        // run_app 返回后回收：先 close（先释放主端再回收子进程，kill 子进程使 reader
+        // 读端得 EOF 而退出），再带超时 join reader 线程（顺序倒置将空等 5s 超时）。
+        if let Some(mut pty) = handler.pty.take() {
+            pty.close()?;
+        }
         if let Some(thread) = handler.reader_thread.take() {
             pty::unix::join_thread_timeout(thread, Duration::from_secs(5))
                 .map_err(Error::from)?;
-        }
-        if let Some(mut pty) = handler.pty.take() {
-            pty.close()?;
         }
         Ok(())
     }
@@ -234,11 +235,11 @@ impl ApplicationHandler for AppHandler {
         if let (Some(w), Some(h)) = (
             std::num::NonZeroU32::new(init_size.width),
             std::num::NonZeroU32::new(init_size.height),
-        ) {
-            if let Err(e) = surface.resize(w, h) {
-                eprintln!("surface initial resize: {}", e);
-                return;
-            }
+        )
+            && let Err(e) = surface.resize(w, h)
+        {
+            eprintln!("surface initial resize: {}", e);
+            return;
         }
         let mut vt = match VtTerminal::new(config.cols, config.rows) {
             Ok(t) => t,
@@ -485,8 +486,8 @@ fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot) {
         text.push('\n');
     }
     let full = format!(
-        "# cols={} rows={} wide={} spacer={}\n{}",
-        snap.cols, snap.rows, wide, spacer, text
+        "# cols={} rows={} wide={} spacer={} alternate={}\n{}",
+        snap.cols, snap.rows, wide, spacer, snap.alternate_screen, text
     );
     if let Err(e) = std::fs::write(&path, full) {
         eprintln!("dump snapshot: {}", e);
