@@ -5,3 +5,4 @@ target/
 /vt-verify/zig-system-link
 /vt-verify/vendor/ghostty-src/
 /vt-verify/build*.log
+scripts/e2e/out/
