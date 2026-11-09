@@ -29,6 +29,31 @@ use winit::window::{Window, WindowAttributes};
 const CELL_W: u32 = 8;
 const CELL_H: u32 = 16;
 
+/// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
+///
+/// Windows 回落 cmd.exe，其他平台回落 /bin/sh。
+pub fn default_shell() -> &'static str {
+    if cfg!(windows) {
+        "cmd.exe"
+    } else {
+        "/bin/sh"
+    }
+}
+
+#[cfg(test)]
+mod default_shell_tests {
+    use super::*;
+
+    #[test]
+    fn default_shell_matches_platform() {
+        if cfg!(windows) {
+            assert_eq!(default_shell(), "cmd.exe");
+        } else {
+            assert_eq!(default_shell(), "/bin/sh");
+        }
+    }
+}
+
 type SoftSurface =
     softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
 
