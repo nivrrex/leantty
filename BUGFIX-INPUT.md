@@ -66,7 +66,7 @@ e2e（scripts/e2e/run_all.sh，12 PASS / 0 FAIL）：
 4. 粘贴大段文本（bracketed paste）→ 无乱码无丢失。
 5. Ctrl-C 中断真实前台进程（如本机 `ping`）→ 与 case4 同行为。
 
-## 5. 交付物与证据
+## 6. 交付物与证据
 
 - 提交：5dab029（根因修复+测试）、后续收尾顺序/clippy/e2e 提交见 git log；tag phase1-merged 之前。
 - 证据文件：scripts/e2e/out/（每用例 dump+失败截图，运行时生成，未入仓库）；scripts/e2e/run_all.sh 一条命令全量。
