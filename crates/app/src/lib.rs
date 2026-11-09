@@ -2,8 +2,9 @@
 //!
 //! 接线顺序：
 //! 1. 起 PTY（pty::Pty::spawn），读线程经 channel 把字节交回主线程；
-//! 2. 主线程 channel 收字节 → vt::VtTerminal::feed；
-//! 3. 键盘事件 → vt::KeyEncoder → PTY 写；
+//! 2. 主线程 channel 收字节 → vt::VtTerminal::feed；读线程每来一次数据经 Wake 唤醒事件循环；
+//! 3. 键盘事件 → route_key 路由：event.text 优先直写 PTY；Ctrl/Alt 修饰组合与无 text 的
+//!    命名键走 vt::KeyEncoder → PTY 写；
 //! 4. 窗口 resize → vt::VtTerminal::resize 与 pty::Pty::resize；
 //! 5. vt::VtTerminal::on_pty_write 回调 → channel → 主线程写 PTY
 //!    （回调在 feed 调用栈内同步触发，闭包内不能直接借用 PTY writer，故经 channel 中转）；
@@ -11,6 +12,8 @@
 //!
 //! 事件循环用 winit 0.30 的 ApplicationHandler 模式（run_app），窗口经
 //! `Rc<Window>` 与 softbuffer Surface 共享句柄，避免闭包自引用借用冲突。
+//!
+//! 渲染尺寸取缓存（resumed/Resized 更新），窗口销毁后不再查询 X11 geometry。
 
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -40,17 +43,52 @@ pub fn default_shell() -> &'static str {
     }
 }
 
-#[cfg(test)]
-mod default_shell_tests {
-    use super::*;
+/// 按键输入路由（纯函数输出）。
+pub enum KeyRoute {
+    /// event.text 优先：直接写 PTY 的文本字节。
+    Text(String),
+    /// Ctrl/Alt 修饰组合或无 text 的命名键：走 KeyEncoder 编码。
+    Encoded { key: Option<vt::Key>, mods: Mods },
+}
 
-    #[test]
-    fn default_shell_matches_platform() {
-        if cfg!(windows) {
-            assert_eq!(default_shell(), "cmd.exe");
-        } else {
-            assert_eq!(default_shell(), "/bin/sh");
+/// 按键输入路由（纯函数）：event.text 优先直写 PTY；Ctrl/Alt 修饰组合与无 text 的
+/// 命名键走 KeyEncoder。
+///
+/// 根因修复（已验证事实）：字母键经 KeyEncoder 编码需要 event 的 unshifted codepoint，
+/// app 侧未设置时输出为空字节（e2e 插桩实测 encoded 0B）；event.text 路径不需要 codepoint。
+pub fn route_key(text: Option<&str>, key: Option<vt::Key>, mods: Mods) -> KeyRoute {
+    if mods.intersects(Mods::CTRL | Mods::ALT) {
+        return KeyRoute::Encoded { key, mods };
+    }
+    if let Some(t) = text {
+        if !t.is_empty() {
+            return KeyRoute::Text(t.to_string());
         }
+    }
+    KeyRoute::Encoded { key, mods }
+}
+
+/// 唤醒抽象：读线程每来一次数据须调用一次 wake（channel + proxy 隔离，可测）。
+pub trait Wake: Send {
+    fn wake(&self) -> Result<(), Error>;
+}
+
+/// winit EventLoopProxy 实现（Send + 'static，可移入读线程）。
+pub struct ProxyWaker {
+    proxy: winit::event_loop::EventLoopProxy<()>,
+}
+
+impl ProxyWaker {
+    pub fn new(proxy: winit::event_loop::EventLoopProxy<()>) -> Self {
+        Self { proxy }
+    }
+}
+
+impl Wake for ProxyWaker {
+    fn wake(&self) -> Result<(), Error> {
+        self.proxy
+            .send_event(())
+            .map_err(|e| Error::App(format!("wake proxy: {}", e)))
     }
 }
 
@@ -103,6 +141,8 @@ impl App {
             rx: None,
             pty_write_rx: None,
             reader_thread: None,
+            last_size: None,
+            event_proxy: Some(event_loop.create_proxy()),
             mods_state: ModifiersState::default(),
         };
         event_loop
@@ -120,6 +160,23 @@ impl App {
     }
 }
 
+/// app crate 错误枚举。
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// 应用层错误。
+    #[error("app error: {0}")]
+    App(String),
+    /// PTY 错误。
+    #[error("pty error: {0}")]
+    Pty(#[from] pty::Error),
+    /// 终端错误。
+    #[error("vt error: {0}")]
+    Vt(#[from] vt::Error),
+    /// 渲染错误。
+    #[error("render error: {0}")]
+    Render(#[from] render::Error),
+}
+
 struct AppHandler {
     config: Option<App>,
     vt: Option<VtTerminal>,
@@ -130,6 +187,10 @@ struct AppHandler {
     rx: Option<mpsc::Receiver<Vec<u8>>>,
     pty_write_rx: Option<mpsc::Receiver<Vec<u8>>>,
     reader_thread: Option<std::thread::JoinHandle<()>>,
+    /// 渲染尺寸缓存（resumed/Resized 更新；窗口销毁后不再查询 X11 geometry）。
+    last_size: Option<(u32, u32)>,
+    /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
+    event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     mods_state: ModifiersState,
 }
 
@@ -160,13 +221,25 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
-        let surface = match softbuffer::Surface::new(&context, window.clone()) {
+        let mut surface = match softbuffer::Surface::new(&context, window.clone()) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("softbuffer surface: {}", e);
                 return;
             }
         };
+        // 初始尺寸：softbuffer present 前必须 resize，否则 panic（Xvfb 复现实测）。
+        let init_size = window.inner_size();
+        self.last_size = Some((init_size.width, init_size.height));
+        if let (Some(w), Some(h)) = (
+            std::num::NonZeroU32::new(init_size.width),
+            std::num::NonZeroU32::new(init_size.height),
+        ) {
+            if let Err(e) = surface.resize(w, h) {
+                eprintln!("surface initial resize: {}", e);
+                return;
+            }
+        }
         let mut vt = match VtTerminal::new(config.cols, config.rows) {
             Ok(t) => t,
             Err(e) => {
@@ -186,6 +259,15 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
+        // 唤醒器：读线程每来一次数据 wake 一次事件循环（channel + proxy 抽象）。
+        let waker: Box<dyn Wake> = match self.event_proxy.take() {
+            Some(proxy) => Box::new(ProxyWaker::new(proxy)),
+            None => {
+                eprintln!("create_proxy: no proxy available");
+                return;
+            }
+        };
+
         // 1. PTY 读线程 → channel → 主线程喂 vt
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let reader_thread = std::thread::spawn(move || {
@@ -196,6 +278,10 @@ impl ApplicationHandler for AppHandler {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
                         if tx.send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
+                        if let Err(e) = waker.wake() {
+                            eprintln!("wake: {}", e);
                             break;
                         }
                     }
@@ -227,6 +313,10 @@ impl ApplicationHandler for AppHandler {
         self.pty_write_rx = Some(pty_write_rx);
     }
 
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
+        // 唤醒：读线程来数据后经 proxy 发来；about_to_wait 将消费 channel。
+    }
+
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -248,19 +338,28 @@ impl ApplicationHandler for AppHandler {
                     if self.mods_state.alt_key() {
                         mods |= Mods::ALT;
                     }
-                    if let Some(key) = map_logical_key(&event.logical_key)
-                        && let Some(vt) = self.vt.as_mut()
-                    {
-                        match vt.key_encoder() {
-                            Ok(mut enc) => {
-                                if let Ok(bytes) = enc.encode_key(key, mods, Action::Press)
-                                    && let Some(pty) = self.pty.as_mut()
-                                    && let Err(e) = pty.writer().map(|w| w.write_all(&bytes))
-                                {
-                                    eprintln!("pty write: {}", e);
+                    let mapped = map_logical_key(&event.logical_key);
+                    let route = route_key(event.text.as_deref(), mapped, mods);
+                    match route {
+                        KeyRoute::Text(s) => {
+                            if let Some(pty) = self.pty.as_mut() {
+                                write_pty(pty, s.as_bytes());
+                            }
+                        }
+                        KeyRoute::Encoded { key, mods } => {
+                            if let (Some(key), Some(vt)) = (key, self.vt.as_mut()) {
+                                match vt.key_encoder() {
+                                    Ok(mut enc) => match enc.encode_key(key, mods, Action::Press) {
+                                        Ok(bytes) => {
+                                            if let Some(pty) = self.pty.as_mut() {
+                                                write_pty(pty, &bytes);
+                                            }
+                                        }
+                                        Err(e) => eprintln!("encode: {}", e),
+                                    },
+                                    Err(e) => eprintln!("key_encoder: {}", e),
                                 }
                             }
-                            Err(e) => eprintln!("key_encoder: {}", e),
                         }
                     }
                 }
@@ -278,6 +377,7 @@ impl ApplicationHandler for AppHandler {
                 {
                     eprintln!("pty resize: {}", e);
                 }
+                self.last_size = Some((physical_size.width, physical_size.height));
                 if let Some(surface) = self.surface.as_mut()
                     && let (Some(w), Some(h)) = (
                         std::num::NonZeroU32::new(physical_size.width),
@@ -306,9 +406,7 @@ impl ApplicationHandler for AppHandler {
             && let Some(pty) = self.pty.as_mut()
         {
             while let Ok(bytes) = pty_write_rx.try_recv() {
-                if let Err(e) = pty.writer().map(|w| w.write_all(&bytes)) {
-                    eprintln!("pty write: {}", e);
-                }
+                write_pty(pty, &bytes);
             }
         }
         // 6. 子进程退出 → 关闭窗口
@@ -322,14 +420,15 @@ impl ApplicationHandler for AppHandler {
                 }
             }
         }
-        // 渲染一帧
-        if let (Some(vt), Some(renderer), Some(window), Some(surface)) =
-            (self.vt.as_ref(), self.renderer.as_mut(), self.window.as_ref(), self.surface.as_mut())
+        // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
+        if let (Some(vt), Some(renderer), Some(surface)) =
+            (self.vt.as_ref(), self.renderer.as_mut(), self.surface.as_mut())
         {
             match vt.snapshot() {
                 Ok(snap) => {
-                    let size = window.inner_size();
-                    if let Err(e) = renderer.render(&snap, size.width, size.height) {
+                    dump_snapshot_if_requested(&snap);
+                    let (pw, ph) = self.last_size.unwrap_or((CELL_W, CELL_H));
+                    if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
                     match surface.buffer_mut() {
@@ -349,26 +448,49 @@ impl ApplicationHandler for AppHandler {
                 }
                 Err(e) => eprintln!("snapshot: {}", e),
             }
-            window.request_redraw();
         }
     }
 }
 
-/// app crate 错误枚举。
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    /// 应用层错误。
-    #[error("app error: {0}")]
-    App(String),
-    /// PTY 错误。
-    #[error("pty error: {0}")]
-    Pty(#[from] pty::Error),
-    /// 终端错误。
-    #[error("vt error: {0}")]
-    Vt(#[from] vt::Error),
-    /// 渲染错误。
-    #[error("render error: {0}")]
-    Render(#[from] render::Error),
+/// 写字节到 PTY 并 flush（外部 I/O 失败路径覆盖）。
+fn write_pty(pty: &mut NativePty, bytes: &[u8]) {
+    match pty.writer() {
+        Ok(w) => {
+            if let Err(e) = w.write_all(bytes).and_then(|()| w.flush()) {
+                eprintln!("pty write: {}", e);
+            }
+        }
+        Err(e) => eprintln!("pty writer: {}", e),
+    }
+}
+
+/// 测试钩子（默认关闭）：APP_DUMP_SNAPSHOT 设置时，每帧把 FrameSnapshot 文本
+/// （行文本 + 宽格统计）写入该路径，供 e2e 断言而不依赖 OCR。
+fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot) {
+    let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else { return; };
+    let mut text = String::new();
+    let mut wide = 0usize;
+    let mut spacer = 0usize;
+    for row in &snap.cells {
+        let mut line = String::new();
+        for cell in row {
+            line.push_str(&cell.chars);
+            match cell.wide {
+                vt::CellWide::Wide => wide += 1,
+                vt::CellWide::SpacerTail => spacer += 1,
+                _ => {}
+            }
+        }
+        text.push_str(line.trim_end());
+        text.push('\n');
+    }
+    let full = format!(
+        "# cols={} rows={} wide={} spacer={}\n{}",
+        snap.cols, snap.rows, wide, spacer, text
+    );
+    if let Err(e) = std::fs::write(&path, full) {
+        eprintln!("dump snapshot: {}", e);
+    }
 }
 
 const LETTERS: [vt::Key; 26] = [

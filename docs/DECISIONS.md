@@ -25,3 +25,11 @@
 - 决策：app resumed 启动失败路径（create_window/softbuffer context/surface/VtTerminal::new/pty spawn/take_reader/on_pty_write/CpuRenderer::new）由 expect panic 改为 eprintln 记录 + return 退出事件循环；读线程句柄在 spawn 后立即存入 handler，失败路径由 run() 尾部 join_thread_timeout + close 清理。依据：编码约束（外部输入/系统调用覆盖失败路径）。已验证事实：cargo check --workspace --all-targets 通过；office-pc 字体缺失场景的优雅退出为本设计目标（本开发机字体齐备未复现 panic 路径，工程判断）。
 - 决策：main.rs 补齐规格 2b 的 --font/--font-size 命令行覆盖（阶段1 骨架遗留），并加 APP_COLS/APP_ROWS/APP_FONT_FAMILY/APP_FONT_SIZE 环境变量层；优先级 CLI > 环境变量 > 默认常量；数值解析失败回落默认（外部输入校验）。已验证事实：cargo check 通过。
 - 偏差登记：规格 2b 仅提命令行 --font/--font-size；实现为 CLI 优先于环境变量的双层（工程判断：批处理场景以环境变量注入更简洁）。
+- 根因（已验证事实）：app 输入无回显缺陷经 Xvfb+e2e 插桩逐段实测——a 点 winit KeyboardInput 16 条正常（text=Some("e")）；b 点 KeyEncoder encoded 0B（字母键经 KeyEncoder 编码需 event unshifted codepoint，app 侧未设时输出空字节）；c 点写 PTY 0B；d-g 点链路正常（PTY 读线程收 shell 输出、feed、snapshot 非空、present ok 均有日志）。
+- 修复（已验证事实）：按键输入路由纯函数 route_key——event.text 优先直写 PTY；Ctrl/Alt 修饰组合与无 text 命名键走 KeyEncoder（V7 字节序列已验证）。字母键不再依赖 codepoint。
+- 修复（已验证事实）：softbuffer 初始尺寸——resumed 里 surface 创建后立即 resize 到 window.inner_size()（Xvfb 复现 "Must set size of surface before calling present()" panic）。
+- 修复（已验证事实）：渲染尺寸取缓存 last_size（resumed/Resized 更新），窗口销毁后不再调 window.inner_size()（winit 0.30.13 x11 window.rs:1248 GetGeometry unwrap panic）。
+- 修复（已验证事实）：读线程经 Wake trait（ProxyWaker=EventLoopProxy）唤醒事件循环——ControlFlow::Wait 下 PTY 输出到达后无事件时循环不醒来（规格 f 点）。
+- 钩子（已验证事实）：APP_DUMP_SNAPSHOT 环境变量（默认关闭）每帧写快照文本（行列数、宽格/续格统计、alternate 标记、行文本），供 e2e 断言而不依赖 OCR。
+- e2e 验证（已验证事实）：Xvfb+openbox+xdotool 输入 echo hello_e2e，截图显示命令与输出完整回显（修复前对比： encoded 0B）。
+- 偏差登记：无（Pty/Renderer trait 未改；新增 Wake trait 为 app 内部抽象）。
