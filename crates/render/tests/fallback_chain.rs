@@ -2,7 +2,7 @@
 //! render：字体回退链与宽字符对齐（系统 DejaVu Sans Mono + CJK 字体，缺则跳过）。
 
 use render::{CpuRenderer, FontSettings, FontSpec, Palette, RenderOptions, Renderer};
-use vt::{Cell, CellWide, Cursor, FrameSnapshot, Rgb, Underline};
+use vt::{Cell, CellWide, Cursor, FrameSnapshot};
 
 fn settings(fallback_family: &str) -> FontSettings {
     let spec = |family: &str, style: &str| FontSpec {
@@ -49,7 +49,7 @@ fn mk_cell(ch: &str, wide: CellWide) -> Cell {
 
 #[test]
 fn fallback_chain_ascii_main_cjk_fallback() {
-    let mut renderer = match CpuRenderer::new(&settings("黑体"), opts(), Palette::default()) {
+    let renderer = match CpuRenderer::new(&settings("黑体"), opts(), Palette::default()) {
         Ok(r) => r,
         Err(e) => {
             println!("skip: 系统字体不可用（{}）", e);

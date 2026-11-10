@@ -5,7 +5,7 @@ use render::{
     Antialiasing, CpuRenderer, Error, FontSettings, FontSpec, Palette, RenderOptions, Renderer,
     Subpixel,
 };
-use vt::{Cell, Cursor, CursorStyle, FrameSnapshot, Rgb, Underline, CellWide};
+use vt::{Cell, Cursor, CursorStyle, FrameSnapshot, Rgb, Underline};
 
 fn settings() -> FontSettings {
     let spec = |style: &str| FontSpec {
@@ -180,9 +180,11 @@ fn render_cursor_styles_draw() {
         // 光标色（默认黑）在黑色背景格上不可见——改用 cursor 色非 bg 的 palette 断言太绕；
         // 这里断言渲染不 panic 且帧缓冲已填充（背景格默认黑 = 光标色黑，逐像素无差异可断言）。
         // 改用 cursor 色为蓝的 palette 断言光标像素存在：
-        let mut pal = Palette::default();
-        pal.cursor = Rgb { r: 0, g: 0, b: 255 };
-        pal.cursor_text = Rgb { r: 255, g: 255, b: 255 };
+        let pal = Palette {
+            cursor: Rgb { r: 0, g: 0, b: 255 },
+            cursor_text: Rgb { r: 255, g: 255, b: 255 },
+            ..Palette::default()
+        };
         let mut r2 = CpuRenderer::new(&settings(), opts(false), pal).expect("renderer2");
         r2.render(&snap, 16, 24).expect("render2");
         let has_blue = r2.framebuffer().iter().any(|&p| (p & 0xFF) == 255);
