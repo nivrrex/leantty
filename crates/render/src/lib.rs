@@ -256,6 +256,27 @@ impl CpuRenderer {
             &settings.italic,
             &settings.bold_italic,
         ];
+        // fallback 与系统兜底字体跨组共享：from_bytes 对 CJK 字体成本高（实测
+        // NotoSansCJK-Regular.ttc 19MB → 6.1s/次），四组重复加载将放大 4 倍；
+        // 各加载一次后 clone 入组（fontdue Font: Clone）。
+        let mut fallbacks: Vec<Font> = Vec::new();
+        for fs in &settings.fallback {
+            match load_font_with_fallback(&db, &fs.family, &fs.style) {
+                Ok(f) => fallbacks.push(f),
+                Err(e) => eprintln!(
+                    "font fallback '{}' '{}' load failed: {}; skipped",
+                    fs.family, fs.style, e
+                ),
+            }
+        }
+        let sys_monospace = load_font_generic(&db, Family::Monospace).ok();
+        let sys_sans = load_font_generic(&db, Family::SansSerif).ok();
+        if sys_monospace.is_none() {
+            eprintln!("system fallback Monospace unavailable");
+        }
+        if sys_sans.is_none() {
+            eprintln!("system fallback SansSerif unavailable");
+        }
         let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
         for (gi, spec) in specs.iter().enumerate() {
             let main = match load_font_with_fallback(&db, &spec.family, &spec.style) {
@@ -272,21 +293,12 @@ impl CpuRenderer {
                 }
             };
             let mut fonts = vec![main];
-            for fs in &settings.fallback {
-                match load_font_with_fallback(&db, &fs.family, &fs.style) {
-                    Ok(f) => fonts.push(f),
-                    Err(e) => eprintln!(
-                        "font fallback '{}' '{}' load failed: {}; skipped",
-                        fs.family, fs.style, e
-                    ),
-                }
+            fonts.extend(fallbacks.iter().cloned());
+            if let Some(f) = &sys_monospace {
+                fonts.push(f.clone());
             }
-            // 系统兜底：Monospace generic → SansSerif（fontdb generic 链，规格任务 3.2）。
-            for fam in [Family::Monospace, Family::SansSerif] {
-                match load_font_generic(&db, fam) {
-                    Ok(f) => fonts.push(f),
-                    Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
-                }
+            if let Some(f) = &sys_sans {
+                fonts.push(f.clone());
             }
             groups.push(fonts);
         }
@@ -474,10 +486,8 @@ impl Renderer for CpuRenderer {
                             (px0, py0, area_w, cell_h),
                             &m,
                             &bitmap,
-                            fg,
-                            bg,
-                            self.options.antialiasing,
-                            gamma,
+                            (fg, bg),
+                            (self.options.antialiasing, gamma),
                         );
                     } else {
                         let sw = (bw * s).ceil() as usize;
@@ -499,10 +509,8 @@ impl Renderer for CpuRenderer {
                             (px0, py0, area_w, cell_h),
                             &sm,
                             &scaled,
-                            fg,
-                            bg,
-                            self.options.antialiasing,
-                            gamma,
+                            (fg, bg),
+                            (self.options.antialiasing, gamma),
                         );
                     }
                 } else if span == 2 {
@@ -531,8 +539,7 @@ impl Renderer for CpuRenderer {
                         &sm,
                         &scaled,
                         fg,
-                        sub,
-                        gamma,
+                        (sub, gamma),
                     );
                 } else {
                     let (m, bitmap) = self.rasterize_at(group, font_idx, ch, px);
@@ -542,10 +549,8 @@ impl Renderer for CpuRenderer {
                         (px0, py0, area_w, cell_h),
                         &m,
                         &bitmap,
-                        fg,
-                        bg,
-                        self.options.antialiasing,
-                        gamma,
+                        (fg, bg),
+                        (self.options.antialiasing, gamma),
                     );
                 }
 
@@ -554,10 +559,7 @@ impl Renderer for CpuRenderer {
                 draw_style_lines(
                     &mut self.framebuffer,
                     pixel_width,
-                    px0,
-                    py0,
-                    area_w,
-                    cell_h,
+                    (px0, py0, area_w, cell_h),
                     cell,
                     line_color,
                 );
@@ -598,10 +600,8 @@ impl CpuRenderer {
                         (cx, cy, cell_w, cell_h),
                         &m,
                         &bitmap,
-                        rgb_to_u32(self.palette.cursor_text),
-                        color,
-                        self.options.antialiasing,
-                        self.options.text_gamma,
+                        (rgb_to_u32(self.palette.cursor_text), color),
+                        (self.options.antialiasing, self.options.text_gamma),
                     );
                 }
             }
@@ -647,13 +647,11 @@ impl CpuRenderer {
 fn draw_style_lines(
     fb: &mut [u32],
     width: u32,
-    x0: u32,
-    y0: u32,
-    w: u32,
-    h: u32,
+    rect: (u32, u32, u32, u32),
     cell: &Cell,
     color: u32,
 ) {
+    let (x0, y0, w, h) = rect;
     let mut hline = |y: i32, gap: u32| {
         if y < 0 || y >= h as i32 {
             return;
@@ -714,11 +712,11 @@ fn blit(
     cell: (u32, u32, u32, u32),
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
-    fg: u32,
-    bg: u32,
-    antialiasing: Antialiasing,
-    gamma: f32,
+    colors: (u32, u32),
+    aa_gamma: (Antialiasing, f32),
 ) {
+    let (fg, bg) = colors;
+    let (antialiasing, gamma) = aa_gamma;
     let (cell_x, cell_y, cell_w, cell_h) = cell;
     let bw = metrics.width as i32;
     let bh = metrics.height as i32;
@@ -770,9 +768,9 @@ fn blit_subpixel(
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
     fg: u32,
-    order: Subpixel,
-    gamma: f32,
+    sp: (Subpixel, f32),
 ) {
+    let (order, gamma) = sp;
     let (cell_x, cell_y, cell_w, cell_h) = cell;
     let bw3 = metrics.width as i32;
     let bh3 = metrics.height as i32;
@@ -986,10 +984,8 @@ mod blit_tests {
             (0, 0, 8, 4),
             &m,
             &bitmap,
-            FG,
-            BG,
-            Antialiasing::Grayscale,
-            1.0,
+            (FG, BG),
+            (Antialiasing::Grayscale, 1.0),
         );
         // 本格 [0,8) 列有着色
         assert!(fb[0..8].contains(&FG), "本格内应有前景像素");
@@ -1015,10 +1011,8 @@ mod blit_tests {
             (0, 0, 8, 4),
             &m,
             &bitmap,
-            FG,
-            BG,
-            Antialiasing::Grayscale,
-            1.0,
+            (FG, BG),
+            (Antialiasing::Grayscale, 1.0),
         );
         let invaded = fb[4 * 8..].iter().filter(|&&p| p != BG).count();
         assert_eq!(invaded, 0, "下邻格应全为背景色");
