@@ -41,3 +41,4 @@
 - e2e 修复（已验证事实）：case6 关窗改用 scripts/e2e/wm_send.py（python3-xlib 直发 WM_DELETE）；xev 调试监听与 [dbg] 插桩全部移除；run_all 12/12 PASS。
 - 工具依赖（已验证事实）：e2e 依赖 Xvfb/xdotool/openbox/imagemagick(import)/wmctrl 诊断/python3-xlib；apt 安装，Devuan 5 可用。
 - wake 误报修复（已验证事实）：关窗路径 stderr 出现 1 次 "wake proxy: Tried to wake up a closed EventLoop"、Ctrl-D 路径 0 次；插桩时序 close requested→run_app returned→closing pty→wake failed→pty closed→joining reader→reader joined，确认读线程唤醒晚于事件循环销毁（run() 收尾 close PTY 期间 reader 读残余数据 wake 已关 proxy）。修复：Error 加 EventLoopClosed 变体、ProxyWaker 映射之、reader_body 抽取为可测函数，EventLoopClosed 静默退出、其他错误照常上报；单测 2 项过；e2e case5/case6 加 assert_no_wake（stderr 不含 wake）。
+- 远程约定变更（已验证事实）：新增 remote ali=ssh://root@ali:8022/srv/git/tty.git 为推送目标（git push ali main --tags），win 分支经 git fetch ali 获取；不再 push origin（/root/Desktop/tty/tty.git）。ls-remote ali 核对：main=1883ecb、win=24c1333、三 tag 与 origin 一致。
