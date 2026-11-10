@@ -48,3 +48,4 @@
 - 中文 e2e 修正（已验证事实）：xdotool type 对 CJK 发 caret 记法文本（dump 实测 "M-dM-=M- M-eM-%M-="），本环境从来不可用；case2 历史 PASS 实为 printf 八进制回退路径（前 DECISIONS "xdotool type UTF-8 实测可用" 系误记，本行更正）。case10 改 printf 八进制输入。
 - dump 钩子门控（已验证事实）：APP_DUMP_SNAPSHOT 测试钩子 #[cfg(debug_assertions)] 门控（函数+调用点+钩子字符串整体仅 debug 编译）；e2e run_all.sh 改用 target/debug/app（行为不变）；run_all 内置 release 构建检查 strings target/release/app | grep APP_DUMP_SNAPSHOT 应无输出。DECISIONS 登记：该钩子长期保留、仅 debug。
 - 字体加载性能（已验证事实）：fontdue 0.9.5 Font::from_bytes 预建全字形表，CJK 字体（NotoSansCJK-Regular.ttc 19MB）实测 6.1s/次；fallback 与系统兜底字体原在四组各加载一次（24s 级），改为跨组共享（加载一次 clone 入组，fontdue Font: Clone）；e2e wait_window 等待上限 20×0.5s 放宽至 40×0.5s（首字体含 CJK 的一次性成本）。e2e 全量 26 用例 ~59s。
+- opacity 状态（已验证事实）：window.opacity 已解析并校验（0..=1，越界回落默认），渲染层未实现透明度混合（softbuffer CPU surface 无 alpha 通道接线），字段保留待后续阶段；e2e/截图均为 opacity=1.0 不受影响。
