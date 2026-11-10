@@ -10,6 +10,7 @@
 use std::path::PathBuf;
 
 fn main() -> Result<(), app::Error> {
+    app::start_time_set();
     let mut cli_config: Option<PathBuf> = None;
     let mut cli_font: Option<String> = None;
     let mut cli_font_size: Option<f32> = None;

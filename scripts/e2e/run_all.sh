@@ -314,5 +314,44 @@ if wait_window; then
     assert_no_wake "case10-cjk-config-no-wake" "$L"
 fi
 
+# 用例 11：启动性能（任务 2B.1）——启动后立即输入，2s 内快照出现输出；汉字后台
+# 加载期间继续输入英文不丢字符（懒加载：首帧不等 CJK from_bytes）。
+D="$OUT/case11-boot-perf.dump"
+L="$OUT/case11-boot-perf.log"
+T0=$(date +%s%N)
+if start_app "$D" "$L"; then
+    xdotool type --window "$WID" "echo boot2b"
+    xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 20 ]; do
+        grep -q "boot2b" "$D" 2>/dev/null && break
+        sleep 0.1
+        i=$((i+1))
+    done
+    T1=$(date +%s%N)
+    ELAPSED=$(( (T1-T0)/1000000 ))
+    if grep -q "boot2b" "$D"; then
+        if [ "$ELAPSED" -lt 2000 ]; then
+            echo "PASS case11-first-output-2s (${ELAPSED}ms)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case11-first-output-2s (${ELAPSED}ms ≥ 2000ms)"
+            FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case11-first-output-2s (2s 内无输出，${ELAPSED}ms)"
+        FAIL=$((FAIL+1))
+    fi
+    # 汉字 + 加载期间继续输入英文（不丢字符）
+    xdotool type --window "$WID" "printf '\\344\\275\\240\\345\\245\\275'"
+    xdotool key --window "$WID" Return
+    xdotool type --window "$WID" "echo AFTER_CJK"
+    xdotool key --window "$WID" Return
+    assert_dump "case11-cjk-echo" "$D" "你好"
+    assert_dump "case11-after-cjk" "$D" "AFTER_CJK"
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case11-boot-perf-exits"
+    assert_no_wake "case11-boot-perf-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

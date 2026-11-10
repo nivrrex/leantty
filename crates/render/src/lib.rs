@@ -20,7 +20,7 @@
 use std::collections::HashMap;
 
 use fontdb::{Database, Family, Query, Source, Style as DbStyle, Weight};
-use fontdue::Font;
+pub use fontdue::Font;
 use vt::{Cell, CellWide, CursorStyle, FrameSnapshot, Rgb, Underline};
 
 /// 渲染错误。
@@ -225,6 +225,31 @@ const GROUP_ITALIC: usize = 2;
 const GROUP_BOLD_ITALIC: usize = 3;
 
 /// 基于 fontdb/fontdue 的 CPU 光栅化渲染器，多字体回退链 + 选项。
+/// 后台加载 fallback 与系统兜底字体（fallback specs + Monospace/SansSerif generic），
+/// 返回按序字体列表。线程安全：仅 owned 数据（FontSpec/Font）经 channel 传递；
+/// Database 在调用线程内自建（fontdb Database 非共享设计）。
+pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
+    let mut db = Database::new();
+    db.load_system_fonts();
+    let mut fonts = Vec::new();
+    for fs in fallbacks {
+        match load_font_with_fallback(&db, &fs.family, &fs.style) {
+            Ok(f) => fonts.push(f),
+            Err(e) => eprintln!(
+                "font fallback '{}' '{}' load failed: {}; skipped",
+                fs.family, fs.style, e
+            ),
+        }
+    }
+    for fam in [Family::Monospace, Family::SansSerif] {
+        match load_font_generic(&db, fam) {
+            Ok(f) => fonts.push(f),
+            Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
+        }
+    }
+    fonts
+}
+
 pub struct CpuRenderer {
     /// 四组字体 [normal, bold, italic, bold_italic]，每组 = [主字体, fallback..., 系统兜底]。
     groups: Vec<Vec<Font>>,
@@ -232,8 +257,9 @@ pub struct CpuRenderer {
     options: RenderOptions,
     palette: Palette,
     scale: f64,
-    /// 码点 → 组内字体索引（逐字符回退缓存，规则见模块文档）。
-    char_font: HashMap<(u8, char), usize>,
+    /// 码点 → 组内字体索引（逐字符回退缓存，规则见模块文档；None=链中暂无字体
+    /// 含该码点——后台字体未到位或全链缺失，渲染层统一画 U+25A1 占位）。
+    char_font: HashMap<(u8, char), Option<usize>>,
     glyph_cache: HashMap<GlyphKey, CachedGlyph>,
     framebuffer: Vec<u32>,
     fb_width: u32,
@@ -256,27 +282,9 @@ impl CpuRenderer {
             &settings.italic,
             &settings.bold_italic,
         ];
-        // fallback 与系统兜底字体跨组共享：from_bytes 对 CJK 字体成本高（实测
-        // NotoSansCJK-Regular.ttc 19MB → 6.1s/次），四组重复加载将放大 4 倍；
-        // 各加载一次后 clone 入组（fontdue Font: Clone）。
-        let mut fallbacks: Vec<Font> = Vec::new();
-        for fs in &settings.fallback {
-            match load_font_with_fallback(&db, &fs.family, &fs.style) {
-                Ok(f) => fallbacks.push(f),
-                Err(e) => eprintln!(
-                    "font fallback '{}' '{}' load failed: {}; skipped",
-                    fs.family, fs.style, e
-                ),
-            }
-        }
-        let sys_monospace = load_font_generic(&db, Family::Monospace).ok();
-        let sys_sans = load_font_generic(&db, Family::SansSerif).ok();
-        if sys_monospace.is_none() {
-            eprintln!("system fallback Monospace unavailable");
-        }
-        if sys_sans.is_none() {
-            eprintln!("system fallback SansSerif unavailable");
-        }
+        // 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底字体后台懒加载
+        // （任务 2B.1：from_bytes 对 19MB CJK 字体实测 806.8ms，同步加载将阻塞首帧）。
+        // 到位前码点画 U+25A1 占位方块；到位经 add_background_fonts 并入并重绘。
         let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
         for (gi, spec) in specs.iter().enumerate() {
             let main = match load_font_with_fallback(&db, &spec.family, &spec.style) {
@@ -292,15 +300,7 @@ impl CpuRenderer {
                     groups[GROUP_NORMAL][0].clone()
                 }
             };
-            let mut fonts = vec![main];
-            fonts.extend(fallbacks.iter().cloned());
-            if let Some(f) = &sys_monospace {
-                fonts.push(f.clone());
-            }
-            if let Some(f) = &sys_sans {
-                fonts.push(f.clone());
-            }
-            groups.push(fonts);
+            groups.push(vec![main]);
         }
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
@@ -365,17 +365,40 @@ impl CpuRenderer {
         }
     }
 
-    /// 码点在组内的字体索引（回退链：主字体 → fallback → 系统 Monospace/Sans）。
-    fn font_index_for(&mut self, group: u8, ch: char) -> usize {
+    /// 码点在组内回退链中的字体索引（主字体 → fallback → 系统 Monospace/Sans）；
+    /// None=链中暂无字体含该码点（后台字体未到位或全链缺失）。
+    fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
         if let Some(&i) = self.char_font.get(&(group, ch)) {
             return i;
         }
         let idx = self.groups[group as usize]
             .iter()
-            .position(|f| f.has_glyph(ch))
-            .unwrap_or(0);
+            .position(|f| f.has_glyph(ch));
         self.char_font.insert((group, ch), idx);
         idx
+    }
+
+    /// 按索引光栅；None（链中无码点）时用组首字体光栅 U+25A1 占位方块（不 panic）。
+    fn rasterize_glyph(
+        &mut self,
+        group: u8,
+        idx: Option<usize>,
+        ch: char,
+        px: f32,
+    ) -> (fontdue::Metrics, Vec<u8>) {
+        match idx {
+            Some(i) => self.rasterize_at(group, i, ch, px),
+            None => self.rasterize_at(group, 0, '\u{25A1}', px),
+        }
+    }
+
+    /// 后台字体到位：并入各组并清空码点归属与字形缓存（归属与位图可能变化）。
+    pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
+        for g in &mut self.groups {
+            g.extend(fonts.iter().cloned());
+        }
+        self.char_font.clear();
+        self.glyph_cache.clear();
     }
 
     /// 光栅化（带缓存）：px = 字号 * 缩放因子。
@@ -475,7 +498,7 @@ impl Renderer for CpuRenderer {
 
                 if span == 2 && sub == Subpixel::None {
                     // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
-                    let (m, bitmap) = self.rasterize_at(group, font_idx, ch, px);
+                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
                     let bw = m.width.max(1) as f32;
                     let bh = m.height.max(1) as f32;
                     let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -515,7 +538,7 @@ impl Renderer for CpuRenderer {
                     }
                 } else if span == 2 {
                     // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
-                    let (m, bitmap) = self.rasterize_at(group, font_idx, ch, px * 3.0);
+                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px * 3.0);
                     let bw = m.width.max(1) as f32 / 3.0;
                     let bh = m.height.max(1) as f32 / 3.0;
                     let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -542,7 +565,7 @@ impl Renderer for CpuRenderer {
                         (sub, gamma),
                     );
                 } else {
-                    let (m, bitmap) = self.rasterize_at(group, font_idx, ch, px);
+                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
@@ -593,7 +616,7 @@ impl CpuRenderer {
                     let ch = cell.chars.chars().next().expect("非空 chars");
                     let group = group_for(cell);
                     let font_idx = self.font_index_for(group, ch);
-                    let (m, bitmap) = self.rasterize_at(group, font_idx, ch, px);
+                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
                     blit(
                         &mut self.framebuffer,
                         width,

@@ -16,8 +16,9 @@
 //! 渲染尺寸取缓存（resumed/Resized 更新），窗口销毁后不再查询 X11 geometry。
 
 use std::rc::Rc;
+use std::sync::OnceLock;
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use pty::{NativePty, Pty};
 use render::{CpuRenderer, Renderer};
@@ -63,6 +64,19 @@ pub fn route_key(text: Option<&str>, key: Option<vt::Key>, mods: Mods) -> KeyRou
         return KeyRoute::Text(t.to_string());
     }
     KeyRoute::Encoded { key, mods }
+}
+
+/// 进程启动时刻（perf 钩子：首帧耗时实测，任务 2B.1；release 常驻，仅打印一次）。
+static START: OnceLock<Instant> = OnceLock::new();
+
+/// 记录进程启动时刻（main 首行调用；重复调用以首次为准）。
+pub fn start_time_set() {
+    let _ = START.set(Instant::now());
+}
+
+/// 启动时刻（供首帧耗时日志）。
+pub fn start_time() -> Option<Instant> {
+    START.get().copied()
 }
 
 /// 唤醒抽象：读线程每来一次数据须调用一次 wake（channel + proxy 隔离，可测）。
@@ -182,7 +196,9 @@ impl App {
             pad_y: 0,
             scale_factor: 1.0,
             event_proxy: Some(event_loop.create_proxy()),
+            bg_rx: None,
             mods_state: ModifiersState::default(),
+            first_frame_logged: false,
         };
         event_loop
             .run_app(&mut handler)
@@ -240,8 +256,12 @@ struct AppHandler {
     pad_y: u16,
     /// 当前缩放因子（winit scale_factor）。
     scale_factor: f64,
+    /// 首帧 present 耗时日志标志（perf 钩子，仅打印一次）。
+    first_frame_logged: bool,
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
+    /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
+    bg_rx: Option<mpsc::Receiver<Vec<render::Font>>>,
     mods_state: ModifiersState,
 }
 
@@ -325,6 +345,7 @@ impl ApplicationHandler for AppHandler {
             }
         };
         // 唤醒器：读线程每来一次数据 wake 一次事件循环（channel + proxy 抽象）。
+        let bg_proxy = self.event_proxy.clone();
         let waker: Box<dyn Wake> = match self.event_proxy.take() {
             Some(proxy) => Box::new(ProxyWaker::new(proxy)),
             None => {
@@ -332,6 +353,20 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
+        // 任务 2B.1：fallback/系统兜底字体后台懒加载（首帧不等 CJK from_bytes 实测
+        // 806.8ms）；到位经 channel 并入 renderer 并发 proxy 唤醒重绘。线程安全：
+        // 仅 owned 数据（FontSpec/Font）经 channel 传递；Database 线程内自建；
+        // 线程 detached（完成即退，进程退出随灭，无共享可变状态）。
+        let (bg_tx, bg_rx) = mpsc::channel::<Vec<render::Font>>();
+        let bg_specs = config.font_settings.fallback.clone();
+        std::thread::spawn(move || {
+            let fonts = render::load_font_list(&bg_specs);
+            let _ = bg_tx.send(fonts);
+            if let Some(proxy) = bg_proxy {
+                let _ = proxy.send_event(());
+            }
+        });
+        self.bg_rx = Some(bg_rx);
 
         // 1. PTY 读线程 → channel → 主线程喂 vt
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
@@ -492,6 +527,13 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
+        if let Some(rx) = &self.bg_rx
+            && let Ok(fonts) = rx.try_recv()
+            && let Some(r) = self.renderer.as_mut()
+        {
+            r.add_background_fonts(fonts);
+        }
         // 2. channel 收字节 → 喂 vt
         if let Some(rx) = self.rx.as_ref()
             && let Some(vt) = self.vt.as_mut()
@@ -541,6 +583,12 @@ impl ApplicationHandler for AppHandler {
                             }
                             if let Err(e) = buffer.present() {
                                 eprintln!("surface present: {}", e);
+                            }
+                            if !self.first_frame_logged {
+                                self.first_frame_logged = true;
+                                if let Some(t0) = crate::start_time() {
+                                    eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                                }
                             }
                         }
                         Err(e) => eprintln!("buffer_mut: {}", e),
