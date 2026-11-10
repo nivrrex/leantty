@@ -29,7 +29,6 @@ use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 use winit::window::{Window, WindowAttributes};
 
 /// 字体渲染配置与网格尺寸由字体度量算出（见 render::cell_metrics），无固定常量。
-
 /// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
 ///
 /// Windows 回落 cmd.exe，其他平台回落 /bin/sh。
@@ -468,12 +467,12 @@ impl ApplicationHandler for AppHandler {
                     .max(1)
                     .min(u16::MAX as u32) as u16;
                 if let Some(vt) = self.vt.as_mut()
-                    && let Err(e) = vt.resize(cols as u16, rows as u16)
+                    && let Err(e) = vt.resize(cols, rows)
                 {
                     eprintln!("vt resize: {}", e);
                 }
                 if let Some(pty) = self.pty.as_mut()
-                    && let Err(e) = pty.resize(cols as u16, rows as u16)
+                    && let Err(e) = pty.resize(cols, rows)
                 {
                     eprintln!("pty resize: {}", e);
                 }
@@ -526,6 +525,7 @@ impl ApplicationHandler for AppHandler {
         {
             match vt.snapshot() {
                 Ok(snap) => {
+                    #[cfg(debug_assertions)]
                     dump_snapshot_if_requested(&snap, Some(&*renderer));
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     if let Err(e) = renderer.render(&snap, pw, ph) {
@@ -566,6 +566,10 @@ fn write_pty(pty: &mut NativePty, bytes: &[u8]) {
 
 /// 测试钩子（默认关闭）：APP_DUMP_SNAPSHOT 设置时，每帧把 FrameSnapshot 文本
 /// （行文本 + 宽格统计）写入该路径，供 e2e 断言而不依赖 OCR。
+/// 测试钩子（默认关闭，仅 debug 构建；任务 4 门控）：APP_DUMP_SNAPSHOT 设置时，
+/// 每帧把 FrameSnapshot 文本（行文本 + 宽格统计 + 每格字体索引）写入该路径，
+/// 供 e2e 断言而不依赖 OCR。release 构建中本函数与钩子字符串均不存在。
+#[cfg(debug_assertions)]
 fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render::CpuRenderer>) {
     let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else { return; };
     let mut text = String::new();

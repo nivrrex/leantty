@@ -8,12 +8,22 @@ mkdir -p "$OUT"
 # per-case 日志与 app-run.log 追加写入，跨 run 残留会污染断言（如 stderr 不含 wake），每次开头清空
 rm -f "$OUT"/case*.log "$OUT"/app-run.log
 DISPLAY_NO=99
-APP_BIN="$ROOT/target/release/app"
+APP_BIN="$ROOT/target/debug/app"
 
-for tool in Xvfb xdotool openbox import wmctrl; do
+for tool in Xvfb xdotool openbox import python3 strings; do
     command -v "$tool" >/dev/null 2>&1 || { echo "FATAL: $tool 未安装"; exit 1; }
 done
-[ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 sh scripts/build-app.sh"; exit 1; }
+[ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：APP_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
+PASS=0; FAIL=0
+# release 构建检查：APP_DUMP_SNAPSHOT 钩子仅 debug（#[cfg(debug_assertions)] 门控整个
+# 函数与钩子字符串）——release 二进制中该字符串不应存在。
+if strings "$ROOT/target/release/app" 2>/dev/null | grep -q APP_DUMP_SNAPSHOT; then
+    echo "FAIL release-hook-leak (APP_DUMP_SNAPSHOT 出现在 release 二进制)"
+    FAIL=$((FAIL+1))
+else
+    echo "PASS release-hook-gated (release 二进制无 APP_DUMP_SNAPSHOT)"
+    PASS=$((PASS+1))
+fi
 
 Xvfb :$DISPLAY_NO -screen 0 1280x720x24 >"$OUT/xvfb.log" 2>&1 &
 XVFB_PID=$!
@@ -23,13 +33,12 @@ trap 'kill $XVFB_PID $WM_PID ${APP_PID:-} 2>/dev/null; exit 0' EXIT INT TERM
 sleep 1
 export DISPLAY=:$DISPLAY_NO
 
-PASS=0; FAIL=0
 WID=""; APP_PID=""
 
-wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）
+wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）。首字体含 CJK 时 from_bytes 一次性成本约 7s（DECISIONS 登记），等待上限放宽到 40×0.5=20s。
     local i=0 pid wid
     WID=""
-    while [ $i -lt 20 ]; do
+    while [ $i -lt 40 ]; do
         for wid in $(xdotool search --name tty 2>/dev/null); do
             pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
             if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
