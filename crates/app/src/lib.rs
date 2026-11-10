@@ -138,21 +138,22 @@ pub struct App {
 }
 
 impl App {
-    /// 新建应用配置。
-    pub fn new(cols: u16, rows: u16, shell: impl Into<String>) -> Self {
+    /// 新建应用配置（由强类型 Config 驱动；shell 优先级 terminal.shell.program > SHELL > 平台默认）。
+    pub fn new(config: config::Config) -> Self {
+        let shell = config
+            .terminal
+            .shell
+            .as_ref()
+            .map(|s| s.program.clone())
+            .or_else(|| std::env::var("SHELL").ok())
+            .unwrap_or_else(|| default_shell().to_string());
         Self {
-            cols,
-            rows,
-            shell: shell.into(),
-            font_family: None,
-            font_size: None,
+            cols: config.window.dimensions.columns,
+            rows: config.window.dimensions.lines,
+            shell,
+            font_family: Some(config.font.normal.family),
+            font_size: Some(config.font.size),
         }
-    }
-
-    /// 命令行字体覆盖。
-    pub fn set_font(&mut self, family: Option<String>, size: Option<f32>) {
-        self.font_family = family;
-        self.font_size = size;
     }
 
     /// 运行事件循环（含上述六条接线）。

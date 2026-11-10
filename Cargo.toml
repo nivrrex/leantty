@@ -4,6 +4,7 @@ edition = "2024"
 
 [workspace]
 members = [
+    "crates/config",
     "crates/vt",
     "crates/pty",
     "crates/render",
@@ -20,3 +21,4 @@ softbuffer = "0.4"
 fontdb = "0.21"
 fontdue = "0.9"
 winit = "0.30"
+toml = "0.8"

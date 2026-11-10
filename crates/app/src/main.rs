@@ -1,38 +1,84 @@
 //! tty 终端入口：起 App 并运行事件循环。
 //!
-//! 配置来源（均为外部输入，解析失败回落默认，不 panic）：
-//! - 环境变量 SHELL：shell 路径；未设置回落平台默认（app::default_shell）
-//! - 环境变量 APP_COLS / APP_ROWS：网格行列，解析失败回落 80x24
-//! - 环境变量 APP_FONT_FAMILY / APP_FONT_SIZE：字体覆盖
-//! - 命令行 --font <family> / --font-size <pt>：覆盖环境变量（规格 2b 约定）
+//! 配置加载（均为外部输入，失败回落默认，不 panic）：
+//! - 路径优先级：--config <路径> > APP_CONFIG 环境变量 > 默认配置文件路径
+//! - 字段优先级：命令行 --font/--font-size > APP_* 环境变量 > 配置文件 > 默认值
+//! - 文件缺失 / 解析硬错误：stderr 报告后以默认配置启动
+//! - 字段级问题（类型错误、颜色非法、数值越界、未知字段）：stderr 警告，
+//!   该字段回落默认，配置整体仍可用
+
+use std::path::PathBuf;
 
 fn main() -> Result<(), app::Error> {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| app::default_shell().to_string());
-    let cols = env_u16("APP_COLS").unwrap_or(80);
-    let rows = env_u16("APP_ROWS").unwrap_or(24);
-    let mut app = app::App::new(cols, rows, shell);
-
-    // 字体覆盖：环境变量为基础，命令行参数优先。
-    let mut font_family = env_string("APP_FONT_FAMILY");
-    let mut font_size = env_f32("APP_FONT_SIZE");
+    let mut cli_config: Option<PathBuf> = None;
+    let mut cli_font: Option<String> = None;
+    let mut cli_font_size: Option<f32> = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--font" => {
-                if let Some(v) = args.next() {
-                    font_family = Some(v);
-                }
-            }
-            "--font-size" => {
-                if let Some(v) = args.next() {
-                    font_size = v.parse().ok();
-                }
-            }
+            "--config" => cli_config = args.next().map(PathBuf::from),
+            "--font" => cli_font = args.next(),
+            "--font-size" => cli_font_size = args.next().and_then(|v| v.parse().ok()),
             _ => {}
         }
     }
-    app.set_font(font_family, font_size);
+    let config = load_config(cli_config, cli_font, cli_font_size);
+    let app = app::App::new(config);
     app.run()
+}
+
+/// 按优先级组装配置：命令行 > 环境变量 > 配置文件 > 默认值。
+/// 任何一层失败均 stderr 报告并继续（不 panic）。
+fn load_config(
+    cli_config: Option<PathBuf>,
+    cli_font: Option<String>,
+    cli_font_size: Option<f32>,
+) -> config::Config {
+    let mut config = match config::resolve_config_path(cli_config) {
+        Ok(path) => match std::fs::read_to_string(&path) {
+            Ok(text) => match config::parse(&text) {
+                Ok((c, warnings)) => {
+                    for w in warnings {
+                        eprintln!("config: {w}");
+                    }
+                    c
+                }
+                Err(e) => {
+                    eprintln!("config: {e}; using defaults");
+                    config::Config::default()
+                }
+            },
+            Err(e) => {
+                eprintln!("config: {} 未读取 ({e}); using defaults", path.display());
+                config::Config::default()
+            }
+        },
+        Err(e) => {
+            eprintln!("config: {e}; using defaults");
+            config::Config::default()
+        }
+    };
+    // 环境变量层（覆盖配置文件值）
+    if let Some(cols) = env_u16("APP_COLS") {
+        config.window.dimensions.columns = cols;
+    }
+    if let Some(rows) = env_u16("APP_ROWS") {
+        config.window.dimensions.lines = rows;
+    }
+    if let Some(family) = env_string("APP_FONT_FAMILY") {
+        config.font.normal.family = family;
+    }
+    if let Some(size) = env_f32("APP_FONT_SIZE") {
+        config.font.size = size;
+    }
+    // 命令行层（最高优先级）
+    if let Some(family) = cli_font {
+        config.font.normal.family = family;
+    }
+    if let Some(size) = cli_font_size {
+        config.font.size = size;
+    }
+    config
 }
 
 /// 读环境变量为 u16；未设置或非数值回落 None。

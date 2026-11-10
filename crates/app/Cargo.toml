@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+config = { path = "../config" }
 pty = { path = "../pty" }
 render = { path = "../render" }
 vt = { path = "../vt" }
