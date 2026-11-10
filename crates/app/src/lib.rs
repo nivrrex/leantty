@@ -28,9 +28,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 use winit::window::{Window, WindowAttributes};
 
-/// 阶段1 固定网格像素尺寸（字符格 8x16 像素）。
-const CELL_W: u32 = 8;
-const CELL_H: u32 = 16;
+/// 字体渲染配置与网格尺寸由字体度量算出（见 render::cell_metrics），无固定常量。
 
 /// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
 ///
@@ -135,6 +133,10 @@ pub struct App {
     pub font_family: Option<String>,
     /// 字号覆盖（pt）。
     pub font_size: Option<f32>,
+    /// 内边距（逻辑像素，窗口每侧）。
+    pub pad_x: u16,
+    /// 内边距（逻辑像素，窗口每侧）。
+    pub pad_y: u16,
 }
 
 impl App {
@@ -153,6 +155,8 @@ impl App {
             shell,
             font_family: Some(config.font.normal.family),
             font_size: Some(config.font.size),
+            pad_x: config.window.padding.x,
+            pad_y: config.window.padding.y,
         }
     }
 
@@ -171,6 +175,11 @@ impl App {
             pty_write_rx: None,
             reader_thread: None,
             last_size: None,
+            cell_w: 8,
+            cell_h: 16,
+            pad_x: 0,
+            pad_y: 0,
+            scale_factor: 1.0,
             event_proxy: Some(event_loop.create_proxy()),
             mods_state: ModifiersState::default(),
         };
@@ -222,6 +231,14 @@ struct AppHandler {
     reader_thread: Option<std::thread::JoinHandle<()>>,
     /// 渲染尺寸缓存（resumed/Resized 更新；窗口销毁后不再查询 X11 geometry）。
     last_size: Option<(u32, u32)>,
+    /// 当前格子物理尺寸（render::cell_metrics 按 scale_factor 计算）。
+    cell_w: u32,
+    cell_h: u32,
+    /// 内边距（逻辑像素，每侧；窗口像素 = 行列*格子 + 2*padding*scale）。
+    pad_x: u16,
+    pad_y: u16,
+    /// 当前缩放因子（winit scale_factor）。
+    scale_factor: f64,
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     mods_state: ModifiersState,
@@ -233,11 +250,22 @@ impl ApplicationHandler for AppHandler {
             .config
             .take()
             .expect("resumed 只能调用一次");
+        // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
+        let renderer = match CpuRenderer::new(config.font_family, config.font_size) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("CpuRenderer::new: {}", e);
+                return;
+            }
+        };
+        // 初始格子按 scale=1.0 预估（winit 在 create_window 前不给真实 scale；
+        // 创建后取真实 scale，差异时重算并 set_inner_size 修正）。
+        let (init_cw, init_ch) = renderer.cell_metrics(1.0);
         let mut attrs = WindowAttributes::default();
         attrs.title = "tty".to_string();
         attrs.inner_size = Some(winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
-            f64::from(config.cols) * f64::from(CELL_W),
-            f64::from(config.rows) * f64::from(CELL_H),
+            f64::from(config.cols) * f64::from(init_cw) + 2.0 * f64::from(config.pad_x),
+            f64::from(config.rows) * f64::from(init_ch) + 2.0 * f64::from(config.pad_y),
         )));
         // 启动失败路径：记录原因并退出事件循环，不 panic（外部输入/系统调用须覆盖失败路径）。
         let window = Rc::new(match event_loop.create_window(attrs) {
@@ -315,13 +343,28 @@ impl ApplicationHandler for AppHandler {
             eprintln!("on_pty_write: {}", e);
             return;
         }
-        let renderer = match CpuRenderer::new(config.font_family, config.font_size) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("CpuRenderer::new: {}", e);
-                return;
+        // HiDPI：窗口创建后取真实 scale_factor，与预估不同则重算格子并修正窗口逻辑尺寸。
+        let scale = window.scale_factor();
+        let (cell_w, cell_h) = if (scale - 1.0).abs() > f64::EPSILON {
+            let (cw, ch) = renderer.cell_metrics(scale);
+            if window
+                .request_inner_size(winit::dpi::LogicalSize::new(
+                    f64::from(config.cols) * f64::from(cw) / scale
+                        + 2.0 * f64::from(config.pad_x),
+                    f64::from(config.rows) * f64::from(ch) / scale
+                        + 2.0 * f64::from(config.pad_y),
+                ))
+                .is_none()
+            {
+                eprintln!("request_inner_size: 窗口未接受 HiDPI 修正尺寸");
             }
+            (cw, ch)
+        } else {
+            (init_cw, init_ch)
         };
+        self.cell_w = cell_w;
+        self.cell_h = cell_h;
+        self.scale_factor = scale;
         self.window = Some(window);
         self.surface = Some(surface);
         self.vt = Some(vt);
@@ -343,6 +386,30 @@ impl ApplicationHandler for AppHandler {
     ) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::ScaleFactorChanged {
+                scale_factor,
+                mut inner_size_writer,
+            } => {
+                // HiDPI：重算格子物理尺寸 → InnerSizeWriter 保持 dimensions 行列数
+                // （逻辑尺寸 = 行列*逻辑格子 + 2*padding）；随后 Resized 走统一路径
+                // 重排网格并 resize vt/pty。字形缓存整体失效随任务3 落地（当前无缓存）。
+                let (Some(renderer), Some(app_cfg)) = (self.renderer.as_ref(), self.config.as_ref())
+                else {
+                    return;
+                };
+                let (cw, ch) = renderer.cell_metrics(scale_factor);
+                self.cell_w = cw;
+                self.cell_h = ch;
+                self.scale_factor = scale_factor;
+                if let Err(e) = inner_size_writer.request_inner_size(winit::dpi::PhysicalSize::new(
+                    u32::from(app_cfg.cols) * cw
+                        + 2 * u32::from(app_cfg.pad_x) * scale_factor as u32,
+                    u32::from(app_cfg.rows) * ch
+                        + 2 * u32::from(app_cfg.pad_y) * scale_factor as u32,
+                )) {
+                    eprintln!("request_inner_size: {}", e);
+                }
+            }
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
@@ -383,8 +450,17 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
-                let cols = (physical_size.width / CELL_W).max(1);
-                let rows = (physical_size.height / CELL_H).max(1);
+                // 窗口物理尺寸 = 行列*格子(物理) + 2*padding(逻辑*scale)；反算行列，min(1) 兜底。
+                let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
+                let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
+                let cw = self.cell_w.max(1);
+                let ch = self.cell_h.max(1);
+                let cols = (physical_size.width.saturating_sub(2 * pad_x) / cw)
+                    .max(1)
+                    .min(u16::MAX as u32) as u16;
+                let rows = (physical_size.height.saturating_sub(2 * pad_y) / ch)
+                    .max(1)
+                    .min(u16::MAX as u32) as u16;
                 if let Some(vt) = self.vt.as_mut()
                     && let Err(e) = vt.resize(cols as u16, rows as u16)
                 {
@@ -445,7 +521,7 @@ impl ApplicationHandler for AppHandler {
             match vt.snapshot() {
                 Ok(snap) => {
                     dump_snapshot_if_requested(&snap);
-                    let (pw, ph) = self.last_size.unwrap_or((CELL_W, CELL_H));
+                    let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }

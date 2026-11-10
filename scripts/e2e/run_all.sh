@@ -26,20 +26,38 @@ export DISPLAY=:$DISPLAY_NO
 PASS=0; FAIL=0
 WID=""; APP_PID=""
 
-start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）
-    local log=${2:-$OUT/app-run.log}
-    APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
-    APP_PID=$!
-    local i=0
+wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）
+    local i=0 pid wid
     WID=""
     while [ $i -lt 20 ]; do
-        WID=$(xdotool search --name "tty" 2>/dev/null | head -1)
-        [ -n "$WID" ] && break
+        for wid in $(xdotool search --name tty 2>/dev/null); do
+            pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
+            if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
+                WID=$wid
+                return 0
+            fi
+        done
         sleep 0.5
         i=$((i+1))
     done
-    if [ -z "$WID" ]; then
-        echo "FAIL start_app: 未找到 tty 窗口"; FAIL=$((FAIL+1))
+    return 1
+}
+
+start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/$4 = 初始 columns/lines（可选）
+    local log=${2:-$OUT/app-run.log}
+    if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
+        APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
+    else
+        APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
+    fi
+    APP_PID=$!
+    if ! wait_window; then
+        echo "FAIL start_app: 未找到 tty 窗口"
+        echo "  diag: APP_PID=$APP_PID search=[$(xdotool search --name tty 2>/dev/null | tr '\n' ' ')]"
+        ps -o pid,stat,cmd -p $APP_PID 2>/dev/null || echo "  diag: app 进程不存在"
+        echo "  diag: applog=[$(cat "$log" 2>/dev/null | tr '\n' '|')]"
+        tail -2 "$OUT/openbox.log" 2>/dev/null | sed 's/^/  ob: /'
+        FAIL=$((FAIL+1))
         return 1
     fi
     xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -186,15 +204,34 @@ if start_app "$D" "$L"; then
     assert_no_wake "case6-windowclose-no-wake" "$L"
 fi
 
-# 用例 7：resize 双侧一致（窗口 640x480 像素 → 80x30 格；stty size 一致）
+# 用例 7：resize 双侧一致（窗口 640x480 像素；格子由字体度量算出，非固定 8x16——
+# 断言快照 cols/rows 与 stty size 双侧一致，不固定 80x30）
 D="$OUT/case7-resize.dump"
-if start_app "$D"; then
+L="$OUT/case7-resize.log"
+if start_app "$D" "$L"; then
     xdotool windowsize "$WID" 640 480
-    assert_dump "case7-resize-cols" "$D" "cols=80"
-    assert_dump "case7-resize-rows" "$D" "rows=30"
+    sleep 1
+    COLS=""; ROWS=""; i=0
+    while [ $i -lt 10 ]; do
+        COLS=$(grep -o 'cols=[0-9]*' "$D" 2>/dev/null | head -1 | cut -d= -f2)
+        ROWS=$(grep -o 'rows=[0-9]*' "$D" 2>/dev/null | head -1 | cut -d= -f2)
+        [ -n "$COLS" ] && [ -n "$ROWS" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    if [ -n "$COLS" ] && [ "$COLS" -ge 1 ] 2>/dev/null \
+       && [ -n "$ROWS" ] && [ "$ROWS" -ge 1 ] 2>/dev/null; then
+        echo "PASS case7-resize-cols (cols=$COLS)"; PASS=$((PASS+1))
+        echo "PASS case7-resize-rows (rows=$ROWS)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case7-resize (dump 未给出 cols/rows)"
+        cp "$D" "$OUT/case7-resize-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+2))
+    fi
     xdotool type --window "$WID" "stty size"
     xdotool key --window "$WID" Return
-    assert_dump "case7-stty-size" "$D" "30 80"
+    assert_dump "case7-stty-size" "$D" "$ROWS $COLS"
+    assert_no_wake "case7-resize-no-wake" "$L"
     stop_app
 fi
 
@@ -223,6 +260,22 @@ elif command -v less >/dev/null 2>&1; then
     fi
 else
     echo "SKIP case8-alt-screen (vim/less 均未安装，无法构造交替屏)"
+fi
+
+# 用例 9：启动参数 120x30（window.dimensions 经 APP_COLS/APP_ROWS env 层）→
+# 快照 cols/rows 与 stty size 一致（网格由字体度量算出，dimensions 决定初始行列）
+D="$OUT/case9-dims120x30.dump"
+L="$OUT/case9-dims120x30.log"
+if start_app "$D" "$L" 120 30; then
+    sleep 1
+    xdotool type --window "$WID" "stty size"
+    xdotool key --window "$WID" Return
+    assert_dump "case9-dims-cols" "$D" "cols=120"
+    assert_dump "case9-dims-rows" "$D" "rows=30"
+    assert_dump "case9-dims-stty" "$D" "30 120"
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case9-dims120x30-exits"
+    assert_no_wake "case9-dims120x30-no-wake" "$L"
 fi
 
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="

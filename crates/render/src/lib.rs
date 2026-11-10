@@ -47,6 +47,25 @@ pub trait Renderer {
     ) -> Result<(), Error>;
 }
 
+/// 由字体度量算格子尺寸（纯函数）：宽取 '0' 的 advance，高取
+/// ascent+descent+line_gap（fontdue LineMetrics::new_line_size = ascent - descent + line_gap），
+/// 均向上取整到整像素。scale 为 winit scale_factor（HiDPI 缩放）。
+pub fn cell_metrics(font: &Font, size: f32, scale: f64) -> (u32, u32) {
+    let px = size * scale as f32;
+    let advance_w = font.metrics('0', px).advance_width;
+    let w = advance_w.ceil() as u32;
+    let h = match font.horizontal_line_metrics(px) {
+        Some(lm) => lm.new_line_size.ceil() as u32,
+        None => {
+            // 字体缺行度量表：用 'M' 的轮廓高兜底，再兜底 px 向上取整。
+            let m = font.metrics('M', px);
+            let bounds_h = m.bounds.height.ceil() as u32;
+            bounds_h.max(px.ceil() as u32)
+        }
+    };
+    (w.max(1), h.max(1))
+}
+
 /// 基于 fontdb/fontdue 的 CPU 光栅化渲染器，单字体等宽网格。
 pub struct CpuRenderer {
     font_family: String,
@@ -91,6 +110,14 @@ impl CpuRenderer {
     /// 帧缓冲尺寸。
     pub fn framebuffer_size(&self) -> (u32, u32) {
         (self.fb_width, self.fb_height)
+    }
+
+    /// 当前字体在 scale 下的格子尺寸（物理像素）；字体未加载时回落阶段1 常量 8x16。
+    pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
+        match &self.font {
+            Some(f) => cell_metrics(f, self.font_size, scale),
+            None => (8, 16),
+        }
     }
 }
 
