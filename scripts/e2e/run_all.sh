@@ -278,5 +278,32 @@ if start_app "$D" "$L" 120 30; then
     assert_no_wake "case9-dims120x30-no-wake" "$L"
 fi
 
+# 用例 10：examples/linux.toml（--config 启动）+ 中文输入 → 回显非方块、
+# font 索引行存在（回退链 e2e 断言，替代截图像素比对；规格任务 3.6 备选方案）。
+# 中文输入走 printf 八进制路径（实测：xdotool type 对 CJK 发 caret 记法文本，
+# 本环境不可用；case2 同结论，DECISIONS 登记）。
+D="$OUT/case10-cjk-config.dump"
+L="$OUT/case10-cjk-config.log"
+APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$ROOT/examples/linux.toml" >>"$L" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    xdotool windowactivate "$WID" >/dev/null 2>&1
+    xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 1
+    xdotool type --window "$WID" "printf '\\344\\275\\240\\345\\245\\275'"
+    xdotool key --window "$WID" Return
+    assert_dump "case10-cjk-echo" "$D" "你好"
+    assert_dump "case10-cjk-cols" "$D" "cols=120"
+    if grep -q '^# font:' "$D"; then
+        echo "PASS case10-cjk-font-indices"; PASS=$((PASS+1))
+    else
+        echo "FAIL case10-cjk-font-indices (dump 无 # font 行)"
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case10-cjk-config-exits"
+    assert_no_wake "case10-cjk-config-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

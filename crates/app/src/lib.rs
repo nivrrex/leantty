@@ -129,10 +129,11 @@ pub struct App {
     pub rows: u16,
     /// shell 路径。
     pub shell: String,
-    /// 字体 family 覆盖。
-    pub font_family: Option<String>,
-    /// 字号覆盖（pt）。
-    pub font_size: Option<f32>,
+    /// 字体设置（config 转换，含四组 style 与 fallback）。
+    pub font_settings: render::FontSettings,
+    /// 渲染选项（font 渲染选项）与颜色表（colors 段）。
+    pub options: render::RenderOptions,
+    pub palette: render::Palette,
     /// 内边距（逻辑像素，窗口每侧）。
     pub pad_x: u16,
     /// 内边距（逻辑像素，窗口每侧）。
@@ -153,8 +154,9 @@ impl App {
             cols: config.window.dimensions.columns,
             rows: config.window.dimensions.lines,
             shell,
-            font_family: Some(config.font.normal.family),
-            font_size: Some(config.font.size),
+            font_settings: render_font_settings(&config),
+            options: render_options(&config),
+            palette: render_palette(&config.colors),
             pad_x: config.window.padding.x,
             pad_y: config.window.padding.y,
         }
@@ -251,8 +253,11 @@ impl ApplicationHandler for AppHandler {
             .take()
             .expect("resumed 只能调用一次");
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
-        let renderer = match CpuRenderer::new(config.font_family, config.font_size) {
-            Ok(r) => r,
+        let renderer = match CpuRenderer::new(&config.font_settings, config.options, config.palette) {
+            Ok(mut r) => {
+                r.set_scale_factor(1.0);
+                r
+            }
             Err(e) => {
                 eprintln!("CpuRenderer::new: {}", e);
                 return;
@@ -392,11 +397,12 @@ impl ApplicationHandler for AppHandler {
             } => {
                 // HiDPI：重算格子物理尺寸 → InnerSizeWriter 保持 dimensions 行列数
                 // （逻辑尺寸 = 行列*逻辑格子 + 2*padding）；随后 Resized 走统一路径
-                // 重排网格并 resize vt/pty。字形缓存整体失效随任务3 落地（当前无缓存）。
-                let (Some(renderer), Some(app_cfg)) = (self.renderer.as_ref(), self.config.as_ref())
+                // 重排网格并 resize vt/pty。字形位图缓存整体失效（set_scale_factor）。
+                let (Some(renderer), Some(app_cfg)) = (self.renderer.as_mut(), self.config.as_ref())
                 else {
                     return;
                 };
+                renderer.set_scale_factor(scale_factor);
                 let (cw, ch) = renderer.cell_metrics(scale_factor);
                 self.cell_w = cw;
                 self.cell_h = ch;
@@ -520,7 +526,7 @@ impl ApplicationHandler for AppHandler {
         {
             match vt.snapshot() {
                 Ok(snap) => {
-                    dump_snapshot_if_requested(&snap);
+                    dump_snapshot_if_requested(&snap, Some(&*renderer));
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
@@ -560,7 +566,7 @@ fn write_pty(pty: &mut NativePty, bytes: &[u8]) {
 
 /// 测试钩子（默认关闭）：APP_DUMP_SNAPSHOT 设置时，每帧把 FrameSnapshot 文本
 /// （行文本 + 宽格统计）写入该路径，供 e2e 断言而不依赖 OCR。
-fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot) {
+fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render::CpuRenderer>) {
     let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else { return; };
     let mut text = String::new();
     let mut wide = 0usize;
@@ -577,6 +583,14 @@ fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot) {
         }
         text.push_str(line.trim_end());
         text.push('\n');
+    }
+    // 每格实际使用的组内字体索引（回退链 e2e 断言用；任务 4 将本钩子门控为仅 debug）。
+    if let Some(r) = renderer {
+        for line in r.font_indices(snap) {
+            text.push_str("# font: ");
+            text.push_str(&line.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" "));
+            text.push('\n');
+        }
     }
     let full = format!(
         "# cols={} rows={} wide={} spacer={} alternate={}\n{}",
@@ -628,5 +642,70 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
             None
         }
         _ => None,
+    }
+}
+
+/// config::Config → render::FontSettings（family/style 字符串原样传递）。
+fn render_font_settings(config: &config::Config) -> render::FontSettings {
+    let spec = |f: &config::FontSpec| render::FontSpec {
+        family: f.family.clone(),
+        style: f.style.clone(),
+    };
+    render::FontSettings {
+        size: config.font.size,
+        normal: spec(&config.font.normal),
+        bold: spec(&config.font.bold),
+        italic: spec(&config.font.italic),
+        bold_italic: spec(&config.font.bold_italic),
+        fallback: config.font.fallback.iter().map(spec).collect(),
+    }
+}
+
+/// config font 渲染选项 → render::RenderOptions。
+fn render_options(config: &config::Config) -> render::RenderOptions {
+    render::RenderOptions {
+        antialiasing: match config.font.antialiasing {
+            config::Antialiasing::Grayscale => render::Antialiasing::Grayscale,
+            config::Antialiasing::None => render::Antialiasing::None,
+        },
+        subpixel: match config.font.subpixel {
+            config::Subpixel::None => render::Subpixel::None,
+            config::Subpixel::Rgb => render::Subpixel::Rgb,
+            config::Subpixel::Bgr => render::Subpixel::Bgr,
+        },
+        hinting: config.font.hinting,
+        text_gamma: config.font.text_gamma,
+        draw_bold_with_bright: config.colors.draw_bold_text_with_bright_colors,
+    }
+}
+
+/// config colors → render::Palette（config::Rgb 与 vt::Rgb 字段同名转换）。
+fn render_palette(colors: &config::Colors) -> render::Palette {
+    let c = |c: config::Rgb| vt::Rgb { r: c.r, g: c.g, b: c.b };
+    render::Palette {
+        primary_bg: c(colors.primary.background),
+        primary_fg: c(colors.primary.foreground),
+        cursor_text: c(colors.cursor.text),
+        cursor: c(colors.cursor.cursor),
+        normal: [
+            c(colors.normal.black),
+            c(colors.normal.red),
+            c(colors.normal.green),
+            c(colors.normal.yellow),
+            c(colors.normal.blue),
+            c(colors.normal.magenta),
+            c(colors.normal.cyan),
+            c(colors.normal.white),
+        ],
+        bright: [
+            c(colors.bright.black),
+            c(colors.bright.red),
+            c(colors.bright.green),
+            c(colors.bright.yellow),
+            c(colors.bright.blue),
+            c(colors.bright.magenta),
+            c(colors.bright.cyan),
+            c(colors.bright.white),
+        ],
     }
 }
