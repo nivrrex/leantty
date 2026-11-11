@@ -275,12 +275,13 @@ fn render_selection_inverts_selected_cell() {
     });
     assert!(a_bg_blue, "未选反显格背景不受选区影响");
 
-    // 清除选区后恢复原背景。
+    // 清除选区后恢复原背景（B 格 bg=默认黑；字形本身是红色，断言背景黑像素
+    // 存在而非"全格无红"，避免把字形红像素误判为选区残留）。
     renderer.set_selection(None);
     renderer.render(&snap, 48, 24).expect("render");
     let fb = renderer.framebuffer();
-    let b_bg_default = (w..2 * w).all(|x| {
-        (0..24u32).all(|y| fb[(y * 48 + x) as usize] != red)
+    let b_bg_black = (w..2 * w).any(|x| {
+        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black)
     });
-    assert!(b_bg_default, "清除选区后 B 格不应再有红色背景");
+    assert!(b_bg_black, "清除选区后 B 格背景应恢复默认黑");
 }
