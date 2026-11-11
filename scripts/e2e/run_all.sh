@@ -1,4 +1,9 @@
 #!/bin/sh
+# 清理前轮残留 Xvfb/openbox（trap 在工具层超时 kill 下可能未执行；
+# 精确进程名，非通配）。
+pkill -x Xvfb 2>/dev/null || true
+pkill -x openbox 2>/dev/null || true
+sleep 0.5
 # e2e 验收（阶段 B）：Xvfb + openbox + app + xdotool，断言经 APP_DUMP_SNAPSHOT 文本钩子。
 # 一条命令跑全部用例；失败时保留 dump 与截图。变量全部来自环境/脚本位置推导。
 set -u
@@ -39,6 +44,10 @@ wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校�
     local i=0 pid wid
     WID=""
     while [ $i -lt 40 ]; do
+        # 进程已退（zombie）立即失败：X server 连接偶发失败等启动错误不再空等 20s。
+        if [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; then
+            return 1
+        fi
         for wid in $(xdotool search --name tty 2>/dev/null); do
             pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
             if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
@@ -54,6 +63,7 @@ wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校�
 
 start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/$4 = 初始 columns/lines（可选）
     local log=${2:-$OUT/app-run.log}
+    local attempt=1
     if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
         APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
     else
@@ -61,6 +71,24 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     fi
     APP_PID=$!
     if ! wait_window; then
+        # X server 连接偶发失败（Xvfb 序列环境已验证）：进程已退出（kill -0 失败
+        # 或 zombie）则 1s 后重试一次；进程存活但窗口未到则不重试（避免叠 app）。
+        if [ $attempt -lt 2 ] && { ! kill -0 $APP_PID 2>/dev/null || [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; }; then
+            attempt=$((attempt+1))
+            echo "retry start_app: 第 $((attempt-1)) 次启动进程已退出，1s 后重试" >&2
+            sleep 1
+            if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
+                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
+            else
+                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
+            fi
+            APP_PID=$!
+            if wait_window; then
+                xdotool windowactivate "$WID" >/dev/null 2>&1
+                xdotool windowfocus "$WID" >/dev/null 2>&1
+                return 0
+            fi
+        fi
         echo "FAIL start_app: 未找到 tty 窗口"
         echo "  diag: APP_PID=$APP_PID search=[$(xdotool search --name tty 2>/dev/null | tr '\n' ' ')]"
         ps -o pid,stat,cmd -p $APP_PID 2>/dev/null || echo "  diag: app 进程不存在"
@@ -198,6 +226,10 @@ D="$OUT/case5-ctrld.dump"
 L="$OUT/case5-ctrl-d.log"
 if start_app "$D" "$L"; then
     xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
     assert_app_exits "case5-ctrl-d-app-exits"
     assert_no_wake "case5-ctrl-d-no-wake" "$L"
 fi
@@ -248,7 +280,8 @@ fi
 if command -v vim >/dev/null 2>&1; then
     D="$OUT/case8-alt.dump"
     if start_app "$D"; then
-        xdotool type --window "$WID" "vim"
+        sleep 0.3
+        xdotool type --delay 60 --window "$WID" "vim"
         xdotool key --window "$WID" Return
         assert_dump "case8-alt-screen-on" "$D" "alternate=true"
         xdotool key --window "$WID" Escape
@@ -260,7 +293,8 @@ if command -v vim >/dev/null 2>&1; then
 elif command -v less >/dev/null 2>&1; then
     D="$OUT/case8-alt.dump"
     if start_app "$D"; then
-        xdotool type --window "$WID" "less"
+        sleep 0.3
+        xdotool type --delay 60 --window "$WID" "less"
         xdotool key --window "$WID" Return
         assert_dump "case8-alt-screen-on" "$D" "alternate=true"
         xdotool key --window "$WID" q
@@ -282,6 +316,10 @@ if start_app "$D" "$L" 120 30; then
     assert_dump "case9-dims-cols" "$D" "cols=120"
     assert_dump "case9-dims-rows" "$D" "rows=30"
     assert_dump "case9-dims-stty" "$D" "30 120"
+    xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
     xdotool key --window "$WID" ctrl+d
     assert_app_exits "case9-dims120x30-exits"
     assert_no_wake "case9-dims120x30-no-wake" "$L"
@@ -309,6 +347,10 @@ if wait_window; then
         echo "FAIL case10-cjk-font-indices (dump 无 # font 行)"
         FAIL=$((FAIL+1))
     fi
+    xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
     xdotool key --window "$WID" ctrl+d
     assert_app_exits "case10-cjk-config-exits"
     assert_no_wake "case10-cjk-config-no-wake" "$L"
@@ -349,9 +391,95 @@ if start_app "$D" "$L"; then
     assert_dump "case11-cjk-echo" "$D" "你好"
     assert_dump "case11-after-cjk" "$D" "AFTER_CJK"
     xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
     assert_app_exits "case11-boot-perf-exits"
     assert_no_wake "case11-boot-perf-no-wake" "$L"
 fi
+
+# 用例 12：选区与剪贴板（任务 2.1/2.2）——拖选输出行→PRIMARY 写→右键 Paste
+# （默认绑定 Right=Paste）→粘贴文本作为命令执行→dump 断言回显。
+D="$OUT/case12-selection.dump"
+L="$OUT/case12-selection.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "echo PASTE_TARGET"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 拖选第 1 行（echo 输出行；y=30 ≈ 行 1 中部，x 10→200 跨整行）。
+    # 按钮事件必须走 XTest 根坐标注入（xdotool 老版本 --window click/mousedown
+    # 走 XSendEvent，winit 过滤 send_event 标志；先 warp 再无 --window 发按钮）。
+    xdotool mousemove --window "$WID" 10 30
+    sleep 0.2
+    xdotool mousedown 1
+    xdotool mousemove --window "$WID" 200 30
+    sleep 0.2
+    xdotool mouseup 1
+    sleep 0.5
+    # PRIMARY 写断言（选区定型时写）
+    if xclip -o -selection primary 2>/dev/null | grep -q "PASTE_TARGET"; then
+        echo "PASS case12-primary-write"; PASS=$((PASS+1))
+    else
+        echo "FAIL case12-primary-write (PRIMARY 无 PASTE_TARGET)"; FAIL=$((FAIL+1))
+    fi
+    # 右键 Paste（默认绑定 Right=Paste）→粘贴文本作命令执行→命令行回显唯一串
+    # （源命令行为 "echo PASTE_TARGET"，粘贴回显行为 "PASTE_TARGET"，可区分）
+    xdotool mousemove --window "$WID" 400 30
+    sleep 0.2
+    xdotool click 3
+    sleep 1
+    # 粘贴内容无换行→shell 命令行未提交；补 Return 提交后 ctrl+d 才是 EOF。
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    if grep -qF "sh-5.2# PASTE_TARGET" "$D" 2>/dev/null; then
+        echo "PASS case12-paste-exec (粘贴命令行回显)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case12-paste-exec (dump 无粘贴命令行回显)"
+        cp "$D" "$OUT/case12-paste-exec-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case12-selection-exits"
+    assert_no_wake "case12-selection-no-wake" "$L"
+fi
+
+# 用例 13：括号粘贴（任务 2.3）——?2004 模式下粘贴含换行内容→cat -v 显示
+# ESC[200~…ESC[201~ 包裹（内容中 \n 规范化为 \r，cat -v 显示 ^M）。
+D="$OUT/case13-bracketed.dump"
+L="$OUT/case13-bracketed.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?2004h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # CLIPBOARD 设含换行内容（xclip -i 读 stdin；printf 八进制换行防 shell 语义）
+    printf 'BB1\nBB2' | xclip -i -selection clipboard
+    sleep 0.3
+    xdotool mousemove --window "$WID" 400 30
+    sleep 0.2
+    xdotool click 3
+    sleep 1
+    if grep -qF '^[[200~BB1' "$D" 2>/dev/null && grep -qF 'BB2^[[201~' "$D" 2>/dev/null; then
+        echo "PASS case13-bracketed-wrap"; PASS=$((PASS+1))
+    else
+        echo "FAIL case13-bracketed-wrap (dump 无 ESC[200~…ESC[201~ 包裹)"
+        cp "$D" "$OUT/case13-bracketed-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+c
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case13-bracketed-exits"
+    assert_no_wake "case13-bracketed-no-wake" "$L"
+fi
+
 
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

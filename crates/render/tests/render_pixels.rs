@@ -239,3 +239,48 @@ fn render_options_change_pixels() {
         "subpixel 渲染应产生前景像素"
     );
 }
+
+/// 选区高亮（任务 2B）：选中格背景=字色、字形=原背景（反色）；未选格不受影响。
+#[test]
+fn render_selection_inverts_selected_cell() {
+    let mut renderer = match CpuRenderer::new(&settings(), opts(false), palette()) {
+        Ok(r) => r,
+        Err(Error::Font(msg)) => {
+            println!("skip: 系统无可用字体（{}）", msg);
+            return;
+        }
+        Err(e) => panic!("CpuRenderer::new 失败: {}", e),
+    };
+    let snap = synth_snapshot();
+    renderer.set_selection(Some((1, 0, 1, 0))); // 仅 B 格（红字、默认黑底）
+    renderer.render(&snap, 48, 24).expect("render");
+    let fb = renderer.framebuffer();
+    let w = 16u32;
+    let red = 0xFFCD_0000u32; // rgb_to_u32(Rgb{205,0,0})
+    let black = 0xFF00_0000u32;
+
+    // B 格：背景=字色红（整格填充），字形像素=原背景黑。
+    let b_bg_red = (w..2 * w).any(|x| {
+        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red)
+    });
+    assert!(b_bg_red, "选区格背景应为字色红");
+    let b_glyph_black = (w..2 * w).any(|x| {
+        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black)
+    });
+    assert!(b_glyph_black, "选区格字形应为原背景黑");
+
+    // A 格（未选、反显）：背景仍为原背景蓝（0xFF0000EE）。
+    let a_bg_blue = (0..w).any(|x| {
+        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == 0xFF00_00EE)
+    });
+    assert!(a_bg_blue, "未选反显格背景不受选区影响");
+
+    // 清除选区后恢复原背景。
+    renderer.set_selection(None);
+    renderer.render(&snap, 48, 24).expect("render");
+    let fb = renderer.framebuffer();
+    let b_bg_default = (w..2 * w).all(|x| {
+        (0..24u32).all(|y| fb[(y * 48 + x) as usize] != red)
+    });
+    assert!(b_bg_default, "清除选区后 B 格不应再有红色背景");
+}

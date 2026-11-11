@@ -119,6 +119,23 @@ impl VtTerminal {
         Ok(encoder)
     }
 
+    /// 括号粘贴模式（?2004）当前状态（粘贴规范化包裹用）。
+    pub fn is_bracketed_paste(&self) -> Result<bool, Error> {
+        Ok(self
+            .inner
+            .mode(libghostty_vt::terminal::Mode::BRACKETED_PASTE)?)
+    }
+
+    /// 鼠标上报模式当前状态（X10/1000/1002/1003 任一开启）。
+    pub fn is_mouse_tracking(&self) -> Result<bool, Error> {
+        Ok(self.inner.is_mouse_tracking()?)
+    }
+
+    /// 滚动视口（scrollback/备用屏联动；上滚偏移由调用方维护）。
+    pub fn scroll_viewport(&mut self, scroll: libghostty_vt::terminal::ScrollViewport) {
+        self.inner.scroll_viewport(scroll);
+    }
+
     /// 暴露内部引用，供 encoder 的 set_options_from_terminal 使用。
     pub(crate) fn inner(&self) -> &Terminal<'static, 'static> {
         &self.inner

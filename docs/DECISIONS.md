@@ -51,3 +51,13 @@
 - opacity 状态（已验证事实）：window.opacity 已解析并校验（0..=1，越界回落默认），渲染层未实现透明度混合（softbuffer CPU surface 无 alpha 通道接线），字段保留待后续阶段；e2e/截图均为 opacity=1.0 不受影响。
 - 启动性能基线（已验证事实）：release 首帧无配置 339ms、examples/linux.toml 929ms（黑体 fallback from_bytes 同步阻塞 resumed）；fontdue from_bytes 对 NotoSansCJK-Regular.ttc 19MB release 实测 806.8ms（debug 6.1s）；目标 release<500ms（有主字体即可）→懒加载改造（主字体同步、fallback/系统兜底后台线程+U+25A1 占位+channel 通知+唤醒重绘）。
 - 启动性能懒加载（已验证事实）：主字体同步加载；fallback 与系统兜底字体后台线程懒加载（render::load_font_list 自由函数，线程内自建 Database；仅 owned 数据经 channel 传递，Database 非共享——线程安全文档注于函数）；到位经 app about_to_wait 轮询 channel 并入 renderer（add_background_fonts：并入各组+清码点/字形缓存）并发 EventLoopProxy 唤醒重绘（与 Wake 同构）；未到位码点画 U+25A1 占位（rasterize_glyph：font_index_for None→组首字体光栅 U+25A1；全链缺失同路径，不 panic）。实测：release 首帧 examples/linux.toml 929ms→203ms（懒加载后）；from_bytes 19MB CJK release 806.8ms 后台承担。单测覆盖"请求→占位→到位→重绘替换"序列+空列表失败路径。
+- arboard 3.7.0 评估结论（已验证事实）：X11 后端为核心特性（无 x11 feature 开关），features=["x11"] 不存在（cargo add 报错）；default-features=false 去 image-data 链（文本剪贴板不需要图像，依赖最小化）；PRIMARY+CLIPBOARD 同接口（GetExtLinux/SetExtLinux trait）；Windows 共用 Clipboard trait（阶段1 接口不变）。
+- Clipboard trait 非 Send（已验证事实）：arboard Clipboard X11 连接在主线程创建；仅主线程调用，trait 不加 Send 约束，文档注释声明。
+- X11 所有权语义（工程判断）：arboard set 后持有者存活至进程退出，内容不丢；e2e 用 xclip -o 另一进程读验证。
+- 绑定覆盖语义偏差（待验证假设→已验证事实）：规格"mouse/keyboard.bindings 冲突后者覆盖"——config 解析层 keyboard.bindings 无 mouse 字段（恒 None），覆盖仅在 mouse.bindings 内部重复条目生效；keyboard.bindings 条目不参与鼠标按钮查表。已按此实现并单测（find_binding 后者覆盖）。
+- reader EOF 退出前必须 wake 主线程（已验证事实）：PTY EOF→reader 线程退出时若不发 wake，事件循环无新事件可等→about_to_wait 不触发→try_wait 轮询丢失→子进程退出检测丢失→app 挂起（case11-boot-perf-exits 偶发 5s 未退出根因；插桩取证：encoded=[4] 正确、reader_eof 有、child_exited 无、[aw] 心跳 0）。修复：reader_body EOF break 前 waker.wake()（EventLoopClosed 静默路径不变）；回归单测 eof_wakes_event_loop_before_exit。
+- 选区模型在 app 内自有（已验证事实）：libghostty-vt 无 Selection API（vendor crates/libghostty-vt/src/lib.rs:124 注释）；选区以网格坐标存储（Selection{anchor,focus}），滚动偏移联动留任务 4。
+- 鼠标按钮事件必须走 XTest 根坐标注入（已验证事实）：xdotool 3.20160805 的 --window mousedown/click 走 XSendEvent（send_event 标志），winit 0.30 过滤该标志事件→app 收不到 MouseInput；先 mousemove --window warp 再无 --window 发按钮事件（XTest）可达（e2e case12 验证）。
+- 绑定执行 config 访问路径（已验证事实）：AppHandler.config 字段在 resumed 被 take 后为 None，运行时绑定查表全部短路（case13 根因）；修复=resumed 末尾 self.config=Some(config) 回填，字段语义从"待消费配置"扩展为"运行时配置"。
+- e2e 粘贴内容无换行时 shell 命令行不提交（已验证事实）：选区文本行间不插换行（extract_text 设计），case12 粘贴后补 Return 提交，否则 ctrl+d 为删字符而非 EOF。
+- case11 偶发启动性能断言不稳为 Xvfb 序列环境负载（工程判断）：10 轮中 1 轮 22s 首帧输出（非 2s 窗口），非 app 回归；case12/13 稳定 15+ 连 PASS。

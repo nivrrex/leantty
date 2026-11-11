@@ -60,3 +60,41 @@ fn other_error_reported_and_reader_exits() {
         reported[0]
     );
 }
+
+/// 立即 EOF 的数据源。
+struct EofReader;
+
+impl Read for EofReader {
+    fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        Ok(0)
+    }
+}
+
+/// 计数 waker（记录 wake 调用次数；AtomicUsize 线程安全：reader_body 经 &self 调用）。
+struct CountingWaker {
+    count: std::sync::atomic::AtomicUsize,
+}
+
+impl Wake for CountingWaker {
+    fn wake(&self) -> Result<(), Error> {
+        self.count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
+    }
+}
+
+#[test]
+fn eof_wakes_event_loop_before_exit() {
+    // 根因回归（case11 偶发 5s 未退出）：reader EOF 退出前必须 wake 主线程，
+    // 否则事件循环无新事件可等→about_to_wait 不触发→try_wait 轮询丢失→挂起。
+    let (tx, _rx) = mpsc::channel::<Vec<u8>>();
+    let waker = CountingWaker {
+        count: std::sync::atomic::AtomicUsize::new(0),
+    };
+    let mut reader = EofReader;
+    reader_body(&mut reader, &tx, &waker, &mut |_m| {});
+    assert_eq!(
+        waker.count.load(std::sync::atomic::Ordering::Relaxed),
+        1,
+        "EOF 退出前应 wake 一次"
+    );
+}

@@ -264,6 +264,9 @@ pub struct CpuRenderer {
     framebuffer: Vec<u32>,
     fb_width: u32,
     fb_height: u32,
+    /// 选区高亮矩形 (min_col, min_row, max_col, max_row)，含端点；None=无选区。
+    /// 由 app 层随选区变化调用 set_selection 更新；渲染层只做反色绘制。
+    selection: Option<(u16, u16, u16, u16)>,
 }
 
 impl CpuRenderer {
@@ -316,6 +319,7 @@ impl CpuRenderer {
             framebuffer: Vec::new(),
             fb_width: 0,
             fb_height: 0,
+            selection: None,
         })
     }
 
@@ -326,6 +330,11 @@ impl CpuRenderer {
             self.scale = scale;
             self.glyph_cache.clear();
         }
+    }
+
+    /// 设置选区矩形（网格坐标，含端点）；None 清除高亮。
+    pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
+        self.selection = region;
     }
 
     /// 每格组内字体索引（dump 钩子用；&self 不写缓存，避免与 render 热路径借用冲突）。
@@ -470,7 +479,17 @@ impl Renderer for CpuRenderer {
                     1
                 };
                 let area_w = cell_w * span;
-                let bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
+                // 选区高亮（反色）：背景取字色、宽字符续格与 Spacer 尾格不高亮。
+                let in_sel = self.selection.is_some_and(|(c0, r0, c1, r1)| {
+                    (x as u16) >= c0 && (x as u16) <= c1 && (y as u16) >= r0 && (y as u16) <= r1
+                });
+                let sel = in_sel && !is_tail;
+                let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
+                let orig_fg = cell
+                    .fg
+                    .map(rgb_to_u32)
+                    .unwrap_or(rgb_to_u32(self.palette.primary_fg));
+                let bg = if sel { orig_fg } else { orig_bg };
                 fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
                 if is_tail || cell.chars.is_empty() || cell.invisible {
                     continue;
@@ -491,6 +510,9 @@ impl Renderer for CpuRenderer {
                 if cell.faint {
                     fg = dim(fg, bgc);
                 }
+                // 选区字色=原背景色（反色）；样式线同步用反色字色。
+                let fg = if sel { orig_bg } else { fg };
+                let bgc = if sel { orig_fg } else { bgc };
 
                 let ch = cell.chars.chars().next().expect("非空 chars");
                 let group = group_for(cell);

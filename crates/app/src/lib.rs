@@ -28,6 +28,10 @@ use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 use winit::window::{Window, WindowAttributes};
+use winit::event::MouseButton;
+use std::collections::VecDeque;
+use config::{Action as ConfigAction, Mods as ConfigMods, Mouse as ConfigMouse};
+use vt::ScrollViewport;
 
 /// 字体渲染配置与网格尺寸由字体度量算出（见 render::cell_metrics），无固定常量。
 /// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
@@ -115,7 +119,13 @@ pub fn reader_body<R: std::io::Read>(
     let mut buf = [0u8; 4096];
     loop {
         match reader.read(&mut buf) {
-            Ok(0) | Err(_) => break,
+            Ok(0) | Err(_) => {
+                // reader 退出前唤醒主线程：否则事件循环无新事件可等，
+                // about_to_wait 不触发→try_wait 不轮询→子进程退出检测丢失
+                // （case11 偶发 5s 未退出根因；DECISIONS 登记）。
+                let _ = waker.wake();
+                break;
+            }
             Ok(n) => {
                 if tx.send(buf[..n].to_vec()).is_err() {
                     break;
@@ -130,6 +140,14 @@ pub fn reader_body<R: std::io::Read>(
         }
     }
 }
+
+mod clipboard;
+mod paste;
+mod selection;
+
+pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
+pub use paste::{normalize_paste, paste_chunks, PASTE_CHUNK};
+pub use selection::{extract_text, word_region, CellPos, Selection};
 
 type SoftSurface =
     softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
@@ -151,6 +169,8 @@ pub struct App {
     pub pad_x: u16,
     /// 内边距（逻辑像素，窗口每侧）。
     pub pad_y: u16,
+    /// 原始配置（绑定执行/选区参数/滚动/IME 等后续任务按需读取）。
+    pub config: config::Config,
 }
 
 impl App {
@@ -172,6 +192,7 @@ impl App {
             palette: render_palette(&config.colors),
             pad_x: config.window.padding.x,
             pad_y: config.window.padding.y,
+            config,
         }
     }
 
@@ -181,6 +202,15 @@ impl App {
             .map_err(|e| Error::App(format!("EventLoop::new: {}", e)))?;
         let mut handler = AppHandler {
             config: Some(self),
+            selection: None,
+            mouse_down: false,
+            last_click: None,
+            click_count: 0,
+            clipboard: None,
+            pending_paste: VecDeque::new(),
+            last_mouse_pos: None,
+            cols: 0,
+            rows: 0,
             vt: None,
             pty: None,
             renderer: None,
@@ -228,6 +258,9 @@ pub enum Error {
     /// 事件循环已关闭（app 正常关闭路径，读线程静默退出，不上报）。
     #[error("event loop closed")]
     EventLoopClosed,
+    /// 剪贴板错误（arboard/X11 所有权语义等）。
+    #[error("clipboard error: {0}")]
+    Clipboard(String),
     /// 终端错误。
     #[error("vt error: {0}")]
     Vt(#[from] vt::Error),
@@ -263,6 +296,22 @@ struct AppHandler {
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
     bg_rx: Option<mpsc::Receiver<Vec<render::Font>>>,
     mods_state: ModifiersState,
+    /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
+    selection: Option<Selection>,
+    /// 左键按下（拖选中）。
+    mouse_down: bool,
+    /// 上次点击（时刻+位置），双击/三击检测（<300ms 同格递增）。
+    last_click: Option<(Instant, CellPos)>,
+    click_count: u8,
+    /// 剪贴板（主线程持有；arboard X11 所有权语义：set 后持有者存活至进程退出）。
+    clipboard: Option<ArboardClipboard>,
+    /// 大段粘贴分块队列（≥1MB 时每帧写一块，不阻塞事件循环）。
+    pending_paste: VecDeque<String>,
+    /// 最后鼠标位置（物理像素；MouseInput 事件无坐标，用 CursorMoved 缓存）。
+    last_mouse_pos: Option<winit::dpi::PhysicalPosition<f64>>,
+    /// 网格行列数（pixel_to_cell 上界校验；Resized 同步）。
+    cols: u16,
+    rows: u16,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -411,6 +460,18 @@ impl ApplicationHandler for AppHandler {
         self.renderer = Some(renderer);
         self.rx = Some(rx);
         self.pty_write_rx = Some(pty_write_rx);
+        self.cols = config.cols;
+        self.rows = config.rows;
+        // 运行时绑定查表/选区参数访问（resumed take 后回填；AppHandler.config
+        // 字段语义从"待消费配置"扩展为"运行时配置"，阶段 2B 任务 2.5 起用）。
+        self.config = Some(config);
+        self.clipboard = match ArboardClipboard::new() {
+            Ok(c) => Some(c),
+            Err(e) => {
+                eprintln!("clipboard init: {}（剪贴板不可用，复制/粘贴降级）", e);
+                None
+            }
+        };
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
@@ -450,19 +511,28 @@ impl ApplicationHandler for AppHandler {
                     eprintln!("request_inner_size: {}", e);
                 }
             }
+            WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
+            WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
-                    let mut mods = Mods::empty();
-                    if self.mods_state.shift_key() {
-                        mods |= Mods::SHIFT;
-                    }
-                    if self.mods_state.control_key() {
-                        mods |= Mods::CTRL;
-                    }
-                    if self.mods_state.alt_key() {
-                        mods |= Mods::ALT;
-                    }
+                    // 绑定执行优先（任务 2.5）：keyboard.bindings 查表（空则内置默认
+                    // Ctrl+Shift+C/V）；命中即执行动作，不再走 route_key。
+                    let kmods = config_mods(&self.mods_state);
+                    let key_str = key_string(&event.logical_key);
+                    let bound = key_str.as_deref().and_then(|k| {
+                        self.config.as_ref().and_then(|c| {
+                            if c.config.keyboard.bindings.is_empty() {
+                                find_key_binding(&default_key_bindings(), k, &kmods)
+                            } else {
+                                find_key_binding(&c.config.keyboard.bindings, k, &kmods)
+                            }
+                        })
+                    });
+                    if let Some(action) = bound {
+                        self.run_action(action);
+                    } else {
+                    let mods = vt_mods_from(&self.mods_state);
                     let mapped = map_logical_key(&event.logical_key);
                     let route = route_key(event.text.as_deref(), mapped, mods);
                     match route {
@@ -486,6 +556,7 @@ impl ApplicationHandler for AppHandler {
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
@@ -527,6 +598,10 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        // 大段粘贴分块：每帧写一块 PTY，不阻塞事件循环（任务 2.3）。
+        if let (Some(chunk), Some(pty)) = (self.pending_paste.pop_front(), self.pty.as_mut()) {
+            write_pty(pty, chunk.as_bytes());
+        }
         // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
         if let Some(rx) = &self.bg_rx
             && let Ok(fonts) = rx.try_recv()
@@ -567,6 +642,7 @@ impl ApplicationHandler for AppHandler {
         {
             match vt.snapshot() {
                 Ok(snap) => {
+                    renderer.set_selection(self.selection.map(|s| s.region()));
                     #[cfg(debug_assertions)]
                     dump_snapshot_if_requested(&snap, Some(&*renderer));
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
@@ -598,6 +674,384 @@ impl ApplicationHandler for AppHandler {
             }
         }
     }
+}
+
+impl AppHandler {
+    /// 物理像素坐标 → 网格坐标（含 padding；cell_w/h 已含 scale，越界返 None）。
+    fn pixel_to_cell(&self, position: winit::dpi::PhysicalPosition<f64>) -> Option<CellPos> {
+        let x = position.x - f64::from(self.pad_x) * self.scale_factor;
+        let y = position.y - f64::from(self.pad_y) * self.scale_factor;
+        let col = (x / f64::from(self.cell_w.max(1))) as i64;
+        let row = (y / f64::from(self.cell_h.max(1))) as i64;
+        if col < 0 || row < 0 || col >= i64::from(self.cols) || row >= i64::from(self.rows) {
+            return None;
+        }
+        Some(CellPos { col: col as u16, row: row as u16 })
+    }
+
+    /// 鼠标按钮事件：上报优先（非 Shift 且 vt 开跟踪→编码写 PTY）；
+    /// 否则走选区（左键）与绑定（中/右键）。Shift 绕过上报。
+    fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
+        let shift = self.mods_state.shift_key();
+        if !shift && self.vt.as_ref().is_some_and(|v| v.is_mouse_tracking().unwrap_or(false)) {
+            // 位置先算（避免与下方 vt/pty 可变借用冲突）。
+            let pos = self
+                .last_mouse_pos
+                .and_then(|p| self.pixel_to_cell(p))
+                .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
+            let mods = vt_mods_from(&self.mods_state);
+            let action = match state {
+                ElementState::Pressed => vt::MouseAction::Press,
+                ElementState::Released => vt::MouseAction::Release,
+            };
+            let btn = match button {
+                MouseButton::Left => Some(vt::Button::Left),
+                MouseButton::Right => Some(vt::Button::Right),
+                MouseButton::Middle => Some(vt::Button::Middle),
+                _ => None,
+            };
+            if let Some(vt) = self.vt.as_mut()
+                && let Ok(mut enc) = vt.mouse_encoder()
+                && let Some(pty) = self.pty.as_mut()
+            {
+                match enc.encode_button(action, btn, mods, pos) {
+                    Ok(bytes) => write_pty(pty, &bytes),
+                    Err(e) => eprintln!("mouse encode: {}", e),
+                }
+            }
+            return;
+        }
+        if state != ElementState::Pressed {
+            if button == MouseButton::Left {
+                self.mouse_down = false;
+                if self.selection.is_some() {
+                    self.commit_selection();
+                }
+            }
+            return;
+        }
+        match button {
+            MouseButton::Left => {
+                if shift {
+                    // Shift+点击：扩展选区 focus（anchor 不动）。pos 先算避免借用冲突。
+                    let pos = self.last_mouse_pos.and_then(|p| self.pixel_to_cell(p));
+                    if let (Some(sel), Some(pos)) = (self.selection.as_mut(), pos) {
+                        sel.set_focus(pos);
+                    }
+                } else {
+                    self.start_selection();
+                }
+            }
+            MouseButton::Middle => self.run_mouse_binding(ConfigMouse::Middle),
+            MouseButton::Right => self.run_mouse_binding(ConfigMouse::Right),
+            _ => {}
+        }
+    }
+
+    /// 鼠标移动：更新缓存坐标；拖选中扩展 focus；跟踪模式下 Motion 上报。
+    fn on_cursor_moved(&mut self, position: winit::dpi::PhysicalPosition<f64>) {
+        self.last_mouse_pos = Some(position);
+        let pos = self.pixel_to_cell(position);
+        if self.mouse_down
+            && let Some(sel) = self.selection.as_mut()
+            && let Some(pos) = pos
+        {
+            sel.set_focus(pos);
+        }
+        if !self.mods_state.shift_key()
+            && self.mouse_down
+            && self.vt.as_ref().is_some_and(|v| v.is_mouse_tracking().unwrap_or(false))
+        {
+            let pos = self
+                .pixel_to_cell(position)
+                .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
+            let mods = vt_mods_from(&self.mods_state);
+            if let Some(vt) = self.vt.as_mut()
+                && let Ok(mut enc) = vt.mouse_encoder()
+                && let Some(pty) = self.pty.as_mut()
+                && let Ok(bytes) = enc.encode_button(vt::MouseAction::Motion, None, mods, pos)
+            {
+                write_pty(pty, &bytes);
+            }
+        }
+    }
+
+    /// 左键按下新选区：双击选词（<300ms 同格）/三击选行/单格。
+    fn start_selection(&mut self) {
+        let Some(pos) = self.last_mouse_pos.and_then(|p| self.pixel_to_cell(p)) else {
+            return;
+        };
+        let now = Instant::now();
+        let count = match self.last_click {
+            Some((t, p)) if t.elapsed() < Duration::from_millis(300) && p == pos => {
+                self.click_count.saturating_add(1)
+            }
+            _ => 1,
+        };
+        self.click_count = count;
+        self.last_click = Some((now, pos));
+        self.mouse_down = true;
+        let region = match count {
+            2 => self.word_region_at(pos.row, pos.col).map(|(sc, ec)| Selection {
+                anchor: CellPos { col: sc, row: pos.row },
+                focus: CellPos { col: ec, row: pos.row },
+            }),
+            3 => Some(Selection {
+                anchor: CellPos { col: 0, row: pos.row },
+                focus: CellPos { col: self.cols.saturating_sub(1), row: pos.row },
+            }),
+            _ => Some(Selection::new(pos)),
+        };
+        if let Some(r) = region {
+            self.selection = Some(r);
+        }
+    }
+
+    /// 双击选词：以 semantic_escape_chars 为边界计算词区域（网格坐标）。
+    fn word_region_at(&self, row: u16, focus_col: u16) -> Option<(u16, u16)> {
+        let snap = self.vt.as_ref()?.snapshot().ok()?;
+        let line = Self::row_text(&snap, row);
+        let escape = self
+            .config
+            .as_ref()
+            .map(|c| c.config.selection.semantic_escape_chars.clone())
+            .unwrap_or_default();
+        let (sc, ec) = word_region(&line, focus_col as usize, &escape);
+        Some((sc as u16, ec as u16))
+    }
+
+    /// 快照行文本（Cell.chars 拼接；Spacer 尾格跳过——与 extract_text 同源）。
+    fn row_text(snap: &vt::FrameSnapshot, row: u16) -> String {
+        let mut line = String::new();
+        if let Some(cells) = snap.cells.get(row as usize) {
+            for cell in cells {
+                if matches!(cell.wide, vt::CellWide::SpacerTail | vt::CellWide::SpacerHead) {
+                    continue;
+                }
+                line.push_str(&cell.chars);
+            }
+        }
+        line
+    }
+
+    /// 选区定型/复制：提取文本写 PRIMARY；save_to_clipboard 时兼写 CLIPBOARD。
+    fn commit_selection(&mut self) {
+        let Some(sel) = self.selection else { return; };
+        let Some(vt) = self.vt.as_ref() else { return; };
+        let Ok(snap) = vt.snapshot() else { return; };
+        let text = extract_text(&snap, sel.region());
+        if text.is_empty() {
+            return;
+        }
+        let Some(clip) = self.clipboard.as_mut() else { return; };
+        if let Err(e) = clip.set(ClipboardKind::Primary, &text) {
+            eprintln!("copy primary: {}", e);
+        }
+        let save = self
+            .config
+            .as_ref()
+            .is_some_and(|c| c.config.selection.save_to_clipboard);
+        if save && let Err(e) = clip.set(ClipboardKind::Clipboard, &text) {
+            eprintln!("copy clipboard: {}", e);
+        }
+    }
+
+    /// 鼠标绑定执行：配置查表（为空则内置默认 Middle=Copy/Right=Paste）。
+    fn run_mouse_binding(&mut self, button: ConfigMouse) {
+        let mods = config_mods(&self.mods_state);
+        let action = self.config.as_ref().and_then(|c| {
+            if c.config.mouse.bindings.is_empty() {
+                find_binding(&default_mouse_bindings(), button, &mods)
+            } else {
+                find_binding(&c.config.mouse.bindings, button, &mods)
+            }
+        });
+        // [插术] case13 取证
+        // config 分支走向取证插桩已撤（case13 根因=AppHandler.config take 后未回填）。
+        if let Some(a) = action {
+            self.run_action(a);
+        }
+    }
+
+    /// 绑定动作执行（复制/粘贴/滚动；None 无操作）。
+    fn run_action(&mut self, action: ConfigAction) {
+        match action {
+            ConfigAction::Copy => self.commit_selection(),
+            ConfigAction::Paste => self.do_paste(ClipboardKind::Clipboard),
+            ConfigAction::PasteSelection => self.do_paste(ClipboardKind::Primary),
+            ConfigAction::ScrollPageUp => {
+                if let Some(vt) = self.vt.as_mut() {
+                    vt.scroll_viewport(ScrollViewport::Delta(-(self.rows as isize)));
+                }
+            }
+            ConfigAction::ScrollPageDown => {
+                if let Some(vt) = self.vt.as_mut() {
+                    vt.scroll_viewport(ScrollViewport::Delta(self.rows as isize));
+                }
+            }
+            ConfigAction::ScrollToTop => {
+                if let Some(vt) = self.vt.as_mut() {
+                    vt.scroll_viewport(ScrollViewport::Top);
+                }
+            }
+            ConfigAction::ScrollToBottom => {
+                if let Some(vt) = self.vt.as_mut() {
+                    vt.scroll_viewport(ScrollViewport::Bottom);
+                }
+            }
+            ConfigAction::None => {}
+        }
+    }
+
+    /// 粘贴执行：读剪贴板→规范化（?2004 包裹）→写 PTY；≥1MB 分块入队逐帧写。
+    fn do_paste(&mut self, kind: ClipboardKind) {
+        let text = match self.clipboard.as_mut() {
+            Some(c) => match c.get(kind) {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("paste get: {}", e);
+                    return;
+                }
+            },
+            None => return,
+        };
+        if text.is_empty() {
+            return;
+        }
+        let bracketed = self
+            .vt
+            .as_ref()
+            .map(|v| v.is_bracketed_paste().unwrap_or(false))
+            .unwrap_or(false);
+        let norm = normalize_paste(&text, bracketed);
+        if norm.len() >= 1024 * 1024 {
+            for chunk in paste_chunks(&norm) {
+                self.pending_paste.push_back(chunk);
+            }
+        } else if let Some(pty) = self.pty.as_mut() {
+            write_pty(pty, norm.as_bytes());
+        }
+    }
+}
+
+/// winit 修饰键状态 → vt::Mods（KeyEncoder/encode_button 共用）。
+fn vt_mods_from(m: &ModifiersState) -> Mods {
+    let mut mods = Mods::empty();
+    if m.shift_key() {
+        mods |= Mods::SHIFT;
+    }
+    if m.control_key() {
+        mods |= Mods::CTRL;
+    }
+    if m.alt_key() {
+        mods |= Mods::ALT;
+    }
+    mods
+}
+
+/// 鼠标绑定查表（同按钮后者覆盖前者——规格任务 2.5；纯函数可单测）。
+fn find_binding(
+    bindings: &[config::Binding],
+    button: ConfigMouse,
+    mods: &ConfigMods,
+) -> Option<ConfigAction> {
+    let mut found = None;
+    for b in bindings {
+        if b.mouse == Some(button) && b.mods == *mods {
+            found = Some(b.action);
+        }
+    }
+    found
+}
+
+/// 键盘绑定查表（同 key+mods 后者覆盖前者；纯函数可单测）。
+fn find_key_binding(
+    bindings: &[config::Binding],
+    key: &str,
+    mods: &ConfigMods,
+) -> Option<ConfigAction> {
+    let mut found = None;
+    for b in bindings {
+        if b.key.as_deref() == Some(key) && b.mods == *mods {
+            found = Some(b.action);
+        }
+    }
+    found
+}
+
+/// winit 修饰键状态 → config::Mods（绑定查表用；hyper 无对应键恒 false）。
+fn config_mods(m: &ModifiersState) -> ConfigMods {
+    ConfigMods {
+        control: m.control_key(),
+        shift: m.shift_key(),
+        alt: m.alt_key(),
+        super_: m.super_key(),
+        hyper: false,
+        meta: false, // winit 0.30 无 meta 键位（super 涵盖），恒 false。
+    }
+}
+
+/// winit 逻辑键 → 配置 key 字符串（Named 用 Debug 名如 "Insert"；Character 用字符）。
+fn key_string(key: &WinitKey) -> Option<String> {
+    match key {
+        WinitKey::Named(n) => Some(format!("{n:?}")),
+        WinitKey::Character(s) => Some(s.to_string()),
+        _ => None,
+    }
+}
+
+/// 内置默认鼠标绑定（配置 mouse.bindings 为空时生效；非空以配置为准不叠加）。
+fn default_mouse_bindings() -> Vec<config::Binding> {
+    let none = ConfigMods {
+        control: false,
+        shift: false,
+        alt: false,
+        super_: false,
+        hyper: false,
+        meta: false,
+    };
+    vec![
+        config::Binding {
+            mouse: Some(ConfigMouse::Middle),
+            key: None,
+            mods: none,
+            action: ConfigAction::Copy,
+        },
+        config::Binding {
+            mouse: Some(ConfigMouse::Right),
+            key: None,
+            mods: none,
+            action: ConfigAction::Paste,
+        },
+    ]
+}
+
+/// 内置默认键盘绑定（配置 keyboard.bindings 为空时生效：Ctrl+Shift+C/V）。
+fn default_key_bindings() -> Vec<config::Binding> {
+    let cm = ConfigMods {
+        control: true,
+        shift: true,
+        alt: false,
+        super_: false,
+        hyper: false,
+        meta: false,
+    };
+    vec![
+        config::Binding {
+            mouse: None,
+            key: Some("c".to_string()),
+            mods: cm,
+            action: ConfigAction::Copy,
+        },
+        config::Binding {
+            mouse: None,
+            key: Some("v".to_string()),
+            mods: cm,
+            action: ConfigAction::Paste,
+        },
+    ]
 }
 
 /// 写字节到 PTY 并 flush（外部 I/O 失败路径覆盖）。
@@ -759,5 +1213,111 @@ fn render_palette(colors: &config::Colors) -> render::Palette {
             c(colors.bright.cyan),
             c(colors.bright.white),
         ],
+    }
+}
+
+/// 绑定查表/默认绑定单测（任务 2.5：纯函数可测）。
+#[cfg(test)]
+mod binding_tests {
+    use super::*;
+
+    fn mods(control: bool, shift: bool) -> ConfigMods {
+        ConfigMods {
+            control,
+            shift,
+            alt: false,
+            super_: false,
+            hyper: false,
+            meta: false,
+        }
+    }
+
+    #[test]
+    fn find_binding_later_overrides_and_mods_matter() {
+        let b = |action: ConfigAction| config::Binding {
+            mouse: Some(ConfigMouse::Middle),
+            key: None,
+            mods: mods(false, false),
+            action,
+        };
+        let bindings = vec![b(ConfigAction::Copy), b(ConfigAction::Paste)];
+        assert_eq!(
+            find_binding(&bindings, ConfigMouse::Middle, &mods(false, false)),
+            Some(ConfigAction::Paste),
+            "同按钮后者覆盖前者"
+        );
+        assert_eq!(
+            find_binding(&bindings, ConfigMouse::Right, &mods(false, false)),
+            None,
+            "按钮不匹配应 None"
+        );
+    }
+
+    #[test]
+    fn find_key_binding_matches_key_and_mods() {
+        let b = |key: &str, control: bool, action: ConfigAction| config::Binding {
+            mouse: None,
+            key: Some(key.to_string()),
+            mods: mods(control, false),
+            action,
+        };
+        let bindings = vec![b("c", true, ConfigAction::Copy), b("v", true, ConfigAction::Paste)];
+        assert_eq!(
+            find_key_binding(&bindings, "c", &mods(true, false)),
+            Some(ConfigAction::Copy)
+        );
+        assert_eq!(
+            find_key_binding(&bindings, "c", &mods(false, false)),
+            None,
+            "mods 不匹配应 None"
+        );
+        assert_eq!(
+            find_key_binding(&bindings, "x", &mods(true, false)),
+            None,
+            "key 不匹配应 None"
+        );
+    }
+
+    #[test]
+    fn key_string_named_and_character() {
+        assert_eq!(
+            key_string(&WinitKey::Named(NamedKey::Insert)),
+            Some("Insert".to_string())
+        );
+        assert_eq!(
+            key_string(&WinitKey::Character("c".into())),
+            Some("c".to_string())
+        );
+    }
+
+    #[test]
+    fn default_bindings_shape() {
+        let mb = default_mouse_bindings();
+        assert_eq!(mb.len(), 2);
+        assert_eq!(
+            find_binding(&mb, ConfigMouse::Middle, &mods(false, false)),
+            Some(ConfigAction::Copy)
+        );
+        assert_eq!(
+            find_binding(&mb, ConfigMouse::Right, &mods(false, false)),
+            Some(ConfigAction::Paste)
+        );
+        let kb = default_key_bindings();
+        let ctrl_shift = ConfigMods {
+            control: true,
+            shift: true,
+            alt: false,
+            super_: false,
+            hyper: false,
+            meta: false,
+        };
+        assert_eq!(
+            find_key_binding(&kb, "c", &ctrl_shift),
+            Some(ConfigAction::Copy)
+        );
+        assert_eq!(
+            find_key_binding(&kb, "v", &ctrl_shift),
+            Some(ConfigAction::Paste)
+        );
     }
 }
