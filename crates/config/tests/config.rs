@@ -22,6 +22,7 @@ fn examples_load_without_warnings() {
         assert_eq!(c.window.opacity, 1.0);
         assert_eq!(c.scrolling.history, 10000);
         assert_eq!(c.scrolling.multiplier, 10.0);
+        assert!(c.scrolling.alt_screen_scroll, "默认 true（备用屏滚轮→方向键）");
         assert!(c.selection.save_to_clipboard);
         assert!(c.colors.draw_bold_text_with_bright_colors);
         assert_eq!(c.font.fallback.len(), 1);

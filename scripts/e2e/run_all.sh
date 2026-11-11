@@ -481,5 +481,108 @@ if start_app "$D" "$L"; then
 fi
 
 
+
+# 用例 14：滚轮滚动（任务 3/4）——30 行输出压 scrollback→滚轮上滚断言历史行
+# 可见→滚轮下滚回底（auto-follow 恢复）。xdotool click 4/5=滚轮上/下（XTest 根坐标）。
+D="$OUT/case14-scroll.dump"
+L="$OUT/case14-scroll.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq 1 30); do echo LINE_\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 滚轮上滚 5（×multiplier 3=15 行 offset）→视口离开底部，历史行可见
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    i=0; while [ $i -lt 5 ]; do xdotool click 4; i=$((i+1)); sleep 0.05; done
+    sleep 0.5
+    if grep -q "LINE_1" "$D" 2>/dev/null && ! grep -q "LINE_29" "$D" 2>/dev/null; then
+        echo "PASS case14-scroll-up (历史行 LINE_1 可见且离开底部)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case14-scroll-up (上滚后视口未离开底部)"
+        cp "$D" "$OUT/case14-scroll-up-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    # 滚轮下滚回底→auto-follow 恢复，最新行可见
+    i=0; while [ $i -lt 5 ]; do xdotool click 5; i=$((i+1)); sleep 0.05; done
+    sleep 0.5
+    if grep -q "LINE_29" "$D" 2>/dev/null; then
+        echo "PASS case14-scroll-bottom (下滚回底 LINE_29 可见)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case14-scroll-bottom (回底后 LINE_29 不可见)"
+        cp "$D" "$OUT/case14-scroll-bottom-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case14-scroll-exits"
+    assert_no_wake "case14-scroll-no-wake" "$L"
+fi
+
+
+# 用例 15：备用屏滚轮→方向键（任务 3）——?1049 备用屏+cat -v 显示方向键序列
+# （scrolling.alt_screen_scroll=true 默认：备用屏下滚轮发 ArrowUp/Down 而非 scroll_viewport）。
+D="$OUT/case15-alt-wheel.dump"
+L="$OUT/case15-alt-wheel.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?1049h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 滚轮上 2 次→方向键 Up×2（×multiplier 3=6 个 ESC[A？LineDelta 1 行×mult）
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    xdotool click 4
+    sleep 0.2
+    xdotool click 4
+    sleep 0.5
+    if grep -qF '^[[A' "$D" 2>/dev/null; then
+        echo "PASS case15-alt-wheel-arrow (备用屏滚轮→方向键 Up 序列)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case15-alt-wheel-arrow (dump 无 ^[[A 方向键序列)"
+        cp "$D" "$OUT/case15-alt-wheel-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case15-alt-wheel-exits"
+    assert_no_wake "case15-alt-wheel-no-wake" "$L"
+fi
+
+# 用例 16：鼠标上报 SGR 1006（任务 3）——?1003 全鼠标跟踪+cat -v 显示
+# 上报序列（含单元格坐标，padding/缩放经 pixel_to_cell 转换）。
+D="$OUT/case16-mouse-report.dump"
+L="$OUT/case16-mouse-report.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?1003h\\e[?1006h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 左键点击（非 Shift→上报优先；坐标 cell(2,1) 附近）
+    xdotool mousemove --window "$WID" 30 30
+    sleep 0.2
+    xdotool click 1
+    sleep 0.5
+    # SGR 1006 上报序列形如 ^[[<0;col;rowM（Press）/m（Release）
+    if grep -qF '^[[<0;' "$D" 2>/dev/null; then
+        echo "PASS case16-mouse-report (SGR 1006 上报序列含坐标)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case16-mouse-report (dump 无 ^[[<0; 上报序列)"
+        cp "$D" "$OUT/case16-mouse-report-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case16-mouse-report-exits"
+    assert_no_wake "case16-mouse-report-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

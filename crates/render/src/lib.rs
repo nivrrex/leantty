@@ -267,6 +267,9 @@ pub struct CpuRenderer {
     /// 选区高亮矩形 (min_col, min_row, max_col, max_row)，含端点；None=无选区。
     /// 由 app 层随选区变化调用 set_selection 更新；渲染层只做反色绘制。
     selection: Option<(u16, u16, u16, u16)>,
+    /// 滚动条拇指几何 (thumb_y, thumb_h)，轨道内 px；None=无滚动条。
+    /// 由 app 层每帧 set_scrollbar 更新；渲染层只画轨道+拇指。
+    scrollbar: Option<(u32, u32)>,
 }
 
 impl CpuRenderer {
@@ -320,6 +323,7 @@ impl CpuRenderer {
             fb_width: 0,
             fb_height: 0,
             selection: None,
+            scrollbar: None,
         })
     }
 
@@ -335,6 +339,11 @@ impl CpuRenderer {
     /// 设置选区矩形（网格坐标，含端点）；None 清除高亮。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         self.selection = region;
+    }
+
+    /// 设置滚动条拇指几何 (thumb_y, thumb_h)；None 清除（无 scrollback）。
+    pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
+        self.scrollbar = geom;
     }
 
     /// 每格组内字体索引（dump 钩子用；&self 不写缓存，避免与 render 热路径借用冲突）。
@@ -612,6 +621,7 @@ impl Renderer for CpuRenderer {
         }
 
         self.draw_cursor(frame, cell_w, cell_h, px);
+        self.draw_scrollbar(pixel_height);
         Ok(())
     }
 }
@@ -675,6 +685,29 @@ impl CpuRenderer {
                 }
             }
         }
+    }
+
+    /// 滚动条：右缘 4px 轨道（前景/背景通道平均，半透明近似）+拇指（前景色）。
+    /// 纯绘制无状态；几何由 set_scrollbar 提供。
+    fn draw_scrollbar(&mut self, pixel_height: u32) {
+        let Some((thumb_y, thumb_h)) = self.scrollbar else { return; };
+        let width = self.fb_width;
+        if width < 4 || pixel_height == 0 || thumb_h == 0 {
+            return;
+        }
+        let track_x = width - 4;
+        let fg = rgb_to_u32(self.palette.primary_fg);
+        let bg = rgb_to_u32(self.palette.primary_bg);
+        // 轨道色=前景/背景逐通道平均（softbuffer 无 alpha 混合通道，平均近似半透明）。
+        let avg = |a: u32, b: u32| (a + b) / 2;
+        let track = 0xFF00_0000
+            | (avg(fg >> 16 & 0xFF, bg >> 16 & 0xFF) << 16)
+            | (avg(fg >> 8 & 0xFF, bg >> 8 & 0xFF) << 8)
+            | avg(fg & 0xFF, bg & 0xFF);
+        fill_rect(&mut self.framebuffer, width, track_x, 0, 4, pixel_height, track);
+        let thumb_h = thumb_h.min(pixel_height);
+        let thumb_y = thumb_y.min(pixel_height.saturating_sub(thumb_h));
+        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, 4, thumb_h, fg);
     }
 
     /// 单像素写（裁剪到帧缓冲）。

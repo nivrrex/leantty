@@ -28,7 +28,7 @@ use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 use winit::window::{Window, WindowAttributes};
-use winit::event::MouseButton;
+use winit::event::{MouseButton, MouseScrollDelta};
 use std::collections::VecDeque;
 use config::{Action as ConfigAction, Mods as ConfigMods, Mouse as ConfigMouse};
 use vt::ScrollViewport;
@@ -143,10 +143,12 @@ pub fn reader_body<R: std::io::Read>(
 
 mod clipboard;
 mod paste;
+mod scrollbar;
 mod selection;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
 pub use paste::{normalize_paste, paste_chunks, PASTE_CHUNK};
+pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
 pub use selection::{extract_text, word_region, CellPos, Selection};
 
 type SoftSurface =
@@ -211,6 +213,9 @@ impl App {
             last_mouse_pos: None,
             cols: 0,
             rows: 0,
+            offset_from_top: 0,
+            follow_bottom: true,
+            scrollbar_drag: false,
             vt: None,
             pty: None,
             renderer: None,
@@ -312,6 +317,13 @@ struct AppHandler {
     /// 网格行列数（pixel_to_cell 上界校验；Resized 同步）。
     cols: u16,
     rows: u16,
+    /// 滚动视口偏移（scrollback 顶=0，底=scrollback_rows；0=活动区/底部）。
+    /// 滚轮/PageUp/拖拽统一维护，scroll_viewport(Row) 绝对定位。
+    offset_from_top: usize,
+    /// auto-follow：新输出时视口保持底部（用户上滚后暂停，回底恢复）。
+    follow_bottom: bool,
+    /// 滚动条拖拽中（左键命中右缘条带后进入，优先于选区拖拽）。
+    scrollbar_drag: bool,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -513,6 +525,7 @@ impl ApplicationHandler for AppHandler {
             }
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
+            WindowEvent::MouseWheel { delta, .. } => self.on_mouse_scroll(delta),
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
@@ -609,13 +622,20 @@ impl ApplicationHandler for AppHandler {
         {
             r.add_background_fonts(fonts);
         }
-        // 2. channel 收字节 → 喂 vt
+        // 2. channel 收字节 → 喂 vt（auto-follow：开启时新输出后回底）
         if let Some(rx) = self.rx.as_ref()
             && let Some(vt) = self.vt.as_mut()
         {
             while let Ok(bytes) = rx.try_recv() {
                 vt.feed(&bytes);
             }
+        }
+        // auto-follow：开启时新输出后回底（offset=scrollback 行数）。
+        if self.follow_bottom {
+            if let Some(vt) = self.vt.as_mut() {
+                vt.scroll_viewport(ScrollViewport::Bottom);
+            }
+            self.offset_from_top = self.sb_rows();
         }
         // 5. vt 响应字节 → 写 PTY
         if let Some(pty_write_rx) = self.pty_write_rx.as_ref()
@@ -637,15 +657,25 @@ impl ApplicationHandler for AppHandler {
             }
         }
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
+        let sb_render = self.sb_rows();
         if let (Some(vt), Some(renderer), Some(surface)) =
             (self.vt.as_ref(), self.renderer.as_mut(), self.surface.as_mut())
         {
             match vt.snapshot() {
                 Ok(snap) => {
+                    let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     renderer.set_selection(self.selection.map(|s| s.region()));
+                    // 滚动条几何（scrollback=0 时不绘制）
+                    let sb = sb_render;
+                    let geom = if sb == 0 {
+                        None
+                    } else {
+                        scrollbar_geometry(sb as u64, u64::from(self.rows), self.offset_from_top, ph)
+                            .map(|g| (g.thumb_y, g.thumb_h))
+                    };
+                    renderer.set_scrollbar(geom);
                     #[cfg(debug_assertions)]
                     dump_snapshot_if_requested(&snap, Some(&*renderer));
-                    let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
@@ -677,6 +707,13 @@ impl ApplicationHandler for AppHandler {
 }
 
 impl AppHandler {
+    /// 鼠标是否命中滚动条条带（右缘 4px；条带判定优先于选区坐标转换）。
+    fn hit_scrollbar(&self, position: Option<winit::dpi::PhysicalPosition<f64>>) -> bool {
+        let Some(pos) = position else { return false; };
+        let Some((w, _h)) = self.last_size else { return false; };
+        pos.x >= w.saturating_sub(4) as f64 && w > 4
+    }
+
     /// 物理像素坐标 → 网格坐标（含 padding；cell_w/h 已含 scale，越界返 None）。
     fn pixel_to_cell(&self, position: winit::dpi::PhysicalPosition<f64>) -> Option<CellPos> {
         let x = position.x - f64::from(self.pad_x) * self.scale_factor;
@@ -724,6 +761,7 @@ impl AppHandler {
         }
         if state != ElementState::Pressed {
             if button == MouseButton::Left {
+                self.scrollbar_drag = false;
                 self.mouse_down = false;
                 if self.selection.is_some() {
                     self.commit_selection();
@@ -733,6 +771,25 @@ impl AppHandler {
         }
         match button {
             MouseButton::Left => {
+                // 滚动条条带命中（右缘 4px）→ 拖拽模式，优先于选区。
+                if self.hit_scrollbar(self.last_mouse_pos) {
+                    self.scrollbar_drag = true;
+                    if let Some(y) = self.last_mouse_pos.map(|p| p.y) {
+                        let track_h = self.last_size.map(|(_, h)| h).unwrap_or(0);
+                        let sb = self.sb_rows();
+                        self.offset_from_top = track_y_to_offset(
+                            y as u32,
+                            track_h,
+                            sb as u64,
+                        )
+                        .min(sb);
+                        self.follow_bottom = self.offset_from_top >= sb;
+                        if let Some(vt) = self.vt.as_mut() {
+                            vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
+                        }
+                    }
+                    return;
+                }
                 if shift {
                     // Shift+点击：扩展选区 focus（anchor 不动）。pos 先算避免借用冲突。
                     let pos = self.last_mouse_pos.and_then(|p| self.pixel_to_cell(p));
@@ -752,6 +809,18 @@ impl AppHandler {
     /// 鼠标移动：更新缓存坐标；拖选中扩展 focus；跟踪模式下 Motion 上报。
     fn on_cursor_moved(&mut self, position: winit::dpi::PhysicalPosition<f64>) {
         self.last_mouse_pos = Some(position);
+        // 滚动条拖拽中：offset 实时更新（优先于选区扩展）。
+        if self.scrollbar_drag {
+            let track_h = self.last_size.map(|(_, h)| h).unwrap_or(0);
+            let sb = self.sb_rows();
+            self.offset_from_top =
+                track_y_to_offset(position.y as u32, track_h, sb as u64).min(sb);
+            self.follow_bottom = self.offset_from_top >= sb;
+            if let Some(vt) = self.vt.as_mut() {
+                vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
+            }
+            return;
+        }
         let pos = self.pixel_to_cell(position);
         if self.mouse_down
             && let Some(sel) = self.selection.as_mut()
@@ -775,6 +844,114 @@ impl AppHandler {
             {
                 write_pty(pty, &bytes);
             }
+        }
+    }
+
+    /// 滚轮（任务 3/4）：鼠标跟踪模式下上报 Four/Five（非 Shift 优先）；备用屏且
+    /// alt_screen_scroll 时发方向键；否则 scroll_viewport Delta（×multiplier）。
+    fn on_mouse_scroll(&mut self, delta: MouseScrollDelta) {
+        let lines = match delta {
+            MouseScrollDelta::LineDelta(_x, y) => y as isize,
+            MouseScrollDelta::PixelDelta(pos) => {
+                (pos.y / f64::from(self.cell_h.max(1))) as isize
+            }
+        };
+        if lines == 0 {
+            return;
+        }
+        // 滚轮上报优先级：非 Shift 且跟踪开启→Button Four（上）/Five（下）编码写 PTY。
+        if !self.mods_state.shift_key()
+            && self
+                .vt
+                .as_ref()
+                .is_some_and(|v| v.is_mouse_tracking().unwrap_or(false))
+        {
+            let btn = if lines > 0 {
+                vt::Button::Four
+            } else {
+                vt::Button::Five
+            };
+            let n = lines.unsigned_abs();
+            for _ in 0..n {
+                let pos = self
+                    .last_mouse_pos
+                    .and_then(|p| self.pixel_to_cell(p))
+                    .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                    .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
+                let mods = vt_mods_from(&self.mods_state);
+                if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
+                    && let Ok(mut enc) = vt.mouse_encoder()
+                    && let Ok(bytes) = enc.encode_button(vt::MouseAction::Press, Some(btn), mods, pos)
+                {
+                    write_pty(pty, &bytes);
+                }
+                if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
+                    && let Ok(mut enc) = vt.mouse_encoder()
+                    && let Ok(bytes) =
+                        enc.encode_button(vt::MouseAction::Release, Some(btn), mods, pos)
+                {
+                    write_pty(pty, &bytes);
+                }
+            }
+            return;
+        }
+        // 备用屏+alt_screen_scroll：方向键（Up=上滚/Down=下滚）。
+        let alternate = self
+            .vt
+            .as_ref()
+            .map(|v| {
+                v.snapshot()
+                    .map(|snap| snap.alternate_screen)
+                    .unwrap_or(false)
+            })
+            .unwrap_or(false);
+        if alternate && self.config.as_ref().is_some_and(|c| c.config.scrolling.alt_screen_scroll)
+        {
+            let mult = self
+                .config
+                .as_ref()
+                .map(|c| c.config.scrolling.multiplier)
+                .unwrap_or(3.0)
+                .max(1.0) as isize;
+            let key = if lines > 0 { vt::Key::ArrowUp } else { vt::Key::ArrowDown };
+            let n = lines.unsigned_abs() as isize * mult;
+            for _ in 0..n {
+                if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
+                    && let Ok(mut enc) = vt.key_encoder()
+                    && let Ok(bytes) = enc.encode_key(key, Mods::empty(), Action::Press)
+                    && let Ok(bytes2) = enc.encode_key(key, Mods::empty(), Action::Release)
+                {
+                    write_pty(pty, &bytes);
+                    write_pty(pty, &bytes2);
+                }
+            }
+            return;
+        }
+        // 主屏（或 alt_screen_scroll=false）：offset 状态机+scroll_viewport Row 绝对定位
+        // （实测：vt 上滚后 feed 新输出不自动回底，DECISIONS 登记；offset 由 app 维护）。
+        let mult = self
+            .config
+            .as_ref()
+            .map(|c| c.config.scrolling.multiplier)
+            .unwrap_or(3.0)
+            .max(1.0) as isize;
+        let delta = lines.unsigned_abs() as isize * mult;
+        let sb = self
+            .vt
+            .as_ref()
+            .and_then(|v| v.snapshot().ok())
+            .map(|snap| snap.scrollback_rows as isize)
+            .unwrap_or(0);
+        if lines > 0 {
+            // 上滚：向 scrollback 顶（offset 减小）
+            self.offset_from_top = (self.offset_from_top as isize - delta).max(0) as usize;
+        } else {
+            // 下滚：向活动区（offset 增大）
+            self.offset_from_top = (self.offset_from_top as isize + delta).min(sb) as usize;
+        }
+        self.follow_bottom = self.offset_from_top as isize >= sb;
+        if let Some(vt) = self.vt.as_mut() {
+            vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
         }
     }
 
@@ -882,27 +1059,47 @@ impl AppHandler {
             ConfigAction::Paste => self.do_paste(ClipboardKind::Clipboard),
             ConfigAction::PasteSelection => self.do_paste(ClipboardKind::Primary),
             ConfigAction::ScrollPageUp => {
+                let sb = self.sb_rows();
+                self.offset_from_top = self.offset_from_top.saturating_sub(self.rows as usize).min(sb);
+                self.follow_bottom = false;
                 if let Some(vt) = self.vt.as_mut() {
-                    vt.scroll_viewport(ScrollViewport::Delta(-(self.rows as isize)));
+                    vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
                 }
             }
             ConfigAction::ScrollPageDown => {
+                let sb = self.sb_rows();
+                self.offset_from_top = (self.offset_from_top + self.rows as usize).min(sb);
+                self.follow_bottom = self.offset_from_top >= sb;
                 if let Some(vt) = self.vt.as_mut() {
-                    vt.scroll_viewport(ScrollViewport::Delta(self.rows as isize));
+                    vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
                 }
             }
             ConfigAction::ScrollToTop => {
+                self.offset_from_top = 0;
+                self.follow_bottom = false;
                 if let Some(vt) = self.vt.as_mut() {
-                    vt.scroll_viewport(ScrollViewport::Top);
+                    vt.scroll_viewport(ScrollViewport::Row(0));
                 }
             }
             ConfigAction::ScrollToBottom => {
+                let sb = self.sb_rows();
+                self.offset_from_top = sb;
+                self.follow_bottom = true;
                 if let Some(vt) = self.vt.as_mut() {
                     vt.scroll_viewport(ScrollViewport::Bottom);
                 }
             }
             ConfigAction::None => {}
         }
+    }
+
+    /// 当前 scrollback 行数（snapshot 查询；失败回落 0）。
+    fn sb_rows(&self) -> usize {
+        self.vt
+            .as_ref()
+            .and_then(|v| v.snapshot().ok())
+            .map(|snap| snap.scrollback_rows)
+            .unwrap_or(0)
     }
 
     /// 粘贴执行：读剪贴板→规范化（?2004 包裹）→写 PTY；≥1MB 分块入队逐帧写。

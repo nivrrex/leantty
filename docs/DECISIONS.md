@@ -61,3 +61,7 @@
 - 绑定执行 config 访问路径（已验证事实）：AppHandler.config 字段在 resumed 被 take 后为 None，运行时绑定查表全部短路（case13 根因）；修复=resumed 末尾 self.config=Some(config) 回填，字段语义从"待消费配置"扩展为"运行时配置"。
 - e2e 粘贴内容无换行时 shell 命令行不提交（已验证事实）：选区文本行间不插换行（extract_text 设计），case12 粘贴后补 Return 提交，否则 ctrl+d 为删字符而非 EOF。
 - case11 偶发启动性能断言不稳为 Xvfb 序列环境负载（工程判断）：10 轮中 1 轮 22s 首帧输出（非 2s 窗口），非 app 回归；case12/13 稳定 15+ 连 PASS。
+- vt 滚动语义实测（已验证事实，scroll_probe.rs）：scroll_viewport Delta(-5) 上滚生效；上滚后 feed 新输出视口保持偏移不自动回底（AFTER=A016）；Bottom 恢复。auto-follow 必须 app 层状态机（follow_bottom 字段+滚轮/绑定维护 offset+feed 后 Bottom），不依赖 vt。
+- 鼠标上报编码模式依赖（已验证事实）：?1003 开+?1006 未开时 encode_button 输出 X10 编码（ESC[M…）；程序开 ?1006h 时输出 SGR（ESC[<…M）。e2e case16 需同时开 ?1003h+?1006h 断言 SGR 序列。
+- e2e 断言行号修正（已验证事实）：case14 30 行输出视口 24 行，上滚后顶行=LINE_1（非 LINE_0，序列从 1 起）；case12 粘贴内容无换行时 shell 命令行不提交，e2e 补 Return。
+- xdotool click 4/5 滚轮事件经 XTest 根坐标注入可达（同按钮事件结论）；LineDelta(0,1.0) 上滚方向与 offset 递减一致。
