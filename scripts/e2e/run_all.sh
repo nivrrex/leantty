@@ -603,5 +603,50 @@ if start_app "$D" "$L"; then
     assert_no_wake "case17-ime-no-wake" "$L"
 fi
 
+
+# 用例 18：滚动条拖拽（任务 4）——50 行输出造 scrollback→右缘条带拖到顶
+# →视口显示历史区首行（DRAG_1 可见、DRAG_50 离开底部）。
+D="$OUT/case18-scrollbar-drag.dump"
+L="$OUT/case18-scrollbar-drag.log"
+# 80 列默认（120 列×字宽≈1560px 超 Xvfb 1280 屏宽，条带在屏外鼠标不可达；
+# 80 列×13px≈1040px 在屏内，条带命中正常）。
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq 1 50); do echo DRAG_\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 条带几何：客户区右缘-2；先确认底部视口含 DRAG_50
+    if ! grep -q "DRAG_50" "$D" 2>/dev/null; then
+        echo "FAIL case18-scrollbar-drag (初始视口无 DRAG_50)"
+        cp "$D" "$OUT/case18-drag-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    else
+        GW=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+        GH=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+        # 条带按下（3/4 高）→拖到顶（y=2≈offset 0；GH/8 仅 offset≈2，
+        # 视口顶为 DRAG_3 非 DRAG_1，故拖坐标取 2）
+        xdotool mousemove --window "$WID" $((GW-2)) $((GH*3/4))
+        sleep 0.2
+        xdotool mousedown 1
+        sleep 0.2
+        xdotool mousemove --window "$WID" $((GW-2)) 2
+        sleep 0.3
+        xdotool mouseup 1
+        sleep 0.5
+        if grep -q "DRAG_1" "$D" 2>/dev/null && ! grep -q "DRAG_50" "$D" 2>/dev/null; then
+            echo "PASS case18-scrollbar-drag (拖到顶：DRAG_1 可见且 DRAG_50 离开)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case18-scrollbar-drag (拖拽后视口未到位移顶部)"
+            cp "$D" "$OUT/case18-drag-fail.dump" 2>/dev/null
+            FAIL=$((FAIL+1))
+        fi
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case18-scrollbar-drag-exits"
+    assert_no_wake "case18-scrollbar-drag-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]
