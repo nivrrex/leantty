@@ -46,7 +46,7 @@ e2e 用例：0 release 钩子门控（release 二进制无 APP_DUMP_SNAPSHOT 字
 
 ## 4. 未解决问题（与阶段1衔接）
 
-1. Ctrl-C 经 \x03 不中断非 stdin 型前台进程（ping -t/timeout/Test-Connection/Start-Sleep）；真实键盘路径已证链路通（sort 正控），子进程语义未变；机制未定位，按规格不推断。
+1. Ctrl-C 经 \x03 不中断非 stdin 型前台进程（ping -t/timeout/Test-Connection/Start-Sleep）——**已被 2026-11-11 实验 X 解决**（根因：app 继承“忽略 Ctrl-C”标志；spawn 前 SetConsoleCtrlHandler(NULL, FALSE) 清除后 ping -t/Start-Sleep 均可中断）；完整矩阵与证据见 PHASE2A-WIN-ADD.md。
 2. 共享测试 render_pixels.rs 背景格切片 bug 待 Linux 侧修（请求 2；阶段1 登记，本轮 T1 render 转绿系该请求 2/3 已由 Linux 侧修复生效）。
 3. ConPTY 主端 reader EOF 延迟（约 83s）依旧；close 契约顺序已按此设计。
 4. config path_priority_cli_env_default 共享测试 Unix 路径假设（请求 4）。

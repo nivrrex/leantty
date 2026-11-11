@@ -401,12 +401,14 @@ if ($c.ok) {
 }
 
 # ---- i/j/k: Ctrl-C via real keyboard path (keybd_event Ctrl+C)
-function Run-CtrlC-Case([string]$name, [string]$shell, [string]$cmd) {
+function Run-CtrlC-Case([string]$name, [string]$shell, [string]$cmd, [string]$prePattern) {
     $c = Start-Case $name $shell $null
     if (-not $c.ok) { return }
     [void](Wait-Foreground $c.hwnd)
     Send-Text $cmd; Send-Vk 0x0D
-    if ($cmd -match 'Start-Sleep') { $pre = Wait-Dump $c.dump 'PS ' 20 } else { $pre = Wait-Dump $c.dump 'TTL=' 20 }
+    $pre = Wait-Dump $c.dump $prePattern 20
+    if (-not $pre) { $pre = Wait-Dump $c.dump $cmd 20 }
+    Start-Sleep -Seconds 1
     $ttlBefore = 0
     if (Test-Path $c.dump) { $ttlBefore = ([regex]::Matches((Get-Content $c.dump -Raw -Encoding UTF8), 'TTL=')).Count }
     Send-CtrlC
@@ -425,9 +427,12 @@ function Run-CtrlC-Case([string]$name, [string]$shell, [string]$cmd) {
 # ping -t / Start-Sleep do not read stdin: the \x03 byte reaches the pty (case l
 # proves the full chain on blocked sort) but only stdin readers observe it; this
 # matches phase-1 E-series (E1-E12) and is re-confirmed here on the real path.
-Run-CtrlC-Case 'i-cmd-ping-ctrl-c' 'cmd.exe' 'ping -t 127.0.0.1'
-Run-CtrlC-Case 'j-powershell-ping-ctrl-c' 'powershell.exe' 'ping.exe -t 127.0.0.1'
-Run-CtrlC-Case 'k-powershell-sleep-ctrl-c' 'powershell.exe' 'Start-Sleep -Seconds 100'
+Run-CtrlC-Case 'i-cmd-ping-ctrl-c' 'cmd.exe' 'ping -t 127.0.0.1' 'TTL='
+Run-CtrlC-Case 'j-powershell-ping-ctrl-c' 'powershell.exe' 'ping.exe -t 127.0.0.1' 'TTL='
+Run-CtrlC-Case 'k-powershell-sleep-ctrl-c' 'powershell.exe' 'Start-Sleep -Seconds 100' 'Start-Sleep'
+# m: engine-level interruptibility control for case k - a PS-internal command that
+# the engine CAN cancel between pipeline items (vs Start-Sleep's blocking sleep).
+Run-CtrlC-Case 'm-powershell-gci-ctrl-c' 'powershell.exe' 'Get-ChildItem C:\ -Recurse -ErrorAction SilentlyContinue' 'd----'
 
 # ---- l: Ctrl+C positive control - blocked sort is interrupted (real-keyboard
 # chain: keybd_event -> winit -> route_key -> encoder \x03 -> ConPTY -> cmd)

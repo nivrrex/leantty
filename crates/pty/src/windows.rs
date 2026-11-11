@@ -23,6 +23,31 @@ use std::time::Duration;
 
 use super::{Error, Pty};
 
+/// SetConsoleCtrlHandler（kernel32，手工 FFI：pty crate 无 windows-sys 直接依赖，
+/// 不引入新依赖）。HANDLER_ROUTINE = BOOL (WINAPI *)(DWORD)，可空。
+type CtrlHandlerRoutine = Option<unsafe extern "system" fn(u32) -> i32>;
+unsafe extern "system" {
+    fn SetConsoleCtrlHandler(lp_handler: CtrlHandlerRoutine, b_add: i32) -> i32;
+}
+
+/// 清除本进程可能继承的"忽略控制台 Ctrl 事件"状态
+/// （SetConsoleCtrlHandler(NULL, TRUE) 的效果经子进程继承假设）。
+/// 假设来源：app 从 agent 宿主环境启动时可能带忽略标志，致 ping -t 等
+/// 非 stdin 型子进程不响应控制台 Ctrl-C 事件（见 PHASE2A-WIN-ADD 实验 X）。
+fn clear_console_ctrl_ignore() -> Result<(), Error> {
+    map_ctrl_handler_result(unsafe { SetConsoleCtrlHandler(None, 0) })
+}
+
+/// FFI 返回值映射：0 = 失败（错误取自最后一次 OS 错误），非零 = 成功。
+/// 分离为纯函数以便失败路径可测。
+fn map_ctrl_handler_result(rc: i32) -> Result<(), Error> {
+    if rc == 0 {
+        Err(Error::Io(std::io::Error::last_os_error()))
+    } else {
+        Ok(())
+    }
+}
+
 /// 读线程 join 超时上限。禁止无界 join。
 pub const READER_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -154,6 +179,9 @@ impl Pty for WindowsPty {
                 "cols and rows must be > 0",
             )));
         }
+        // 实验 X：创建子进程前清除本进程可能继承的"忽略 Ctrl 事件"状态；
+        // 失败路径返回 Error（不 unwrap、不忽略）。
+        clear_console_ctrl_ignore()?;
         let system = native_pty_system();
         let PtyPair { master, slave } = system.openpty(PtySize {
             rows,
@@ -235,4 +263,24 @@ pub fn join_thread_timeout(
     });
     rx.recv_timeout(timeout).map_err(|_| Error::ReaderJoinTimeout)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 实验 X 测试 1：spawn 前调用的返回值——本机实测调用（无忽略状态时移除
+    /// 操作幂等，返回成功）。
+    #[test]
+    fn clear_console_ctrl_ignore_returns_ok() {
+        assert!(clear_console_ctrl_ignore().is_ok());
+    }
+
+    /// 实验 X 测试 2：失败路径——FFI 返回 0 映射为 Err（非零为 Ok）；
+    /// 覆盖 spawn 的 `?` 提前返回分支所依赖的映射。
+    #[test]
+    fn ctrl_handler_zero_maps_to_error() {
+        assert!(map_ctrl_handler_result(0).is_err());
+        assert!(map_ctrl_handler_result(1).is_ok());
+    }
 }
