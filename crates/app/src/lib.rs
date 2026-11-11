@@ -143,10 +143,12 @@ pub fn reader_body<R: std::io::Read>(
 
 mod clipboard;
 mod paste;
+mod ime;
 mod scrollbar;
 mod selection;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
+pub use ime::{normalize_ime_commit, preedit_display};
 pub use paste::{normalize_paste, paste_chunks, PASTE_CHUNK};
 pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
 pub use selection::{extract_text, word_region, CellPos, Selection};
@@ -216,6 +218,7 @@ impl App {
             offset_from_top: 0,
             follow_bottom: true,
             scrollbar_drag: false,
+            ime_preedit: String::new(),
             vt: None,
             pty: None,
             renderer: None,
@@ -324,6 +327,8 @@ struct AppHandler {
     follow_bottom: bool,
     /// 滚动条拖拽中（左键命中右缘条带后进入，优先于选区拖拽）。
     scrollbar_drag: bool,
+    /// IME 组合中间态（Preedit 串；Commit/Disabled 时清空）。
+    ime_preedit: String,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -360,6 +365,9 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         });
+        // IME：窗口创建后无条件开启（任务 5）；Xvfb 无 IME 总线时事件不产生，
+        // 开启调用本身无害（winit 内部按平台降级）。
+        window.set_ime_allowed(true);
         let context = match softbuffer::Context::new(event_loop.owned_display_handle()) {
             Ok(c) => c,
             Err(e) => {
@@ -526,6 +534,7 @@ impl ApplicationHandler for AppHandler {
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
             WindowEvent::MouseWheel { delta, .. } => self.on_mouse_scroll(delta),
+            WindowEvent::Ime(ime) => self.on_ime_event(ime),
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
@@ -703,6 +712,9 @@ impl ApplicationHandler for AppHandler {
                 Err(e) => eprintln!("snapshot: {}", e),
             }
         }
+        // IME 光标区跟随快照光标（每帧；match 外调用避免与 renderer mut 借冲突；
+        // 窗口未建时 update 内部跳过）。
+        self.update_ime_cursor_area();
     }
 }
 
@@ -845,6 +857,49 @@ impl AppHandler {
                 write_pty(pty, &bytes);
             }
         }
+    }
+
+    /// IME 事件（任务 5）：Commit 归一化写 PTY；Preedit 存字段（渲染层显示
+    /// 组合下划线本阶段未实现，DECISIONS 登记限制）；Disabled 清空并更新光标区。
+    fn on_ime_event(&mut self, event: winit::event::Ime) {
+        use winit::event::Ime;
+        match event {
+            Ime::Enabled => self.update_ime_cursor_area(),
+            Ime::Preedit(s, _cursor) => {
+                self.ime_preedit = s;
+                self.update_ime_cursor_area();
+            }
+            Ime::Commit(s) => {
+                self.ime_preedit.clear();
+                let norm = normalize_ime_commit(&s);
+                if !norm.is_empty()
+                    && let Some(pty) = self.pty.as_mut()
+                {
+                    write_pty(pty, norm.as_bytes());
+                }
+                self.update_ime_cursor_area();
+            }
+            Ime::Disabled => {
+                self.ime_preedit.clear();
+                self.update_ime_cursor_area();
+            }
+        }
+    }
+
+    /// 更新 IME 光标区（快照光标所在格像素矩形；窗口未建时跳过）。
+    fn update_ime_cursor_area(&self) {
+        let (Some(window), Some(vt)) = (self.window.as_ref(), self.vt.as_ref()) else {
+            return;
+        };
+        let Ok(snap) = vt.snapshot() else { return; };
+        let cx = u32::from(snap.cursor.x);
+        let cy = u32::from(snap.cursor.y);
+        let x = f64::from(self.pad_x) * self.scale_factor + f64::from(cx) * f64::from(self.cell_w);
+        let y = f64::from(self.pad_y) * self.scale_factor + f64::from(cy) * f64::from(self.cell_h);
+        window.set_ime_cursor_area(
+            winit::dpi::LogicalPosition::new(x, y),
+            winit::dpi::LogicalSize::new(f64::from(self.cell_w), f64::from(self.cell_h)),
+        );
     }
 
     /// 滚轮（任务 3/4）：鼠标跟踪模式下上报 Four/Five（非 Shift 优先）；备用屏且

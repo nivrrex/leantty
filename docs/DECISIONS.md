@@ -65,3 +65,6 @@
 - 鼠标上报编码模式依赖（已验证事实）：?1003 开+?1006 未开时 encode_button 输出 X10 编码（ESC[M…）；程序开 ?1006h 时输出 SGR（ESC[<…M）。e2e case16 需同时开 ?1003h+?1006h 断言 SGR 序列。
 - e2e 断言行号修正（已验证事实）：case14 30 行输出视口 24 行，上滚后顶行=LINE_1（非 LINE_0，序列从 1 起）；case12 粘贴内容无换行时 shell 命令行不提交，e2e 补 Return。
 - xdotool click 4/5 滚轮事件经 XTest 根坐标注入可达（同按钮事件结论）；LineDelta(0,1.0) 上滚方向与 offset 递减一致。
+- IME Preedit 组合中间态本阶段仅存储不绘制（工程判断）：渲染层无组合文本 overlay 组件，绘制需接入字形缓存与光标叠加，超出阶段 2B 范围；Commit 归一化（\n→\r）与 Preedit clamp/保序由 ime.rs 纯函数单测覆盖。
+- Xvfb 无 IME 总线（已验证事实）：e2e 无法注入 IME 事件；case17 仅冒烟 set_ime_allowed(true)+正常输入路径不 panic；Preedit/Commit/Disabled 事件路径由纯函数单测+代码审查覆盖，登记为已知限制。
+- IME 光标区每帧更新（工程判断）：about_to_wait 末尾 update_ime_cursor_area（快照光标格像素矩形）；窗口未建/snapshot 失败时内部跳过，无错误路径。

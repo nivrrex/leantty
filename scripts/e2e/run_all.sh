@@ -584,5 +584,24 @@ if start_app "$D" "$L"; then
     assert_no_wake "case16-mouse-report-no-wake" "$L"
 fi
 
+
+# 用例 17：IME 冒烟（任务 5）——set_ime_allowed(true) 无条件开启后正常输入
+# 不 panic；Xvfb 无 IME 总线，Preedit/Commit 事件路径不可达（DECISIONS 登记
+# 为已知限制，合成纯函数单测覆盖 clamp/归一）。
+D="$OUT/case17-ime.dump"
+L="$OUT/case17-ime.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "echo IME_SMOKE"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    assert_dump "case17-ime-smoke" "$D" "IME_SMOKE"
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case17-ime-exits"
+    assert_no_wake "case17-ime-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]
