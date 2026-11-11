@@ -53,4 +53,6 @@
 
 ## 6. 推送核对（push 后补记）
 
-- （待 push 后填写：commit hash、git ls-remote origin refs/heads/win 核对值、日期）
+- 提交：b9e365e223ac73e4e945412366b14e62cc8aa73d（windows: Ctrl-C 继承忽略标志清除 + e2e i/j/k/m 转绿 + pwsh FailFast 层级隔离；含 PHASE2A-WIN-ADD.md 首版）
+- git push origin win：319f438..b9e365e win -> win（成功）
+- git ls-remote origin refs/heads/win：b9e365e223ac73e4e945412366b14e62cc8aa73d，与本地 git rev-parse win 一致（2026-11-11 本机核对）
