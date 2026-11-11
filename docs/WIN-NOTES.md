@@ -11,6 +11,7 @@
 - 决策：shell 传空串时回落 cmd.exe（任务契约"默认 cmd.exe"）。app 层 SHELL 环境变量未设置时 main.rs 回退 /bin/sh（见下方请求栏）。
 - 决策：Relative shell 名经 WindowsPty::resolve_program 自解析（PATH 遍历 + POSIX 形态条目转 Windows 形态 + PATHEXT），不动 Pty trait、不改 portable-pty。已验证事实：app 由 bash 直启时 portable-pty search_path 解析失败（CreateProcessW 收到 C:\dev\tty\cmd.exe 拼接路径，os error 2）；resolve_program 后相对名 cmd.exe 与绝对路径 powershell.exe 双变体均起窗成功（MainWindowTitle=tty，Responding=True）。
 - 决策：Ctrl-C 逐项实测后未解决，按阶段规格停止该方向，不推断机制（见下）。
+- 决策：Windows e2e 键盘注入用 keybd_event（SendInput 本机零投递，probe15 交替对照实证）；CJK 用例改为子进程输出 CJK（keybd_event 无法注入 Unicode，渲染断言不变）；SetConsoleCtrlHandler(NULL,FALSE) 变体判为 moot（app 未注册 handler、其控制台窗非输入目标）未实现。
 
 ## 失败尝试与原因（已验证事实）
 
@@ -18,12 +19,22 @@
 - T7 render 像素测试失败：共享测试 render_pixels.rs 断言 fb[..16*16] 为左格背景区，但帧缓冲为 32 宽行主序，该切片实为前 8 整行（含右格字形像素）；探针帧图（vt-verify-win/logs/probe-render6.log）显示左格零红像素、X 完整落在右格 16-23 列。Linux 通过系字体度量侥幸（X 位图起点在第 8 行以下）。Consolas 度量实测：X 位图 8x9、xmin=0、自第 0 行起绘制。修复属共享测试逻辑，非 cfg(windows) 范围 → 请求栏。
 - 探针工程路径过长：vt-verify-win/probe_render/target 全路径触发 zig translate-c/WriteFile 失败（MAX_PATH 类）；改 E:\dev\build\probe-t 后通过。已验证事实。
 - git-bash 的 timeout 无法终止 MinGW 子进程（忽略 SIGTERM）；清理须 taskkill/Stop-Process。已验证事实（验证期 W5 遗留）。
+- SendInput 本机零投递：返回 2（接受）但事件零到达 app；同运行内 keybd_event 对照键到达且 cmd 回显（probe15）；e2e 注入层改 keybd_event。
+- CJK 剪贴板 Ctrl+V 方案废弃：终端无粘贴语义，Ctrl+V 被写为 \x16（case-c dump 见 echo^V）；WM_CHAR PostMessage 亦不被 winit 0.30 投递（probe6-8，真窗焦点确认后仍零事件）。
+- 早先"本机无 Microsoft YaHei/YaHei Mono"记录作废：fontdb 0.21 同库探针实测两族均存在且 has_han=true（vt-verify-win/probe_font）；泛型 Monospace→Courier New、SansSerif→Arial（均无汉字）。
+- pwsh 7.6.6 本机 ConPTY 启动即 FailFast（totalWidth=-17；80x24 与 120x30 同），powershell.exe 5.1 正常；windows.toml 示例 shell 在 pwsh 修复前于本机启动即崩（字体项本身无错，banner 已经网格渲染）。
+- Get-Process MainWindowHandle 命中 6x6 隐藏 "Winit Thread Event Target" 工具窗；真窗须按 class "Window Class"（标题 tty）EnumWindows 枚举；同桌面 PI agent 同名 "tty" 窗，pid 为唯一权威。
+- app 为 console 子系统，自带可见 ConsoleWindowClass 控制台窗（抢焦点）；e2e 启动后隐藏。
+- ConPTY spawn 后 app 的 fd 2 失效（其后 eprintln 全部丢失）；诊断改用 APP_TRACE_FILE 文件直写。
+- 前台解锁配方（probe13/15 实证）：SPI_SETFOREGROUNDLOCKTIMEOUT=0 + AttachThreadInput(app UI 线程) + SetFocus + SetForegroundWindow + GetForegroundWindow 非零校验。
 
 ## 请求（共享代码，交 Linux 侧）
 
 - 请求 1：crates/app/src/main.rs 的 SHELL 未设置时回退 "/bin/sh" 在 Windows 无效；请按平台回落（Windows: cmd.exe）。 Windows 侧以 SHELL 环境变量绕过，未擅改。
 - 请求 2：crates/render/tests/render_pixels.rs 背景格断言按连续切片 fb[..16*16] 取左格，在行主序宽帧缓冲上取错区域（前 8 整行）；请改为按 (row*width+col) 索引取左格像素。Windows Consolas 下暴露，Linux 侥幸通过。
-- 请求 3（观察项，非阻塞）：render blit 仅裁 px>=cell_x+cell_w 与 py>=cell_y+cell_h，未裁 px>=cell_x 与 py>=cell_y；Consolas 当前度量未触发越界，但负 xmin/ymin 字形（斜体/全角等）可能侵入邻格。
+- 请求 3（观察项，非阻塞）：render blit 仅裁 px>=cell_x+cell_w 与 py>=cell_y+cell_h，未裁 px>=cell_x 与 py>=cell_y；Consolas 当前度量未触发越界，但负 xmin/ymin 字形（斜体/全宽等）可能侵入邻格。
+- 请求 4：crates/config 测试 path_priority_cli_env_default 断言期望路径含 Unix /tmp 前缀（XDG 假设），Windows 必败；请共享测试按平台构造期望路径。
+- 请求 5（观察项，非阻塞）：pwsh 7.6.6 + ConPTY FailFast totalWidth=-17（本机实测）；examples/windows.toml 的 shell=pwsh.exe 在 pwsh 修复前于本机启动即崩。
 
 ## 已修正的共享代码（最小、cfg(windows) 范围或门控，登记）
 
@@ -32,7 +43,7 @@
 
 ## 未解决问题
 
-- Ctrl-C 经 \x03 不中断 ping -t/timeout/Test-Connection（数据全量见 vt-verify-win/logs/t4-probes.log 与 crates/pty/tests/pty_windows.rs 记录型探针）。
+- Ctrl-C 经 \x03 不中断 ping -t/timeout/Test-Connection/Start-Sleep（阶段1 E1-E12 数据全量见 vt-verify-win/logs/t4-probes.log 与 crates/pty/tests/pty_windows.rs 记录型探针）；2026-11-11 真实键盘路径复验：keybd_event Ctrl+C 四事件到达 app、sort 正控被中断（probe17.trace、e2e case l PASS），非 stdin 型进程不中断不变（\x03 作原始 stdin 字节）。
 - render 共享测试切片 bug 待 Linux 侧修复后 Windows 转绿。
 - app 事件循环无运行级自动化测试（与 Linux 段同限制）；GUI 行为列 PHASE1-WIN.md 手动清单。
 - ConPTY 主端 reader 在子进程退出后 EOF 延迟（验证期 W5 数据约 83s）；close 契约顺序已按此设计。

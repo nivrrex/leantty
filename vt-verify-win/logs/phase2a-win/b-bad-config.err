@@ -1,0 +1,4 @@
+config: 未知字段 `font.unknown_field_xyz`，已忽略
+config: font.size: expected float 0..=100, ignored
+config: colors.primary.background: expected color #rrggbb, ignored
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）

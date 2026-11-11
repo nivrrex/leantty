@@ -1,0 +1,14 @@
+[package]
+name = "probe_font"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+fontdb = "0.21"
+fontdue = "0.9"
+
+[[bin]]
+name = "probe_font"
+path = "src/main.rs"

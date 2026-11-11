@@ -1,0 +1,7 @@
+[font]
+size = -5.0
+normal = { family = "Consolas", style = "Regular" }
+unknown_field_xyz = 3
+
+[colors]
+primary = { background = "notacolor", foreground = "#FFFFFF" }

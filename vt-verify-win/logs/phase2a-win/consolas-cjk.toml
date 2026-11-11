@@ -1,0 +1,13 @@
+[window]
+dimensions = { columns = 100, lines = 30 }
+
+[terminal]
+shell = { program = "cmd.exe", args = [] }
+
+[font]
+size = 13.0
+normal = { family = "Consolas", style = "Regular" }
+bold = { family = "Consolas", style = "Bold" }
+italic = { family = "Consolas", style = "Italic" }
+bold_italic = { family = "Consolas", style = "Bold Italic" }
+fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
