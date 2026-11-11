@@ -183,6 +183,8 @@ pub struct WindowConfig {
 pub struct ScrollingConfig {
     pub history: u64,
     pub multiplier: f32,
+    /// 备用屏滚轮→方向键（true：备用屏下滚轮发 Up/Down 键而非 scroll_viewport）。
+    pub alt_screen_scroll: bool,
 }
 
 /// shell 配置。
@@ -330,6 +332,7 @@ impl Default for Config {
             scrolling: ScrollingConfig {
                 history: 10000,
                 multiplier: 3.0,
+                alt_screen_scroll: true,
             },
             terminal: TerminalConfig { shell: None },
             font: FontSettings {
@@ -500,6 +503,7 @@ const KNOWN: &[&str] = &[
     "scrolling",
     "scrolling.history",
     "scrolling.multiplier",
+    "scrolling.alt_screen_scroll",
     "terminal",
     "terminal.shell",
     "terminal.shell.program",
@@ -790,6 +794,9 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
     }
 
     if let Some(t) = table(root, "scrolling", "root", w) {
+        if let Some(b) = bool_field(t, "alt_screen_scroll", "scrolling", w) {
+            c.scrolling.alt_screen_scroll = b;
+        }
         if let Some(h) = u64_field(t, "history", "scrolling", 0, 1_000_000, w) {
             c.scrolling.history = h;
         }

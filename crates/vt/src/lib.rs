@@ -13,6 +13,7 @@ pub use encoder::{KeyEncoder, MouseEncoder};
 pub use error::Error;
 pub use snapshot::{Cell, CellWide, Cursor, CursorStyle, FrameSnapshot, Rgb, Underline};
 pub use terminal::VtTerminal;
+pub use libghostty_vt::terminal::ScrollViewport;
 
 // 转发 key/mouse 事件类型，供调用方构造编码事件（快照类型不暴露这些）。
 pub use libghostty_vt::key::{Action, Key, Mods};

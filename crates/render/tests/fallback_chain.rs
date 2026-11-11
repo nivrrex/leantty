@@ -49,21 +49,30 @@ fn mk_cell(ch: &str, wide: CellWide) -> Cell {
 
 #[test]
 fn fallback_chain_ascii_main_cjk_fallback() {
-    let renderer = match CpuRenderer::new(&settings("黑体"), opts(), Palette::default()) {
+    let mut renderer = match CpuRenderer::new(&settings("黑体"), opts(), Palette::default()) {
         Ok(r) => r,
         Err(e) => {
             println!("skip: 系统字体不可用（{}）", e);
             return;
         }
     };
-    // ASCII 格用主字体（组内索引 0），汉字走回退（索引 > 0）。
+    // ASCII 格用主字体（组内索引 0）；汉字走回退（索引 > 0）。
+    // 懒加载：后台字体未到位时汉字索引 0（占位语义）；add_background_fonts 到位后断言 > 0。
     let snap = snap_of(vec![mk_cell("A", CellWide::Narrow), mk_cell("你", CellWide::Narrow)]);
-    let idx = renderer.font_indices(&snap);
-    assert_eq!(idx[0][0], 0, "ASCII 'A' 应用主字体（索引 0）");
+    let before = renderer.font_indices(&snap);
+    assert_eq!(before[0][0], 0, "ASCII 'A' 应用主字体（索引 0）");
+    let fonts = render::load_font_list(&settings("黑体").fallback);
+    if fonts.is_empty() {
+        println!("skip: 系统无 CJK/兜底字体");
+        return;
+    }
+    renderer.add_background_fonts(fonts);
+    let after = renderer.font_indices(&snap);
+    assert_eq!(after[0][0], 0, "ASCII 'A' 仍用主字体");
     assert!(
-        idx[0][1] > 0,
-        "汉字 '你' 应走回退链（索引 > 0），实测 {}",
-        idx[0][1]
+        after[0][1] > 0,
+        "汉字 '你' 后台字体到位后应走回退链（索引 > 0），实测 {}",
+        after[0][1]
     );
 }
 

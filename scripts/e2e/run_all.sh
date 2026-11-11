@@ -1,4 +1,9 @@
 #!/bin/sh
+# 清理前轮残留 Xvfb/openbox（trap 在工具层超时 kill 下可能未执行；
+# 精确进程名，非通配）。
+pkill -x Xvfb 2>/dev/null || true
+pkill -x openbox 2>/dev/null || true
+sleep 0.5
 # e2e 验收（阶段 B）：Xvfb + openbox + app + xdotool，断言经 APP_DUMP_SNAPSHOT 文本钩子。
 # 一条命令跑全部用例；失败时保留 dump 与截图。变量全部来自环境/脚本位置推导。
 set -u
@@ -39,6 +44,10 @@ wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校�
     local i=0 pid wid
     WID=""
     while [ $i -lt 40 ]; do
+        # 进程已退（zombie）立即失败：X server 连接偶发失败等启动错误不再空等 20s。
+        if [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; then
+            return 1
+        fi
         for wid in $(xdotool search --name tty 2>/dev/null); do
             pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
             if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
@@ -54,6 +63,7 @@ wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校�
 
 start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/$4 = 初始 columns/lines（可选）
     local log=${2:-$OUT/app-run.log}
+    local attempt=1
     if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
         APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
     else
@@ -61,6 +71,24 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     fi
     APP_PID=$!
     if ! wait_window; then
+        # X server 连接偶发失败（Xvfb 序列环境已验证）：进程已退出（kill -0 失败
+        # 或 zombie）则 1s 后重试一次；进程存活但窗口未到则不重试（避免叠 app）。
+        if [ $attempt -lt 2 ] && { ! kill -0 $APP_PID 2>/dev/null || [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; }; then
+            attempt=$((attempt+1))
+            echo "retry start_app: 第 $((attempt-1)) 次启动进程已退出，1s 后重试" >&2
+            sleep 1
+            if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
+                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
+            else
+                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
+            fi
+            APP_PID=$!
+            if wait_window; then
+                xdotool windowactivate "$WID" >/dev/null 2>&1
+                xdotool windowfocus "$WID" >/dev/null 2>&1
+                return 0
+            fi
+        fi
         echo "FAIL start_app: 未找到 tty 窗口"
         echo "  diag: APP_PID=$APP_PID search=[$(xdotool search --name tty 2>/dev/null | tr '\n' ' ')]"
         ps -o pid,stat,cmd -p $APP_PID 2>/dev/null || echo "  diag: app 进程不存在"
@@ -198,6 +226,10 @@ D="$OUT/case5-ctrld.dump"
 L="$OUT/case5-ctrl-d.log"
 if start_app "$D" "$L"; then
     xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
     assert_app_exits "case5-ctrl-d-app-exits"
     assert_no_wake "case5-ctrl-d-no-wake" "$L"
 fi
@@ -248,7 +280,8 @@ fi
 if command -v vim >/dev/null 2>&1; then
     D="$OUT/case8-alt.dump"
     if start_app "$D"; then
-        xdotool type --window "$WID" "vim"
+        sleep 0.3
+        xdotool type --delay 60 --window "$WID" "vim"
         xdotool key --window "$WID" Return
         assert_dump "case8-alt-screen-on" "$D" "alternate=true"
         xdotool key --window "$WID" Escape
@@ -260,7 +293,8 @@ if command -v vim >/dev/null 2>&1; then
 elif command -v less >/dev/null 2>&1; then
     D="$OUT/case8-alt.dump"
     if start_app "$D"; then
-        xdotool type --window "$WID" "less"
+        sleep 0.3
+        xdotool type --delay 60 --window "$WID" "less"
         xdotool key --window "$WID" Return
         assert_dump "case8-alt-screen-on" "$D" "alternate=true"
         xdotool key --window "$WID" q
@@ -282,6 +316,10 @@ if start_app "$D" "$L" 120 30; then
     assert_dump "case9-dims-cols" "$D" "cols=120"
     assert_dump "case9-dims-rows" "$D" "rows=30"
     assert_dump "case9-dims-stty" "$D" "30 120"
+    xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
     xdotool key --window "$WID" ctrl+d
     assert_app_exits "case9-dims120x30-exits"
     assert_no_wake "case9-dims120x30-no-wake" "$L"
@@ -310,8 +348,304 @@ if wait_window; then
         FAIL=$((FAIL+1))
     fi
     xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
     assert_app_exits "case10-cjk-config-exits"
     assert_no_wake "case10-cjk-config-no-wake" "$L"
+fi
+
+# 用例 11：启动性能（任务 2B.1）——启动后立即输入，2s 内快照出现输出；汉字后台
+# 加载期间继续输入英文不丢字符（懒加载：首帧不等 CJK from_bytes）。
+D="$OUT/case11-boot-perf.dump"
+L="$OUT/case11-boot-perf.log"
+T0=$(date +%s%N)
+if start_app "$D" "$L"; then
+    xdotool type --window "$WID" "echo boot2b"
+    xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 20 ]; do
+        grep -q "boot2b" "$D" 2>/dev/null && break
+        sleep 0.1
+        i=$((i+1))
+    done
+    T1=$(date +%s%N)
+    ELAPSED=$(( (T1-T0)/1000000 ))
+    if grep -q "boot2b" "$D"; then
+        if [ "$ELAPSED" -lt 2000 ]; then
+            echo "PASS case11-first-output-2s (${ELAPSED}ms)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case11-first-output-2s (${ELAPSED}ms ≥ 2000ms)"
+            FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case11-first-output-2s (2s 内无输出，${ELAPSED}ms)"
+        FAIL=$((FAIL+1))
+    fi
+    # 汉字 + 加载期间继续输入英文（不丢字符）
+    xdotool type --window "$WID" "printf '\\344\\275\\240\\345\\245\\275'"
+    xdotool key --window "$WID" Return
+    xdotool type --window "$WID" "echo AFTER_CJK"
+    xdotool key --window "$WID" Return
+    assert_dump "case11-cjk-echo" "$D" "你好"
+    assert_dump "case11-after-cjk" "$D" "AFTER_CJK"
+    xdotool key --window "$WID" ctrl+d
+    # 输入抖动重发（Xvfb 序列环境：首次 \x04 可能被行内残留字节吞为非 EOF；
+    # shell 已退时重发的 \x04 无消费者，无害）。
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case11-boot-perf-exits"
+    assert_no_wake "case11-boot-perf-no-wake" "$L"
+fi
+
+# 用例 12：选区与剪贴板（任务 2.1/2.2）——拖选输出行→PRIMARY 写→右键 Paste
+# （默认绑定 Right=Paste）→粘贴文本作为命令执行→dump 断言回显。
+D="$OUT/case12-selection.dump"
+L="$OUT/case12-selection.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "echo PASTE_TARGET"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 拖选第 1 行（echo 输出行；y=30 ≈ 行 1 中部，x 10→200 跨整行）。
+    # 按钮事件必须走 XTest 根坐标注入（xdotool 老版本 --window click/mousedown
+    # 走 XSendEvent，winit 过滤 send_event 标志；先 warp 再无 --window 发按钮）。
+    xdotool mousemove --window "$WID" 10 30
+    sleep 0.2
+    xdotool mousedown 1
+    xdotool mousemove --window "$WID" 200 30
+    sleep 0.2
+    xdotool mouseup 1
+    sleep 0.5
+    # PRIMARY 写断言（选区定型时写）
+    if xclip -o -selection primary 2>/dev/null | grep -q "PASTE_TARGET"; then
+        echo "PASS case12-primary-write"; PASS=$((PASS+1))
+    else
+        echo "FAIL case12-primary-write (PRIMARY 无 PASTE_TARGET)"; FAIL=$((FAIL+1))
+    fi
+    # 右键 Paste（默认绑定 Right=Paste）→粘贴文本作命令执行→命令行回显唯一串
+    # （源命令行为 "echo PASTE_TARGET"，粘贴回显行为 "PASTE_TARGET"，可区分）
+    xdotool mousemove --window "$WID" 400 30
+    sleep 0.2
+    xdotool click 3
+    sleep 1
+    # 粘贴内容无换行→shell 命令行未提交；补 Return 提交后 ctrl+d 才是 EOF。
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    if grep -qF "sh-5.2# PASTE_TARGET" "$D" 2>/dev/null; then
+        echo "PASS case12-paste-exec (粘贴命令行回显)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case12-paste-exec (dump 无粘贴命令行回显)"
+        cp "$D" "$OUT/case12-paste-exec-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case12-selection-exits"
+    assert_no_wake "case12-selection-no-wake" "$L"
+fi
+
+# 用例 13：括号粘贴（任务 2.3）——?2004 模式下粘贴含换行内容→cat -v 显示
+# ESC[200~…ESC[201~ 包裹（内容中 \n 规范化为 \r，cat -v 显示 ^M）。
+D="$OUT/case13-bracketed.dump"
+L="$OUT/case13-bracketed.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?2004h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # CLIPBOARD 设含换行内容（xclip -i 读 stdin；printf 八进制换行防 shell 语义）
+    printf 'BB1\nBB2' | xclip -i -selection clipboard
+    sleep 0.3
+    xdotool mousemove --window "$WID" 400 30
+    sleep 0.2
+    xdotool click 3
+    sleep 1
+    if grep -qF '^[[200~BB1' "$D" 2>/dev/null && grep -qF 'BB2^[[201~' "$D" 2>/dev/null; then
+        echo "PASS case13-bracketed-wrap"; PASS=$((PASS+1))
+    else
+        echo "FAIL case13-bracketed-wrap (dump 无 ESC[200~…ESC[201~ 包裹)"
+        cp "$D" "$OUT/case13-bracketed-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+c
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case13-bracketed-exits"
+    assert_no_wake "case13-bracketed-no-wake" "$L"
+fi
+
+
+
+# 用例 14：滚轮滚动（任务 3/4）——30 行输出压 scrollback→滚轮上滚断言历史行
+# 可见→滚轮下滚回底（auto-follow 恢复）。xdotool click 4/5=滚轮上/下（XTest 根坐标）。
+D="$OUT/case14-scroll.dump"
+L="$OUT/case14-scroll.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq 1 30); do echo LINE_\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 滚轮上滚 5（×multiplier 3=15 行 offset）→视口离开底部，历史行可见
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    i=0; while [ $i -lt 5 ]; do xdotool click 4; i=$((i+1)); sleep 0.05; done
+    sleep 0.5
+    if grep -q "LINE_1" "$D" 2>/dev/null && ! grep -q "LINE_29" "$D" 2>/dev/null; then
+        echo "PASS case14-scroll-up (历史行 LINE_1 可见且离开底部)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case14-scroll-up (上滚后视口未离开底部)"
+        cp "$D" "$OUT/case14-scroll-up-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    # 滚轮下滚回底→auto-follow 恢复，最新行可见
+    i=0; while [ $i -lt 5 ]; do xdotool click 5; i=$((i+1)); sleep 0.05; done
+    sleep 0.5
+    if grep -q "LINE_29" "$D" 2>/dev/null; then
+        echo "PASS case14-scroll-bottom (下滚回底 LINE_29 可见)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case14-scroll-bottom (回底后 LINE_29 不可见)"
+        cp "$D" "$OUT/case14-scroll-bottom-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case14-scroll-exits"
+    assert_no_wake "case14-scroll-no-wake" "$L"
+fi
+
+
+# 用例 15：备用屏滚轮→方向键（任务 3）——?1049 备用屏+cat -v 显示方向键序列
+# （scrolling.alt_screen_scroll=true 默认：备用屏下滚轮发 ArrowUp/Down 而非 scroll_viewport）。
+D="$OUT/case15-alt-wheel.dump"
+L="$OUT/case15-alt-wheel.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?1049h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 滚轮上 2 次→方向键 Up×2（×multiplier 3=6 个 ESC[A？LineDelta 1 行×mult）
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    xdotool click 4
+    sleep 0.2
+    xdotool click 4
+    sleep 0.5
+    if grep -qF '^[[A' "$D" 2>/dev/null; then
+        echo "PASS case15-alt-wheel-arrow (备用屏滚轮→方向键 Up 序列)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case15-alt-wheel-arrow (dump 无 ^[[A 方向键序列)"
+        cp "$D" "$OUT/case15-alt-wheel-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case15-alt-wheel-exits"
+    assert_no_wake "case15-alt-wheel-no-wake" "$L"
+fi
+
+# 用例 16：鼠标上报 SGR 1006（任务 3）——?1003 全鼠标跟踪+cat -v 显示
+# 上报序列（含单元格坐标，padding/缩放经 pixel_to_cell 转换）。
+D="$OUT/case16-mouse-report.dump"
+L="$OUT/case16-mouse-report.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\e[?1003h\\e[?1006h'; cat -v"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 左键点击（非 Shift→上报优先；坐标 cell(2,1) 附近）
+    xdotool mousemove --window "$WID" 30 30
+    sleep 0.2
+    xdotool click 1
+    sleep 0.5
+    # SGR 1006 上报序列形如 ^[[<0;col;rowM（Press）/m（Release）
+    if grep -qF '^[[<0;' "$D" 2>/dev/null; then
+        echo "PASS case16-mouse-report (SGR 1006 上报序列含坐标)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case16-mouse-report (dump 无 ^[[<0; 上报序列)"
+        cp "$D" "$OUT/case16-mouse-report-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+c
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case16-mouse-report-exits"
+    assert_no_wake "case16-mouse-report-no-wake" "$L"
+fi
+
+
+# 用例 17：IME 冒烟（任务 5）——set_ime_allowed(true) 无条件开启后正常输入
+# 不 panic；Xvfb 无 IME 总线，Preedit/Commit 事件路径不可达（DECISIONS 登记
+# 为已知限制，合成纯函数单测覆盖 clamp/归一）。
+D="$OUT/case17-ime.dump"
+L="$OUT/case17-ime.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "echo IME_SMOKE"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    assert_dump "case17-ime-smoke" "$D" "IME_SMOKE"
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case17-ime-exits"
+    assert_no_wake "case17-ime-no-wake" "$L"
+fi
+
+
+# 用例 18：滚动条拖拽（任务 4）——50 行输出造 scrollback→右缘条带拖到顶
+# →视口显示历史区首行（DRAG_1 可见、DRAG_50 离开底部）。
+D="$OUT/case18-scrollbar-drag.dump"
+L="$OUT/case18-scrollbar-drag.log"
+# 80 列默认（120 列×字宽≈1560px 超 Xvfb 1280 屏宽，条带在屏外鼠标不可达；
+# 80 列×13px≈1040px 在屏内，条带命中正常）。
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq 1 50); do echo DRAG_\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.5
+    # 条带几何：客户区右缘-2；先确认底部视口含 DRAG_50
+    if ! grep -q "DRAG_50" "$D" 2>/dev/null; then
+        echo "FAIL case18-scrollbar-drag (初始视口无 DRAG_50)"
+        cp "$D" "$OUT/case18-drag-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    else
+        GW=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+        GH=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+        # 条带按下（3/4 高）→拖到顶（y=2≈offset 0；GH/8 仅 offset≈2，
+        # 视口顶为 DRAG_3 非 DRAG_1，故拖坐标取 2）
+        xdotool mousemove --window "$WID" $((GW-2)) $((GH*3/4))
+        sleep 0.2
+        xdotool mousedown 1
+        sleep 0.2
+        xdotool mousemove --window "$WID" $((GW-2)) 2
+        sleep 0.3
+        xdotool mouseup 1
+        sleep 0.5
+        if grep -q "DRAG_1" "$D" 2>/dev/null && ! grep -q "DRAG_50" "$D" 2>/dev/null; then
+            echo "PASS case18-scrollbar-drag (拖到顶：DRAG_1 可见且 DRAG_50 离开)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case18-scrollbar-drag (拖拽后视口未到位移顶部)"
+            cp "$D" "$OUT/case18-drag-fail.dump" 2>/dev/null
+            FAIL=$((FAIL+1))
+        fi
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case18-scrollbar-drag-exits"
+    assert_no_wake "case18-scrollbar-drag-no-wake" "$L"
 fi
 
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
