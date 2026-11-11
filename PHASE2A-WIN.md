@@ -80,4 +80,6 @@ e2e 用例：0 release 钩子门控（release 二进制无 APP_DUMP_SNAPSHOT 字
 
 ## 9. 推送核对（push 后补记）
 
-- （待 push 后填写：commit hash、git ls-remote origin refs/heads/win 核对值、日期）
+- 提交：35f2901fe94e519dd26f01a48ca66008155177a5（verify-win: 阶段2A Windows 复验 + 自动化 e2e + Ctrl-C 重验）
+- git push origin win：24c1333..35f2901 win -> win（成功）
+- git ls-remote origin refs/heads/win：35f2901fe94e519dd26f01a48ca66008155177a5，与本地 git rev-parse win 一致（2026-11-11 本机核对）
