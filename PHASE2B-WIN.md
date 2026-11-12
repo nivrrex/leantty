@@ -106,4 +106,7 @@ powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/windows/e2e/run
 
 ## 9. 推送核对（push 后补记）
 
-（见文末提交记录）
+- 提交：a4e6233（2B-win: clipboard/selection/mouse/wheel/IME/startup e2e + pwsh ConPTY matrix），148 文件、+26869/-4。
+- push：`git push origin win` → `0cd0eee..a4e6233  win -> win`。
+- 核对：`git rev-parse win` = a4e6233db076f637f8ed93ee5799f97a3768a65a；`git ls-remote origin refs/heads/win` = a4e6233db076f637f8ed93ee5799f97a3768a65a（一致）。
+- 合并前基线：fff7b4d（merge phase2b-done）；arboard 最小修复 63c8c7f。
