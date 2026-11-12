@@ -148,7 +148,7 @@ Preedit 激活；行数变化；resize/缩放/字体集变化（`should_full_red
 2. **需取数**（debug 专有开关，release 不含）：`APP_PRESENT_STATS=1`（每 20 帧打印 present 中位/p95）、`APP_PRESENT_FULL=1`（强制全缓冲对比）、`APP_NO_RENDER=1`（只 feed 不渲染）、`APP_NO_THROTTLE=1`（关闭 8ms 帧合并对照）、`APP_SCROLL_REUSE=1`（启用滚动位移复用，默认关闭）、`APP_FORCE_FULL_REDRAW=1`、`APP_RANDOM_SEED`（随机序列种子）。
 3. **ConPTY 注意**：有界 channel（256）背压已在 reader 侧处理（满时先 wake 再阻塞 send），Windows 下 ConPTY 读端行为不同，建议复跑 1MB/10MB 粘贴与 2M 行输出场景确认无死锁。
 4. **Windows 首帧 1465ms 仍未定位**（2D 遗留）：用 `[perf] fontdb_ms/font_ms/window_ms/surface_ms/first_frame_ms/bg_fonts_ms` 取数。
-5. Windows 专属文件本轮未编辑；`ali/win` 实际 hash 以 `git ls-remote ali` 为准（本次为 `41dc491`），未合并。
+5. Windows 专属文件本轮未编辑；`ali/win` 实际 hash 以 `git ls-remote ali` 为准：本轮开始 `git fetch ali` 时为 `41dc491`，收尾核对时已推进到 **`4bd466c`**（Windows 侧在本轮期间有新提交），两次均**未合并**；合流时请以届时 `git ls-remote` 输出为准。
 
 ## 7. 手动清单（≤3）
 
