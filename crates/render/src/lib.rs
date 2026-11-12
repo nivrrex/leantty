@@ -298,6 +298,22 @@ pub struct CpuRenderer {
     scrollbar: Option<(u32, u32)>,
     /// IME 预编辑叠加层（不写入网格，绘制在光标处）。
     preedit: Option<PreeditOverlay>,
+    /// 强制整屏重绘（缩放/字体集变化等由渲染器自身感知的结构变化）。
+    force_full: bool,
+    /// 上次绘制的帧缓冲尺寸（用于识别 resize）。
+    last_shape: Option<(u32, u32)>,
+    /// 上次绘制时的 scale 位表示（识别 HiDPI 变化）。
+    last_scale_bits: u64,
+    /// 上次绘制的光标状态（位置/可见性/样式），用于叠加层脏判定。
+    last_cursor: Option<(u16, u16, bool, u8)>,
+    /// 上次绘制的滚动条几何。
+    last_scrollbar: Option<(u32, u32)>,
+    /// 上次绘制的预编辑布局键（行, 列, 单元数）。
+    last_preedit: Option<(u16, u16, usize, u64)>,
+    /// 滚动条条带（右缘 4px）在"不含滚动条时"的像素备份。
+    band_backup: Option<Vec<u32>>,
+    /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
+    damage: Vec<(u32, u32, u32, u32)>,
 }
 
 impl CpuRenderer {
@@ -376,6 +392,14 @@ impl CpuRenderer {
             selection: None,
             scrollbar: None,
             preedit: None,
+            force_full: true,
+            last_shape: None,
+            last_scale_bits: 0,
+            last_cursor: None,
+            last_scrollbar: None,
+            last_preedit: None,
+            band_backup: None,
+            damage: Vec::new(),
         })
     }
 
@@ -385,12 +409,20 @@ impl CpuRenderer {
         if (scale - self.scale).abs() > f64::EPSILON {
             self.scale = scale;
             self.glyph_cache.clear();
+            // 格子尺寸随缩放变化：整屏重绘。
+            self.force_full = true;
         }
     }
 
     /// 设置选区矩形（网格坐标，含端点）；None 清除高亮。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         self.selection = region;
+    }
+
+    /// 本帧需要提交的区域 (x, y, w, h)：整屏帧为一个全屏矩形，
+    /// 增量帧为脏行矩形（以及滚动条变化时的右缘条带）。
+    pub fn damage(&self) -> &[(u32, u32, u32, u32)] {
+        &self.damage
     }
 
     /// 设置滚动条拇指几何 (thumb_y, thumb_h)；None 清除（无 scrollback）。
@@ -469,6 +501,8 @@ impl CpuRenderer {
         }
         self.char_font.clear();
         self.glyph_cache.clear();
+        // 字形集变化：整屏重绘。
+        self.force_full = true;
     }
 
     /// 光栅化（带缓存）：px = 字号 * 缩放因子。
@@ -506,6 +540,405 @@ fn group_for(cell: &Cell) -> u8 {
     }
 }
 
+/// 行绘制上下文（全量与增量路径共用；避免重复计算度量与颜色）。
+struct RowDrawCtx {
+    cell_w: u32,
+    cell_h: u32,
+    px: f32,
+    bg_default: u32,
+    gamma: f32,
+    sub: Subpixel,
+}
+
+/// 光标状态键（位置/可见性/样式），用于叠加层脏判定。
+fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
+    let style = match frame.cursor.style {
+        CursorStyle::Block => 0u8,
+        CursorStyle::HollowBlock => 1,
+        CursorStyle::Underline => 2,
+        CursorStyle::Bar => 3,
+    };
+    (frame.cursor.x, frame.cursor.y, frame.cursor.visible, style)
+}
+
+/// 预编辑叠加层键（起始行, 起始列, 单元数, 文本哈希）；无预编辑为 None。
+///
+/// 必须包含文本哈希：组合串在长度/位置相同时内容仍可能变化（如"中"→"a"），
+/// 仅比较布局会漏绘叠加层。
+fn preedit_key(
+    overlay: &Option<PreeditOverlay>,
+    frame: &FrameSnapshot,
+) -> Option<(u16, u16, usize, u64)> {
+    let o = overlay.as_ref()?;
+    let layout =
+        preedit::layout_preedit(&o.text, frame.cursor.x, frame.cursor.y, frame.cols, frame.rows)?;
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325; // FNV-1a 偏移基数
+    for b in o.text.as_bytes() {
+        hash ^= u64::from(*b);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    Some((layout.row, layout.col, layout.cells.len(), hash))
+}
+
+impl CpuRenderer {
+    /// 是否需要整屏重绘（结构变化：resize/缩放/字体集变化/调用方要求）。
+    fn should_full_redraw(
+        &self,
+        frame: &FrameSnapshot,
+        pixel_width: u32,
+        pixel_height: u32,
+    ) -> bool {
+        frame.full_redraw
+            || self.force_full
+            || self.last_shape != Some((pixel_width, pixel_height))
+            || self.fb_width != pixel_width
+            || self.fb_height != pixel_height
+            || self.framebuffer.len() != (pixel_width * pixel_height) as usize
+            || self.last_scale_bits != self.scale.to_bits()
+    }
+
+    /// 整屏重绘：重建帧缓冲 + 全部行 + 光标 + 采集条带备份 + 滚动条 + 预编辑。
+    /// 顺序与增量路径严格一致（cells → cursor → [备份] → scrollbar → preedit）。
+    fn render_full(
+        &mut self,
+        frame: &FrameSnapshot,
+        ctx: &RowDrawCtx,
+        pixel_width: u32,
+        pixel_height: u32,
+    ) {
+        self.fb_width = pixel_width;
+        self.fb_height = pixel_height;
+        self.framebuffer = vec![0; (pixel_width * pixel_height) as usize];
+        for y in 0..frame.cells.len() {
+            self.draw_row(frame, y, ctx);
+        }
+        self.draw_cursor(frame, ctx.cell_w, ctx.cell_h, ctx.px);
+        self.capture_band();
+        self.draw_scrollbar(pixel_height);
+        self.draw_preedit(frame, ctx.cell_w, ctx.cell_h, ctx.px);
+        self.force_full = false;
+        self.last_shape = Some((pixel_width, pixel_height));
+        self.last_scale_bits = self.scale.to_bits();
+        self.last_cursor = Some(cursor_key(frame));
+        self.last_scrollbar = self.scrollbar;
+        self.last_preedit = preedit_key(&self.preedit, frame);
+        self.damage.push((0, 0, pixel_width.max(1), pixel_height.max(1)));
+    }
+
+    /// 增量重绘：只画脏行；光标/滚动条/预编辑作为叠加层按变化补齐。
+    ///
+    /// 叠加层规则：
+    /// - 光标：位置/可见性/样式变化时，旧行与新行标脏；任一行被重绘后重画光标。
+    /// - 预编辑：布局变化时旧布局行与新布局行标脏（清残影），并在最后重画。
+    /// - 滚动条：几何变化时只重绘右缘条带（先恢复"不含滚动条"的备份，再画新条带）。
+    /// - 视口滚动/结构变化由 frame.full_redraw / should_full_redraw 走整屏路径。
+    fn render_incremental(
+        &mut self,
+        frame: &FrameSnapshot,
+        ctx: &RowDrawCtx,
+        _pixel_width: u32,
+        pixel_height: u32,
+    ) {
+        let rows = frame.cells.len();
+        let mut dirty = vec![false; rows];
+        for (y, d) in dirty.iter_mut().enumerate() {
+            *d = frame.is_row_dirty(y);
+        }
+        // 光标叠加层脏
+        let cur_cursor = cursor_key(frame);
+        let cursor_changed = self.last_cursor != Some(cur_cursor);
+        if cursor_changed {
+            // 光标变化：旧位置行（清除残影）与新位置行都标脏。
+            if let Some(old) = self.last_cursor
+                && let Some(d) = dirty.get_mut(old.1 as usize)
+            {
+                *d = true;
+            }
+            if let Some(d) = dirty.get_mut(cur_cursor.1 as usize) {
+                *d = true;
+            }
+        }
+        // 预编辑叠加层脏（旧布局行清残影 + 新布局行重绘）
+        let new_preedit = preedit_key(&self.preedit, frame);
+        let preedit_changed = self.last_preedit != new_preedit;
+        if preedit_changed {
+            if let Some((row, _, _, _)) = self.last_preedit
+                && let Some(d) = dirty.get_mut(row as usize)
+            {
+                *d = true;
+            }
+            if let Some((row, _, _, _)) = new_preedit
+                && let Some(d) = dirty.get_mut(row as usize)
+            {
+                *d = true;
+            }
+        }
+        let mut rows_drawn = false;
+        for (y, is_dirty) in dirty.iter().enumerate() {
+            if *is_dirty {
+                self.draw_row(frame, y, ctx);
+                // 该行的条带段刚被内容覆盖（无滚动条）→ 刷新备份。
+                self.capture_band_char_row(y, ctx.cell_h);
+                let py = (y as u32).saturating_mul(ctx.cell_h);
+                self.damage
+                    .push((0, py, self.fb_width.max(1), ctx.cell_h.min(self.fb_height.saturating_sub(py)).max(1)));
+                rows_drawn = true;
+            }
+        }
+        // 行被重绘会抹掉其上的光标像素：有行重绘或光标变化时重画光标（幂等）。
+        if rows_drawn || cursor_changed {
+            self.draw_cursor(frame, ctx.cell_w, ctx.cell_h, ctx.px);
+            // 光标格若落在右缘条带内（最后一列），其像素也属于"滚动条之下"。
+            if frame.cursor.visible && frame.cursor.x + 1 >= frame.cols {
+                self.capture_band_char_row(frame.cursor.y as usize, ctx.cell_h);
+            }
+        }
+        let scrollbar_changed = self.last_scrollbar != self.scrollbar;
+        if rows_drawn || cursor_changed || scrollbar_changed || preedit_changed {
+            if !(rows_drawn || cursor_changed) {
+                // 仅叠加层变化：先恢复条带下的内容，再重画滚动条与预编辑。
+                self.restore_band();
+            }
+            self.draw_scrollbar(pixel_height);
+            self.draw_preedit(frame, ctx.cell_w, ctx.cell_h, ctx.px);
+            // 滚动条条带 / 预编辑所在行需要提交（条带 4px 宽，单独成矩形）。
+            if scrollbar_changed || preedit_changed {
+                let w = self.fb_width.max(1);
+                self.damage
+                    .push((w.saturating_sub(4), 0, w.min(4), self.fb_height.max(1)));
+            }
+        }
+        self.last_cursor = Some(cur_cursor);
+        self.last_scrollbar = self.scrollbar;
+        self.last_preedit = new_preedit;
+    }
+
+    /// 采集滚动条条带（右缘 4px 全高）的像素备份（整屏重绘后调用）。
+    ///
+    /// 备份语义固定为"不含滚动条的条带内容"：整屏路径在此刻尚未绘制滚动条，
+    /// 增量路径则在**每次行重绘后按行刷新**（见 capture_band_row），避免把已画的
+    /// 滚动条像素带进备份。
+    fn capture_band(&mut self) {
+        let w = self.fb_width;
+        let h = self.fb_height;
+        if w < 4 || h == 0 {
+            self.band_backup = None;
+            return;
+        }
+        let x0 = (w - 4) as usize;
+        let mut buf = Vec::with_capacity(4 * h as usize);
+        for y in 0..h as usize {
+            let base = y * w as usize;
+            buf.extend_from_slice(&self.framebuffer[base + x0..base + w as usize]);
+        }
+        self.band_backup = Some(buf);
+    }
+
+    /// 按**字符行**刷新条带备份：该字符行覆盖的所有像素行的右缘 4px。
+    ///
+    /// 备份按像素行存储（每像素行 4 个 u32），因此这里把字符行转换为
+    /// 像素行范围后逐行复制（行刚被重绘或光标刚重画时调用）。
+    fn capture_band_char_row(&mut self, char_y: usize, cell_h: u32) {
+        let w = self.fb_width;
+        let h = self.fb_height;
+        if w < 4 || h == 0 || cell_h == 0 {
+            return;
+        }
+        let need = (4 * h) as usize;
+        if self.band_backup.as_ref().map(|b| b.len()) != Some(need) {
+            // 尺寸变化后首次：整条带回落到当前帧缓冲（此时无滚动条覆盖）。
+            self.capture_band();
+            return;
+        }
+        let py0 = (char_y as u32).saturating_mul(cell_h).min(h);
+        let py1 = ((char_y as u32 + 1).saturating_mul(cell_h)).min(h);
+        let x0 = (w - 4) as usize;
+        let wu = w as usize;
+        if let Some(buf) = self.band_backup.as_mut() {
+            for py in py0..py1 {
+                let base = py as usize * wu;
+                let dst = py as usize * 4;
+                buf[dst..dst + 4].copy_from_slice(&self.framebuffer[base + x0..base + wu]);
+            }
+        }
+    }
+
+    /// 把条带恢复为采集时的内容（去掉当前滚动条像素）。
+    fn restore_band(&mut self) {
+        let Some(buf) = self.band_backup.clone() else { return; };
+        let w = self.fb_width;
+        let h = self.fb_height;
+        if w < 4 || h == 0 || buf.len() != (4 * h) as usize {
+            return;
+        }
+        let x0 = (w - 4) as usize;
+        let mut i = 0usize;
+        for y in 0..h as usize {
+            let base = y * w as usize;
+            for x in x0..w as usize {
+                self.framebuffer[base + x] = buf[i];
+                i += 1;
+            }
+        }
+    }
+
+    /// 绘制单行（行内整行重绘）。全量与增量路径共用，保证像素一致。
+    fn draw_row(&mut self, frame: &FrameSnapshot, y: usize, ctx: &RowDrawCtx) {
+        let row = &frame.cells[y];
+        let pixel_width = self.fb_width;
+        let cell_w = ctx.cell_w;
+        let cell_h = ctx.cell_h;
+        let px = ctx.px;
+        let bg_default = ctx.bg_default;
+        let gamma = ctx.gamma;
+        let sub = ctx.sub;
+        for (x, cell) in row.iter().enumerate() {
+            let px0 = x as u32 * cell_w;
+            let py0 = y as u32 * cell_h;
+            // SpacerTail/SpacerHead 不绘制字形；背景仍填充（宽字符背景跨 2 格）。
+            let is_tail = matches!(
+                cell.wide,
+                CellWide::SpacerTail | CellWide::SpacerHead
+            );
+            let span = if cell.wide == CellWide::Wide && x + 1 < row.len() {
+                2
+            } else {
+                1
+            };
+            let area_w = cell_w * span;
+            // 选区高亮（反色）：背景取字色、宽字符续格与 Spacer 尾格不高亮。
+            let in_sel = self.selection.is_some_and(|(c0, r0, c1, r1)| {
+                (x as u16) >= c0 && (x as u16) <= c1 && (y as u16) >= r0 && (y as u16) <= r1
+            });
+            let sel = in_sel && !is_tail;
+            let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
+            let orig_fg = cell
+                .fg
+                .map(rgb_to_u32)
+                .unwrap_or(rgb_to_u32(self.palette.primary_fg));
+            let bg = if sel { orig_fg } else { orig_bg };
+            fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+            if is_tail || cell.chars.is_empty() || cell.invisible {
+                continue;
+            }
+
+            // 颜色：默认前景/反显交换/粗体亮色/faint 降不透明度。
+            let mut fg = cell
+                .fg
+                .map(rgb_to_u32)
+                .unwrap_or(rgb_to_u32(self.palette.primary_fg));
+            let mut bgc = bg;
+            if cell.inverse {
+                std::mem::swap(&mut fg, &mut bgc);
+            }
+            if cell.bold && self.options.draw_bold_with_bright {
+                fg = map_to_bright(fg, &self.palette);
+            }
+            if cell.faint {
+                fg = dim(fg, bgc);
+            }
+            // 选区字色=原背景色（反色）；样式线同步用反色字色。
+            let fg = if sel { orig_bg } else { fg };
+            let bgc = if sel { orig_fg } else { bgc };
+
+            let ch = cell.chars.chars().next().expect("非空 chars");
+            let group = group_for(cell);
+            let font_idx = self.font_index_for(group, ch);
+
+            if span == 2 && sub == Subpixel::None {
+                // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
+                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
+                let bw = m.width.max(1) as f32;
+                let bh = m.height.max(1) as f32;
+                let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+                if (s - 1.0).abs() < f32::EPSILON {
+                    blit(
+                        &mut self.framebuffer,
+                        pixel_width,
+                        (px0, py0, area_w, cell_h),
+                        &m,
+                        &bitmap,
+                        (fg, bg),
+                        (self.options.antialiasing, gamma),
+                    );
+                } else {
+                    let sw = (bw * s).ceil() as usize;
+                    let sh = (bh * s).ceil() as usize;
+                    let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
+                    let ox = (area_w as i32 - sw as i32) / 2;
+                    let sm = fontdue::Metrics {
+                        xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
+                        ymin: (m.ymin as f32 * s).ceil() as i32,
+                        width: sw,
+                        height: sh,
+                        advance_width: m.advance_width * s,
+                        advance_height: m.advance_height * s,
+                        bounds: m.bounds,
+                    };
+                    blit(
+                        &mut self.framebuffer,
+                        pixel_width,
+                        (px0, py0, area_w, cell_h),
+                        &sm,
+                        &scaled,
+                        (fg, bg),
+                        (self.options.antialiasing, gamma),
+                    );
+                }
+            } else if span == 2 {
+                // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
+                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px * 3.0);
+                let bw = m.width.max(1) as f32 / 3.0;
+                let bh = m.height.max(1) as f32 / 3.0;
+                let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+                let sw = (bw * s).ceil() as usize;
+                let sh = (bh * s).ceil() as usize;
+                let scaled = scale_bitmap(&bitmap, m.width, m.height, sw * 3, sh * 3);
+                let ox = (area_w as i32 - sw as i32) / 2;
+                let sm = fontdue::Metrics {
+                    xmin: (m.xmin as f32 / 3.0 * s).ceil() as i32 + ox * 3,
+                    ymin: (m.ymin as f32 / 3.0 * s).ceil() as i32 * 3,
+                    width: sw * 3,
+                    height: sh * 3,
+                    advance_width: m.advance_width * s,
+                    advance_height: m.advance_height * s,
+                    bounds: m.bounds,
+                };
+                blit_subpixel(
+                    &mut self.framebuffer,
+                    pixel_width,
+                    (px0, py0, area_w, cell_h),
+                    &sm,
+                    &scaled,
+                    fg,
+                    (sub, gamma),
+                );
+            } else {
+                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
+                blit(
+                    &mut self.framebuffer,
+                    pixel_width,
+                    (px0, py0, area_w, cell_h),
+                    &m,
+                    &bitmap,
+                    (fg, bg),
+                    (self.options.antialiasing, gamma),
+                );
+            }
+
+            // 样式线：下划线（Single/Double/Dotted/Dashed；Curly 近似 Single）、删除线、上划线。
+            let line_color = if cell.inverse { bgc } else { fg };
+            draw_style_lines(
+                &mut self.framebuffer,
+                pixel_width,
+                (px0, py0, area_w, cell_h),
+                cell,
+                line_color,
+            );
+        }
+    }
+}
+
 impl Renderer for CpuRenderer {
     fn render(
         &mut self,
@@ -516,165 +949,20 @@ impl Renderer for CpuRenderer {
         let px = (self.font_size * self.scale as f32).max(0.1);
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
-        let cell_w = (pixel_width / cols).max(1);
-        let cell_h = (pixel_height / rows).max(1);
-        self.fb_width = pixel_width;
-        self.fb_height = pixel_height;
-        self.framebuffer = vec![0; (pixel_width * pixel_height) as usize];
-        let bg_default = rgb_to_u32(self.palette.primary_bg);
-        let gamma = self.options.text_gamma;
-        let sub = self.options.subpixel;
-
-        for (y, row) in frame.cells.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                let px0 = x as u32 * cell_w;
-                let py0 = y as u32 * cell_h;
-                // SpacerTail/SpacerHead 不绘制字形；背景仍填充（宽字符背景跨 2 格）。
-                let is_tail = matches!(
-                    cell.wide,
-                    CellWide::SpacerTail | CellWide::SpacerHead
-                );
-                let span = if cell.wide == CellWide::Wide && x + 1 < row.len() {
-                    2
-                } else {
-                    1
-                };
-                let area_w = cell_w * span;
-                // 选区高亮（反色）：背景取字色、宽字符续格与 Spacer 尾格不高亮。
-                let in_sel = self.selection.is_some_and(|(c0, r0, c1, r1)| {
-                    (x as u16) >= c0 && (x as u16) <= c1 && (y as u16) >= r0 && (y as u16) <= r1
-                });
-                let sel = in_sel && !is_tail;
-                let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
-                let orig_fg = cell
-                    .fg
-                    .map(rgb_to_u32)
-                    .unwrap_or(rgb_to_u32(self.palette.primary_fg));
-                let bg = if sel { orig_fg } else { orig_bg };
-                fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
-                if is_tail || cell.chars.is_empty() || cell.invisible {
-                    continue;
-                }
-
-                // 颜色：默认前景/反显交换/粗体亮色/faint 降不透明度。
-                let mut fg = cell
-                    .fg
-                    .map(rgb_to_u32)
-                    .unwrap_or(rgb_to_u32(self.palette.primary_fg));
-                let mut bgc = bg;
-                if cell.inverse {
-                    std::mem::swap(&mut fg, &mut bgc);
-                }
-                if cell.bold && self.options.draw_bold_with_bright {
-                    fg = map_to_bright(fg, &self.palette);
-                }
-                if cell.faint {
-                    fg = dim(fg, bgc);
-                }
-                // 选区字色=原背景色（反色）；样式线同步用反色字色。
-                let fg = if sel { orig_bg } else { fg };
-                let bgc = if sel { orig_fg } else { bgc };
-
-                let ch = cell.chars.chars().next().expect("非空 chars");
-                let group = group_for(cell);
-                let font_idx = self.font_index_for(group, ch);
-
-                if span == 2 && sub == Subpixel::None {
-                    // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
-                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
-                    let bw = m.width.max(1) as f32;
-                    let bh = m.height.max(1) as f32;
-                    let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
-                    if (s - 1.0).abs() < f32::EPSILON {
-                        blit(
-                            &mut self.framebuffer,
-                            pixel_width,
-                            (px0, py0, area_w, cell_h),
-                            &m,
-                            &bitmap,
-                            (fg, bg),
-                            (self.options.antialiasing, gamma),
-                        );
-                    } else {
-                        let sw = (bw * s).ceil() as usize;
-                        let sh = (bh * s).ceil() as usize;
-                        let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
-                        let ox = (area_w as i32 - sw as i32) / 2;
-                        let sm = fontdue::Metrics {
-                            xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
-                            ymin: (m.ymin as f32 * s).ceil() as i32,
-                            width: sw,
-                            height: sh,
-                            advance_width: m.advance_width * s,
-                            advance_height: m.advance_height * s,
-                            bounds: m.bounds,
-                        };
-                        blit(
-                            &mut self.framebuffer,
-                            pixel_width,
-                            (px0, py0, area_w, cell_h),
-                            &sm,
-                            &scaled,
-                            (fg, bg),
-                            (self.options.antialiasing, gamma),
-                        );
-                    }
-                } else if span == 2 {
-                    // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
-                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px * 3.0);
-                    let bw = m.width.max(1) as f32 / 3.0;
-                    let bh = m.height.max(1) as f32 / 3.0;
-                    let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
-                    let sw = (bw * s).ceil() as usize;
-                    let sh = (bh * s).ceil() as usize;
-                    let scaled = scale_bitmap(&bitmap, m.width, m.height, sw * 3, sh * 3);
-                    let ox = (area_w as i32 - sw as i32) / 2;
-                    let sm = fontdue::Metrics {
-                        xmin: (m.xmin as f32 / 3.0 * s).ceil() as i32 + ox * 3,
-                        ymin: (m.ymin as f32 / 3.0 * s).ceil() as i32 * 3,
-                        width: sw * 3,
-                        height: sh * 3,
-                        advance_width: m.advance_width * s,
-                        advance_height: m.advance_height * s,
-                        bounds: m.bounds,
-                    };
-                    blit_subpixel(
-                        &mut self.framebuffer,
-                        pixel_width,
-                        (px0, py0, area_w, cell_h),
-                        &sm,
-                        &scaled,
-                        fg,
-                        (sub, gamma),
-                    );
-                } else {
-                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
-                    blit(
-                        &mut self.framebuffer,
-                        pixel_width,
-                        (px0, py0, area_w, cell_h),
-                        &m,
-                        &bitmap,
-                        (fg, bg),
-                        (self.options.antialiasing, gamma),
-                    );
-                }
-
-                // 样式线：下划线（Single/Double/Dotted/Dashed；Curly 近似 Single）、删除线、上划线。
-                let line_color = if cell.inverse { bgc } else { fg };
-                draw_style_lines(
-                    &mut self.framebuffer,
-                    pixel_width,
-                    (px0, py0, area_w, cell_h),
-                    cell,
-                    line_color,
-                );
-            }
+        let ctx = RowDrawCtx {
+            cell_w: (pixel_width / cols).max(1),
+            cell_h: (pixel_height / rows).max(1),
+            px,
+            bg_default: rgb_to_u32(self.palette.primary_bg),
+            gamma: self.options.text_gamma,
+            sub: self.options.subpixel,
+        };
+        self.damage.clear();
+        if self.should_full_redraw(frame, pixel_width, pixel_height) {
+            self.render_full(frame, &ctx, pixel_width, pixel_height);
+        } else {
+            self.render_incremental(frame, &ctx, pixel_width, pixel_height);
         }
-
-        self.draw_cursor(frame, cell_w, cell_h, px);
-        self.draw_scrollbar(pixel_height);
-        self.draw_preedit(frame, cell_w, cell_h, px);
         Ok(())
     }
 

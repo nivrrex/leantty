@@ -229,6 +229,16 @@ impl App {
             #[cfg(debug_assertions)]
             test_preedit: None,
             last_title: None,
+            last_sel_region: None,
+            last_render_offset: 0,
+            #[cfg(debug_assertions)]
+            force_full_redraw: std::env::var("APP_FORCE_FULL_REDRAW").is_ok(),
+            #[cfg(debug_assertions)]
+            present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
+            #[cfg(debug_assertions)]
+            present_stats: std::env::var("APP_PRESENT_STATS")
+                .is_ok()
+                .then(|| (std::env::var("APP_PRESENT_FULL").is_ok(), Vec::new())),
             vt: None,
             pty: None,
             renderer: None,
@@ -348,6 +358,19 @@ struct AppHandler {
     test_preedit: Option<String>,
     /// 上次应用的窗口标题（避免每帧重复 set_title）。
     last_title: Option<String>,
+    /// 上次渲染时的选区区域（绝对坐标），用于选区叠加层脏判定。
+    last_sel_region: Option<(u16, u16, u16, u16)>,
+    /// 上次渲染时的视口偏移（变化即整屏重绘：视口滚动不做位移复用）。
+    last_render_offset: usize,
+    /// 强制整屏重绘（仅 debug：APP_FORCE_FULL_REDRAW=1，用于 e2e 增量/全量对拍）。
+    #[cfg(debug_assertions)]
+    force_full_redraw: bool,
+    /// 强制整缓冲 present（仅 debug：APP_PRESENT_FULL=1，用于对比 damage 提交）。
+    #[cfg(debug_assertions)]
+    present_full: bool,
+    /// present 耗时采样（仅 debug：APP_PRESENT_STATS=1 每 100 帧打印一次）。
+    #[cfg(debug_assertions)]
+    present_stats: Option<(bool, Vec<u128>)>,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -803,17 +826,35 @@ impl ApplicationHandler for AppHandler {
         if let (Some(vt), Some(renderer), Some(surface)) =
             (self.vt.as_ref(), self.renderer.as_mut(), self.surface.as_mut())
         {
-            match vt.snapshot() {
-                Ok(snap) => {
+            match vt.snapshot_incremental() {
+                Ok(mut snap) => {
+                    // 叠加层脏合并（阶段 3A 任务 3）：libghostty 只上报行内容脏，
+                    // 选区（反色）与视口滚动需 app 侧补齐。
+                    // 视口滚动：整屏重绘（不做位移复用，记录为后续优化点）。
+                    if self.offset_from_top != self.last_render_offset {
+                        snap.full_redraw = true;
+                        self.last_render_offset = self.offset_from_top;
+                    }
+                    // 选区变化：旧区域与新区域的所有行标脏。
+                    let vis_region = self.selection.and_then(|s| {
+                        let (c0, a0, c1, a1) = s.region();
+                        selection_viewport_region((c0, a0, c1, a1), self.offset_from_top, self.rows)
+                    });
+                    if vis_region != self.last_sel_region {
+                        if let Some((_, r0, _, r1)) = self.last_sel_region {
+                            snap.mark_rows_dirty(r0, r1);
+                        }
+                        if let Some((_, r0, _, r1)) = vis_region {
+                            snap.mark_rows_dirty(r0, r1);
+                        }
+                        self.last_sel_region = vis_region;
+                    }
+                    // debug-only 强制全量（e2e 对拍用；release 不含该分支）
+                    #[cfg(debug_assertions)]
+                    if self.force_full_redraw {
+                        snap.full_redraw = true;
+                    }
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
-                    // 选区绝对坐标→视口坐标（滚动后高亮跟随内容）；
-                    // scrollback 截断致选区行越界时 clamp 到可见历史边界。
-                    let vis_region = self
-                        .selection
-                        .and_then(|s| {
-                            let (c0, a0, c1, a1) = s.region();
-                            selection_viewport_region((c0, a0, c1, a1), self.offset_from_top, self.rows)
-                        });
                     renderer.set_selection(vis_region);
                     // 滚动条几何（scrollback=0 时不绘制）
                     let sb = sb_render;
@@ -846,15 +887,88 @@ impl ApplicationHandler for AppHandler {
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
+                    // 本帧脏区（阶段 3A 任务 3）：只拷贝并提交脏区；
+                    // 无脏区则跳过 present（静止画面零提交）。
+                    let damage: Vec<(u32, u32, u32, u32)> = renderer.damage().to_vec();
+                    let fb = renderer.framebuffer();
+                    let fb_w = pw;
+                    #[cfg(debug_assertions)]
+                    let force_full_present = self.present_full;
+                    #[cfg(not(debug_assertions))]
+                    let force_full_present = false;
+                    if !force_full_present && damage.is_empty() {
+                        // 完全静态帧：不重绘、不提交（仍可更新 perf 日志）。
+                        if !self.first_frame_logged {
+                            self.first_frame_logged = true;
+                            if let Some(t0) = crate::start_time() {
+                                eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                            }
+                        }
+                        self.update_ime_cursor_area();
+                        return;
+                    }
                     match surface.buffer_mut() {
                         Ok(mut buffer) => {
-                            let fb = renderer.framebuffer();
-                            for (i, px) in fb.iter().enumerate() {
-                                if i < buffer.len() {
-                                    buffer[i] = *px;
+                            let t_present = Instant::now();
+                            // 拷贝：damage 覆盖整屏时整缓冲拷贝，否则按矩形逐行拷贝。
+                            let full_cover = force_full_present
+                                || damage.len() == 1
+                                    && damage[0] == (0, 0, pw, ph);
+                            if full_cover {
+                                for (i, px) in fb.iter().enumerate() {
+                                    if i < buffer.len() {
+                                        buffer[i] = *px;
+                                    }
+                                }
+                            } else {
+                                for &(x, y, w, h) in &damage {
+                                    for row in y..(y + h).min(ph) {
+                                        let src_start = (row * fb_w + x) as usize;
+                                        let src_end = (row * fb_w + x + w).min((row + 1) * fb_w) as usize;
+                                        let dst_start = (row * pw + x) as usize;
+                                        if src_end <= src_start || dst_start >= buffer.len() {
+                                            continue;
+                                        }
+                                        let n = (src_end - src_start).min(buffer.len() - dst_start);
+                                        buffer[dst_start..dst_start + n]
+                                            .copy_from_slice(&fb[src_start..src_start + n]);
+                                    }
                                 }
                             }
-                            if let Err(e) = buffer.present() {
+                            // 提交：可用 present_with_damage 时只提交脏矩形。
+                            let present_res = if force_full_present || full_cover {
+                                buffer.present()
+                            } else {
+                                let rects: Vec<softbuffer::Rect> = damage
+                                    .iter()
+                                    .filter_map(|&(x, y, w, h)| {
+                                        Some(softbuffer::Rect {
+                                            x,
+                                            y,
+                                            width: std::num::NonZeroU32::new(w)?,
+                                            height: std::num::NonZeroU32::new(h)?,
+                                        })
+                                    })
+                                    .collect();
+                                // present_with_damage 在不支持 damage 的后端等价于 present。
+                                buffer.present_with_damage(&rects)
+                            };
+                            #[cfg(debug_assertions)]
+                            if let Some((full_flag, samples)) = self.present_stats.as_mut() {
+                                samples.push(t_present.elapsed().as_micros());
+                                if samples.len() >= 20 {
+                                    let mut v = samples.clone();
+                                    v.sort_unstable();
+                                    eprintln!(
+                                        "[perf] present_us n=20 full={} median={} p95={}",
+                                        full_flag,
+                                        v[v.len() / 2],
+                                        v[v.len() * 95 / 100]
+                                    );
+                                    samples.clear();
+                                }
+                            }
+                            if let Err(e) = present_res {
                                 eprintln!("surface present: {}", e);
                             }
                             if !self.first_frame_logged {

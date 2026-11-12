@@ -1000,5 +1000,78 @@ if start_app "$D" "$L"; then
     stop_app
 fi
 
+
+# 用例 26：增量渲染正确性（阶段 3A 任务 3）——同一输入序列分别以增量与
+# APP_FORCE_FULL_REDRAW=1（仅 debug）运行，截取窗口图像断言逐像素相等。
+# 覆盖：文本输出、光标移动、视口滚动、选区高亮、滚动条。
+D="$OUT/case26-incr.dump"
+L="$OUT/case26-incr.log"
+A="$OUT/case26-incr.png"
+B="$OUT/case26-full.png"
+run_sequence() { # $1=force(full|incr) $2=png
+    if start_app "$D" "$L"; then
+        sleep 1.5
+        # 固定输入序列（无时间相关输出）
+        xdotool type --window "$WID" "for i in 1 2 3 4 5 6 7 8; do echo INCR_LINE_\$i; done"
+        xdotool key --window "$WID" Return
+        sleep 0.8
+        xdotool type --window "$WID" "printf 'COLORED: \\033[31mRED\\033[0m \\033[1mBOLD\\033[0m\\n'"
+        xdotool key --window "$WID" Return
+        sleep 0.6
+        # 光标移动（printf 不带换行，光标停在行中）
+        xdotool type --window "$WID" "printf 'CURSOR_HERE'"
+        xdotool key --window "$WID" Return
+        sleep 0.4
+        xdotool type --window "$WID" "printf 'ABCDEFGHIJ'"
+        sleep 0.3
+        # 注：不在此处用滚轮（Xvfb 下事件偶发丢失会让两次运行的视口不同）；
+        # 视口滚动路径由 render 的随机序列单测（2000 步含滚动/清屏）覆盖。
+        # 选区拖选（高亮叠加层）
+        xdotool mousemove --window "$WID" 10 60
+        sleep 0.2
+        xdotool mousedown 1
+        xdotool mousemove --window "$WID" 300 100
+        sleep 0.2
+        xdotool mouseup 1
+        sleep 0.6
+        # 再输出几行（推动历史，行脏）
+        xdotool type --window "$WID" "echo AFTER_SELECTION"
+        xdotool key --window "$WID" Return
+        sleep 0.6
+        import -window "$WID" "$2" 2>/dev/null
+        stop_app
+    else
+        return 1
+    fi
+    return 0
+}
+if run_sequence incr "$A"; then
+    export APP_FORCE_FULL_REDRAW=1
+    if run_sequence full "$B"; then
+        unset APP_FORCE_FULL_REDRAW
+        if [ -s "$A" ] && [ -s "$B" ]; then
+            DIFF=$(compare -metric AE "$A" "$B" null: 2>&1 | head -1 | tr -dc '0-9')
+            : "${DIFF:=unknown}"
+            if [ "$DIFF" = "0" ]; then
+                echo "PASS case26-incremental-equals-full (截图逐像素一致)"
+                PASS=$((PASS+1))
+            else
+                echo "FAIL case26-incremental-equals-full (差异像素 $DIFF)"
+                cp "$A" "$OUT/case26-incr-fail.png" 2>/dev/null
+                cp "$B" "$OUT/case26-full-fail.png" 2>/dev/null
+                FAIL=$((FAIL+1))
+            fi
+        else
+            echo "FAIL case26-incremental-equals-full (截图缺失)"
+            FAIL=$((FAIL+1))
+        fi
+    else
+        unset APP_FORCE_FULL_REDRAW
+        echo "FAIL case26-force-full-start (APP_FORCE_FULL_REDRAW 运行启动失败)"
+        FAIL=$((FAIL+1))
+    fi
+fi
+unset APP_FORCE_FULL_REDRAW
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

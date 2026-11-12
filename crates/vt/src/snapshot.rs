@@ -85,4 +85,36 @@ pub struct FrameSnapshot {
     /// 每行软折行标记（libghostty Row::is_wrapped）：true=行尾软折行，
     /// 内容续在下一行（提取文本时逻辑行拼接，不插分隔）。
     pub wrapped: Vec<bool>,
+    /// 每行是否需要重绘（阶段 3A 任务 3；无脏信息的快照为全 false，
+    /// 由 full_redraw 或调用方补齐）。
+    pub dirty_rows: Vec<bool>,
+    /// 是否整屏重绘（resize / 备用屏切屏等全局变化，或调用方强制）。
+    pub full_redraw: bool,
+}
+
+impl FrameSnapshot {
+    /// 归一化脏标志：full_redraw 时把所有行视为脏。
+    pub fn is_row_dirty(&self, row: usize) -> bool {
+        self.full_redraw || self.dirty_rows.get(row).copied().unwrap_or(false)
+    }
+
+    /// 是否没有任何需要重绘的内容（可跳过渲染）。
+    pub fn is_clean(&self) -> bool {
+        !self.full_redraw && !self.dirty_rows.iter().any(|d| *d)
+    }
+
+    /// 标记一行脏（越界忽略）。
+    pub fn mark_row_dirty(&mut self, row: u16) {
+        if let Some(d) = self.dirty_rows.get_mut(row as usize) {
+            *d = true;
+        }
+    }
+
+    /// 标记一段行范围脏（含端点，越界裁剪）。
+    pub fn mark_rows_dirty(&mut self, from: u16, to: u16) {
+        let (a, b) = if from <= to { (from, to) } else { (to, from) };
+        for r in a..=b {
+            self.mark_row_dirty(r);
+        }
+    }
 }
