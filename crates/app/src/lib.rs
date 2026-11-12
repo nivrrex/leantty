@@ -494,6 +494,12 @@ impl ApplicationHandler for AppHandler {
                 pos.y as f64,
             ));
         }
+        // 阶段 3B 任务 3：滚动位移复用默认关闭；仅 debug 开关启用
+        // （混合场景对拍存在未解决差异，见 render 字段文档与 PHASE3B 报告）。
+        #[cfg(debug_assertions)]
+        let mut renderer = renderer;
+        #[cfg(debug_assertions)]
+        renderer.set_scroll_reuse(std::env::var("APP_SCROLL_REUSE").is_ok());
         // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
         if let Some(t0) = crate::start_time() {
             eprintln!(

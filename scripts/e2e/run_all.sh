@@ -1074,5 +1074,75 @@ if run_sequence incr "$A"; then
 fi
 unset APP_FORCE_FULL_REDRAW
 
+
+# 用例 27：滚动位移复用正确性（阶段 3B 任务 3）——输出 300 行后用滚动绑定
+# （PageUp/PageDown → ScrollPageUp/Down）滚动，增量与 APP_FORCE_FULL_REDRAW=1
+# 两次运行截取窗口图像断言逐像素相等。
+D27="$OUT/case27-scroll.dump"
+L27="$OUT/case27-scroll.log"
+A27="$OUT/case27-incr.png"
+B27="$OUT/case27-full.png"
+CFG27="$OUT/case27.toml"
+cat >"$CFG27" <<'TOML'
+[window]
+dimensions = { columns = 120, lines = 30 }
+[[keyboard.bindings]]
+key = "Page_Up"
+action = "ScrollPageUp"
+[[keyboard.bindings]]
+key = "Page_Down"
+action = "ScrollPageDown"
+[[keyboard.bindings]]
+key = "Home"
+mods = "Control"
+action = "ScrollToTop"
+[[keyboard.bindings]]
+key = "End"
+mods = "Control"
+action = "ScrollToBottom"
+TOML
+scroll_seq() { # $1=png
+    sleep 1.5
+    x11 xdotool type --window "$WID" "seq 1 300"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.0
+    # 上滚/下滚多次（走 ScrollPageUp/Down 绑定，避免滚轮事件抖动）
+    i=0; while [ $i -lt 4 ]; do x11 xdotool key --window "$WID" Page_Up; sleep 0.12; i=$((i+1)); done
+    sleep 0.4
+    x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
+    i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" Page_Down; sleep 0.12; i=$((i+1)); done
+    sleep 0.6
+    x11 import -window "$WID" "$1" 2>/dev/null
+}
+export APP_CONFIG="$CFG27"
+export APP_SCROLL_REUSE=1
+if start_app "$D27" "$L27"; then
+    scroll_seq "$A27"
+    stop_app
+    export APP_FORCE_FULL_REDRAW=1
+    if start_app "$D27" "$L27"; then
+        scroll_seq "$B27"
+        stop_app
+    fi
+    unset APP_FORCE_FULL_REDRAW
+    unset APP_SCROLL_REUSE
+    if [ -s "$A27" ] && [ -s "$B27" ]; then
+        DIFF27=$(compare -metric AE "$A27" "$B27" null: 2>&1 | head -1 | tr -dc '0-9')
+        : "${DIFF27:=unknown}"
+        if [ "$DIFF27" = "0" ]; then
+            echo "PASS case27-scroll-reuse-equals-full (滚动后截图逐像素一致)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case27-scroll-reuse-equals-full (差异像素 $DIFF27)"
+            cp "$A27" "$OUT/case27-incr-fail.png" 2>/dev/null
+            cp "$B27" "$OUT/case27-full-fail.png" 2>/dev/null
+            FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case27-scroll-reuse-equals-full (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    unset APP_CONFIG
+fi
+unset APP_CONFIG
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

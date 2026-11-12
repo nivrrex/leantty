@@ -314,6 +314,17 @@ pub struct CpuRenderer {
     band_backup: Option<Vec<u32>>,
     /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
     damage: Vec<(u32, u32, u32, u32)>,
+    /// 上一帧的行指纹（滚动位移复用用）：内容+样式+光标/选区是否涉及该行。
+    last_row_fingerprints: Vec<u64>,
+    /// 上一帧是否处于"复用可用"状态（选区在变化、Preedit 激活等时禁用）。
+    last_reuse_allowed: bool,
+    /// 是否启用滚动位移复用（阶段 3B 任务 3）。
+    ///
+    /// **默认关闭**：定向单测、3000 步随机序列与 e2e case27 均通过，但混合场景
+    /// 截图对拍（e2e case26）出现无法解释的整屏差异（bbox 774x493），按停止条件
+    /// 记录为未解决并默认关闭；可用 `set_scroll_reuse(true)`（app 侧 debug 开关
+    /// `APP_SCROLL_REUSE=1`）启用后复现与排查。
+    scroll_reuse: bool,
 }
 
 impl CpuRenderer {
@@ -400,6 +411,9 @@ impl CpuRenderer {
             last_preedit: None,
             band_backup: None,
             damage: Vec::new(),
+            last_row_fingerprints: Vec::new(),
+            last_reuse_allowed: false,
+            scroll_reuse: false,
         })
     }
 
@@ -417,6 +431,11 @@ impl CpuRenderer {
     /// 设置选区矩形（网格坐标，含端点）；None 清除高亮。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         self.selection = region;
+    }
+
+    /// 启用/关闭滚动位移复用（默认关闭，见字段文档）。
+    pub fn set_scroll_reuse(&mut self, enabled: bool) {
+        self.scroll_reuse = enabled;
     }
 
     /// 本帧需要提交的区域 (x, y, w, h)：整屏帧为一个全屏矩形，
@@ -550,6 +569,84 @@ struct RowDrawCtx {
     sub: Subpixel,
 }
 
+/// 行指纹（滚动位移复用）：把该行的字符、颜色、样式、宽字符标记，以及
+/// 光标/选区是否落在该行一起哈希，用于跨帧比较同一内容是否只是"整体上移"。
+fn row_fingerprint(
+    row: &[vt::Cell],
+    row_idx: u16,
+    cursor: &vt::Cursor,
+    selection: Option<(u16, u16, u16, u16)>,
+) -> u64 {
+    // FNV-1a 64（无新依赖，稳定且足够区分）。
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mix = |v: u64, h: &mut u64| {
+        *h ^= v;
+        *h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    };
+    for c in row {
+        for b in c.chars.as_bytes() {
+            mix(u64::from(*b), &mut h);
+        }
+        let pack = |opt: Option<vt::Rgb>| -> u64 {
+            opt.map(|c| (u64::from(c.r) << 16) | (u64::from(c.g) << 8) | u64::from(c.b))
+                .unwrap_or(0x1_0000_0000)
+        };
+        mix(pack(c.fg), &mut h);
+        mix(pack(c.bg), &mut h);
+        let flags = u64::from(c.bold)
+            | u64::from(c.italic) << 1
+            | u64::from(c.faint) << 2
+            | u64::from(c.blink) << 3
+            | u64::from(c.inverse) << 4
+            | u64::from(c.invisible) << 5
+            | u64::from(c.strikethrough) << 6
+            | u64::from(c.overline) << 7
+            | (c.underline as u64) << 8
+            | (c.wide as u64) << 12;
+        mix(flags, &mut h);
+    }
+    // 叠加层（光标/选区）落在该行时该行不可位移复用。
+    let cur_on_row = cursor.visible && cursor.y == row_idx;
+    let sel_on_row = selection
+        .map(|(_, r0, _, r1)| row_idx >= r0.min(r1) && row_idx <= r0.max(r1))
+        .unwrap_or(false);
+    mix(u64::from(cur_on_row) | u64::from(sel_on_row) << 1, &mut h);
+    h
+}
+
+/// 在允许的偏移范围内找"上一帧行序列 == 本帧行序列整体位移 k 行"的最佳 k。
+///
+/// 返回 (k, 匹配行数)：k>0 表示内容上移 k 行（本帧第 r 行 == 上帧第 r+k 行），
+/// k<0 表示下移。只统计连续匹配最长的偏移（逐行相等才算匹配）。
+fn find_scroll_shift(prev: &[u64], cur: &[u64], max_shift: i32) -> (i32, usize) {
+    let n = cur.len().min(prev.len());
+    if n == 0 {
+        return (0, 0);
+    }
+    let mut best_k = 0i32;
+    let mut best_hits = 0usize;
+    for k in -max_shift..=max_shift {
+        if k == 0 {
+            continue;
+        }
+        let mut hits = 0usize;
+        for (r, cur_fp) in cur.iter().enumerate().take(n) {
+            let pi = r as i32 + k;
+            if pi < 0 || pi >= n as i32 {
+                continue;
+            }
+            if prev[pi as usize] == *cur_fp {
+                hits += 1;
+            }
+        }
+        if hits > best_hits {
+            best_hits = hits;
+            best_k = k;
+        }
+    }
+    (best_k, best_hits)
+}
+
 /// 光标状态键（位置/可见性/样式），用于叠加层脏判定。
 fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
     let style = match frame.cursor.style {
@@ -622,6 +719,11 @@ impl CpuRenderer {
         self.last_cursor = Some(cursor_key(frame));
         self.last_scrollbar = self.scrollbar;
         self.last_preedit = preedit_key(&self.preedit, frame);
+        // 整屏路径同样必须刷新行指纹，否则后续增量帧会用陈旧指纹误判可位移复用。
+        self.last_row_fingerprints = (0..frame.cells.len())
+            .map(|y| row_fingerprint(&frame.cells[y], y as u16, &frame.cursor, self.selection))
+            .collect();
+        self.last_reuse_allowed = self.preedit.is_none();
         self.damage.push((0, 0, pixel_width.max(1), pixel_height.max(1)));
     }
 
@@ -640,7 +742,63 @@ impl CpuRenderer {
         pixel_height: u32,
     ) {
         let rows = frame.cells.len();
+        #[cfg(debug_assertions)]
+        let t_fp = std::time::Instant::now();
+        // --- 滚动位移复用（阶段 3B 任务 3）---
+        // 条件：上一帧处于可用状态、本帧行数一致、Preedit 未激活、选区未变化、
+        //       光标行不在被搬移范围内（由指纹含光标标志保证）。
+        let reuse_allowed = self.scroll_reuse
+            && self.last_reuse_allowed
+            && self.last_row_fingerprints.len() == rows
+            && self.preedit.is_none();
+        let cur_fp: Vec<u64> = (0..rows)
+            .map(|y| {
+                row_fingerprint(
+                    &frame.cells[y],
+                    y as u16,
+                    &frame.cursor,
+                    self.selection,
+                )
+            })
+            .collect();
+        #[cfg(debug_assertions)]
+        let fp_us = t_fp.elapsed().as_micros();
+        let mut shifted = false;
         let mut dirty = vec![false; rows];
+        if reuse_allowed {
+            let max_shift = (rows as i32 / 2).max(1);
+            let (k, hits) = find_scroll_shift(&self.last_row_fingerprints, &cur_fp, max_shift);
+            // 匹配行数超过视口一半才启用位移复用。
+            if k != 0 && hits * 2 > rows {
+                self.blit_scroll(frame, ctx, k);
+                shifted = true;
+                // 搬移后：只有"未匹配"的行需要重绘。被匹配行的像素已由搬移满足
+                // （指纹覆盖字符/颜色/样式/宽标记/光标与选区状态），因此忽略
+                // libghostty 的整屏脏标记——否则滚动时全行标脏会让复用失效。
+                for y in 0..rows {
+                    let pi = y as i32 + k;
+                    let matched = pi >= 0
+                        && (pi as usize) < rows
+                        && self.last_row_fingerprints[pi as usize] == cur_fp[y];
+                    dirty[y] = !matched;
+                }
+                // 光标行必须重绘：光标像素会随行搬移而错位，指纹里的光标标志
+                // 只能保证"光标行内容不同"，不足以保证光标像素位置正确。
+                if frame.cursor.visible
+                    && let Some(d) = dirty.get_mut(frame.cursor.y as usize)
+                {
+                    *d = true;
+                }
+                // 位移覆盖整屏像素：提交区域按整屏给出（present 阶段可再细分）。
+                self.damage
+                    .push((0, 0, self.fb_width.max(1), self.fb_height.max(1)));
+            }
+        }
+        if !shifted {
+            for (y, item) in dirty.iter_mut().enumerate() {
+                *item = frame.is_row_dirty(y);
+            }
+        }
         for (y, d) in dirty.iter_mut().enumerate() {
             *d = frame.is_row_dirty(y);
         }
@@ -673,12 +831,16 @@ impl CpuRenderer {
                 *d = true;
             }
         }
+        #[cfg(debug_assertions)]
+        let shift_us = t_fp.elapsed().as_micros();
         let mut rows_drawn = false;
+        let mut drawn_rows = 0usize;
         for (y, is_dirty) in dirty.iter().enumerate() {
             if *is_dirty {
                 self.draw_row(frame, y, ctx);
                 // 该行的条带段刚被内容覆盖（无滚动条）→ 刷新备份。
                 self.capture_band_char_row(y, ctx.cell_h);
+                drawn_rows += 1;
                 let py = (y as u32).saturating_mul(ctx.cell_h);
                 self.damage
                     .push((0, py, self.fb_width.max(1), ctx.cell_h.min(self.fb_height.saturating_sub(py)).max(1)));
@@ -694,8 +856,8 @@ impl CpuRenderer {
             }
         }
         let scrollbar_changed = self.last_scrollbar != self.scrollbar;
-        if rows_drawn || cursor_changed || scrollbar_changed || preedit_changed {
-            if !(rows_drawn || cursor_changed) {
+        if rows_drawn || cursor_changed || scrollbar_changed || preedit_changed || shifted {
+            if !(rows_drawn || cursor_changed) && !shifted {
                 // 仅叠加层变化：先恢复条带下的内容，再重画滚动条与预编辑。
                 self.restore_band();
             }
@@ -711,6 +873,80 @@ impl CpuRenderer {
         self.last_cursor = Some(cur_cursor);
         self.last_scrollbar = self.scrollbar;
         self.last_preedit = new_preedit;
+        self.last_row_fingerprints = cur_fp;
+        // 下一帧允许复用：本帧未激活 Preedit；选区变化时本帧已按行重绘，下帧可复用。
+        self.last_reuse_allowed = self.preedit.is_none();
+        #[cfg(debug_assertions)]
+        {
+            use std::sync::atomic::{AtomicUsize, Ordering};
+            static N: AtomicUsize = AtomicUsize::new(0);
+            static FP: AtomicUsize = AtomicUsize::new(0);
+            static SH: AtomicUsize = AtomicUsize::new(0);
+            static TOT: AtomicUsize = AtomicUsize::new(0);
+            static DRAWN: AtomicUsize = AtomicUsize::new(0);
+            N.fetch_add(1, Ordering::Relaxed);
+            FP.fetch_add(fp_us as usize, Ordering::Relaxed);
+            SH.fetch_add((shift_us - fp_us) as usize, Ordering::Relaxed);
+            TOT.fetch_add(t_fp.elapsed().as_micros() as usize, Ordering::Relaxed);
+            DRAWN.fetch_add(drawn_rows, Ordering::Relaxed);
+            let n = N.load(Ordering::Relaxed);
+            if n.is_multiple_of(50) {
+                eprintln!(
+                    "[incr] n={} avg_total={}us fp={}us shift+blit_rest={}us drawn_rows={}",
+                    n,
+                    TOT.load(Ordering::Relaxed) / n,
+                    FP.load(Ordering::Relaxed) / n,
+                    SH.load(Ordering::Relaxed) / n,
+                    DRAWN.load(Ordering::Relaxed) / n
+                );
+            }
+        }
+    }
+
+    /// 滚动位移复用：把帧缓冲中整块行像素按 k 行搬移（memmove 语义，按方向处理重叠），
+    /// 使上移/下移的内容直接复用上一帧像素，避免整屏重绘。
+    ///
+    /// k>0：内容上移 k 行（本帧第 r 行 = 上帧第 r+k 行）→ 帧缓冲向上搬移，
+    /// 底部 k 行待重绘；k<0：向下搬移，顶部 -k 行待重绘。
+    fn blit_scroll(&mut self, frame: &FrameSnapshot, ctx: &RowDrawCtx, k: i32) {
+        let w = self.fb_width as usize;
+        if w == 0 || frame.cells.is_empty() {
+            return;
+        }
+        let rows = frame.cells.len();
+        let ch = ctx.cell_h as usize;
+        let total = rows * ch;
+        if total == 0 || total > self.fb_height as usize {
+            return;
+        }
+        let shift_px = k.unsigned_abs() as usize * ch;
+        if shift_px == 0 || shift_px >= total {
+            return;
+        }
+        let band = 4usize.min(w); // 滚动条条带宽度（搬移后由调用方重绘）
+        if k > 0 {
+            // 上移：从低地址向高地址复制（dest < src），可用正向 copy。
+            let src_start = shift_px * w;
+            let len = (total - shift_px) * w;
+            self.framebuffer.copy_within(src_start..src_start + len, 0);
+            // 底部 shift_px 行清为默认背景（随后按脏行重绘覆盖）。
+            let bg = ctx.bg_default;
+            for px in &mut self.framebuffer[(total - shift_px) * w..total * w] {
+                *px = bg;
+            }
+        } else {
+            // 下移：dest > src，必须从后往前复制（copy_within 已处理重叠语义）。
+            let len = (total - shift_px) * w;
+            self.framebuffer.copy_within(0..len, shift_px * w);
+            let bg = ctx.bg_default;
+            for px in &mut self.framebuffer[0..shift_px * w] {
+                *px = bg;
+            }
+        }
+        // 搬移会覆盖滚动条条带：此刻条带内是搬移后的内容（无滚动条），
+        // 直接以它重建备份；渲染末尾由调用方强制重画滚动条。
+        let _ = band;
+        self.capture_band();
     }
 
     /// 采集滚动条条带（右缘 4px 全高）的像素备份（整屏重绘后调用）。

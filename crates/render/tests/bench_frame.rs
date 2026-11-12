@@ -305,6 +305,38 @@ fn bench_incremental(cols: u16, rows: u16, scale: f64) {
     }
     stats(&format!("{cols}x{rows}@{scale}x [scrollbar-only]"), samples);
 
+    // 6a) 滚动 1 行（内容整体上移 1 行 + 底部 1 行新内容）
+    let mut s_s1 = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_s1.cells.rotate_left(1);
+        let last = s_s1.cells.len() - 1;
+        s_s1.cells[last] = base.cells[(i + 3) % base.cells.len()].clone();
+        s_s1.dirty_rows.iter_mut().for_each(|d| *d = true);
+        s_s1.full_redraw = false;
+        let t = Instant::now();
+        r.render(&s_s1, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [scroll-1-line]"), samples);
+
+    // 6b) 滚动 5 行
+    let mut s_s5 = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_s5.cells.rotate_left(5);
+        let n = s_s5.cells.len();
+        for (k, item) in s_s5.cells.iter_mut().enumerate().skip(n - 5) {
+            *item = base.cells[(i + k) % base.cells.len()].clone();
+        }
+        s_s5.dirty_rows.iter_mut().for_each(|d| *d = true);
+        s_s5.full_redraw = false;
+        let t = Instant::now();
+        r.render(&s_s5, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [scroll-5-lines]"), samples);
+
     // 6) 满屏滚动输出（每帧全部行脏，模拟 yes 输出）
     let mut s_scroll = base.clone();
     let mut samples = Vec::with_capacity(200);

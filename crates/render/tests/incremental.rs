@@ -290,7 +290,7 @@ fn incremental_matches_full_pixel_exact() {
 /// 每步比较增量与全量帧缓冲；不一致即失败并打印种子与首个差异坐标。
 /// 种子可用 `APP_RANDOM_SEED` 覆盖（默认固定 20260201）。
 #[test]
-fn incremental_random_sequence_2000_steps() {
+fn incremental_random_sequence_3000_steps() {
     let seed: u64 = std::env::var("APP_RANDOM_SEED")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -320,8 +320,23 @@ fn incremental_random_sequence_2000_steps() {
         panic!("种子 {seed}: {e}");
     }
 
-    for step in 0..2000u32 {
-        match rnd() % 8 {
+    for step in 0..3000u32 {
+        // 权重（阶段 3B 任务 3）：滚动类占比提高——0..3 写文本、3..6 滚动、
+        // 其余为清屏/resize/缩放/选区/光标/preedit。
+        let op = match rnd() % 16 {
+            0..=5 => 0u32,  // 写文本
+            6..=11 => 2,    // 滚动（重点）
+            12 => 1,        // 清屏
+            13 => 3,        // resize
+            14 => 4,        // 缩放
+            _ => 5,         // 选区
+        };
+        let op2 = match rnd() % 8 {
+            0 => 6,         // 光标
+            _ => 7,         // preedit
+        };
+        let chosen = if rnd() % 4 == 0 { op2 } else { op };
+        match chosen {
             0 => {
                 // 写文本：随机一行整行替换
                 let y = (rnd() % rows as u32) as u16;
@@ -441,5 +456,116 @@ fn incremental_random_sequence_2000_steps() {
             panic!("种子 {seed} 失败于 {e}");
         }
     }
-    println!("随机序列 2000 步：增量与全量逐像素一致（种子 {seed}）");
+    println!("随机序列 3000 步：增量与全量逐像素一致（种子 {seed}）");
+}
+
+/// 滚动位移复用专项（阶段 3B 任务 3）：纯上滚/下滚、滚动同时改一行、
+/// 滚动同时选区变化、光标在被搬移行——增量与强制全量逐像素相等。
+#[test]
+fn scroll_blit_matches_full() {
+    let Some(mut h) = Harness::new(40, 12) else { return; };
+    let mut base = synth(40, 12, 7);
+    // 稳定内容：每行用行号文本，便于构造整体位移
+    for (y, row) in base.cells.iter_mut().enumerate() {
+        for (x, c) in row.iter_mut().enumerate() {
+            if c.wide == CellWide::Narrow {
+                c.chars = ((b'A' + ((y * 3 + x) % 26) as u8) as char).to_string();
+            }
+        }
+    }
+    h.sync_appearance(&base, None, None, None);
+    base.full_redraw = true;
+    let mut cur = base.clone();
+    h.step(&mut cur, "初始").unwrap_or_else(|e| panic!("{e}"));
+
+    // 上滚 N 行：把行整体上移（末尾补新行）
+    for shift in [1usize, 5, 11] {
+        let mut next = cur.clone();
+        next.cells.rotate_left(shift);
+        for i in 0..shift {
+            let y = next.cells.len() - shift + i;
+            for (x, c) in next.cells[y].iter_mut().enumerate() {
+                if c.wide == CellWide::Narrow {
+                    c.chars = ((b'0' + ((shift + i + x) % 10) as u8) as char).to_string();
+                }
+            }
+        }
+        next.dirty_rows.iter_mut().for_each(|d| *d = true);
+        next.full_redraw = false;
+        h.step(&mut next, &format!("上滚 {shift} 行")).unwrap_or_else(|e| panic!("{e}"));
+        cur = next;
+    }
+
+    // 下滚 5 行（行整体下移，顶部补新行）
+    {
+        let mut next = cur.clone();
+        next.cells.rotate_right(5);
+        for y in 0..5 {
+            for (x, c) in next.cells[y].iter_mut().enumerate() {
+                if c.wide == CellWide::Narrow {
+                    c.chars = ((b'a' + ((y + x) % 26) as u8) as char).to_string();
+                }
+            }
+        }
+        next.dirty_rows.iter_mut().for_each(|d| *d = true);
+        next.full_redraw = false;
+        h.step(&mut next, "下滚 5 行").unwrap_or_else(|e| panic!("{e}"));
+        cur = next;
+    }
+
+    // 滚动同时修改一行（修改行不被复用，需重绘）
+    {
+        let mut next = cur.clone();
+        next.cells.rotate_left(3);
+        let y = next.cells.len() - 3;
+        for (x, c) in next.cells[y].iter_mut().enumerate() {
+            if c.wide == CellWide::Narrow {
+                c.chars = ((b'X' + (x % 3) as u8) as char).to_string();
+            }
+        }
+        next.dirty_rows.iter_mut().for_each(|d| *d = true);
+        next.full_redraw = false;
+        h.step(&mut next, "滚动+改行").unwrap_or_else(|e| panic!("{e}"));
+        cur = next;
+    }
+
+    // 滚动同时选区变化（选区行不可复用）
+    {
+        let mut next = cur.clone();
+        next.cells.rotate_left(2);
+        for y in (next.cells.len() - 2)..next.cells.len() {
+            for (x, c) in next.cells[y].iter_mut().enumerate() {
+                if c.wide == CellWide::Narrow {
+                    c.chars = ((b'q' + (x % 5) as u8) as char).to_string();
+                }
+            }
+        }
+        next.dirty_rows.iter_mut().for_each(|d| *d = true);
+        next.full_redraw = false;
+        let sel = Some((0u16, 2u16, 20, 6));
+        h.sync_appearance(&next, sel, None, None);
+        // 模拟 app 侧选区脏
+        next.mark_rows_dirty(2, 6);
+        h.step(&mut next, "滚动+选区变化").unwrap_or_else(|e| panic!("{e}"));
+        cur = next;
+        h.sync_appearance(&cur, None, None, None);
+    }
+
+    // 光标在被搬移行（光标行不可复用，需重绘并重画光标）
+    {
+        let mut next = cur.clone();
+        next.cells.rotate_left(4);
+        for y in (next.cells.len() - 4)..next.cells.len() {
+            for (x, c) in next.cells[y].iter_mut().enumerate() {
+                if c.wide == CellWide::Narrow {
+                    c.chars = ((b'z' + (x % 7) as u8) as char).to_string();
+                }
+            }
+        }
+        next.cursor = Cursor { x: 5, y: 7, visible: true, style: CursorStyle::Block };
+        next.dirty_rows.iter_mut().for_each(|d| *d = true);
+        next.full_redraw = false;
+        h.step(&mut next, "滚动+光标移动").unwrap_or_else(|e| panic!("{e}"));
+    }
+    println!("滚动位移复用：全部场景与强制全量逐像素一致");
 }
