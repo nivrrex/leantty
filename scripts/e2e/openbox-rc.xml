@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  e2e 专用 openbox 配置（阶段 3B 任务 1/3A 后续修复）。
+
+  为什么需要它：openbox 默认读取 $HOME/.config/openbox/*.xml（用户桌面会话的配置，
+  例如 LXDE 的 lxde-rc.xml 含 <center>yes</center>），会把 e2e 窗口强制居中放置，
+  使 window.position 用例与截图坐标裁剪失效、且 e2e 行为随用户配置漂移。
+  这里固定最小配置：不居中（尊重窗口自身位置请求）、无边框策略变化、单桌面。
+-->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <placement>
+    <!-- Static：按窗口自身请求的位置放置（UnderMouse/Pointer 会用指针位置覆盖，
+         导致 window.position 用例不可测）。 -->
+    <policy>Static</policy>
+    <center>no</center>
+    <monitor>Primary</monitor>
+  </placement>
+  <desktops>
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+  </desktops>
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+  </focus>
+  <resize>
+    <drawContents>yes</drawContents>
+  </resize>
+</openbox_config>

@@ -434,6 +434,15 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         });
+        // window.position：winit 0.30 的 X11 后端在创建路径上不应用 attributes.position
+        // （只在映射后经 set_outer_position 生效），因此创建后显式设置一次。
+        // Wayland 下合成器可能忽略（已有提示日志）；越界交给窗口管理器。
+        if let Some(pos) = config.config.window.position {
+            window.set_outer_position(winit::dpi::LogicalPosition::new(
+                pos.x as f64,
+                pos.y as f64,
+            ));
+        }
         // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
         if let Some(t0) = crate::start_time() {
             eprintln!(
