@@ -1,0 +1,2 @@
+PASS release-hook-gated (release binary has no APP_DUMP_SNAPSHOT string)
+FATAL: SetForegroundWindow never succeeded for hwnd=9438446; stop per spec (no interactive desktop?)

@@ -1,0 +1,12 @@
+hwnd=7276772
+t=1x2s dump-mtime=12:14:09.360 cpu=00:00:01.4062500
+t=2x2s dump-mtime=12:14:09.360 cpu=00:00:01.4062500
+t=3x2s dump-mtime=12:14:09.360 cpu=00:00:01.4062500
+t=4x2s dump-mtime=12:14:09.360 cpu=00:00:01.4062500
+t=5x2s dump-mtime=12:14:09.360 cpu=00:00:01.4062500
+threads=9
+--- err ---
+config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读�?(系统找不到指定的路径�?(os error 3)); using defaults
+hinting: fontdue 不支�?hinting，已解析未生效（unsupported�?AW:enter
+AW:snap-ok
+AW:dump-done

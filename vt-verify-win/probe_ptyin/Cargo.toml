@@ -1,0 +1,13 @@
+[package]
+name = "probe_ptyin"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+portable-pty = "0.8.1"
+
+[[bin]]
+name = "ptyin"
+path = "src/main.rs"

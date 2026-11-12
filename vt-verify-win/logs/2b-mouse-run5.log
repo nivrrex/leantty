@@ -1,0 +1,6 @@
+PASS k1-ctrl-insert-copy (row=3 clip='alpha beta gamma')
+PASS k2-shift-insert-paste (pasted=True executed=True)
+FAIL w1-wheel-autofollow (bottom=300 scrolled=252 afterOut=252 endPlain=252 endCtrl=252 endAfterEvent=252)
+PASS w2-scrollbar-drag (bottom=300 afterDrag=28)
+PASS s1-sgr-conpty-strips (1000:bytes=-1 1002:bytes=-1 1003:bytes=-1 alive=True)
+==== 2B mouse/sgr summary: PASS=4 FAIL=1 ====

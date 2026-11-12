@@ -1,0 +1,11 @@
+PASS t4-default-startup (times=(258,299,267,321,315) median=299ms spread=63ms)
+PASS t4-windowstoml-startup (times=(1917,2008,2125,2019,2166) median=2019ms spread=249ms)
+Start-Process : 由于出现以下错误，无法运行此命令: 系统找不到指定的文件。。
+所在位置 C:\dev\tty\scripts\windows\e2e\wb2_lib.ps1:74 字符: 10
++     $p = Start-Process -FilePath $AppBin -ArgumentList $argList -Work ...
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) [Start-Process]，InvalidOperationException
+    + FullyQualifiedErrorId : InvalidOperationException,Microsoft.PowerShell.Commands.StartProcessCommand
+ 
+FAIL t4-early-input (no window)
+==== 2B perf summary: PASS=2 FAIL=1 ====

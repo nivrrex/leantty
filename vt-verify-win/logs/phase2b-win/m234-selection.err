@@ -1,0 +1,5 @@
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+request_inner_size: 窗口未接受 HiDPI 修正尺寸
+[perf] first_frame_ms=10391
+copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）

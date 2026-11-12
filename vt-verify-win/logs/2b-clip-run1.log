@@ -1,0 +1,728 @@
+FAIL n1-drag-copy-cjk (row=-1 clip=' + Thought: Check ASCII + parse, then run. The n4/n5 reader c…
+
+ 修正 n4/n5 命令字符串的引号转义（外层双引号会展开 i/l；改单引号包裹）。
+
+')
+  dump: # cols=120 rows=30 wide=2 spacer=2 alternate=false
+Active code page: 65001
+
+C:\Users\Admin>powershell -NoProfile -Command "[char]0x4F60+[char]0x597D"
+你好
+
+C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:212 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:178 字符: 5
++     $hdr = $lines[0]
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+FAIL n2-paste-cjk (PASTECJK=False cjkGrid=False)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:231 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:178 字符: 5
++     $hdr = $lines[0]
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+FAIL n3-paste-newline (NLINE1=False NLINE2=False)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:249 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:178 字符: 5
++     $hdr = $lines[0]
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+无法对 Null 数组进行索引。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:182 字符: 40
++     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
++                                        ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : NullArray
+ 
+FAIL n4-paste-1mb (MBBYTES=False alive=True)
+  dump tail: # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 | 
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:272 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+FAIL n5-bracketed-paste-ps (BRKTXT=False open200=False close201=False)
+  dump: # cols=120 rows=30 wide=0 spacer=0 alternate=false
+Active code page: 65001
+PS C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:296 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+FAIL n5b-bracketed-cmd-negative (BRKTXT=False no200wrap=True)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:318 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+PASS n6-pastesel-primary-noop (leaked=False alive=True)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:335 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+FAIL m2-doubleclick-word (row=-1 clip='o')
+FAIL m3-tripleclick-line (clip='v')
+Click-Middle : 无法处理对参数“y”的参数转换。无法将值“/”转换为类型“System.Int32”。错误:“输入字符串的格式不正确。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:378 字符: 34
++     Click-Middle ($cs.x + $ce.x) / 2 $ce.y
++                                  ~
+    + CategoryInfo          : InvalidData: (:) [Click-Middle]，ParameterBindingArgumentTransformationException
+    + FullyQualifiedErrorId : ParameterArgumentTransformationError,Click-Middle
+ 
+FAIL m4-shiftclick-extend (clip='tive code page:')
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:390 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+==== 2B clip/selection summary: PASS=0 FAIL=0 ====

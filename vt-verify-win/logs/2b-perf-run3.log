@@ -1,0 +1,4 @@
+PASS t4-default-startup (times=(278,333,282,389,319) median=319ms spread=111ms)
+PASS t4-windowstoml-startup (times=(2038,2266,2071,2145,2018) median=2071ms spread=248ms)
+PASS t4-early-input (echoed=True executed=True)
+==== 2B perf summary: PASS=3 FAIL=0 ====

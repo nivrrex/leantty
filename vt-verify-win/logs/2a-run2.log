@@ -1,0 +1,48 @@
+PASS a-windows-toml (banner-rendered=True dims120x30=True no-font-err=True startMs=18402 pwsh-crash=True)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:147 字符: 5
++     Stop-App $a.proc
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+PASS b-bad-config (text=True unknown-warn=True color-warn=True float-warn=True)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:177 字符: 5
++     Stop-App $b.proc
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+NOTE c-hidpi (env limit: VM display scale=100%, ScaleFactorChanged path unit-tested on Linux; adjacent win evidence = e2e case g resize consistency)
+PASS d-cjk-fallback (text=True cjkRow=4 nonzero-font-indices=2/100)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:228 字符: 5
++     Stop-App $d.proc
++     ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:235 字符: 79
++ ... ero) { Wait-Dump2 $e1.dump 'Users' 40 | Out-Null; Stop-App $e1.proc }
++                                                       ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:237 字符: 79
++ ... ero) { Wait-Dump2 $e2.dump 'Users' 40 | Out-Null; Stop-App $e2.proc }
++                                                       ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2a.ps1:239 字符: 79
++ ... ero) { Wait-Dump2 $e3.dump 'Users' 40 | Out-Null; Stop-App $e3.proc }
++                                                       ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+TIMING first-dump ms: default=4223 windows.toml=16220 consolas+yahei=5769 (start->real-window+first content)
+==== 2A summary: PASS=4 FAIL=0 ====

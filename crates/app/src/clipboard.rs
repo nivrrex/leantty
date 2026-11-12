@@ -4,6 +4,7 @@
 //! 所有权语义要求 set 后持有者存活至进程退出）——所有方法仅限主线程调用；
 //! trait 不加 Send 约束，调用方（app 事件循环）保证单线程。
 
+#[cfg(unix)]
 use arboard::{GetExtLinux, SetExtLinux};
 use crate::Error;
 
@@ -43,12 +44,7 @@ impl Clipboard for ArboardClipboard {
                 .inner
                 .get_text()
                 .map_err(|e| Error::Clipboard(format!("get clipboard: {e}"))),
-            ClipboardKind::Primary => self
-                .inner
-                .get()
-                .clipboard(arboard::LinuxClipboardKind::Primary)
-                .text()
-                .map_err(|e| Error::Clipboard(format!("get primary: {e}"))),
+            ClipboardKind::Primary => primary_get(&self.inner),
         }
     }
 
@@ -58,14 +54,46 @@ impl Clipboard for ArboardClipboard {
                 .inner
                 .set_text(text)
                 .map_err(|e| Error::Clipboard(format!("set clipboard: {e}"))),
-            ClipboardKind::Primary => self
-                .inner
-                .set()
-                .clipboard(arboard::LinuxClipboardKind::Primary)
-                .text(text)
-                .map_err(|e| Error::Clipboard(format!("set primary: {e}"))),
+            ClipboardKind::Primary => primary_set(&self.inner, text),
         }
     }
+}
+
+/// arboard X11 PRIMARY 扩展（仅 unix：arboard 的 Linux 扩展 trait，
+/// Windows 后端无 PRIMARY 概念）。
+#[cfg(unix)]
+fn primary_get(clip: &arboard::Clipboard) -> Result<String, Error> {
+    clip.get()
+        .clipboard(arboard::LinuxClipboardKind::Primary)
+        .text()
+        .map_err(|e| Error::Clipboard(format!("get primary: {e}")))
+}
+
+/// Windows 无 PRIMARY（arboard Windows 后端仅 CLIPBOARD）：读返 Err，
+/// 实际行为（Copy 仅 save_to_clipboard 时落 CLIPBOARD、PasteSelection 为
+/// no-op+日志、不回落）由调用方实测记录，见 PHASE2B-WIN.md 与 WIN-NOTES。
+#[cfg(not(unix))]
+fn primary_get(_clip: &arboard::Clipboard) -> Result<String, Error> {
+    Err(Error::Clipboard(
+        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
+    ))
+}
+
+/// arboard X11 PRIMARY 扩展（仅 unix）。
+#[cfg(unix)]
+fn primary_set(clip: &arboard::Clipboard, text: &str) -> Result<(), Error> {
+    clip.set()
+        .clipboard(arboard::LinuxClipboardKind::Primary)
+        .text(text)
+        .map_err(|e| Error::Clipboard(format!("set primary: {e}")))
+}
+
+/// Windows 无 PRIMARY：写返 Err（行为记录同上）。
+#[cfg(not(unix))]
+fn primary_set(_clip: &arboard::Clipboard, _text: &str) -> Result<(), Error> {
+    Err(Error::Clipboard(
+        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
+    ))
 }
 
 /// 测试注入实现（内存存储；Send 不要求——同主线程）。

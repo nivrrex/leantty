@@ -1,0 +1,58 @@
+=== pwsh version/path ===
+7.6.6
+C:\Program Files\PowerShell\7\pwsh.exe
+=== os ===
+Microsoft Windows 10 ∆Û“µ∞Ê LTSC 10.0.19044
+=== VARIANT prog=pwsh.exe extra= reply=0 ===
+program=pwsh.exe args=[] reply=false replied=false
+total_bytes=1370 esc6n_seen=false failfast=true
+exit=exited ExitStatus { code: 3221225786, signal: None }
+first96_hex=1b 5b 32 4a 1b 5b 6d 1b 5b 48 50 6f 77 65 72 53 68 65 6c 6c 20 37 2e 36 2e 36 0d 0a 1b 5d 30 3b 43 3a 5c 50 72 6f 67 72 61 6d 20 46 69 6c 65 73 5c 50 6f 77 65 72 53 68 65 6c 6c 5c 37 5c 70 77 73 68 2e 65 78 65 07 1b 5b 3f 32 35 68 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 43 3a 5c 50 72
+contains "totalWidth" = true
+contains "Process terminated" = true
+contains "FailFast" = true
+contains "\u{1b}[6n" = false
+contains "Windows PowerShell" = false
+contains "PowerShell 7" = true
+variant-rc=0
+=== VARIANT prog=pwsh.exe extra=-NoProfile reply=0 ===
+program=pwsh.exe args=["-NoProfile"] reply=false replied=false
+total_bytes=1366 esc6n_seen=false failfast=true
+exit=exited ExitStatus { code: 3221225786, signal: None }
+first96_hex=1b 5b 32 4a 1b 5b 6d 1b 5b 48 50 6f 77 65 72 53 68 65 6c 6c 20 37 2e 36 2e 36 0d 0a 1b 5d 30 3b 43 3a 5c 50 72 6f 67 72 61 6d 20 46 69 6c 65 73 5c 50 6f 77 65 72 53 68 65 6c 6c 5c 37 5c 70 77 73 68 2e 65 78 65 07 1b 5b 3f 32 35 68 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 43 3a 5c 50 72
+contains "totalWidth" = true
+contains "Process terminated" = true
+contains "FailFast" = true
+contains "\u{1b}[6n" = false
+contains "Windows PowerShell" = false
+contains "PowerShell 7" = true
+variant-rc=0
+=== VARIANT prog=powershell.exe extra= reply=0 ===
+program=powershell.exe args=[] reply=false replied=false
+total_bytes=400 esc6n_seen=false failfast=false
+exit=alive-at-10s-window (killed)
+first96_hex=1b 5b 32 4a 1b 5b 6d 1b 5b 48 57 69 6e 64 6f 77 73 20 50 6f 77 65 72 53 68 65 6c 6c 0d 0a e7 89 88 e6 9d 83 e6 89 80 e6 9c 89 20 28 43 29 20 4d 69 63 72 6f 73 6f 66 74 20 43 6f 72 70 6f 72 61 74 69 6f 6e e3 80 82 e4 bf 9d e7 95 99 e6 89 80 e6 9c 89 e6 9d 83 e5 88 a9 e3 80 82 0d 0a 0d 0a
+contains "totalWidth" = false
+contains "Process terminated" = false
+contains "FailFast" = false
+contains "\u{1b}[6n" = false
+contains "Windows PowerShell" = true
+contains "PowerShell 7" = false
+variant-rc=0
+=== VARIANT prog=pwsh.exe extra= reply=1 ===
+program=pwsh.exe args=[] reply=true replied=false
+total_bytes=1366 esc6n_seen=false failfast=true
+exit=exited ExitStatus { code: 3221225786, signal: None }
+first96_hex=1b 5b 32 4a 1b 5b 6d 1b 5b 48 50 6f 77 65 72 53 68 65 6c 6c 20 37 2e 36 2e 36 0d 0a 1b 5d 30 3b 43 3a 5c 50 72 6f 67 72 61 6d 20 46 69 6c 65 73 5c 50 6f 77 65 72 53 68 65 6c 6c 5c 37 5c 70 77 73 68 2e 65 78 65 07 1b 5b 3f 32 35 68 1b 5d 30 3b e7 ae a1 e7 90 86 e5 91 98 3a 43 3a 5c 50 72
+contains "totalWidth" = true
+contains "Process terminated" = true
+contains "FailFast" = true
+contains "\u{1b}[6n" = false
+contains "Windows PowerShell" = false
+contains "PowerShell 7" = true
+variant-rc=0
+=== non-ConPTY pipe controls ===
+PIPE-OK
+pipe-rc=0
+PROFILE-OK
+profile-rc=0

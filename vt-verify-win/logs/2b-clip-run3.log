@@ -1,0 +1,52 @@
+FAIL n1-drag-copy-cjk (no window)
+FAIL n2-paste-cjk (no window)
+FAIL n3-paste-newline (no window)
+FAIL n4-paste-1mb (no window)
+FAIL n5-bracketed-paste-ps (no window)
+FAIL n5b-bracketed-cmd-negative (no window)
+方法调用失败，因为 [WB2] 不包含名为“GetForegroundWindow”的方法。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:102 字符: 9
++         $okFg = [WB2]::GetForegroundWindow() -eq $hwnd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+ 
+方法调用失败，因为 [WB2] 不包含名为“GetForegroundWindow”的方法。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:102 字符: 9
++         $okFg = [WB2]::GetForegroundWindow() -eq $hwnd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+ 
+方法调用失败，因为 [WB2] 不包含名为“GetForegroundWindow”的方法。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:102 字符: 9
++         $okFg = [WB2]::GetForegroundWindow() -eq $hwnd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+ 
+方法调用失败，因为 [WB2] 不包含名为“GetForegroundWindow”的方法。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:102 字符: 9
++         $okFg = [WB2]::GetForegroundWindow() -eq $hwnd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+ 
+方法调用失败，因为 [WB2] 不包含名为“GetForegroundWindow”的方法。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:102 字符: 9
++         $okFg = [WB2]::GetForegroundWindow() -eq $hwnd
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (:) []，RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+ 
+False
+FAIL n6-pastesel-primary-noop (leaked=False alive=False)
+没有在类型“System.Void”和“System.Object”之间定义强制运算符。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2b_clip.ps1:350 字符: 5
++     Stop-App2 $a.proc
++     ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (:) [], InvalidOperationException
+    + FullyQualifiedErrorId : System.InvalidOperationException
+ 
+FAIL m234-selection (no window)
+==== 2B clip/selection summary: PASS=0 FAIL=8 ====
