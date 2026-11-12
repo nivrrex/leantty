@@ -4,8 +4,8 @@ Active code page: 65001
 C:\Users\Admin>ping -t 127.0.0.1
 
 Pinging 127.0.0.1 with 32 bytes of data:
-Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
-Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+Reply from 127.0.0.1: bytes=32 time<1ms TTL=175
+Reply from 127.0.0.1: bytes=32 time<1ms TTL=175
 
 127.0.0.1 的 Ping 统计信息:
     数据包: 已发送 = 2，已接收 = 2，丢失 = 0 (0% 丢失)，
@@ -14,9 +14,9 @@ Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
 Control-C
 ^C
 C:\Users\Admin>echo CCCDONE
-CCCDONE
 
-C:\Users\Admin>
+
+
 
 
 

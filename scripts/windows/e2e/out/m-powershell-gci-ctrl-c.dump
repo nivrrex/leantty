@@ -1,28 +1,28 @@
 # cols=80 rows=24 wide=0 spacer=0 alternate=false
--a----        2026/11/11     22:13            200 case-d.err
--a----        2026/11/11     22:14           4170 case-e.dump
--a----        2026/11/11     22:14            200 case-e.err
--a----        2026/11/11     22:14           4148 case-f.dump
--a----        2026/11/11     22:14            200 case-f.err
--a----        2026/11/11     22:14          22949 case-g.dump
--a----        2026/11/11     22:14            200 case-g.err
--a----        2026/11/11     22:14           4174 case-h.dump
--a----        2026/11/11     22:14            200 case-h.err
--a----        2026/11/11     22:09           4163 case-l.dump
--a----        2026/11/11     22:08            200 case-l.err
--a----        2026/11/11     22:13           4144 fgprobe.dump
--a----        2026/11/11     22:13            200 fgprobe.err
--a----        2026/11/11     16:30         200829 i-cmd-ping-ctrl-c-fail.png
--a----        2026/11/11     22:14           4555 i-cmd-ping-ctrl-c.dump
--a----        2026/11/11     22:14            200 i-cmd-ping-ctrl-c.err
--a----        2026/11/11     16:30         195202 j-powershell-ping-ctrl-c-fail
-                                                  .png
--a----        2026/11/11     22:14           4568 j-powershell-ping-ctrl-c.dump
--a----        2026/11/11     22:14            200 j-powershell-ping-ctrl-c.err
--a----        2026/11/11     22:08         109988 k-powershell-sleep-ctrl-c-fai
+                                                  f7df
+d-----         2026/11/9      0:36                pin-project-lite-250ff959de56
+                                                  dc48
+d-----         2026/11/8     19:54                pin-utils-3db3176676c0eeb5
+d-----         2026/11/9      2:49                pin-utils-e72cb6ed4e7d756b
+d-----         2026/11/9      2:49                portable-pty-1592959395d09b9d
+d-----         2026/11/8     19:54                portable-pty-566d3ef8a4802008
+d-----         2026/11/8     19:54                proc-macro2-3f111ace5efe40e1
+d-----         2026/11/8     19:54                proc-macro2-5390db779c624ba2
+d-----         2026/11/8     19:54                proc-macro2-a2c2bd3b780ce6e0
+d-----         2026/11/8     19:54                proc-macro2-diagnostics-07ac3
+                                                  2cd9215a4b8
+d-----         2026/11/8     19:54                proc-macro2-diagnostics-8ad5d
+                                                  36fb21037ed
+d-----         2026/11/8     19:54                proc-macro2-diagnostics-b972e
+                                                  eb486c0359f
+d-----         2026/11/8     20:04                pty-0e4b7ee1f5c935b6
+d-----         2026/11/9      2:49                pty-162f1a9b76c0a56c
+d-----        2026/11/11     21:19                pty-1a19fa60eab46ca7
+d-----        2026/11/11     21:19                pty-478373632fc62474
+d-----         2026/11/9      0:06                pty-61f09314beb151c6
+d-----        2026/11/11     21:19                pty-7823698c3f490110
+d-----         2026/11/9      2:49                pty-7c809b04ec62f4eb
 PS C:\Users\Admin> echo CCCDONE
-CCCDONE
-PS C:\Users\Admin>
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
