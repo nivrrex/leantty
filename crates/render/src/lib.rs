@@ -834,13 +834,17 @@ impl CpuRenderer {
         #[cfg(debug_assertions)]
         let shift_us = t_fp.elapsed().as_micros();
         let mut rows_drawn = false;
+        #[cfg(debug_assertions)]
         let mut drawn_rows = 0usize;
         for (y, is_dirty) in dirty.iter().enumerate() {
             if *is_dirty {
                 self.draw_row(frame, y, ctx);
                 // 该行的条带段刚被内容覆盖（无滚动条）→ 刷新备份。
                 self.capture_band_char_row(y, ctx.cell_h);
-                drawn_rows += 1;
+                #[cfg(debug_assertions)]
+                {
+                    drawn_rows += 1;
+                }
                 let py = (y as u32).saturating_mul(ctx.cell_h);
                 self.damage
                     .push((0, py, self.fb_width.max(1), ctx.cell_h.min(self.fb_height.saturating_sub(py)).max(1)));

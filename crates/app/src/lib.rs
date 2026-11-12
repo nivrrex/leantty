@@ -1023,6 +1023,7 @@ impl ApplicationHandler for AppHandler {
                     }
                     match surface.buffer_mut() {
                         Ok(mut buffer) => {
+                            #[cfg(debug_assertions)]
                             let t_present = Instant::now();
                             // 拷贝：damage 覆盖整屏时整缓冲拷贝，否则按矩形逐行拷贝。
                             let full_cover = force_full_present
