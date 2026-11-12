@@ -83,3 +83,7 @@
 - IME 事件→预编辑状态纯函数化（已验证事实）：ime_preedit_update(&Ime) 返回 (是否改动, 新文本, 新光标范围)；Enabled 不改动仅重定位候选窗，Preedit 写入，Commit/Disabled 清空（单测覆盖四态）。
 - 候选窗位置（已验证事实）：Preedit 非空时 set_ime_cursor_area 指向组合末尾格（layout_end_position），否则指向终端光标格；ime_cursor_cell 纯函数单测覆盖空串/ASCII/宽字符/越界换行。
 - debug 测试注入（工程判断）：APP_TEST_PREEDIT 注入写在 #[cfg(debug_assertions)] 的粘性字段 test_preedit，而非复用 ime_preedit——winit X11 在无输入法时会发出 Ime::Preedit("")/Disabled 把注入值清掉（实测复现），粘性字段可稳定供 e2e 断言；release 构建中字段、注入与字符串均不存在。
+- 窗口标题（已验证事实）：libghostty-vt 提供 Terminal::title()（OSC 0/2 设置，每次查询返回当前值）与 on_title_changed 回调；app 采用每帧轮询 title() 与 last_title 比较后 set_title（避免高频 set），dynamic_title=true 时生效。标题初值改为二进制名（文件名部分，如 "app"），dynamic_title=false 时不再更新（e2e case23 断言 T123 生效 / T999 不生效）。
+- e2e 窗口查找改按 PID（已验证事实）：标题不再固定为 "tty"，`xdotool search --name tty` 失效；wait_window 改为 xdotool search --pid $APP_PID 并保留 _NET_WM_PID 归属校验。
+- 初始位置（已验证事实）：winit WindowAttributes::with_position(LogicalPosition) 设置；X11+openbox 下客户端原点相对请求位置有装饰偏移（实测请求 (60,50) → client (90,75)，frame extents 偏移），e2e 断言用 ±40 容差。Wayland 会话下合成器可能忽略，检测到 WAYLAND_DISPLAY 时打印提示日志，不作为错误；越出屏幕范围交给窗口管理器，不自行钳制。
+- 不做项（工程判断）：window.opacity 留待 GPU 阶段实现（CPU 帧缓冲无 alpha 合成路径，需与渲染后端一起设计）；terminal.shell.args 需要扩展 Pty::spawn 签名（改 trait 属停止条件），由用户另行决策。

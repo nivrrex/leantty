@@ -40,7 +40,7 @@ export DISPLAY=:$DISPLAY_NO
 
 WID=""; APP_PID=""
 
-wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）。首字体含 CJK 时 from_bytes 一次性成本约 7s（DECISIONS 登记），等待上限放宽到 40×0.5=20s。
+wait_window() { # 等 app 窗口出现并置 WID；按 PID 枚举窗口并校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）。窗口标题随 dynamic_title 变化（false 时为二进制名），故不按窗口名匹配。首字体含 CJK 时 from_bytes 一次性成本约 7s（DECISIONS 登记），等待上限放宽到 40×0.5=20s。
     local i=0 pid wid
     WID=""
     while [ $i -lt 40 ]; do
@@ -48,7 +48,7 @@ wait_window() { # 等 tty 窗口出现并置 WID；遍历全部匹配窗口校�
         if [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; then
             return 1
         fi
-        for wid in $(xdotool search --name tty 2>/dev/null); do
+        for wid in $(xdotool search --pid "$APP_PID" 2>/dev/null); do
             pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
             if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
                 WID=$wid
@@ -90,7 +90,7 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
             fi
         fi
         echo "FAIL start_app: 未找到 tty 窗口"
-        echo "  diag: APP_PID=$APP_PID search=[$(xdotool search --name tty 2>/dev/null | tr '\n' ' ')]"
+        echo "  diag: APP_PID=$APP_PID search=[$(xdotool search --pid "$APP_PID" 2>/dev/null | tr '\n' ' ')]"
         ps -o pid,stat,cmd -p $APP_PID 2>/dev/null || echo "  diag: app 进程不存在"
         echo "  diag: applog=[$(cat "$log" 2>/dev/null | tr '\n' '|')]"
         tail -2 "$OUT/openbox.log" 2>/dev/null | sed 's/^/  ob: /'
@@ -148,7 +148,7 @@ assert_app_exits() { # $1 用例名（APP_PID 须全局）
         cp "$D" "$OUT/$1-fail.dump" 2>/dev/null
         import -window root "$OUT/$1-fail.png" 2>/dev/null
         ps -o pid,stat,wchan:20,cmd -p $APP_PID >"$OUT/$1-fail-ps.txt" 2>&1
-        xdotool search --name tty >"$OUT/$1-fail-windows.txt" 2>&1
+        xdotool search --pid "$APP_PID" >"$OUT/$1-fail-windows.txt" 2>&1
         wmctrl -l >"$OUT/$1-fail-wmctrl.txt" 2>&1
     fi
     stop_app
@@ -851,6 +851,73 @@ if start_app "$D" "$L"; then
     fi
     unset APP_TEST_PREEDIT
 fi
+
+
+# 用例 23：window.position 与 dynamic_title（任务 2C.4）——初始位置生效、
+# OSC 0/2 标题更新、dynamic_title=false 时标题固定为二进制名。
+D="$OUT/case23-title.dump"
+L="$OUT/case23-title.log"
+CFG_ON="$OUT/case23-on.toml"
+CFG_OFF="$OUT/case23-off.toml"
+cat >"$CFG_ON" <<'TOML'
+[window]
+position = { x = 60, y = 50 }
+dimensions = { columns = 80, lines = 24 }
+dynamic_title = true
+TOML
+cat >"$CFG_OFF" <<'TOML'
+[window]
+dimensions = { columns = 80, lines = 24 }
+dynamic_title = false
+TOML
+export APP_CONFIG="$CFG_ON"
+if start_app "$D" "$L"; then
+    sleep 1
+    # 初始位置（openbox 装饰会带来十几像素偏移，容差 ±40）
+    GX=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^X=' | cut -d= -f2)
+    GY=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^Y=' | cut -d= -f2)
+    if [ $((GX)) -ge 20 ] && [ $((GX)) -le 100 ] && [ $((GY)) -ge 10 ] && [ $((GY)) -le 90 ]; then
+        echo "PASS case23-position (client=(${GX},${GY}) 请求 (60,50))"; PASS=$((PASS+1))
+    else
+        echo "FAIL case23-position (client=(${GX},${GY}) 请求 (60,50))"; FAIL=$((FAIL+1))
+    fi
+    # OSC 0 标题序列 → 窗口标题更新
+    xdotool type --window "$WID" "printf '\\033]0;T123\\007'"
+    xdotool key --window "$WID" Return
+    sleep 0.6
+    NAME=$(xdotool getwindowname "$WID" 2>/dev/null)
+    case "$NAME" in
+        *T123*)
+            echo "PASS case23-dynamic-title (标题=$NAME)"; PASS=$((PASS+1)) ;;
+        *)
+            echo "FAIL case23-dynamic-title (标题=$NAME 未更新为 T123)"; FAIL=$((FAIL+1)) ;;
+    esac
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case23-title-exits"
+    assert_no_wake "case23-title-no-wake" "$L"
+fi
+export APP_CONFIG="$CFG_OFF"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "printf '\\033]0;T999\\007'"
+    xdotool key --window "$WID" Return
+    sleep 0.6
+    NAME=$(xdotool getwindowname "$WID" 2>/dev/null)
+    case "$NAME" in
+        *T999*)
+            echo "FAIL case23-static-title (dynamic_title=false 仍更新为 $NAME)"; FAIL=$((FAIL+1)) ;;
+        *)
+            echo "PASS case23-static-title (标题固定=$NAME)"; PASS=$((PASS+1)) ;;
+    esac
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case23-static-exits"
+    assert_no_wake "case23-static-no-wake" "$L"
+fi
+unset APP_CONFIG
 
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

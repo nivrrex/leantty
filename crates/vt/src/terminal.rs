@@ -149,6 +149,17 @@ impl VtTerminal {
         self.inner.scroll_viewport(scroll);
     }
 
+    /// 终端标题（OSC 0/2 设置；每次查询返回当前值，无标题返 None）。
+    ///
+    /// 任务 2C.4：window.dynamic_title 据此更新窗口标题。
+    pub fn title(&self) -> Result<Option<String>, Error> {
+        let bytes = self.inner.title()?;
+        if bytes.is_empty() {
+            return Ok(None);
+        }
+        Ok(std::str::from_utf8(bytes).ok().map(|s| s.to_string()))
+    }
+
     /// 读内容绝对行范围文本（任务 2C.2：选区跨视口外历史行，只读不改变视口）。
     ///
     /// 坐标：Point::Screen（full incl scrollback），y=scrollback 顶起绝对行

@@ -31,7 +31,7 @@ APP_PID=$!
 WID=""
 i=0
 while [ $i -lt 20 ]; do
-    WID=$(xdotool search --name "tty" 2>/dev/null | head -1)
+    WID=$(xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
     [ -n "$WID" ] && break
     sleep 0.5
     i=$((i+1))

@@ -226,6 +226,7 @@ impl App {
             auto_scroll: 0,
             #[cfg(debug_assertions)]
             test_preedit: None,
+            last_title: None,
             vt: None,
             pty: None,
             renderer: None,
@@ -343,6 +344,8 @@ struct AppHandler {
     /// 测试注入的预编辑串（仅 debug 构建；粘性，不被 winit Ime 事件清除）。
     #[cfg(debug_assertions)]
     test_preedit: Option<String>,
+    /// 上次应用的窗口标题（避免每帧重复 set_title）。
+    last_title: Option<String>,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -366,7 +369,33 @@ impl ApplicationHandler for AppHandler {
         // 创建后取真实 scale，差异时重算并 set_inner_size 修正）。
         let (init_cw, init_ch) = renderer.cell_metrics(1.0);
         let mut attrs = WindowAttributes::default();
-        attrs.title = "tty".to_string();
+        // 窗口标题初值：dynamic_title=false 固定为二进制名（任务 2C.4）；
+        // true 时先给二进制名，OSC 0/2 出现后由 about_to_wait 更新。
+        let bin_name = std::env::args()
+            .next()
+            .as_deref()
+            .map(|p| {
+                std::path::Path::new(p)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| p.to_string())
+            })
+            .unwrap_or_else(|| "tty".to_string());
+        attrs.title = bin_name.clone();
+        // 初始位置（逻辑像素；Wayland 下合成器可能忽略——记录日志，不视为错误；
+        // 越出屏幕范围交给窗口管理器处理，不自行钳制）。
+        if let Some(pos) = config.config.window.position {
+            attrs = attrs.with_position(winit::dpi::LogicalPosition::new(
+                pos.x as f64,
+                pos.y as f64,
+            ));
+            if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+                eprintln!(
+                    "window.position: Wayland 会话下合成器可能忽略初始位置（({}, {})）",
+                    pos.x, pos.y
+                );
+            }
+        }
         attrs.inner_size = Some(winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(
             f64::from(config.cols) * f64::from(init_cw) + 2.0 * f64::from(config.pad_x),
             f64::from(config.rows) * f64::from(init_ch) + 2.0 * f64::from(config.pad_y),
@@ -777,6 +806,21 @@ impl ApplicationHandler for AppHandler {
                 }
                 Err(e) => eprintln!("snapshot: {}", e),
             }
+        }
+        // 窗口标题（任务 2C.4）：dynamic_title=true 时跟随 OSC 0/2；
+        // false 时保持二进制名（resumed 已设，后续不再更新）。
+        let dynamic_title = self
+            .config
+            .as_ref()
+            .map(|c| c.config.window.dynamic_title)
+            .unwrap_or(false);
+        if dynamic_title
+            && let (Some(vt), Some(window)) = (self.vt.as_ref(), self.window.as_ref())
+            && let Ok(Some(title)) = vt.title()
+            && self.last_title.as_deref() != Some(title.as_str())
+        {
+            window.set_title(&title);
+            self.last_title = Some(title);
         }
         // 拖选自动滚动：每帧按方向推进 offset 并扩展 focus 到新视口边界行
         // （任务 2C.3；释放后 auto_scroll=0 自然停止）。
