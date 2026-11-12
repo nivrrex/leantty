@@ -98,3 +98,11 @@
 - 否决方案（工程判断）：独立 PTY 写线程 + channel 吞吐更高，但需要把 writer 从 NativePty 移出（改 Pty trait 或破坏 close 契约"先释放主端再回收子进程"），按规则属停止条件，且背压/关闭顺序复杂度高，故不采用；若后续开放 trait 变更可重估。
 - 排空语义（已验证事实）：块内部分写入保留未写前缀、跨轮续写；WouldBlock 立即返回不 spin；不可恢复错误丢弃该块并停止驱动；PTY 不可用/已关闭时丢弃剩余。单元测试 6 例用注入 writer 覆盖全写/预算/部分写/WouldBlock/致命错误/空队列。
 - 修复实测（已验证事实）：1MB 静止 5s 精确送达 1048576 字节且 sha256 与源一致（case24）；10MB 粘贴期间键入 KEYMARK 不丢，最终 10485767 字节（= 10485760 + 7）且含 KEYMARK（case25）。
+- 主字体加载耗时实测（已验证事实，release 空闲，各 5 次，Xvfb 1280x720）：fontdue::Font::from_bytes —— DejaVu Sans Mono 0.3MB median 11.8ms（11.7–19.0）、Microsoft YaHei 16.2MB median 230.7ms（228.5–354.4）、SimSun 17.4MB median 215.2ms（214.7–222.3）；app 首帧（APP_FONT_FAMILY 指定）—— DejaVu Sans Mono median 191ms（161–196）、Microsoft YaHei median 464ms（444–487），差值 ≈273ms 与 from_bytes 增量同量级。对比 Windows 报告（YaHei Mono 2071ms vs 默认 319ms，差 1752ms）：Linux 上大字体代价明显更低（字体实现/文件系统/字体体积差异），但趋势一致——主字体越大首帧越慢。
+- 主字体加载缓解方案评估（工程判断，含一项原型实测）：
+  a) 主字体延后加载（原型已在本地分支 eval/font-load 实现，未合入 main、未 push）：预期收益 = 首帧与主字体大小解耦；实测 YaHei 464ms→223ms（-52%）。代价：render 新增 replace_primary_fonts + app 后台线程/通道接线（原型约 60 行）；风险：占位字体与最终主字体的 cell 度量不同（等宽西文 vs CJK 字体 advance 不同），到位后需重排网格/修正窗口尺寸，首屏可能出现一次布局跳变与重绘闪烁。
+  b) 只解析所需字形（ttf-parser 取轮廓自光栅化）：预期收益 from_bytes 由 O(字形数) 降到 O(1)，可把 230ms 量级降到接近 0；代价：需自写轮廓扫描转换/抗锯齿，与现有字形缓存/宽字符缩放/subpixel 路径重复；风险：重复实现成熟能力、渲染质量回归，**不推荐**。ttf-parser 是 fontdue 的传递依赖，不构成新增依赖类别，但仍不建议自写光栅化。
+  c) ttc/collection 仅加载所需成员：预期收益有限（单成员仍约 15MB 量级解析），fontdue 无 collection 选择 API，需自解析 ttc 头挑成员；代价中等、收益偏低，暂不实施。
+  d) 配置指引（主字体用小的等宽西文字体，大字体放 fallback）：预期收益等同 a 的效果且零代码——2C 实测 examples/linux.toml（Consolas+黑体 fallback）首帧 median 202ms、CJK 后台 695ms 到位。代价 0；风险最低。**推荐作为默认指引**。
+  结论与提请：建议默认采用 d（配置指引，已可用）；若产品确需"CJK 字体直接作主字体"，再决定是否实施 a（原型已验证收益，需同时处理 cell 度量变化导致的布局跳变）。b 不建议，c 收益不足。不更换光栅化库。
+- 探针文件（已验证事实）：crates/render/tests/font_load_time.rs 为 #[ignore] 手动探针，不进常规测试门禁，可用于任意机器复现上表 from_bytes 数据。
