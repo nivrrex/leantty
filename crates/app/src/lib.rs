@@ -170,11 +170,13 @@ pub fn reader_body<R: std::io::Read>(
 
 mod clipboard;
 mod paste;
+mod framepace;
 mod ime;
 mod scrollbar;
 mod selection;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
+pub use framepace::{next_ema, target_interval, PACE_EMA_ALPHA, PACE_K, PACE_MAX_MS, PACE_MIN_MS};
 pub use ime::{normalize_ime_commit, preedit_display};
 pub use paste::{
     drain_pending, normalize_paste, paste_chunks, DrainBudget, DrainReport, PASTE_CHUNK,
@@ -309,6 +311,8 @@ impl App {
             no_throttle: std::env::var("APP_NO_THROTTLE").is_ok(),
             #[cfg(debug_assertions)]
             present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
+            render_ema_ms: None,
+            frame_interval: Duration::from_millis(PACE_MIN_MS as u64),
             perf_frames: std::env::var("APP_PERF_FRAMES")
                 .is_ok()
                 .then(PerfFrames::default),
@@ -338,6 +342,10 @@ impl App {
         event_loop
             .run_app(&mut handler)
             .map_err(|e| Error::App(format!("event loop: {}", e)))?;
+        // 退出前先丢弃接收端：大量输出（如 20 万行）时 channel 可能已积压，
+        // 读线程会阻塞在 send；drop Receiver 使其 send 立即返回 Disconnected 并退出，
+        // 否则 reader join 会等满 5s 超时（阶段 3C 任务 4 case28 实测）。
+        let _ = handler.rx.take();
         // run_app 返回后回收：先 close（先释放主端再回收子进程，kill 子进程使 reader
         // 读端得 EOF 而退出），再带超时 join reader 线程（顺序倒置将空等 5s 超时）。
         if let Some(mut pty) = handler.pty.take() {
@@ -458,6 +466,10 @@ struct AppHandler {
     /// 强制整缓冲 present（仅 debug：APP_PRESENT_FULL=1，用于对比 damage 提交）。
     #[cfg(debug_assertions)]
     present_full: bool,
+    /// 渲染耗时 EMA（毫秒），用于自适应帧间隔；None 表示尚无样本。
+    render_ema_ms: Option<f64>,
+    /// 当前目标帧间隔（由 EMA 推导，最小 PACE_MIN_MS）。
+    frame_interval: Duration,
     /// 帧耗时诊断采样（APP_PERF_FRAMES=1，release 与 debug 均可用，默认关闭）。
     /// 每 50 帧输出一行：渲染/present 中位与 p95、被合并丢弃的唤醒次数、当前帧间隔。
     perf_frames: Option<PerfFrames>,
@@ -962,19 +974,33 @@ impl ApplicationHandler for AppHandler {
         #[cfg(not(debug_assertions))]
         let throttle_disabled = false;
         let now = Instant::now();
-        let due = throttle_disabled
-            || match self.last_render {
-                Some(t) => self.urgent_render || now.duration_since(t) >= RENDER_MIN_INTERVAL,
-                None => true,
-            };
+        // 自适应帧间隔（阶段 3C 任务 4）：输出路径用 frame_interval（K×EMA，clamp 8–100ms）；
+        // 输入等交互帧不受自适应间隔拖延，但仍受 RENDER_MIN_INTERVAL（8ms）下限约束，
+        // 避免输出洪峰时输入帧背靠背执行。
+        let wait_needed = match self.last_render {
+            Some(t) => {
+                let elapsed = now.duration_since(t);
+                if self.urgent_render {
+                    elapsed < RENDER_MIN_INTERVAL
+                } else {
+                    elapsed < self.frame_interval
+                }
+            }
+            None => false,
+        };
+        let due = throttle_disabled || !wait_needed;
         if !due {
             if let Some(pf) = self.perf_frames.as_mut() {
                 pf.coalesced += 1;
             }
             if let Some(t) = self.last_render {
-                _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
-                    t + RENDER_MIN_INTERVAL,
-                ));
+                // 尾沿保证：约定在"到期时刻"唤醒一次，输出停止后最后一帧一定会被渲染。
+                let target = if self.urgent_render {
+                    t + RENDER_MIN_INTERVAL
+                } else {
+                    t + self.frame_interval
+                };
+                _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
             }
             return;
         }
@@ -1048,8 +1074,12 @@ impl ApplicationHandler for AppHandler {
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
+                    let render_ms = t_render_start.elapsed().as_secs_f64() * 1000.0;
+                    self.render_ema_ms = Some(next_ema(self.render_ema_ms, render_ms));
+                    self.frame_interval = target_interval(self.render_ema_ms.unwrap_or(render_ms));
                     if let Some(pf) = self.perf_frames.as_mut() {
-                        pf.render_us.push(t_render_start.elapsed().as_micros());
+                        pf.render_us
+                            .push((render_ms * 1000.0) as u128);
                     }
                     // 本帧脏区（阶段 3A 任务 3）：只拷贝并提交脏区；
                     // 无脏区则跳过 present（静止画面零提交）。

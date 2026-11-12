@@ -1161,5 +1161,36 @@ if start_app "$D27" "$L27"; then
 fi
 unset APP_CONFIG
 
+
+# 用例 28：自适应帧间隔的尾沿渲染（阶段 3C 任务 4）——大量输出后立即打印结束标记，
+# 断言 1 秒内 dump 出现该标记（证明输出停止后最后一帧被渲染，屏幕不停在中间状态）。
+D28="$OUT/case28-tail.dump"
+L28="$OUT/case28-tail.log"
+if start_app "$D28" "$L28"; then
+    sleep 1.5
+    x11 xdotool type --window "$WID" "seq 1 200000; echo TAIL_MARKER_OK"
+    x11 xdotool key --window "$WID" Return
+    # 输出结束后最多等 1s 让尾沿帧渲染完
+    found=0
+    i=0
+    while [ $i -lt 20 ]; do
+        if [ -f "$D28" ] && grep -q "TAIL_MARKER_OK" "$D28" 2>/dev/null; then found=1; break; fi
+        sleep 0.05
+        i=$((i+1))
+    done
+    if [ "$found" = "1" ]; then
+        echo "PASS case28-tail-frame (输出结束后 1s 内出现结束标记)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case28-tail-frame (1s 内 dump 无 TAIL_MARKER_OK)"
+        cp "$D28" "$OUT/case28-tail-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    # 注：本用例只验证"尾沿帧"（20 万行在 debug 构建下 feed 极慢，libghostty
+    # 页面校验为 O(n²) 级，3B 已用 gdb 证实），故不用 ctrl+d 断言退出（退出路径
+    # 已由 case5/case10/case11 等 10+ 用例覆盖），直接以自有 PID 收尾。
+    assert_no_wake "case28-tail-no-wake" "$L28"
+    stop_app
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]
