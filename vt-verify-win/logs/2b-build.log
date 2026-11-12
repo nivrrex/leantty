@@ -1,0 +1,102 @@
+ZIG=C:\dev\tty\scripts\windows\zig-inject-target.cmd (wrapper over ZIG_REAL=C:\dev\tty\scripts\windows\zig-inject-target.cmd)
+GHOSTTY_SOURCE_DIR=C:\vt\vendor\ghostty-src
+GHOSTTY_ZIG_SYSTEM_DIR=C:\vt\zig-system
+   Compiling windows-sys v0.61.2
+   Compiling error-code v3.4.0
+   Compiling vt v0.1.0 (C:\dev\tty\crates\vt)
+   Compiling config v0.1.0 (C:\dev\tty\crates\config)
+   Compiling clipboard-win v5.4.3
+   Compiling softbuffer v0.4.8
+   Compiling arboard v3.7.0
+   Compiling render v0.1.0 (C:\dev\tty\crates\render)
+   Compiling app v0.1.0 (C:\dev\tty\crates\app)
+error[E0432]: unresolved imports `arboard::GetExtLinux`, `arboard::SetExtLinux`
+  --> crates\app\src\clipboard.rs:7:15
+   |
+ 7 | use arboard::{GetExtLinux, SetExtLinux};
+   |               ^^^^^^^^^^^  ^^^^^^^^^^^ no `SetExtLinux` in the root
+   |               |
+   |               no `GetExtLinux` in the root
+   |
+note: found an item that was configured out
+  --> E:\dev\rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs:28:35
+   |
+25 |     unix,
+   |     ---- the item is gated here
+...
+28 | pub use platform::{ClearExtLinux, GetExtLinux, LinuxClipboardKind, SetExtLinux};
+   |                                   ^^^^^^^^^^^
+note: found an item that was configured out
+  --> E:\dev\rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs:28:68
+   |
+25 |     unix,
+   |     ---- the item is gated here
+...
+28 | pub use platform::{ClearExtLinux, GetExtLinux, LinuxClipboardKind, SetExtLinux};
+   |                                                                    ^^^^^^^^^^^
+
+error[E0433]: cannot find `LinuxClipboardKind` in `arboard`
+  --> crates\app\src\clipboard.rs:49:37
+   |
+49 |                 .clipboard(arboard::LinuxClipboardKind::Primary)
+   |                                     ^^^^^^^^^^^^^^^^^^ could not find `LinuxClipboardKind` in `arboard`
+   |
+note: found an item that was configured out
+  --> E:\dev\rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs:28:48
+   |
+25 |     unix,
+   |     ---- the item is gated here
+...
+28 | pub use platform::{ClearExtLinux, GetExtLinux, LinuxClipboardKind, SetExtLinux};
+   |                                                ^^^^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find `LinuxClipboardKind` in `arboard`
+  --> crates\app\src\clipboard.rs:64:37
+   |
+64 |                 .clipboard(arboard::LinuxClipboardKind::Primary)
+   |                                     ^^^^^^^^^^^^^^^^^^ could not find `LinuxClipboardKind` in `arboard`
+   |
+note: found an item that was configured out
+  --> E:\dev\rust\cargo\registry\src\index.crates.io-1949cf8c6b5b557f\arboard-3.7.0\src\lib.rs:28:48
+   |
+25 |     unix,
+   |     ---- the item is gated here
+...
+28 | pub use platform::{ClearExtLinux, GetExtLinux, LinuxClipboardKind, SetExtLinux};
+   |                                                ^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `clipboard` found for struct `Get<'clipboard>` in the current scope
+  --> crates\app\src\clipboard.rs:49:18
+   |
+46 |               ClipboardKind::Primary => self
+   |  _______________________________________-
+47 | |                 .inner
+48 | |                 .get()
+49 | |                 .clipboard(arboard::LinuxClipboardKind::Primary)
+   | |                 -^^^^^^^^^ method not found in `Get<'_>`
+   | |_________________|
+   |
+
+error[E0599]: no method named `clipboard` found for struct `Set<'clipboard>` in the current scope
+  --> crates\app\src\clipboard.rs:64:18
+   |
+61 |               ClipboardKind::Primary => self
+   |  _______________________________________-
+62 | |                 .inner
+63 | |                 .set()
+64 | |                 .clipboard(arboard::LinuxClipboardKind::Primary)
+   | |                 -^^^^^^^^^ method not found in `Set<'_>`
+   | |_________________|
+   |
+
+Some errors have detailed explanations: E0432, E0433, E0599.
+For more information about an error, try `rustc --explain E0432`.
+error: could not compile `app` (lib) due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+C:\dev\tty\scripts\windows\build.ps1 : cargo build --workspace failed (exit 101)
+ËùÔÚÎ»ÖÃ C:\dev\tty\scripts\windows\build.ps1:41 ×Ö·û: 5
++     Write-Error "cargo build --workspace failed (exit $LASTEXITCODE)"
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,build.ps1
+ 

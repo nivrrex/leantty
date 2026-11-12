@@ -1,0 +1,19 @@
+PASS release-hook-gated (release binary has no APP_DUMP_SNAPSHOT string)
+INFO foreground window ready (pid=5024 hwnd=198252); keyboard injection available
+PASS a-cmd-echo-hello (dump has hello)
+PASS b-powershell-echo-hello (dump has hello)
+PASS c-cjk-wide (text=True wide=2 spacer=2)
+PASS d-backspace-arrows (dump has acd)
+PASS e-wmclose-exit (exited5s=True no-wake=True)
+FAIL f-exit-command (exited5s=False no-wake=True)
+  stderr: config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读�?(系统找不到指定的路径�?(os error 3)); using defaults
+hinting: fontdue 不支�?hinting，已解析未生效（unsupported�?[perf] first_frame_ms=795
+
+PASS g-resize-mode-consistent (cols 80->198 rows 24->56 mode match=True/True)
+PASS h-default-shell-cmd (dump has DEFOK)
+PASS i-cmd-ping-ctrl-c (pre=True ttlBefore=1 ttlMid=2 ttlAfter=2 marker=True)
+PASS j-powershell-ping-ctrl-c (pre=True ttlBefore=2 ttlMid=2 ttlAfter=2 marker=True)
+PASS k-powershell-sleep-ctrl-c (pre=True ttlBefore=0 ttlMid=0 ttlAfter=0 marker=True)
+PASS m-powershell-gci-ctrl-c (pre=True ttlBefore=0 ttlMid=0 ttlAfter=0 marker=True)
+PASS l-sort-ctrl-c-interrupt (sort-blocked=True prompt-lines=2)
+==== e2e summary: PASS=13 FAIL=1 ====

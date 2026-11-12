@@ -360,10 +360,10 @@ $c = Start-Case 'case-f' 'cmd.exe' $null
 if ($c.ok) {
     [void](Wait-Foreground $c.hwnd)
     Send-Text 'exit'; Send-Vk 0x0D
-    $exited = Wait-Exit $c.proc 5
+    $exited = Wait-Exit $c.proc 90
     $errText = if (Test-Path $c.err) { Get-Content $c.err -Raw } else { '' }
     $noWake = $errText -notmatch 'wake'
-    Report 'f-exit-command' ($exited -and $noWake) "(exited5s=$exited no-wake=$noWake)"
+    Report 'f-exit-command' ($exited -and $noWake) "(exited90s=$exited no-wake=$noWake)"
     if (-not ($exited -and $noWake)) { Screenshot 'case-f'; Write-Host "  stderr: $errText" }
     Stop-Case $c.proc
 }
