@@ -1,8 +1,21 @@
 #!/bin/sh
-# 清理前轮残留 Xvfb/openbox（trap 在工具层超时 kill 下可能未执行；
-# 精确进程名，非通配）。
-pkill -x Xvfb 2>/dev/null || true
-pkill -x openbox 2>/dev/null || true
+# 清理本脚本上一轮可能残留的 Xvfb/openbox（trap 在工具层超时 kill 下可能未执行）。
+#
+# 安全约束（重要）：绝不能 `pkill -x openbox` / `pkill -x Xvfb` —— 那会杀掉
+# 用户桌面会话（如 LXDE 的 openbox、:0 上的 X）里的进程。这里只清理 e2e 专用的
+# DISPLAY=:99：Xvfb 按命令行匹配 display，openbox 按 /proc/<pid>/environ 中的
+# DISPLAY 精确判断。脚本自身的 Xvfb/openbox 仍由 trap 按 PID 精确终止。
+cleanup_stale_e2e() {
+    for p in $(pgrep -f "^Xvfb :99" 2>/dev/null); do
+        kill "$p" 2>/dev/null || true
+    done
+    for p in $(pgrep -x openbox 2>/dev/null); do
+        if tr '\0' '\n' < "/proc/$p/environ" 2>/dev/null | grep -qx "DISPLAY=:99"; then
+            kill "$p" 2>/dev/null || true
+        fi
+    done
+}
+cleanup_stale_e2e
 sleep 0.5
 # e2e 验收（阶段 B）：Xvfb + openbox + app + xdotool，断言经 APP_DUMP_SNAPSHOT 文本钩子。
 # 一条命令跑全部用例；失败时保留 dump 与截图。变量全部来自环境/脚本位置推导。
