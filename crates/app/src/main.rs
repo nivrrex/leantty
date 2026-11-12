@@ -11,6 +11,8 @@ use std::path::PathBuf;
 
 fn main() -> Result<(), app::Error> {
     app::start_time_set();
+    // 渲染侧启动锚点（阶段 3A 任务 2：字体加载分段耗时按同一锚点打印）。
+    render::mark_start();
     let mut cli_config: Option<PathBuf> = None;
     let mut cli_font: Option<String> = None;
     let mut cli_font_size: Option<f32> = None;

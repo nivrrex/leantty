@@ -19,6 +19,22 @@
 
 pub mod preedit;
 
+/// 进程启动锚点（阶段 3A 任务 2：启动分段耗时日志；app 在 main 首行调用）。
+static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// 记录渲染侧启动锚点（重复调用以首次为准）。
+pub fn mark_start() {
+    let _ = START.set(std::time::Instant::now());
+}
+
+/// 相对启动锚点的毫秒数（未设置锚点时返 0）。
+fn since_start_ms() -> f64 {
+    START
+        .get()
+        .map(|t| t.elapsed().as_secs_f64() * 1000.0)
+        .unwrap_or(0.0)
+}
+
 pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
 
 use std::collections::HashMap;
@@ -293,7 +309,14 @@ impl CpuRenderer {
         palette: Palette,
     ) -> Result<Self, Error> {
         let mut db = Database::new();
+        let t_db = std::time::Instant::now();
         db.load_system_fonts();
+        // 启动分段计时（阶段 3A 任务 2）：相对进程启动锚点，沿用 [perf] 日志机制。
+        eprintln!(
+            "[perf] fontdb_ms={:.1} since_start={:.1}",
+            t_db.elapsed().as_secs_f64() * 1000.0,
+            since_start_ms()
+        );
         let specs = [
             &settings.normal,
             &settings.bold,
@@ -304,9 +327,25 @@ impl CpuRenderer {
         // （任务 2B.1：from_bytes 对 19MB CJK 字体实测 806.8ms，同步加载将阻塞首帧）。
         // 到位前码点画 U+25A1 占位方块；到位经 add_background_fonts 并入并重绘。
         let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
+        // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
+        let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
+            std::collections::HashMap::new();
         for (gi, spec) in specs.iter().enumerate() {
-            let main = match load_font_with_fallback(&db, &spec.family, &spec.style) {
-                Ok(f) => f,
+            let t_font = std::time::Instant::now();
+            let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache) {
+                Ok((f, cached, used_style)) => {
+                    eprintln!(
+                        "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
+                        gi,
+                        spec.family,
+                        spec.style,
+                        used_style,
+                        cached,
+                        t_font.elapsed().as_secs_f64() * 1000.0,
+                        since_start_ms()
+                    );
+                    f
+                }
                 Err(e) => {
                     if gi == GROUP_NORMAL {
                         return Err(e);
@@ -1088,6 +1127,74 @@ fn load_font_styled(db: &Database, family: &str, style: &str) -> Result<Font, Er
     };
     Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))
+}
+
+/// 带缓存的 face 加载（阶段 3A 任务 2）：同一 fontdb face（同一文件/同一 style
+/// 回落目标）只读取+解析一次，后续复用已解析 Font。
+///
+/// 缓存键为 fontdb::ID（同一文件在多组字体间共享，例如 bold 缺失回落到 Regular
+/// 时与 normal 指向同一 face）。返回 (Font, 是否命中缓存)。
+fn load_font_styled_cached(
+    db: &Database,
+    family: &str,
+    style: &str,
+    cache: &mut std::collections::HashMap<fontdb::ID, Font>,
+) -> Result<(Font, bool), Error> {
+    let (w, s) = style_query(style);
+    let query = Query {
+        families: &[Family::Name(family), Family::Monospace],
+        weight: w,
+        style: s,
+        ..Default::default()
+    };
+    let id = db
+        .query(&query)
+        .ok_or_else(|| Error::Font(format!("family '{}' style '{}' not found", family, style)))?;
+    if let Some(f) = cache.get(&id) {
+        return Ok((f.clone(), true));
+    }
+    let face = db
+        .face(id)
+        .ok_or_else(|| Error::Font("face not found".to_string()))?;
+    let bytes: Vec<u8> = match &face.source {
+        Source::File(path) => std::fs::read(path)
+            .map_err(|e| Error::Font(format!("read font file: {}", e)))?,
+        Source::Binary(data) => data.as_ref().as_ref().to_vec(),
+        Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
+    };
+    let font = Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
+        .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
+    cache.insert(id, font.clone());
+    Ok((font, false))
+}
+
+/// 带缓存的 family 加载（style 缺失回落顺序同 load_font_with_fallback）。
+fn load_font_with_fallback_cached(
+    db: &Database,
+    family: &str,
+    style: &str,
+    cache: &mut std::collections::HashMap<fontdb::ID, Font>,
+) -> Result<(Font, bool, String), Error> {
+    let mut candidates = vec![
+        style.to_string(),
+        "Bold".to_string(),
+        "Italic".to_string(),
+        "Regular".to_string(),
+    ];
+    candidates.dedup();
+    let mut last_err = None;
+    for s in &candidates {
+        match load_font_styled_cached(db, family, s, cache) {
+            Ok((f, cached)) => {
+                if s != style {
+                    eprintln!("font style fallback: '{}' '{}' → '{}'", family, style, s);
+                }
+                return Ok((f, cached, s.clone()));
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.unwrap_or_else(|| Error::Font(format!("family '{}' not found", family))))
 }
 
 /// 按 family 加载字体，style 缺失依次回落 Bold→Italic→Regular（规格任务 3.1），

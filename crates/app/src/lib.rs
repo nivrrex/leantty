@@ -403,6 +403,7 @@ impl ApplicationHandler for AppHandler {
             f64::from(config.rows) * f64::from(init_ch) + 2.0 * f64::from(config.pad_y),
         )));
         // 启动失败路径：记录原因并退出事件循环，不 panic（外部输入/系统调用须覆盖失败路径）。
+        let t_window = Instant::now();
         let window = Rc::new(match event_loop.create_window(attrs) {
             Ok(w) => w,
             Err(e) => {
@@ -410,9 +411,18 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         });
+        // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] window_ms={:.1} since_start={:.1}",
+                t_window.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         // IME：窗口创建后无条件开启（任务 5）；Xvfb 无 IME 总线时事件不产生，
         // 开启调用本身无害（winit 内部按平台降级）。
         window.set_ime_allowed(true);
+        let t_surface = Instant::now();
         let context = match softbuffer::Context::new(event_loop.owned_display_handle()) {
             Ok(c) => c,
             Err(e) => {
@@ -438,6 +448,13 @@ impl ApplicationHandler for AppHandler {
         {
             eprintln!("surface initial resize: {}", e);
             return;
+        }
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] surface_ms={:.1} since_start={:.1}",
+                t_surface.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
         }
         let mut vt = match VtTerminal::new(config.cols, config.rows) {
             Ok(t) => t,
