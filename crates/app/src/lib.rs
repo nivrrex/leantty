@@ -185,6 +185,42 @@ pub use selection::{
     viewport_to_abs, word_region, CellPos, Selection,
 };
 
+/// 帧耗时诊断统计（APP_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
+#[derive(Default)]
+struct PerfFrames {
+    render_us: Vec<u128>,
+    present_us: Vec<u128>,
+    /// 因帧间隔未到期而被合并（丢弃）的唤醒次数。
+    coalesced: u64,
+    /// 最近一次采用的帧间隔（ms）。
+    interval_ms: u64,
+}
+
+impl PerfFrames {
+    const N: usize = 50;
+
+    fn report(&mut self) {
+        if self.render_us.len() < Self::N {
+            return;
+        }
+        let stats = |v: &mut Vec<u128>| {
+            v.sort_unstable();
+            let med = v[v.len() / 2] / 1000;
+            let p95 = v[v.len() * 95 / 100] / 1000;
+            v.clear();
+            (med, p95)
+        };
+        let (r_med, r_p95) = stats(&mut self.render_us);
+        let (p_med, p_p95) = stats(&mut self.present_us);
+        let fps = 1000u64.checked_div(self.interval_ms).unwrap_or(0);
+        eprintln!(
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps",
+            Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps
+        );
+        self.coalesced = 0;
+    }
+}
+
 /// 渲染最小间隔（阶段 3B 任务 2：帧合并）。高频 PTY 输出时最多约 125 帧/秒，
 /// 即约 8ms 一帧；交互事件（键盘/鼠标/IME/resize）走 urgent 低延迟路径不受此限。
 const RENDER_MIN_INTERVAL: Duration = Duration::from_millis(8);
@@ -273,6 +309,9 @@ impl App {
             no_throttle: std::env::var("APP_NO_THROTTLE").is_ok(),
             #[cfg(debug_assertions)]
             present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
+            perf_frames: std::env::var("APP_PERF_FRAMES")
+                .is_ok()
+                .then(PerfFrames::default),
             #[cfg(debug_assertions)]
             present_stats: std::env::var("APP_PRESENT_STATS")
                 .is_ok()
@@ -419,6 +458,9 @@ struct AppHandler {
     /// 强制整缓冲 present（仅 debug：APP_PRESENT_FULL=1，用于对比 damage 提交）。
     #[cfg(debug_assertions)]
     present_full: bool,
+    /// 帧耗时诊断采样（APP_PERF_FRAMES=1，release 与 debug 均可用，默认关闭）。
+    /// 每 50 帧输出一行：渲染/present 中位与 p95、被合并丢弃的唤醒次数、当前帧间隔。
+    perf_frames: Option<PerfFrames>,
     /// present 耗时采样（仅 debug：APP_PRESENT_STATS=1 每 100 帧打印一次）。
     #[cfg(debug_assertions)]
     present_stats: Option<(bool, Vec<u128>)>,
@@ -926,6 +968,9 @@ impl ApplicationHandler for AppHandler {
                 None => true,
             };
         if !due {
+            if let Some(pf) = self.perf_frames.as_mut() {
+                pf.coalesced += 1;
+            }
             if let Some(t) = self.last_render {
                 _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
                     t + RENDER_MIN_INTERVAL,
@@ -933,8 +978,10 @@ impl ApplicationHandler for AppHandler {
             }
             return;
         }
+        let prev_render = self.last_render;
         self.last_render = Some(now);
         self.urgent_render = false;
+        let t_render_start = Instant::now();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
         if let (Some(vt), Some(renderer), Some(surface)) =
@@ -1001,6 +1048,9 @@ impl ApplicationHandler for AppHandler {
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
+                    if let Some(pf) = self.perf_frames.as_mut() {
+                        pf.render_us.push(t_render_start.elapsed().as_micros());
+                    }
                     // 本帧脏区（阶段 3A 任务 3）：只拷贝并提交脏区；
                     // 无脏区则跳过 present（静止画面零提交）。
                     let damage: Vec<(u32, u32, u32, u32)> = renderer.damage().to_vec();
@@ -1023,7 +1073,6 @@ impl ApplicationHandler for AppHandler {
                     }
                     match surface.buffer_mut() {
                         Ok(mut buffer) => {
-                            #[cfg(debug_assertions)]
                             let t_present = Instant::now();
                             // 拷贝：damage 覆盖整屏时整缓冲拷贝，否则按矩形逐行拷贝。
                             let full_cover = force_full_present
@@ -1068,6 +1117,16 @@ impl ApplicationHandler for AppHandler {
                                 // present_with_damage 在不支持 damage 的后端等价于 present。
                                 buffer.present_with_damage(&rects)
                             };
+                            if let Some(pf) = self.perf_frames.as_mut() {
+                                pf.present_us.push(t_present.elapsed().as_micros());
+                                pf.interval_ms = prev_render
+                                    .map(|t| now.duration_since(t).as_millis() as u64)
+                                    .unwrap_or(0);
+                                // 每 50 帧输出一行帧耗时诊断（release 保留）。
+                                if pf.present_us.len() >= PerfFrames::N {
+                                    pf.report();
+                                }
+                            }
                             #[cfg(debug_assertions)]
                             if let Some((full_flag, samples)) = self.present_stats.as_mut() {
                                 samples.push(t_present.elapsed().as_micros());
