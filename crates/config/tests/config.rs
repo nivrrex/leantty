@@ -130,20 +130,25 @@ fn defaults_are_sane() {
 /// 环境变量路径测试（合并为单测试，避免并行测试竞争进程级 env）。
 #[test]
 fn path_priority_cli_env_default() {
-    let p = config::resolve_config_path(Some(PathBuf::from("/tmp/x.toml"))).unwrap();
-    assert_eq!(p, PathBuf::from("/tmp/x.toml"));
+    // 平台无关路径构造（Unix 的 /tmp 前缀在 Windows 下不成立）。
+    let tmp = std::env::temp_dir();
+    let cli = tmp.join("x.toml");
+    let p = config::resolve_config_path(Some(cli.clone())).unwrap();
+    assert_eq!(p, cli);
     unsafe {
-        std::env::set_var("APP_CONFIG", "/tmp/app-config-test.toml");
+        let env_path = tmp.join("app-config-test.toml");
+        std::env::set_var("APP_CONFIG", env_path.to_str().expect("temp 路径应为 UTF-8"));
         let p = config::resolve_config_path(None).unwrap();
-        assert_eq!(p, PathBuf::from("/tmp/app-config-test.toml"));
+        assert_eq!(p, env_path);
         std::env::remove_var("APP_CONFIG");
 
-        std::env::set_var("XDG_CONFIG_HOME", "/tmp/xdg-test");
+        let xdg = tmp.join("xdg-test");
+        std::env::set_var("XDG_CONFIG_HOME", xdg.to_str().expect("temp 路径应为 UTF-8"));
         let p = config::default_config_path().unwrap();
         let name = config::app_name();
         assert!(
-            p.starts_with("/tmp/xdg-test"),
-            "path {p:?} should start with /tmp/xdg-test"
+            p.starts_with(&xdg),
+            "path {p:?} should start with {xdg:?}"
         );
         assert!(
             p.ends_with(format!("{name}/{name}.toml").as_str()),

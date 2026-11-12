@@ -680,6 +680,15 @@ impl ApplicationHandler for AppHandler {
             && let Ok(fonts) = rx.try_recv()
             && let Some(r) = self.renderer.as_mut()
         {
+            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）到位时刻，
+            // 与首帧耗时同口径（相对进程启动），仅打印一次。
+            if let Some(t0) = crate::start_time() {
+                eprintln!(
+                    "[perf] bg_fonts_ms={} count={}",
+                    t0.elapsed().as_millis(),
+                    fonts.len()
+                );
+            }
             r.add_background_fonts(fonts);
         }
         // 2. channel 收字节 → 喂 vt（auto-follow：开启时新输出后回底）

@@ -87,3 +87,6 @@
 - e2e 窗口查找改按 PID（已验证事实）：标题不再固定为 "tty"，`xdotool search --name tty` 失效；wait_window 改为 xdotool search --pid $APP_PID 并保留 _NET_WM_PID 归属校验。
 - 初始位置（已验证事实）：winit WindowAttributes::with_position(LogicalPosition) 设置；X11+openbox 下客户端原点相对请求位置有装饰偏移（实测请求 (60,50) → client (90,75)，frame extents 偏移），e2e 断言用 ±40 容差。Wayland 会话下合成器可能忽略，检测到 WAYLAND_DISPLAY 时打印提示日志，不作为错误；越出屏幕范围交给窗口管理器，不自行钳制。
 - 不做项（工程判断）：window.opacity 留待 GPU 阶段实现（CPU 帧缓冲无 alpha 合成路径，需与渲染后端一起设计）；terminal.shell.args 需要扩展 Pty::spawn 签名（改 trait 属停止条件），由用户另行决策。
+- 启动耗时测量口径（已验证事实，2026 数据见 PHASE2C-LINUX.md）：three 组数字口径不同——(a) 929ms=2B 基线 examples/linux.toml 首帧（懒加载落地前，含同步 CJK from_bytes 806.8ms）；(b) 203ms=2B 懒加载落地后 release 空闲首帧样例；(c) 823–946ms=2B 交付期 e2e case11 的 first_frame_ms，为 debug 二进制 + Xvfb 序列负载（前序用例残留、字体冷缓存）口径，非 release 空闲。三者不可直接比较；PHASE2C 统一按 release 空闲 5 次采样（无配置 / examples/linux.toml）给出中位数与极差，并记录 bg_fonts_ms（CJK 后台字体到位时刻）。
+- perf 钩子（已验证事实）：新增 [perf] bg_fonts_ms=<ms> count=<n>（后台字体到位时刻，相对进程启动，仅打印一次），与 first_frame_ms 同口径常驻 release；用于证明首帧不等待 CJK 加载。
+- config path_priority 测试平台无关化（已验证事实）：原 /tmp 前缀在 Windows 不成立，改用 std::env::temp_dir() 构造期望路径（仅改该测试，未动被测逻辑）。
