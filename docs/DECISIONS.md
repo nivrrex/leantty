@@ -111,3 +111,5 @@
 - 成本随像素量近似线性（已验证事实）：200x60@1x（1.8Mpx）22.44ms≈120x30@2x（2.0Mpx）21.41ms，说明主要成本是逐像素背景填充与字形 blit，而非网格遍历；缩放 2.0 使像素数 ×4，耗时约 ×3.3。
 - 无脏区增量渲染（已验证事实）：单格变化帧中位 6.48/21.74/22.65/73.38ms，与全帧 6.44/21.41/22.44/73.02ms 基本相同——当前实现是**整帧重画**（每帧重建 framebuffer 并重绘全部格子），脏行/脏区优化尚不存在；这为阶段 3 决策提供依据（CPU 路径需全帧预算，GPU 路径或需脏区/图层化）。
 - 帧缓冲格式（已验证事实）：render 帧缓冲为 Vec<u32>（0xFFRRGGBB），与 softbuffer 像素格式一致，render 内无额外格式转换；app 侧仅逐元素拷贝到 surface（未计入本基准）。
+- config path_priority 测试平台分支（已验证事实）：Windows 的 default_config_path 读 APPDATA（不读 XDG_CONFIG_HOME），原测试在 Windows 断言 XDG 前缀必然失败。测试内按 cfg(windows)/cfg(not(windows)) 分别设置 APPDATA / XDG_CONFIG_HOME 并断言对应基准目录；路径后缀改用 Path 组件比较（避免手写分隔符）。被测逻辑未改。已用 cargo check -p config --target x86_64-pc-windows-gnu --tests 交叉编译验证（target 已安装，编译通过）。
+- 样例配置字体指引（已验证事实）：examples/linux.toml 与 examples/windows.toml 的 [font] 段补充中文注释——主字体应为小体积等宽西文字体（同步加载，from_bytes 成本随体积增长：0.3MB≈12ms、16MB≈230ms），大体积 CJK 字体放 font.fallback（后台线程加载，不阻塞首帧，缺字先占位）。windows.toml 主字体由 Microsoft YaHei Mono 改为 Consolas，fallback 保持 Microsoft YaHei；config 测试中对应断言同步更新。
