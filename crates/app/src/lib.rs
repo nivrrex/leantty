@@ -309,7 +309,6 @@ impl App {
             no_render: std::env::var("APP_NO_RENDER").is_ok(),
             #[cfg(debug_assertions)]
             no_throttle: std::env::var("APP_NO_THROTTLE").is_ok(),
-            #[cfg(debug_assertions)]
             present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
             render_ema_ms: None,
             frame_interval: Duration::from_millis(PACE_MIN_MS as u64),
@@ -463,8 +462,8 @@ struct AppHandler {
     /// 关闭帧合并节流（仅 debug：APP_NO_THROTTLE=1），用于对照"节流前"的输入回显延迟。
     #[cfg(debug_assertions)]
     no_throttle: bool,
-    /// 强制整缓冲 present（仅 debug：APP_PRESENT_FULL=1，用于对比 damage 提交）。
-    #[cfg(debug_assertions)]
+    /// 强制整缓冲 present（诊断开关 APP_PRESENT_FULL=1，release 与 debug 均可用，
+    /// 默认关闭；用于对比脏区提交与全缓冲提交的 present 耗时，与 APP_PERF_FRAMES 同类）。
     present_full: bool,
     /// 渲染耗时 EMA（毫秒），用于自适应帧间隔；None 表示尚无样本。
     render_ema_ms: Option<f64>,
@@ -1086,10 +1085,8 @@ impl ApplicationHandler for AppHandler {
                     let damage: Vec<(u32, u32, u32, u32)> = renderer.damage().to_vec();
                     let fb = renderer.framebuffer();
                     let fb_w = pw;
-                    #[cfg(debug_assertions)]
+                    // APP_PRESENT_FULL=1 时强制整缓冲提交（诊断用，release 亦可用）。
                     let force_full_present = self.present_full;
-                    #[cfg(not(debug_assertions))]
-                    let force_full_present = false;
                     if !force_full_present && damage.is_empty() {
                         // 完全静态帧：不重绘、不提交（仍可更新 perf 日志）。
                         if !self.first_frame_logged {
