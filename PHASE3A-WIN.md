@@ -150,7 +150,14 @@ powershell ping -t 应有 TTL 输出，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0
 - 截图：`vt-verify-win/logs/phase2b-win/{a1-incremental,a1-forced-full,c3-plain,c3-preedit}.png`。
 - ConPTY 对照件：`vt-verify-win/conpty-test/`（已 gitignore，含 WezTerm 的 conpty.dll/OpenConsole.exe 与探针副本），未入库。
 
-## 9. 手动清单（≤3）
+## 9. 推送到位与核对
+
+- 提交：**2542fea**（`3A-win: merge phase3a-done, incremental/full parity, startup phases, ConPTY comparison`），123 文件，+2204/-130。
+- `git push origin win`：`41dc491..2542fea  win -> win`。
+- `git rev-parse win` = 2542fea3453bfe4ab84d038853b3933272ed49a7；`git ls-remote origin refs/heads/win` = 2542fea3453bfe4ab84d038853b3933272ed49a7（一致）。
+- `vt-verify-win/conpty-test/`（含 WezTerm 的 conpty.dll/OpenConsole.exe 与探针副本）已加入 .gitignore，未入库。
+
+## 10. 手动清单（≤3）
 
 1. 用 WezTerm（E:\Compiler\WezTerm）里的 pwsh 7 跑一次常见操作（vim/less/neovim），确认折行为与 3A 的软折行语义一致（本机只做了 PTY 字节层对照）。
 2. 在装有 Windows Terminal 的机器上复核 §5.3 的两项"无差异"结论（括号粘贴、SGR），确认是否与 conpty 版本无关。
