@@ -1092,7 +1092,7 @@ fi
 unset APP_FORCE_FULL_REDRAW
 
 
-# 用例 27：滚动位移复用正确性（阶段 3B 任务 3）——输出 300 行后用滚动绑定
+# 用例 27：滚动场景增量渲染正确性——输出 300 行后用滚动绑定
 # （PageUp/PageDown → ScrollPageUp/Down）滚动，增量与 APP_FORCE_FULL_REDRAW=1
 # 两次运行截取窗口图像断言逐像素相等。
 D27="$OUT/case27-scroll.dump"
@@ -1132,7 +1132,6 @@ scroll_seq() { # $1=png
     x11 import -window "$WID" "$1" 2>/dev/null
 }
 export APP_CONFIG="$CFG27"
-export APP_SCROLL_REUSE=1
 if start_app "$D27" "$L27"; then
     scroll_seq "$A27"
     stop_app
@@ -1142,20 +1141,19 @@ if start_app "$D27" "$L27"; then
         stop_app
     fi
     unset APP_FORCE_FULL_REDRAW
-    unset APP_SCROLL_REUSE
     if [ -s "$A27" ] && [ -s "$B27" ]; then
         DIFF27=$(compare -metric AE "$A27" "$B27" null: 2>&1 | head -1 | tr -dc '0-9')
         : "${DIFF27:=unknown}"
         if [ "$DIFF27" = "0" ]; then
-            echo "PASS case27-scroll-reuse-equals-full (滚动后截图逐像素一致)"; PASS=$((PASS+1))
+            echo "PASS case27-scroll-incremental-equals-full (滚动后截图逐像素一致)"; PASS=$((PASS+1))
         else
-            echo "FAIL case27-scroll-reuse-equals-full (差异像素 $DIFF27)"
+            echo "FAIL case27-scroll-incremental-equals-full (差异像素 $DIFF27)"
             cp "$A27" "$OUT/case27-incr-fail.png" 2>/dev/null
             cp "$B27" "$OUT/case27-full-fail.png" 2>/dev/null
             FAIL=$((FAIL+1))
         fi
     else
-        echo "FAIL case27-scroll-reuse-equals-full (截图缺失)"; FAIL=$((FAIL+1))
+        echo "FAIL case27-scroll-incremental-equals-full (截图缺失)"; FAIL=$((FAIL+1))
     fi
     unset APP_CONFIG
 fi

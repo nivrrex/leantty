@@ -459,10 +459,11 @@ fn incremental_random_sequence_3000_steps() {
     println!("随机序列 3000 步：增量与全量逐像素一致（种子 {seed}）");
 }
 
-/// 滚动位移复用专项（阶段 3B 任务 3）：纯上滚/下滚、滚动同时改一行、
-/// 滚动同时选区变化、光标在被搬移行——增量与强制全量逐像素相等。
+/// 滚动序列专项：纯上滚/下滚、滚动同时改一行、滚动同时选区变化、
+/// 光标随滚动移动——行级增量与强制全量逐像素相等。
+/// （阶段 3C 任务 6 已删除位移复用实现，本用例继续覆盖滚动场景的增量正确性。）
 #[test]
-fn scroll_blit_matches_full() {
+fn scroll_sequence_matches_full() {
     let Some(mut h) = Harness::new(40, 12) else { return; };
     let mut base = synth(40, 12, 7);
     // 稳定内容：每行用行号文本，便于构造整体位移
@@ -567,5 +568,5 @@ fn scroll_blit_matches_full() {
         next.full_redraw = false;
         h.step(&mut next, "滚动+光标移动").unwrap_or_else(|e| panic!("{e}"));
     }
-    println!("滚动位移复用：全部场景与强制全量逐像素一致");
+    println!("滚动序列：全部场景与强制全量逐像素一致");
 }

@@ -547,12 +547,6 @@ impl ApplicationHandler for AppHandler {
                 pos.y as f64,
             ));
         }
-        // 阶段 3B 任务 3：滚动位移复用默认关闭；仅 debug 开关启用
-        // （混合场景对拍存在未解决差异，见 render 字段文档与 PHASE3B 报告）。
-        #[cfg(debug_assertions)]
-        let mut renderer = renderer;
-        #[cfg(debug_assertions)]
-        renderer.set_scroll_reuse(std::env::var("APP_SCROLL_REUSE").is_ok());
         // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
         if let Some(t0) = crate::start_time() {
             eprintln!(
@@ -1172,6 +1166,8 @@ impl ApplicationHandler for AppHandler {
                             if let Err(e) = present_res {
                                 eprintln!("surface present: {}", e);
                             }
+                            #[cfg(debug_assertions)]
+                            dump_frame_hash_if_requested(renderer);
                             if !self.first_frame_logged {
                                 self.first_frame_logged = true;
                                 if let Some(t0) = crate::start_time() {
@@ -1916,6 +1912,40 @@ fn write_pty(pty: &mut NativePty, bytes: &[u8]) {
             }
         }
         Err(e) => eprintln!("pty writer: {}", e),
+    }
+}
+
+/// 诊断钩子（仅 debug，默认关闭）：APP_FRAME_HASH=<路径> 时，每帧渲染后追加一行
+/// `frame=<n> all=<hash> rows=<h0,h1,...>`，用于逐帧对拍"复用 vs 强制全量"，
+/// 定位首个出现像素差异的帧与差异行范围（阶段 3C 任务 6）。
+#[cfg(debug_assertions)]
+fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
+    let Ok(path) = std::env::var("APP_FRAME_HASH") else { return; };
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(0);
+    let n = N.fetch_add(1, Ordering::Relaxed);
+    let fb = renderer.framebuffer();
+    let (w, h) = renderer.framebuffer_size();
+    if w == 0 || h == 0 {
+        return;
+    }
+    // 行哈希：把该行像素折叠成 FNV-1a 64
+    let mut rows: Vec<String> = Vec::with_capacity(h as usize);
+    let mut all: u64 = 0xcbf2_9ce4_8422_2325;
+    for y in 0..h as usize {
+        let mut hr: u64 = 0xcbf2_9ce4_8422_2325;
+        for x in 0..w as usize {
+            let px = fb[y * w as usize + x];
+            hr = (hr ^ u64::from(px)).wrapping_mul(0x0000_0100_0000_01b3);
+            all = (all ^ u64::from(px)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        rows.push(format!("{hr:016x}"));
+    }
+    let line = format!("frame={n} all={all:016x} rows={}
+", rows.join(","));
+    use std::io::Write;
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = f.write_all(line.as_bytes());
     }
 }
 
