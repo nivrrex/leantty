@@ -47,6 +47,7 @@
 
 - crates/pty/src/lib.rs：加 #[cfg(windows)] pub use windows::WindowsPty as NativePty;（app 以 NativePty 引用，Windows 编译所需）。
 - crates/pty/tests/pty_unix.rs：加 #![cfg(unix)] 门控（/bin/sh 测试在 Windows 不得编译运行）。
+- crates/app/src/clipboard.rs：arboard 3.7 的 X11 扩展 API（GetExtLinux/SetExtLinux/LinuxClipboardKind，仅 unix）致 Windows 编译失败（E0432/E0433）；最小拆分为 #[cfg(unix)] use + primary_get/primary_set 双实现（Windows 返 Err；Primary 实际行为实测记录于 PHASE2B-WIN.md）。E0308 修正（Error::Clipboard(String) 需 .to_string()）。
 
 ## 未解决问题
 
