@@ -81,12 +81,12 @@ fn synth(cols: u16, rows: u16) -> FrameSnapshot {
             line.push(Cell {
                 chars: (code as char).to_string(),
                 fg: colors[(x as usize + y as usize) % colors.len()],
-                bg: if (x / 10 + y / 5) % 7 == 0 {
+                bg: if (x / 10 + y / 5).is_multiple_of(7) {
                     Some(Rgb { r: 40, g: 40, b: 60 })
                 } else {
                     None
                 },
-                bold: x % 24 == 0,
+                bold: x.is_multiple_of(24),
                 italic: x % 40 == 1,
                 underline: if x % 20 == 3 {
                     Underline::Single
