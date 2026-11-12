@@ -919,5 +919,73 @@ if start_app "$D" "$L"; then
 fi
 unset APP_CONFIG
 
+
+# 用例 24：大段粘贴静止排空（任务 2D.2，P1）——1MB 已知模式粘贴后不产生任何
+# 事件，5s 内必须精确送达 1048576 字节且 sha256 与源一致。
+D="$OUT/case24-paste-1mb.dump"
+L="$OUT/case24-paste-1mb.log"
+SRC="$OUT/case24-paste-src.bin"
+DST=/tmp/case24-paste-dst.bin
+rm -f "$DST"
+python3 -c "open('$SRC','w').write('0123456789abcdef'*65536)"
+if start_app "$D" "$L"; then
+    sleep 1
+    # raw 模式让无换行内容不被 tty 行缓冲卡住（canonical 下 cat 收不到数据）
+    xdotool type --window "$WID" "stty raw -echo; cat > $DST"
+    xdotool key --window "$WID" Return
+    sleep 1
+    xclip -i -selection clipboard < "$SRC"
+    sleep 0.3
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    xdotool click 3
+    # 之后不产生任何事件，等排空
+    sleep 5
+    SZ=$(stat -c%s "$DST" 2>/dev/null || echo 0)
+    SRC_SHA=$(sha256sum "$SRC" | cut -d' ' -f1)
+    DST_SHA=$(sha256sum "$DST" 2>/dev/null | cut -d' ' -f1)
+    if [ "$SZ" = "1048576" ] && [ "$SRC_SHA" = "$DST_SHA" ]; then
+        echo "PASS case24-paste-1mb-drain (静止 5s 送达 $SZ 字节，sha256 一致)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case24-paste-1mb-drain (静止 5s 仅 $SZ / 期望 1048576，sha 一致=$([ "$SRC_SHA" = "$DST_SHA" ] && echo yes || echo no))"
+        FAIL=$((FAIL+1))
+    fi
+    stop_app
+fi
+
+# 用例 25：10MB 粘贴期间输入不丢（任务 2D.2）——排空分帧进行时键入 marker
+# 仍按序到达（cat 收进文件），且最终文件包含 marker。
+D="$OUT/case25-paste-10mb.dump"
+L="$OUT/case25-paste-10mb.log"
+SRC10="$OUT/case25-paste-src.bin"
+DST10=/tmp/case25-paste-dst.bin
+rm -f "$DST10"
+python3 -c "open('$SRC10','w').write('ABCDEFGH'*1310720)"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "stty raw -echo; cat > $DST10"
+    xdotool key --window "$WID" Return
+    sleep 1
+    xclip -i -selection clipboard < "$SRC10"
+    sleep 0.3
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    xdotool click 3
+    # 粘贴排空进行中键入 marker（raw 模式下直接进入 cat 的记录）
+    sleep 0.2
+    xdotool type --window "$WID" "KEYMARK"
+    sleep 12
+    SZ=$(stat -c%s "$DST10" 2>/dev/null || echo 0)
+    if [ "$SZ" -ge 10485760 ] && grep -q "KEYMARK" "$DST10" 2>/dev/null; then
+        echo "PASS case25-paste-10mb-input (送达 $SZ 字节且含 KEYMARK)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case25-paste-10mb-input (送达 $SZ 字节，含 KEYMARK=$(grep -c KEYMARK "$DST10" 2>/dev/null || echo 0))"
+        FAIL=$((FAIL+1))
+    fi
+    stop_app
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

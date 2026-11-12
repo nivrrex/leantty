@@ -92,3 +92,9 @@
 - config path_priority 测试平台无关化（已验证事实）：原 /tmp 前缀在 Windows 不成立，改用 std::env::temp_dir() 构造期望路径（仅改该测试，未动被测逻辑）。
 - 阶段2D 任务1 合并（已验证事实）：ali/win 实际 hash=3811f91（Windows 报告中的 a4e6233 为其父提交）；merge-base=d278e76（phase2b-done）。win 侧相对 merge-base 的 shared 代码改动仅 crates/app/src/clipboard.rs（63c8c7f：arboard X11 扩展 API 拆 cfg(unix)/cfg(not(unix))，PRIMARY 在 Windows 返 Err），其余 296 个文件均为 Windows 专属路径（vt-verify-win/、scripts/windows/、docs/WIN-NOTES.md、PHASE2A/2B-WIN*.md），无清单外 shared 改动；git merge --no-ff 无冲突（fc3e622）。
 - 合并后需修一处（已验证事实）：win 侧 primary_get/primary_set 以 &arboard::Clipboard 接收，而 arboard 3.7 的 Linux 扩展 get()/set() 需要 &mut 接收者，Linux 编译失败（Windows 分支因 cfg(not(unix)) 分支不触碰该值而未暴露）。修复为 &mut（Windows 变体同步改 &mut，参数未使用），Linux 下 84 测试/clippy 0/run_all 76/76 通过，case12/case13 PRIMARY 行为不变。
+- 大段粘贴排空缺陷根因（已验证事实，Linux 复现）：about_to_wait 每轮只 pop 一块待写数据并写 PTY，写完不触发下一轮；winit 在 ControlFlow::Wait 下无事件即阻塞，故静止场景粘贴停在首块。实测：1MB 粘贴后不产生任何事件，5s 时目标文件仅 65536 字节，产生一次鼠标事件后增至 131072 字节（与 Windows 报的约 131066/2 块现象一致）。
+- 复现前提（已验证事实）：内容无换行时 canonical 模式下 tty 行缓冲不交付字节，用 `cat > file` 观察到 0 字节；必须 `stty raw -echo` 才能观测真实送达量（这是最初误判"粘贴未触发"的原因）。
+- 修复方案选择（工程判断）：采用"预算化排空 + request_redraw 自驱动"——pending 队列改字节块 VecDeque<Vec<u8>>，每轮 about_to_wait 用 drain_pending 写出至多 8 块 / 512KB，队列非空时 window.request_redraw() 驱动下一帧。理由：不改 Pty trait（writer() 只给 &mut dyn Write，写线程需 take writer 属 trait 变更=停止条件）、不忙等（遇 WouldBlock 立即返回并保留剩余）、PTY 关闭时清空队列不挂起。
+- 否决方案（工程判断）：独立 PTY 写线程 + channel 吞吐更高，但需要把 writer 从 NativePty 移出（改 Pty trait 或破坏 close 契约"先释放主端再回收子进程"），按规则属停止条件，且背压/关闭顺序复杂度高，故不采用；若后续开放 trait 变更可重估。
+- 排空语义（已验证事实）：块内部分写入保留未写前缀、跨轮续写；WouldBlock 立即返回不 spin；不可恢复错误丢弃该块并停止驱动；PTY 不可用/已关闭时丢弃剩余。单元测试 6 例用注入 writer 覆盖全写/预算/部分写/WouldBlock/致命错误/空队列。
+- 修复实测（已验证事实）：1MB 静止 5s 精确送达 1048576 字节且 sha256 与源一致（case24）；10MB 粘贴期间键入 KEYMARK 不丢，最终 10485767 字节（= 10485760 + 7）且含 KEYMARK（case25）。

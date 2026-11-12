@@ -149,7 +149,9 @@ mod selection;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
 pub use ime::{normalize_ime_commit, preedit_display};
-pub use paste::{normalize_paste, paste_chunks, PASTE_CHUNK};
+pub use paste::{
+    drain_pending, normalize_paste, paste_chunks, DrainBudget, DrainReport, PASTE_CHUNK,
+};
 pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
 pub use selection::{
     abs_to_viewport, auto_scroll_step, extract_rows, extract_text, selection_viewport_region,
@@ -321,8 +323,8 @@ struct AppHandler {
     click_count: u8,
     /// 剪贴板（主线程持有；arboard X11 所有权语义：set 后持有者存活至进程退出）。
     clipboard: Option<ArboardClipboard>,
-    /// 大段粘贴分块队列（≥1MB 时每帧写一块，不阻塞事件循环）。
-    pending_paste: VecDeque<String>,
+    /// 大段粘贴分块队列（字节块；每轮按预算排空，剩余靠 request_redraw 继续）。
+    pending_paste: VecDeque<Vec<u8>>,
     /// 最后鼠标位置（物理像素；MouseInput 事件无坐标，用 CursorMoved 缓存）。
     last_mouse_pos: Option<winit::dpi::PhysicalPosition<f64>>,
     /// 网格行列数（pixel_to_cell 上界校验；Resized 同步）。
@@ -671,9 +673,44 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        // 大段粘贴分块：每帧写一块 PTY，不阻塞事件循环（任务 2.3）。
-        if let (Some(chunk), Some(pty)) = (self.pending_paste.pop_front(), self.pty.as_mut()) {
-            write_pty(pty, chunk.as_bytes());
+        // 大段粘贴排空（任务 2D.2 修复）：每轮按预算写出有限字节，剩余数据
+        // 通过 request_redraw 在下一帧继续驱动。
+        // 原缺陷：每轮只写一块且写完不自驱动，事件循环进入 Wait 后不再运行，
+        // 静止场景下粘贴停在第 1 块（Linux 实测 65536 字节后停住）。
+        if !self.pending_paste.is_empty() {
+            let mut report = crate::paste::DrainReport::default();
+            let mut pty_gone = false;
+            match self.pty.as_mut() {
+                Some(pty) => match pty.writer() {
+                    Ok(w) => {
+                        report = drain_pending(
+                            &mut self.pending_paste,
+                            w,
+                            crate::paste::DrainBudget::default(),
+                        );
+                        // flush 失败（如对端暂不可写）保留剩余，下一轮重试。
+                        if let Err(e) = w.flush()
+                            && e.kind() == std::io::ErrorKind::WouldBlock
+                        {
+                            report.would_block = true;
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("paste drain: pty writer 不可用（{}），丢弃剩余 {} 块", e, self.pending_paste.len());
+                        pty_gone = true;
+                    }
+                },
+                None => pty_gone = true,
+            }
+            if pty_gone {
+                // 窗口/PTY 已关闭：未发完的数据丢弃，不挂起事件循环。
+                self.pending_paste.clear();
+            } else if report.needs_more(self.pending_paste.is_empty())
+                && let Some(w) = self.window.as_ref()
+            {
+                // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
+                w.request_redraw();
+            }
         }
         // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
         if let Some(rx) = &self.bg_rx
@@ -1374,7 +1411,7 @@ impl AppHandler {
         let norm = normalize_paste(&text, bracketed);
         if norm.len() >= 1024 * 1024 {
             for chunk in paste_chunks(&norm) {
-                self.pending_paste.push_back(chunk);
+                self.pending_paste.push_back(chunk.into_bytes());
             }
         } else if let Some(pty) = self.pty.as_mut() {
             write_pty(pty, norm.as_bytes());

@@ -62,3 +62,249 @@ mod tests {
         assert!(empty.is_empty(), "空文本应无块");
     }
 }
+
+/// 单轮排空预算（任务 2D.2）：每轮最多写的块数与字节数。
+///
+/// 事件循环每轮只排空有限量，剩余部分通过 request_redraw 在下一帧继续，
+/// 避免长时间占用主线程（不阻塞事件循环），也不忙等。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DrainBudget {
+    pub max_chunks: usize,
+    pub max_bytes: usize,
+}
+
+impl Default for DrainBudget {
+    fn default() -> Self {
+        Self {
+            max_chunks: 8,
+            max_bytes: 512 * 1024,
+        }
+    }
+}
+
+/// 单轮排空结果。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DrainReport {
+    /// 本轮实际写出的字节数。
+    pub bytes_written: usize,
+    /// 因预算用尽而停止（队列仍有数据，下一轮继续）。
+    pub budget_exhausted: bool,
+    /// 遇 WouldBlock 停止（对端暂不可写；队列保留，下一轮重试，不忙等）。
+    pub would_block: bool,
+    /// 遇到不可恢复错误（剩余数据丢弃，避免无限重试）。
+    pub failed: bool,
+}
+
+impl DrainReport {
+    /// 是否仍需继续驱动（预算用尽或有剩余数据且未失败）。
+    pub fn needs_more(&self, queue_empty: bool) -> bool {
+        !queue_empty && !self.failed
+    }
+}
+
+/// 排空粘贴队列（纯函数，可注入 writer 单测）。
+///
+/// 语义：
+/// - 按序写出，块内支持部分写入（保留未写前缀，下一轮续写）；
+/// - `WouldBlock` → 立即返回（would_block=true），队列保留剩余，不忙等；
+/// - 其他 I/O 错误 → 丢弃该剩余数据并标记 failed（避免无限重试）；
+/// - 达到预算（块数/字节）→ 返回 budget_exhausted。
+pub fn drain_pending<W: std::io::Write + ?Sized>(
+    queue: &mut std::collections::VecDeque<Vec<u8>>,
+    writer: &mut W,
+    budget: DrainBudget,
+) -> DrainReport {
+    use std::io::ErrorKind;
+    let mut report = DrainReport::default();
+    let mut chunks = 0usize;
+    while let Some(front) = queue.front_mut() {
+        if chunks >= budget.max_chunks || report.bytes_written >= budget.max_bytes {
+            report.budget_exhausted = !queue.is_empty();
+            break;
+        }
+        match writer.write(front) {
+            Ok(0) => {
+                // 写 0 字节视为暂不可写：保留数据，下一轮重试。
+                report.would_block = true;
+                break;
+            }
+            Ok(n) => {
+                report.bytes_written += n;
+                chunks += 1;
+                if n < front.len() {
+                    // 部分写入：保留未写部分。
+                    front.drain(..n);
+                } else {
+                    queue.pop_front();
+                }
+            }
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                report.would_block = true;
+                break;
+            }
+            Err(_) => {
+                // 不可恢复：丢弃该块，标记失败（后续块保留但不继续本轮）。
+                queue.pop_front();
+                report.failed = true;
+                break;
+            }
+        }
+    }
+    report
+}
+
+#[cfg(test)]
+mod drain_tests {
+    use super::*;
+    use std::collections::VecDeque;
+    use std::io::{self, Write};
+
+    /// 假 writer：全部接受，记录收到的字节。
+    struct RecordingWriter {
+        got: Vec<u8>,
+    }
+    impl Write for RecordingWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.got.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// 假 writer：每次最多接受 n 字节（模拟部分写入）。
+    struct PartialWriter {
+        n: usize,
+        got: Vec<u8>,
+    }
+    impl Write for PartialWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            let k = self.n.min(buf.len());
+            self.got.extend_from_slice(&buf[..k]);
+            Ok(k)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// 假 writer：先写 k 字节，之后一直 WouldBlock。
+    struct BlockAfter {
+        budget: usize,
+        got: Vec<u8>,
+    }
+    impl Write for BlockAfter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if self.budget == 0 {
+                return Err(io::Error::from(io::ErrorKind::WouldBlock));
+            }
+            let k = self.budget.min(buf.len());
+            self.got.extend_from_slice(&buf[..k]);
+            self.budget -= k;
+            Ok(k)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// 假 writer：立即返回其他错误。
+    struct FailingWriter;
+    impl Write for FailingWriter {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::from(io::ErrorKind::BrokenPipe))
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn q(chunks: &[&[u8]]) -> VecDeque<Vec<u8>> {
+        chunks.iter().map(|c| c.to_vec()).collect()
+    }
+
+    #[test]
+    fn drains_all_in_order() {
+        let mut queue = q(&[b"abc", b"def", b"ghi"]);
+        let mut w = RecordingWriter { got: Vec::new() };
+        let r = drain_pending(&mut queue, &mut w, DrainBudget::default());
+        assert_eq!(w.got, b"abcdefghi", "按序全部送达");
+        assert_eq!(r.bytes_written, 9);
+        assert!(queue.is_empty());
+        assert!(!r.needs_more(queue.is_empty()), "队列空后无需继续驱动");
+    }
+
+    #[test]
+    fn budget_limits_work_and_reports_more_needed() {
+        let mut queue = q(&[b"1111", b"2222", b"3333"]);
+        let mut w = RecordingWriter { got: Vec::new() };
+        let r = drain_pending(
+            &mut queue,
+            &mut w,
+            DrainBudget {
+                max_chunks: 2,
+                max_bytes: 1024,
+            },
+        );
+        assert_eq!(w.got, b"11112222", "仅写预算内块数");
+        assert!(r.budget_exhausted);
+        assert_eq!(queue.len(), 1, "剩余块保留");
+        assert!(r.needs_more(queue.is_empty()), "预算用尽需继续驱动");
+    }
+
+    #[test]
+    fn partial_write_keeps_remainder() {
+        let mut queue = q(&[b"abcdef"]);
+        let mut w = PartialWriter { n: 2, got: Vec::new() };
+        let budget = DrainBudget {
+            max_chunks: 100,
+            max_bytes: 1024,
+        };
+        let mut total = 0;
+        loop {
+            let r = drain_pending(&mut queue, &mut w, budget);
+            total += r.bytes_written;
+            if queue.is_empty() || total > 64 {
+                break;
+            }
+        }
+        assert_eq!(w.got, b"abcdef", "部分写入多次后仍按序完整送达");
+    }
+
+    #[test]
+    fn would_block_stops_without_spinning_and_keeps_data() {
+        let mut queue = q(&[b"0123456789"]);
+        let mut w = BlockAfter {
+            budget: 4,
+            got: Vec::new(),
+        };
+        let first = drain_pending(&mut queue, &mut w, DrainBudget::default());
+        assert_eq!(first.bytes_written, 4);
+        assert!(first.would_block, "遇 WouldBlock 立即返回");
+        assert_eq!(queue.front().map(|v| v.as_slice()), Some(&b"456789"[..]), "剩余保留");
+        // 下一轮（对端仍不可写）立即返回且不消耗 CPU 时间片外的数据
+        let second = drain_pending(&mut queue, &mut w, DrainBudget::default());
+        assert_eq!(second.bytes_written, 0);
+        assert!(second.would_block);
+        assert!(queue.len() == 1, "数据未丢，等待下一轮");
+    }
+
+    #[test]
+    fn fatal_error_drops_and_marks_failed() {
+        let mut queue = q(&[b"aaa", b"bbb"]);
+        let mut w = FailingWriter;
+        let r = drain_pending(&mut queue, &mut w, DrainBudget::default());
+        assert!(r.failed);
+        assert!(!r.needs_more(queue.is_empty()), "失败后不再驱动");
+    }
+
+    #[test]
+    fn empty_queue_is_noop() {
+        let mut queue: VecDeque<Vec<u8>> = VecDeque::new();
+        let mut w = RecordingWriter { got: Vec::new() };
+        let r = drain_pending(&mut queue, &mut w, DrainBudget::default());
+        assert_eq!(r, DrainReport::default());
+        assert!(w.got.is_empty());
+    }
+}
