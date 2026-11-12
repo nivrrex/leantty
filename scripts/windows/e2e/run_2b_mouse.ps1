@@ -6,7 +6,10 @@ $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 
 function Start-Case([string]$name, [string]$cfgName) {
     $a = Start-App2 $name (Join-Path $CFG $cfgName)
-    if ($a.hwnd -ne [IntPtr]::Zero) { $null = Focus-App2 $a.hwnd }
+    if ($a.hwnd -ne [IntPtr]::Zero) {
+        $null = Focus-App2 $a.hwnd
+        if (-not (Assert-AppFocus $a.hwnd $name)) { Write-Host "CASE-ABORT $name (focus)" }
+    }
     $a
 }
 

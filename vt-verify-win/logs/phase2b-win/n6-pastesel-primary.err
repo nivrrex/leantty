@@ -1,3 +1,4 @@
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] first_frame_ms=727
+[perf] first_frame_ms=952
+[perf] bg_fonts_ms=1434 count=2
 paste get: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）

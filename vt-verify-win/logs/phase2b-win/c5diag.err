@@ -1,0 +1,3 @@
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] first_frame_ms=10433
+[perf] bg_fonts_ms=13707 count=3

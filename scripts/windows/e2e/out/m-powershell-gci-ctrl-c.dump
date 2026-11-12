@@ -1,28 +1,28 @@
-# cols=80 rows=24 wide=0 spacer=0 alternate=false
-                                                  f7df
-d-----         2026/11/9      0:36                pin-project-lite-250ff959de56
-                                                  dc48
-d-----         2026/11/8     19:54                pin-utils-3db3176676c0eeb5
-d-----         2026/11/9      2:49                pin-utils-e72cb6ed4e7d756b
-d-----         2026/11/9      2:49                portable-pty-1592959395d09b9d
-d-----         2026/11/8     19:54                portable-pty-566d3ef8a4802008
-d-----         2026/11/8     19:54                proc-macro2-3f111ace5efe40e1
-d-----         2026/11/8     19:54                proc-macro2-5390db779c624ba2
-d-----         2026/11/8     19:54                proc-macro2-a2c2bd3b780ce6e0
-d-----         2026/11/8     19:54                proc-macro2-diagnostics-07ac3
-                                                  2cd9215a4b8
-d-----         2026/11/8     19:54                proc-macro2-diagnostics-8ad5d
-                                                  36fb21037ed
-d-----         2026/11/8     19:54                proc-macro2-diagnostics-b972e
-                                                  eb486c0359f
-d-----         2026/11/8     20:04                pty-0e4b7ee1f5c935b6
-d-----         2026/11/9      2:49                pty-162f1a9b76c0a56c
-d-----        2026/11/11     21:19                pty-1a19fa60eab46ca7
-d-----        2026/11/11     21:19                pty-478373632fc62474
-d-----         2026/11/9      0:06                pty-61f09314beb151c6
-d-----        2026/11/11     21:19                pty-7823698c3f490110
-d-----         2026/11/9      2:49                pty-7c809b04ec62f4eb
+# cols=80 rows=24 wide=4 spacer=4 alternate=false
+-a----        2026/11/11     17:49          11243 run_2a.ps1
+-a----        2026/11/12     14:32          12718 run_2b_clip.ps1
+-a----        2026/11/12     14:47           9465 run_2b_mouse.ps1
+-a----        2026/11/12     15:15           3361 run_2b_perf.ps1
+-a----        2026/11/12      9:16          22173 run_all.ps1
+-a----        2026/11/12     12:56           2773 run_mouse_diag.ps1
+-a----        2026/11/12     14:32          11461 wb2_lib.ps1
+
+
+    目录: C:\dev\tty\scripts\windows\e2e\cfg
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        2026/11/12     10:22           2513 clip-win.toml
+-a----        2026/11/12     10:22            382 pastesel.toml
+-a----        2026/11/12     10:22           2520 ps-win.toml
+-a----        2026/11/12     14:15           3065 scroll-win.toml
+
+
+    目录: C:\dev\tty\scripts\windows\e2e\out
 PS C:\Users\Admin> echo CCCDONE
+CCCDONE
+PS C:\Users\Admin>
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0

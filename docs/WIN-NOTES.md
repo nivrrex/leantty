@@ -42,6 +42,10 @@
 - 请求 3（观察项，非阻塞）：render blit 仅裁 px>=cell_x+cell_w 与 py>=cell_y+cell_h，未裁 px>=cell_x 与 py>=cell_y；Consolas 当前度量未触发越界，但负 xmin/ymin 字形（斜体/全宽等）可能侵入邻格。
 - 请求 4：crates/config 测试 path_priority_cli_env_default 断言期望路径含 Unix /tmp 前缀（XDG 假设），Windows 必败；请共享测试按平台构造期望路径。
 - 请求 5（观察项，非阻塞）：pwsh 7.6.6 + ConPTY FailFast totalWidth=-17（本机实测）；examples/windows.toml 的 shell=pwsh.exe 在 pwsh 修复前于本机启动即崩。2B 复验补强（已验证事实）：flags 0/1/2/4/6/7 × 尺寸 80x24/120x30/200x50 共 18 组合全部 exit 0xC000013A；INHERIT_CURSOR(0x1) 只把崩溃推迟到 ESC[6n 应答之后；powershell.exe 5.1 同 harness 不崩；pwsh 不经 ConPTY 正常。结论= pwsh 侧缺陷，改 portable-pty flags 无解，不建议改库。
+- 请求 7（2D 复验）：crates/config/tests/config.rs 的 path_priority_cli_env_default 在 Windows 仍失败——测试设置 XDG_CONFIG_HOME 后断言 default_config_path() 落在其下，但 Windows 实现走 APPDATA。实际断言：path "C:\\Users\\Admin\\AppData\\Roaming\\config-<hash>\\config-<hash>.toml" should start with "C:\\Users\\Admin\\AppData\\Local\\Temp\\xdg-test"。Linux 侧只修了 temp 目录构造，请按平台分支或跳过该断言。状态=已验证事实，未擅改（共享测试）。
+- 事实补充（2D，已验证）：ConPTY 把控制台宽度处的折行**物化为 CRLF**（probe_ptyin：120 列下 200 个 A 到达为 A*120 CRLF A*80），故 2C.1 的软折行拼接在 Windows 经真实 shell 不可触发；功能在 vt 层正常（probe_wrap 对同字节序列报 wrapped=true）。
+- 事实补充（2D，已验证）：请求 6 的 1MB 粘贴排空缺陷已被 2D.2 修复在 Windows 生效——静止粘贴精确 1048576 字节（约 7s），无需额外事件；请求 6 可关闭。
+- 事实变更（2D，已验证）：PHASE2B-WIN 记录的 pwsh 7.6.6 ConPTY FailFast 本轮**未复现**：flags 0/1/2/4/6/7 × 80x24/120x30/200x50 共 18 组合全部存活且无 totalWidth；app 以 shell=pwsh.exe 启动正常。2B 与本轮之间仅发生一次本机重启（2B 期间另有多个残留 app/ConPTY 实例）。待验证假设：崩溃依赖会话级 conhost 状态。未据此改任何 spawn 参数。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

@@ -13,6 +13,10 @@ $OUT = Join-Path $ROOT 'vt-verify-win\logs\phase2b-win'
 Copy-Item (Join-Path $ROOT 'vt-verify-win\rs.ps1') (Join-Path $env:TEMP 'rs.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\rl.ps1') (Join-Path $env:TEMP 'rl.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\probe_paste\target\release\pp.exe') (Join-Path $env:TEMP 'pp.exe') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc123.ps1') (Join-Path $env:TEMP 'osc123.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc999.ps1') (Join-Path $env:TEMP 'osc999.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc123hold.ps1') (Join-Path $env:TEMP 'osc123hold.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc999hold.ps1') (Join-Path $env:TEMP 'osc999hold.ps1') -Force
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 $PASS = 0; $FAIL = 0
 Add-Type -AssemblyName System.Windows.Forms
@@ -29,6 +33,7 @@ public class WB2 {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool SetFocus(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
@@ -89,6 +94,7 @@ function Start-App2([string]$name, [string]$configPath) {
     [void][WB2]::EnumWindows($EnumCb, [IntPtr]::Zero)
     if ($Script:FoundHwnd -ne [IntPtr]::Zero) { [void][WB2]::ShowWindow($Script:FoundHwnd, 0) }
     $Script:FoundClass = 'Window Class'
+    if ($realHwnd -ne [IntPtr]::Zero) { Set-Guard $realHwnd }
     @{ proc = $p; hwnd = $realHwnd; dump = $dump; err = $err }
 }
 
@@ -109,7 +115,39 @@ function Focus-App2([IntPtr]$hwnd) {
     return $okFg
 }
 
+
+# --- 输入安全闸门 -------------------------------------------------------------
+# Every synthetic key/click must go to the app under test. If the foreground
+# window is not the app (focus stolen by another terminal, IDE, browser...),
+# injecting would type into that window instead - a 10 MB paste or Ctrl+C
+# there can kill an unrelated session. So: refuse to inject unless the app
+# window is foreground, and report loudly.
+$Script:GuardHwnd = [IntPtr]::Zero
+$Script:GuardViolations = 0
+
+function Test-Guard {
+    if ($Script:GuardHwnd -eq [IntPtr]::Zero) { return $true }
+    if ([WB2]::GetForegroundWindow() -eq $Script:GuardHwnd) { return $true }
+    $Script:GuardViolations++
+    Write-Host "GUARD: foreground is not the app window (fg=$([WB2]::GetForegroundWindow()) app=$($Script:GuardHwnd)); input refused"
+    return $false
+}
+
+function Set-Guard([IntPtr]$hwnd) { $Script:GuardHwnd = $hwnd }
+function Clear-Guard { $Script:GuardHwnd = [IntPtr]::Zero }
+
+function Assert-AppFocus([IntPtr]$hwnd, [string]$where) {
+    for ($i = 0; $i -lt 3; $i++) {
+        if ([WB2]::GetForegroundWindow() -eq $hwnd) { return $true }
+        $null = Focus-App2 $hwnd
+        Start-Sleep -Milliseconds 200
+    }
+    Write-Host "ABORT: app window never became foreground at [$where] (fg=$([WB2]::GetForegroundWindow()))"
+    return $false
+}
+
 function Send-Vk2([byte]$vk) {
+    if (-not (Test-Guard)) { return }
     # scan code 0 makes winit lose the logical key (ToUnicode fails), so map it;
     # Insert/Delete/Home/End/PgUp/PgDn/arrows are extended keys - without
     # KEYEVENTF_EXTENDEDKEY the scan code aliases the numpad key instead
@@ -148,7 +186,8 @@ function Wait-Dump2([string]$path, [string]$pattern, [int]$timeoutSec) {
     while (((Get-Date) - $t0).TotalSeconds -lt $timeoutSec) {
         if (Test-Path $path) {
             $c = Get-Content $path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-            if ($c -and ($c -match $pattern)) { return $true }
+            # case-sensitive: otherwise AAAA matches leftover aaaa from a paste
+            if ($c -and ($c -cmatch $pattern)) { return $true }
         }
         Start-Sleep -Milliseconds 400
     }
@@ -156,6 +195,7 @@ function Wait-Dump2([string]$path, [string]$pattern, [int]$timeoutSec) {
 }
 
 function Stop-App2($p) {
+    Clear-Guard
     if ($p -and -not $p.HasExited) {
         Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 300
@@ -169,6 +209,7 @@ function Move-To([int]$x, [int]$y) {
     [WB2]::mouse_event(0x0001 -bor 0x8000, $nx, $ny, 0, [UIntPtr]::Zero)
 }
 function Click-Btn([int]$x, [int]$y, [uint32]$down, [uint32]$up) {
+    if (-not (Test-Guard)) { return }
     # tight timing: press-to-press must stay well under the 300 ms
     # multi-click window used by start_selection (crates/app/src/lib.rs)
     Move-To $x $y
@@ -182,6 +223,7 @@ function Click-Left([int]$x, [int]$y) { Click-Btn $x $y 0x0002 0x0004 }
 function Click-Middle([int]$x, [int]$y) { Click-Btn $x $y 0x0020 0x0040 }
 function Click-Right([int]$x, [int]$y) { Click-Btn $x $y 0x0008 0x0010 }
 function Drag-Left([int]$x0, [int]$y0, [int]$x1, [int]$y1) {
+    if (-not (Test-Guard)) { return }
     Move-To $x0 $y0
     Start-Sleep -Milliseconds 60
     [WB2]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
@@ -219,6 +261,10 @@ function Dump-Grid([string]$path) {
     $grid = @()
     for ($i = 1; $i -le $rows; $i++) { $grid += $lines[$i] }
     @{ cols = $cols; rows = $rows; grid = $grid }
+}
+function Find-RowContaining([string[]]$grid, [string]$needle) {
+    for ($i = 0; $i -lt $grid.Count; $i++) { if ($grid[$i].Contains($needle)) { return $i } }
+    return -1
 }
 function Find-Row([string[]]$grid, [string]$exact) {
     for ($i = 0; $i -lt $grid.Count; $i++) { if ($grid[$i].Trim() -eq $exact) { return $i } }
