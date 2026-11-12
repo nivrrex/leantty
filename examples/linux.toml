@@ -16,10 +16,16 @@ multiplier = 10
 
 [font]
 size = 13.0
+# 主字体：请选小体积的等宽西文字体（如 Consolas / DejaVu Sans Mono / JetBrains Mono）。
+# 原因：主字体在启动时同步加载并解析（fontdue from_bytes），字体文件越大解析越慢，
+#      直接拖慢首帧——实测 16MB 级 CJK 字体 from_bytes 约 230ms，0.3MB 等宽西文约 12ms。
+# 大体积 CJK 字体放到 font.fallback：它在后台线程加载，不阻塞首帧，
+#      到位前缺字显示占位方块，到位后自动重绘。
 normal = { family = "Consolas", style = "Regular" }
 bold = { family = "Consolas", style = "Bold" }
 italic = { family = "Consolas", style = "Italic" }
 bold_italic = { family = "Consolas", style = "Bold Italic" }
+# CJK 回退链（按顺序尝试）。可用 fc-list :lang=zh 查看本机可用字体名。
 fallback = [ { family = "黑体", style = "Regular" } ]
 
 [selection]

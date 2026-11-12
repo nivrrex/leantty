@@ -22,11 +22,19 @@ shell = { program = "pwsh.exe", args = [] }
 
 [font]
 size = 13.0
-# Windows 下使用微软雅黑等宽字体
-normal = { family = "Microsoft YaHei Mono", style = "Regular" }
-bold = { family = "Microsoft YaHei Mono", style = "Bold" }
-italic = { family = "Microsoft YaHei Mono", style = "Italic" }
-bold_italic = { family = "Microsoft YaHei Mono", style = "Bold Italic" }
+# 主字体：请选小体积的等宽西文字体（Consolas 为 Windows 自带等宽西文，约 1MB）。
+# 原因：主字体在启动时同步加载并解析（fontdue from_bytes），字体文件越大解析越慢，
+#      直接拖慢首帧——实测 16MB 级 CJK 字体 from_bytes 约 230ms（Windows 上更慢），
+#      0.3MB 级等宽西文约 12ms。
+# 大体积 CJK 字体放到 font.fallback：它在后台线程加载，不阻塞首帧，
+#      到位前缺字显示占位方块，到位后自动重绘。
+# 注意：不要用 Microsoft YaHei Mono 等大体积字体作主字体（Windows 实测首帧 2071ms
+#      vs 默认 319ms）。
+normal = { family = "Consolas", style = "Regular" }
+bold = { family = "Consolas", style = "Bold" }
+italic = { family = "Consolas", style = "Italic" }
+bold_italic = { family = "Consolas", style = "Bold Italic" }
+# CJK 回退：Windows 自带微软雅黑
 fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
 
 [selection]

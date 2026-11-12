@@ -32,7 +32,11 @@ fn examples_load_without_warnings() {
                 c.terminal.shell.as_ref().unwrap().program,
                 "pwsh.exe"
             );
-            assert_eq!(c.font.normal.family, "Microsoft YaHei Mono");
+            // 阶段 3A 任务 1：Windows 样例主字体改为小体积等宽西文 Consolas，
+            // 大体积 CJK 字体（微软雅黑）放 fallback（主字体同步加载，大字体拖慢首帧）。
+            assert_eq!(c.font.normal.family, "Consolas");
+            assert_eq!(c.font.bold.family, "Consolas");
+            assert_eq!(c.font.bold_italic.family, "Consolas");
             assert_eq!(c.font.fallback[0].family, "Microsoft YaHei");
             assert_eq!(c.colors.primary.background, Rgb { r: 0xfc, g: 0xfc, b: 0xfc });
         } else {
@@ -141,19 +145,41 @@ fn path_priority_cli_env_default() {
         assert_eq!(p, env_path);
         std::env::remove_var("APP_CONFIG");
 
-        let xdg = tmp.join("xdg-test");
-        std::env::set_var("XDG_CONFIG_HOME", xdg.to_str().expect("temp 路径应为 UTF-8"));
-        let p = config::default_config_path().unwrap();
+        // 默认路径基准目录按平台不同：Windows 读 APPDATA，其他平台读
+        // XDG_CONFIG_HOME（未设置则 $HOME/.config）。只在此测试内分支，
+        // 不改被测逻辑。
         let name = config::app_name();
-        assert!(
-            p.starts_with(&xdg),
-            "path {p:?} should start with {xdg:?}"
-        );
-        assert!(
-            p.ends_with(format!("{name}/{name}.toml").as_str()),
-            "path {p:?} should end with {name}/{name}.toml"
-        );
-        std::env::remove_var("XDG_CONFIG_HOME");
+        #[cfg(windows)]
+        {
+            let appdata = tmp.join("appdata-test");
+            std::env::set_var("APPDATA", appdata.to_str().expect("temp 路径应为 UTF-8"));
+            let p = config::default_config_path().unwrap();
+            assert!(
+                p.starts_with(&appdata),
+                "path {p:?} should start with {appdata:?} (Windows APPDATA)"
+            );
+            // 用 Path 组件比较（避免手写分隔符）。
+            assert!(
+                p.ends_with(std::path::Path::new(&name).join(format!("{name}.toml"))),
+                "path {p:?} should end with {name}/<bin>.toml"
+            );
+            std::env::remove_var("APPDATA");
+        }
+        #[cfg(not(windows))]
+        {
+            let xdg = tmp.join("xdg-test");
+            std::env::set_var("XDG_CONFIG_HOME", xdg.to_str().expect("temp 路径应为 UTF-8"));
+            let p = config::default_config_path().unwrap();
+            assert!(
+                p.starts_with(&xdg),
+                "path {p:?} should start with {xdg:?}"
+            );
+            assert!(
+                p.ends_with(std::path::Path::new(&name).join(format!("{name}.toml"))),
+                "path {p:?} should end with {name}/<bin>.toml"
+            );
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
     }
     assert!(!config::app_name().is_empty());
 }

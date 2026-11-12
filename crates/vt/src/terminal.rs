@@ -17,6 +17,10 @@ use crate::snapshot::{Cell, CellWide, Cursor, CursorStyle, FrameSnapshot, Rgb, U
 /// 单线程独占的终端封装。
 pub struct VtTerminal {
     inner: Terminal<'static, 'static>,
+    /// 持久化的 render state（阶段 3A 任务 3）：libghostty 的脏跟踪依赖
+    /// 同一 render state 跨 update 的行身份与脏标记，每次新建会恒为 Full。
+    /// RefCell 仅运行时借用检查；VtTerminal 本身单线程独占（模块文档）。
+    render_state: std::cell::RefCell<Option<Box<RenderState<'static>>>>,
 }
 
 impl VtTerminal {
@@ -24,6 +28,7 @@ impl VtTerminal {
     pub fn new(cols: u16, rows: u16) -> Result<Self, Error> {
         Ok(Self {
             inner: Terminal::new(cols, rows)?,
+            render_state: std::cell::RefCell::new(None),
         })
     }
 
@@ -52,7 +57,24 @@ impl VtTerminal {
 
     /// 拷贝当前帧为自有快照。
     pub fn snapshot(&self) -> Result<FrameSnapshot, Error> {
-        let mut render_state = RenderState::new()?;
+        self.snapshot_impl(false)
+    }
+
+    /// 增量快照（阶段 3A 任务 3）：额外收集 libghostty 的脏行信息并在返回后
+    /// 清除脏标记（供 app 渲染路径使用；每帧只应调用一次）。
+    ///
+    /// 其他调用方（复制/选区文本/IME 光标区/滚动条几何）继续用 [`Self::snapshot`]，
+    /// 它不收集也不清除脏状态，不会偷走本帧的增量信息。
+    pub fn snapshot_incremental(&self) -> Result<FrameSnapshot, Error> {
+        self.snapshot_impl(true)
+    }
+
+    fn snapshot_impl(&self, collect_dirty: bool) -> Result<FrameSnapshot, Error> {
+        let mut guard = self.render_state.borrow_mut();
+        if guard.is_none() {
+            *guard = Some(Box::new(RenderState::new()?));
+        }
+        let render_state = guard.as_mut().expect("render state 已初始化");
         let mut row_iter_factory = RowIterator::new()?;
         let mut cell_iter_factory = CellIterator::new()?;
         let snap = render_state.update(&self.inner)?;
@@ -102,6 +124,27 @@ impl VtTerminal {
                 .unwrap_or(false);
             wrapped.push(is_wrapped);
         }
+        // 脏行收集（阶段 3A 任务 3）：libghostty 的 Dirty 只有三态，
+        // Partial 时经 RowIterator::next_dirty 取脏行；Full 时全行脏。
+        // 收集后调用 clean() 清标记，使下一帧反映新的变化。
+        let mut dirty_rows = vec![false; cells.len()];
+        let mut full_redraw = false;
+        if collect_dirty {
+            let dirty = snap.dirty()?;
+            full_redraw = matches!(dirty, libghostty_vt::render::Dirty::Full);
+            if full_redraw {
+                dirty_rows.iter_mut().for_each(|d| *d = true);
+            } else if matches!(dirty, libghostty_vt::render::Dirty::Partial) {
+                let mut dirty_iter = RowIterator::new()?;
+                let mut it = dirty_iter.update(&snap)?;
+                while let Some((y, _row)) = it.next_dirty() {
+                    if let Some(d) = dirty_rows.get_mut(y as usize) {
+                        *d = true;
+                    }
+                }
+            }
+            snap.clean()?;
+        }
         Ok(FrameSnapshot {
             cols: self.inner.cols()?,
             rows: self.inner.rows()?,
@@ -115,6 +158,8 @@ impl VtTerminal {
             scrollback_rows: self.inner.scrollback_rows()?,
             alternate_screen: self.inner.active_screen()? == Screen::Alternate,
             wrapped,
+            dirty_rows,
+            full_redraw,
         })
     }
 

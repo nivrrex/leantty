@@ -178,6 +178,8 @@ mod tests {
             scrollback_rows: 0,
             alternate_screen: false,
             wrapped: Vec::new(),
+            dirty_rows: vec![true; 1],
+            full_redraw: true,
         }
     }
 
@@ -255,6 +257,8 @@ fn snap_multi(rows: Vec<(Vec<Cell>, bool)>) -> FrameSnapshot {
         scrollback_rows: 0,
         alternate_screen: false,
         wrapped,
+        dirty_rows: vec![true; rows_n as usize],
+        full_redraw: true,
     }
 }
 

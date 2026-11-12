@@ -114,6 +114,8 @@ fn synth(cols: u16, rows: u16) -> FrameSnapshot {
         scrollback_rows: 500,
         alternate_screen: false,
         wrapped: vec![false; rows as usize],
+        dirty_rows: vec![true; rows as usize],
+        full_redraw: true,
     }
 }
 
@@ -197,12 +199,135 @@ fn bench_case(cols: u16, rows: u16, scale: f64) {
     );
 }
 
+/// 增量渲染基准（阶段 3A 任务 3）：全帧 / 1 行变化 / 1 单元格变化 / 光标移动 /
+/// 仅滚动条变化 / 满屏滚动输出，120x30 与 200x60 × 1x/2x。
+fn bench_incremental(cols: u16, rows: u16, scale: f64) {
+    let base = synth(cols, rows);
+    let mut r = match CpuRenderer::new(&settings(), opts(), Palette::default()) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("skip: CpuRenderer::new 失败（{e}）");
+            return;
+        }
+    };
+    r.set_scale_factor(scale);
+    let (cw, ch) = r.cell_metrics(scale);
+    let pw = u32::from(cols) * cw;
+    let ph = u32::from(rows) * ch;
+    r.set_selection(Some((1, 1, cols / 2, rows / 2)));
+    r.set_scrollbar(Some((ph / 3, ph / 6)));
+    // 预热（含整屏首帧）
+    let mut snap = base.clone();
+    snap.full_redraw = true;
+    r.render(&snap, pw, ph).expect("render");
+    for _ in 0..20 {
+        r.render(&snap, pw, ph).expect("render");
+    }
+
+    // 1) 全帧（强制整屏）
+    let mut s_full = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for _ in 0..200 {
+        s_full.full_redraw = true;
+        let t = Instant::now();
+        r.render(&s_full, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [full-frame]"), samples);
+
+    // 2) 1 行变化
+    let mut s_row = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        let y = (i % rows as usize) as u16;
+        s_row.dirty_rows.iter_mut().for_each(|d| *d = false);
+        s_row.full_redraw = false;
+        s_row.mark_row_dirty(y);
+        if let Some(row) = s_row.cells.get_mut(y as usize) {
+            for c in row.iter_mut() {
+                if c.wide == CellWide::Narrow {
+                    c.chars = ((b'a' + (i % 26) as u8) as char).to_string();
+                }
+            }
+        }
+        let t = Instant::now();
+        r.render(&s_row, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [1-row]"), samples);
+
+    // 3) 1 单元格变化（行级重绘的最小粒度）
+    let mut s_cell = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_cell.dirty_rows.iter_mut().for_each(|d| *d = false);
+        s_cell.full_redraw = false;
+        let y = (i % rows as usize) as u16;
+        let x = ((i * 7) % cols as usize) as u16;
+        s_cell.mark_row_dirty(y);
+        if let Some(row) = s_cell.cells.get_mut(y as usize)
+            && let Some(c) = row.get_mut(x as usize)
+            && c.wide == CellWide::Narrow
+        {
+            c.chars = ((b'0' + (i % 10) as u8) as char).to_string();
+        }
+        let t = Instant::now();
+        r.render(&s_cell, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [1-cell]"), samples);
+
+    // 4) 光标移动（叠加层：旧行+新行）
+    let mut s_cur = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_cur.dirty_rows.iter_mut().for_each(|d| *d = false);
+        s_cur.full_redraw = false;
+        s_cur.cursor.x = ((i * 3) % cols as usize) as u16;
+        s_cur.cursor.y = ((i * 5) % rows as usize) as u16;
+        let t = Instant::now();
+        r.render(&s_cur, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [cursor-move]"), samples);
+
+    // 5) 仅滚动条变化（条带重绘）
+    let mut s_sb = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_sb.dirty_rows.iter_mut().for_each(|d| *d = false);
+        s_sb.full_redraw = false;
+        let thumb = (i as u32 * 3) % ph.max(1);
+        r.set_scrollbar(Some((thumb, (ph / 6).max(1))));
+        let t = Instant::now();
+        r.render(&s_sb, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [scrollbar-only]"), samples);
+
+    // 6) 满屏滚动输出（每帧全部行脏，模拟 yes 输出）
+    let mut s_scroll = base.clone();
+    let mut samples = Vec::with_capacity(200);
+    for i in 0..200usize {
+        s_scroll.cells.rotate_left(1);
+        let last = s_scroll.cells.len() - 1;
+        s_scroll.cells[last] = base.cells[i % base.cells.len()].clone();
+        s_scroll.dirty_rows.iter_mut().for_each(|d| *d = true);
+        s_scroll.full_redraw = false;
+        let t = Instant::now();
+        r.render(&s_scroll, pw, ph).expect("render");
+        samples.push(t.elapsed());
+    }
+    stats(&format!("{cols}x{rows}@{scale}x [scrolling-all-rows]"), samples);
+}
+
 #[test]
 #[ignore = "性能基准，手动运行"]
 fn bench_frame() {
     for (cols, rows) in [(120u16, 30u16), (200, 60)] {
         for scale in [1.0f64, 2.0] {
             bench_case(cols, rows, scale);
+            bench_incremental(cols, rows, scale);
         }
     }
     println!(
