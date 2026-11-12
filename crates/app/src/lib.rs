@@ -112,7 +112,7 @@ impl Wake for ProxyWaker {
 /// 其他错误经 report 上报后退出。
 pub fn reader_body<R: std::io::Read>(
     reader: &mut R,
-    tx: &mpsc::Sender<Vec<u8>>,
+    tx: &mpsc::SyncSender<Vec<u8>>,
     waker: &dyn Wake,
     report: &mut dyn FnMut(&str),
 ) {
@@ -127,14 +127,41 @@ pub fn reader_body<R: std::io::Read>(
                 break;
             }
             Ok(n) => {
-                if tx.send(buf[..n].to_vec()).is_err() {
-                    break;
-                }
-                if let Err(e) = waker.wake() {
-                    if !matches!(e, Error::EventLoopClosed) {
-                        report(&format!("wake: {}", e));
+                // 入队（阶段 3B 任务 2：有界通道 + 背压，无忙等、无死锁）。
+                //
+                // 死锁场景：通道满时读线程若先阻塞 send 再 wake，则主线程排空后回到
+                // Wait 而无人唤醒（200k 行实测死锁）。因此满时先 wake 让主线程开始
+                // 消费，再阻塞 send，成功后再 wake 一次确保最后一条被看到。
+                let wake_or_exit = |w: &dyn Wake, r: &mut dyn FnMut(&str)| -> bool {
+                    match w.wake() {
+                        Ok(()) => true,
+                        Err(e) => {
+                            if !matches!(e, Error::EventLoopClosed) {
+                                r(&format!("wake: {}", e));
+                            }
+                            false
+                        }
                     }
-                    break;
+                };
+                match tx.try_send(buf[..n].to_vec()) {
+                    Ok(()) => {
+                        if !wake_or_exit(waker, report) {
+                            break;
+                        }
+                    }
+                    Err(mpsc::TrySendError::Full(d)) => {
+                        if !wake_or_exit(waker, report) {
+                            break;
+                        }
+                        // 阻塞等待空位（主线程已在消费）；不忙等、不睡眠。
+                        if tx.send(d).is_err() {
+                            break;
+                        }
+                        if !wake_or_exit(waker, report) {
+                            break;
+                        }
+                    }
+                    Err(mpsc::TrySendError::Disconnected(_)) => break,
                 }
             }
         }
@@ -157,6 +184,10 @@ pub use selection::{
     abs_to_viewport, auto_scroll_step, extract_rows, extract_text, selection_viewport_region,
     viewport_to_abs, word_region, CellPos, Selection,
 };
+
+/// 渲染最小间隔（阶段 3B 任务 2：帧合并）。高频 PTY 输出时最多约 125 帧/秒，
+/// 即约 8ms 一帧；交互事件（键盘/鼠标/IME/resize）走 urgent 低延迟路径不受此限。
+const RENDER_MIN_INTERVAL: Duration = Duration::from_millis(8);
 
 type SoftSurface =
     softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
@@ -233,6 +264,13 @@ impl App {
             last_render_offset: 0,
             #[cfg(debug_assertions)]
             force_full_redraw: std::env::var("APP_FORCE_FULL_REDRAW").is_ok(),
+            drained_any: false,
+            last_render: None,
+            urgent_render: false,
+            #[cfg(debug_assertions)]
+            no_render: std::env::var("APP_NO_RENDER").is_ok(),
+            #[cfg(debug_assertions)]
+            no_throttle: std::env::var("APP_NO_THROTTLE").is_ok(),
             #[cfg(debug_assertions)]
             present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
             #[cfg(debug_assertions)]
@@ -305,6 +343,7 @@ struct AppHandler {
     window: Option<Rc<Window>>,
     surface: Option<SoftSurface>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
+
     pty_write_rx: Option<mpsc::Receiver<Vec<u8>>>,
     reader_thread: Option<std::thread::JoinHandle<()>>,
     /// 渲染尺寸缓存（resumed/Resized 更新；窗口销毁后不再查询 X11 geometry）。
@@ -365,6 +404,18 @@ struct AppHandler {
     /// 强制整屏重绘（仅 debug：APP_FORCE_FULL_REDRAW=1，用于 e2e 增量/全量对拍）。
     #[cfg(debug_assertions)]
     force_full_redraw: bool,
+    /// 本轮 about_to_wait 是否收到新 PTY 数据（供 follow/截断检查复用，减少快照）。
+    drained_any: bool,
+    /// 上次渲染时刻（帧合并节流用）。
+    last_render: Option<Instant>,
+    /// 交互事件触发的紧急渲染（键盘/鼠标/IME/resize）：跳过节流立即渲染。
+    urgent_render: bool,
+    /// 关闭渲染（仅 debug：APP_NO_RENDER=1，用于吞吐基线"只 feed 不渲染"）。
+    #[cfg(debug_assertions)]
+    no_render: bool,
+    /// 关闭帧合并节流（仅 debug：APP_NO_THROTTLE=1），用于对照"节流前"的输入回显延迟。
+    #[cfg(debug_assertions)]
+    no_throttle: bool,
     /// 强制整缓冲 present（仅 debug：APP_PRESENT_FULL=1，用于对比 damage 提交）。
     #[cfg(debug_assertions)]
     present_full: bool,
@@ -532,7 +583,9 @@ impl ApplicationHandler for AppHandler {
         self.bg_rx = Some(bg_rx);
 
         // 1. PTY 读线程 → channel → 主线程喂 vt
-        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        // 有界通道（背压）：主线程忙时读线程阻塞在 send，进而 PTY 缓冲满、
+        // 子进程写阻塞，而不是无限积压内存（DECISIONS 登记）。
+        let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(256);
         let reader_thread = std::thread::spawn(move || {
             reader_body(&mut reader, &tx, waker.as_ref(), &mut |m| eprintln!("{}", m));
         });
@@ -633,12 +686,25 @@ impl ApplicationHandler for AppHandler {
                     eprintln!("request_inner_size: {}", e);
                 }
             }
-            WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
-            WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
-            WindowEvent::MouseWheel { delta, .. } => self.on_mouse_scroll(delta),
-            WindowEvent::Ime(ime) => self.on_ime_event(ime),
+            WindowEvent::MouseInput { state, button, .. } => {
+                self.urgent_render = true;
+                self.on_mouse_input(state, button);
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.urgent_render = true;
+                self.on_cursor_moved(position);
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                self.urgent_render = true;
+                self.on_mouse_scroll(delta);
+            }
+            WindowEvent::Ime(ime) => {
+                self.urgent_render = true;
+                self.on_ime_event(ime);
+            }
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {
+                self.urgent_render = true;
                 if event.state == ElementState::Pressed {
                     // 绑定执行优先（任务 2.5）：keyboard.bindings 查表（空则内置默认
                     // Ctrl+Shift+C/V）；命中即执行动作，不再走 route_key。
@@ -685,6 +751,7 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
+                self.urgent_render = true;
                 // 窗口物理尺寸 = 行列*格子(物理) + 2*padding(逻辑*scale)；反算行列，min(1) 兜底。
                 let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
                 let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
@@ -781,12 +848,16 @@ impl ApplicationHandler for AppHandler {
         if let Some(rx) = self.rx.as_ref()
             && let Some(vt) = self.vt.as_mut()
         {
+            let mut n_drained = 0usize;
             while let Ok(bytes) = rx.try_recv() {
                 vt.feed(&bytes);
+                n_drained += 1;
             }
+            // 供后续步骤复用：本轮是否收到新数据（避免每帧多次全量 snapshot）。
+            self.drained_any = n_drained > 0;
         }
-        // auto-follow：开启时新输出后回底（offset=scrollback 行数）。
-        if self.follow_bottom {
+        // auto-follow：开启时新输出后回底（仅在有新数据时，避免每帧全量 snapshot）。
+        if self.drained_any && self.follow_bottom {
             if let Some(vt) = self.vt.as_mut() {
                 vt.scroll_viewport(ScrollViewport::Bottom);
             }
@@ -830,6 +901,34 @@ impl ApplicationHandler for AppHandler {
                 }
             }
         }
+        // 帧合并（阶段 3B 任务 2）：PTY 输出已在上方一次性排空并全部 feed，
+        // 这里把渲染频率限制到约 8ms 一帧；交互事件（键盘/鼠标/IME/resize）置
+        // urgent_render 走低延迟路径。未到期时用 WaitUntil 安排下一次唤醒，
+        // 避免画面停更。
+        #[cfg(debug_assertions)]
+        if self.no_render {
+            return;
+        }
+        #[cfg(debug_assertions)]
+        let throttle_disabled = self.no_throttle;
+        #[cfg(not(debug_assertions))]
+        let throttle_disabled = false;
+        let now = Instant::now();
+        let due = throttle_disabled
+            || match self.last_render {
+                Some(t) => self.urgent_render || now.duration_since(t) >= RENDER_MIN_INTERVAL,
+                None => true,
+            };
+        if !due {
+            if let Some(t) = self.last_render {
+                _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
+                    t + RENDER_MIN_INTERVAL,
+                ));
+            }
+            return;
+        }
+        self.last_render = Some(now);
+        self.urgent_render = false;
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
         if let (Some(vt), Some(renderer), Some(surface)) =
@@ -1031,9 +1130,15 @@ impl ApplicationHandler for AppHandler {
                 w.request_redraw();
             }
         }
-        // IME 光标区跟随快照光标（每帧；match 外调用避免与 renderer mut 借冲突；
-        // 窗口未建时 update 内部跳过）。
-        self.update_ime_cursor_area();
+        // IME 光标区跟随快照光标；该调用内部会取快照，故仅在本次确实要渲染时执行
+        // （高频输出下每帧多一次全量快照会显著拖慢 channel 排空）。
+        let will_render = match self.last_render {
+            Some(t) => self.urgent_render || Instant::now().duration_since(t) >= RENDER_MIN_INTERVAL,
+            None => true,
+        };
+        if will_render {
+            self.update_ime_cursor_area();
+        }
     }
 }
 
