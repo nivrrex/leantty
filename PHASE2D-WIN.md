@@ -102,7 +102,13 @@ path "C:\\Users\\Admin\\AppData\\Roaming\\config-339e4af65e7b090f\\config-339e4a
 - 日志：`vt-verify-win/logs/{2c-win-8.log,2d-runall-1/2.log,2d-clip-2.log,2d-mouse-1.log,2d-perf-1.log,2d-test.log,2d-clippy.log,wrap200.txt}`。
 - 用例产物：`vt-verify-win/logs/phase2b-win/{c1..c5}*.{dump,err,png}`、`c5-probe.txt`。
 
-## 9. 手动清单（≤3）
+## 9. 推送到位与核对
+
+- 本地提交：33287ab `2D-win: merge phase2d-done, 2C re-verification, pwsh matrix, startup timings`（150 文件，+3446/-147）。
+- `git push origin win`：`3811f91..33287ab  win -> win`。
+- `git rev-parse win` = 33287abc5c796d5f8ac7c43e775f6bd417b36bc1；`git ls-remote origin refs/heads/win` = 33287abc5c796d5f8ac7c43e775f6bd417b36bc1（一致）。
+
+## 10. 手动清单（≤3）
 
 1. 用真实输入法（微软拼音）在 app 内输入中文，确认候选窗位置与上屏（本机无输入法注入手段，c3 只验证了预编辑叠加渲染）。
 2. 用 Windows Terminal 或 Alacritty（本机未安装）跑一次 pwsh 7，确认 §4 的崩溃是否只在 portable-pty ConPTY 出现。
