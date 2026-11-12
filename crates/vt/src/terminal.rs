@@ -58,6 +58,7 @@ impl VtTerminal {
         let snap = render_state.update(&self.inner)?;
         let mut row_iter = row_iter_factory.update(&snap)?;
         let mut cells = Vec::new();
+        let mut wrapped = Vec::new();
         while let Some(row) = row_iter.next() {
             let mut cell_iter = cell_iter_factory.update(row)?;
             let mut line = Vec::new();
@@ -89,6 +90,17 @@ impl VtTerminal {
                 });
             }
             cells.push(line);
+            // 软折行标记：render state RowData 无 WRAP 变体，走 grid_ref(Viewport)
+            // 逐行查 screen::Row::is_wrapped（GridRef 借 terminal，与迭代器借
+            // 并存均为不可变借，编译期安全）。
+            let coord = libghostty_vt::terminal::PointCoordinate { x: 0, y: cells.len() as u32 - 1 };
+            let is_wrapped = self
+                .inner
+                .grid_ref(libghostty_vt::terminal::Point::Viewport(coord))
+                .and_then(|g| g.row())
+                .and_then(|r| r.is_wrapped())
+                .unwrap_or(false);
+            wrapped.push(is_wrapped);
         }
         Ok(FrameSnapshot {
             cols: self.inner.cols()?,
@@ -102,6 +114,7 @@ impl VtTerminal {
             },
             scrollback_rows: self.inner.scrollback_rows()?,
             alternate_screen: self.inner.active_screen()? == Screen::Alternate,
+            wrapped,
         })
     }
 

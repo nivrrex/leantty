@@ -69,27 +69,41 @@ pub fn word_region(line: &str, focus_col: usize, escape_chars: &str) -> (usize, 
     (start, end)
 }
 
-/// 选区文本提取：去行尾空白、宽字符续格（SpacerTail）不重复；
-/// 行间不插入换行（折行不插换行；真换行在快照中无行属性可区分，
-/// 偏差登记 DECISIONS）。
+/// 选区文本提取（任务 2C.1）：软折行处拼接不插分隔（snap.wrapped 标记）；
+/// 硬换行（上行非 wrapped）插 \n；行尾空白去除只作用于每个逻辑行末尾；
+/// 宽字符续格（SpacerTail/SpacerHead）不重复；空行保留。
 pub fn extract_text(snap: &FrameSnapshot, region: (u16, u16, u16, u16)) -> String {
     let (min_col, min_row, max_col, max_row) = region;
     let mut out = String::new();
+    let mut logical = String::new();
     for row in min_row..=max_row {
         let Some(cells) = snap.cells.get(row as usize) else { continue };
-        let mut line = String::new();
+        let mut seg = String::new();
         for col in min_col..=max_col {
             let Some(cell) = cells.get(col as usize) else { continue };
             if cell.wide == CellWide::SpacerTail || cell.wide == CellWide::SpacerHead {
                 continue;
             }
-            line.push_str(&cell.chars);
+            seg.push_str(&cell.chars);
         }
-        let trimmed = line.trim_end();
-        if trimmed.is_empty() && row != min_row && row != max_row {
-            continue;
+        logical.push_str(&seg);
+        // 上行非软折行→逻辑行结束（硬换行边界）。
+        let wrapped = snap.wrapped.get(row as usize).copied().unwrap_or(false);
+        if !wrapped {
+            let trimmed = logical.trim_end();
+            if !out.is_empty() {
+                out.push('\n');
+            }
+            out.push_str(trimmed);
+            logical.clear();
         }
-        out.push_str(trimmed);
+    }
+    // 选区截断在软折行中：末段无硬边界，直接拼接输出（不补 \n）。
+    if !logical.is_empty() {
+        if !out.is_empty() {
+            out.push('\n');
+        }
+        out.push_str(logical.trim_end());
     }
     out
 }
@@ -120,6 +134,7 @@ mod tests {
             },
             scrollback_rows: 0,
             alternate_screen: false,
+            wrapped: Vec::new(),
         }
     }
 
@@ -174,4 +189,82 @@ mod tests {
         let _ = Rgb { r: 0, g: 0, b: 0 };
         let _ = Underline::Single;
     }
+/// 多行合成快照（含每行软折行标记）。
+fn snap_multi(rows: Vec<(Vec<Cell>, bool)>) -> FrameSnapshot {
+    let rows_n = rows.len() as u16;
+    let cols = rows.iter().map(|(c, _)| c.len()).max().unwrap_or(0) as u16;
+    let mut cells = Vec::with_capacity(rows_n as usize);
+    let mut wrapped = Vec::with_capacity(rows_n as usize);
+    for (c, w) in rows {
+        cells.push(c);
+        wrapped.push(w);
+    }
+    FrameSnapshot {
+        cols,
+        rows: rows_n,
+        cells,
+        cursor: Cursor {
+            x: 0,
+            y: 0,
+            visible: false,
+            style: CursorStyle::Block,
+        },
+        scrollback_rows: 0,
+        alternate_screen: false,
+        wrapped,
+    }
+}
+
+#[test]
+fn extract_text_soft_wrap_joins_without_separator() {
+    // 行 0 软折行（wrapped=true）→与行 1 拼接无分隔。
+    let snap = snap_multi(vec![
+        (vec![cell("AB", CellWide::Narrow)], true),
+        (vec![cell("CD", CellWide::Narrow)], false),
+    ]);
+    assert_eq!(extract_text(&snap, (0, 0, 0, 1)), "ABCD", "软折行处不插分隔");
+}
+
+#[test]
+fn extract_text_hard_wrap_inserts_newline() {
+    // 行 0 非 wrapped→逻辑行结束，行 1 间插 \n。
+    let snap = snap_multi(vec![
+        (vec![cell("AB", CellWide::Narrow)], false),
+        (vec![cell("CD", CellWide::Narrow)], false),
+    ]);
+    assert_eq!(extract_text(&snap, (0, 0, 0, 1)), "AB\nCD", "硬换行插 \\n");
+}
+
+#[test]
+fn extract_text_mixed_soft_and_hard_wrap() {
+    // 软折（A→B）+硬换行（B|C）+硬换行（C|D）混合。
+    let snap = snap_multi(vec![
+        (vec![cell("A", CellWide::Narrow)], true),
+        (vec![cell("B", CellWide::Narrow)], false),
+        (vec![cell("C", CellWide::Narrow)], false),
+        (vec![cell("D", CellWide::Narrow)], false),
+    ]);
+    assert_eq!(extract_text(&snap, (0, 0, 0, 3)), "AB\nC\nD", "软折拼接+硬换行分隔");
+}
+
+#[test]
+fn extract_text_wide_char_across_wrap_boundary() {
+    // 宽字符跨软折行边界：Wide+SpacerTail 不重复，拼接无分隔。
+    let snap = snap_multi(vec![
+        (vec![cell("你", CellWide::Wide), cell("", CellWide::SpacerTail)], true),
+        (vec![cell("好", CellWide::Narrow)], false),
+    ]);
+    assert_eq!(extract_text(&snap, (0, 0, 1, 1)), "你好", "宽字符续格不重复+软折拼接");
+}
+
+#[test]
+fn extract_text_empty_line_preserved() {
+    // 空逻辑行保留（输出中占一行）。
+    let snap = snap_multi(vec![
+        (vec![cell("A", CellWide::Narrow)], false),
+        (vec![], false),
+        (vec![cell("B", CellWide::Narrow)], false),
+    ]);
+    assert_eq!(extract_text(&snap, (0, 0, 0, 2)), "A\n\nB", "空行保留为连续 \\n");
+}
 }

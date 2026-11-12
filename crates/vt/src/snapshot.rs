@@ -82,4 +82,7 @@ pub struct FrameSnapshot {
     pub cursor: Cursor,
     pub scrollback_rows: usize,
     pub alternate_screen: bool,
+    /// 每行软折行标记（libghostty Row::is_wrapped）：true=行尾软折行，
+    /// 内容续在下一行（提取文本时逻辑行拼接，不插分隔）。
+    pub wrapped: Vec<bool>,
 }

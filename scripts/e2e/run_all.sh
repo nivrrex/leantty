@@ -648,5 +648,51 @@ if start_app "$D" "$L"; then
     assert_no_wake "case18-scrollbar-drag-no-wake" "$L"
 fi
 
+
+# 用例 19：复制文本换行语义（任务 2C.1）——长行软折行处拼接无分隔、
+# 硬换行插 \n；拖选全部输出读 PRIMARY 断言。
+D="$OUT/case19-wrap-semantics.dump"
+L="$OUT/case19-wrap-semantics.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    # 100 个 A 一行（>80 列→软折 2 行）+三行短文本（硬换行）
+    xdotool type --window "$WID" "printf 'A%.0s' \$(seq 1 100); echo; echo B1; echo B2; echo B3"
+    xdotool key --window "$WID" Return
+    sleep 0.8
+    # 拖选全部输出（首行提示符→B3 行；x 上界取窗口宽-5 覆盖 80 列全宽，
+    # 1000px/13px≈76 列会截断软折行长行导致 A 段不连续）
+    GW=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+    xdotool mousemove --window "$WID" 10 20
+    sleep 0.2
+    xdotool mousedown 1
+    xdotool mousemove --window "$WID" $((GW-5)) 200
+    sleep 0.2
+    xdotool mouseup 1
+    sleep 0.5
+    PRIMARY=$(xclip -o -selection primary 2>/dev/null)
+    # 长行软折：A 连续 100 无 \n 打断（若软折误插分隔则 A 段断裂）
+    if printf '%s' "$PRIMARY" | grep -q 'A\{100\}'; then
+        echo "PASS case19-soft-wrap-join (长行软折拼接无分隔)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case19-soft-wrap-join (PRIMARY 无连续 100 A)"
+        echo "  PRIMARY=[$(printf '%s' "$PRIMARY" | head -c 120)]"
+        cp "$D" "$OUT/case19-wrap-fail.dump" 2>/dev/null
+        FAIL=$((FAIL+1))
+    fi
+    # 三行短文本：硬换行 \n 保留
+    if printf '%s' "$PRIMARY" | grep -q 'B1
+B2'; then
+        echo "PASS case19-hard-wrap-newline (硬换行插 \n)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case19-hard-wrap-newline (PRIMARY 无 B1\\n B2)"
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case19-wrap-exits"
+    assert_no_wake "case19-wrap-no-wake" "$L"
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

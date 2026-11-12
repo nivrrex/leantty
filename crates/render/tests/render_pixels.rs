@@ -73,6 +73,7 @@ fn synth_snapshot() -> FrameSnapshot {
         },
         scrollback_rows: 0,
         alternate_screen: false,
+        wrapped: Vec::new(),
     }
 }
 
@@ -146,6 +147,7 @@ fn render_bold_maps_to_bright_color() {
         },
         scrollback_rows: 0,
         alternate_screen: false,
+        wrapped: Vec::new(),
     };
     r_on.render(&snap, 16, 24).expect("render on");
     r_off.render(&snap, 16, 24).expect("render off");

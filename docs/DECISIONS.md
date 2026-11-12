@@ -68,3 +68,7 @@
 - IME Preedit 组合中间态本阶段仅存储不绘制（工程判断）：渲染层无组合文本 overlay 组件，绘制需接入字形缓存与光标叠加，超出阶段 2B 范围；Commit 归一化（\n→\r）与 Preedit clamp/保序由 ime.rs 纯函数单测覆盖。
 - Xvfb 无 IME 总线（已验证事实）：e2e 无法注入 IME 事件；case17 仅冒烟 set_ime_allowed(true)+正常输入路径不 panic；Preedit/Commit/Disabled 事件路径由纯函数单测+代码审查覆盖，登记为已知限制。
 - IME 光标区每帧更新（工程判断）：about_to_wait 末尾 update_ime_cursor_area（快照光标格像素矩形）；窗口未建/snapshot 失败时内部跳过，无错误路径。
+- libghostty-vt 折行标记查证（已验证事实）：绑定提供 screen::Row::is_wrapped/is_wrap_continuation（screen.rs:296/300）；render state RowData 无 WRAP 变体（RenderStateRowData 仅 DIRTY/RAW/CELLS/SELECTION/CELLS_RAW/VIEWPORT_Y/ID），折行标记须走 Terminal::grid_ref(Point::Viewport)→GridRef::row()→Row::is_wrapped 逐行查询（snapshot 内每行 3 FFI，视口 30 行≈90 FFI/帧，实测无性能问题）。
+- is_wrapped 语义（已验证事实）：true=本行行尾软折行（内容续下一行），false=硬换行边界或普通行；提取逻辑用上行 is_wrapped 判定拼接（软折行处不插分隔），与探针实测一致（100A/80 列→row0 wrapped=true+row1 续行）。
+- FrameSnapshot 新增 wrapped: Vec<bool>（owned，不含 libghostty 类型；构造点 render/app 测试同步补字段）。
+- extract_text 新语义（已验证事实）：软折行拼接无分隔、硬换行插 \n、行尾空白只作用于逻辑行末尾、空行保留、宽字符续格不重复；e2e case19 断言长行 A×100 连续+三行 B1/B2/B3 含 \n。
