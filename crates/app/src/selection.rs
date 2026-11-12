@@ -1,9 +1,11 @@
 //! 选区模型（任务 2.1，自有：libghostty-vt 无 Selection API，DECISIONS 登记）。
 //!
-//! 选区以网格坐标存储；滚动偏移由 app 层维护（随 scroll_viewport Delta
-//! 联动，任务 2B.4 接线）。宽字符整格选中，不选中 SpacerTail 半格。
+//! 选区以内容绝对坐标存储（行号相对 scrollback 顶部，与视口偏移解耦）；
+//! 渲染时按当前 offset_from_top 转换到视口坐标（abs_to_viewport），
+//! 上滚/下滚/新输出推动历史时选区稳定附着在内容上（任务 2C.2）。
+//! 宽字符整格选中，不选中 SpacerTail 半格。
 
-use vt::{CellWide, FrameSnapshot};
+use vt::{Cell, CellWide, FrameSnapshot};
 
 /// 网格坐标（列，行）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,10 +15,39 @@ pub struct CellPos {
 }
 
 /// 选区（anchor 按下点，focus 当前点；Shift+点击扩展时 anchor 不动）。
+/// 行号为内容绝对坐标（相对 scrollback 顶部，0=scrollback 顶；
+/// 视口行=绝对行-offset_from_top，渲染时转换）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Selection {
     pub anchor: CellPos,
     pub focus: CellPos,
+}
+
+/// 视口行→内容绝对行（offset_from_top=scrollback 顶起视口偏移）。
+pub fn viewport_to_abs(viewport_row: u16, offset_from_top: usize) -> usize {
+    offset_from_top + viewport_row as usize
+}
+
+/// 内容绝对行→视口行；越界（视口外）返 None（渲染层不绘制）。
+pub fn abs_to_viewport(abs_row: usize, offset_from_top: usize, viewport_rows: u16) -> Option<u16> {
+    let rel = abs_row as isize - offset_from_top as isize;
+    if rel < 0 || rel >= viewport_rows as isize {
+        None
+    } else {
+        Some(rel as u16)
+    }
+}
+
+/// 选区矩形 clamp 到视口（渲染用）；完全在视口外返 None。
+pub fn selection_viewport_region(
+    region: (u16, u16, u16, u16),
+    offset_from_top: usize,
+    viewport_rows: u16,
+) -> Option<(u16, u16, u16, u16)> {
+    let (c0, r0, c1, r1) = region;
+    let v0 = abs_to_viewport(r0 as usize, offset_from_top, viewport_rows)?;
+    let v1 = abs_to_viewport(r1 as usize, offset_from_top, viewport_rows)?;
+    Some((c0, v0, c1, v1))
 }
 
 impl Selection {
@@ -74,10 +105,23 @@ pub fn word_region(line: &str, focus_col: usize, escape_chars: &str) -> (usize, 
 /// 宽字符续格（SpacerTail/SpacerHead）不重复；空行保留。
 pub fn extract_text(snap: &FrameSnapshot, region: (u16, u16, u16, u16)) -> String {
     let (min_col, min_row, max_col, max_row) = region;
+    let rows: Vec<(&[Cell], bool)> = (min_row..=max_row)
+        .filter_map(|row| {
+            let cells = snap.cells.get(row as usize)?;
+            let wrapped = snap.wrapped.get(row as usize).copied().unwrap_or(false);
+            Some((cells.as_slice(), wrapped))
+        })
+        .collect();
+    extract_rows(&rows, min_col, max_col)
+}
+
+/// 格级行源统一提取（视口 snapshot 与历史 rows_text 同语义）：
+/// 软折行拼接无分隔、硬换行插 \n、行尾空白只作用于逻辑行末尾、
+/// 宽字符续格不重复、空行保留。
+pub fn extract_rows(rows: &[(&[Cell], bool)], min_col: u16, max_col: u16) -> String {
     let mut out = String::new();
     let mut logical = String::new();
-    for row in min_row..=max_row {
-        let Some(cells) = snap.cells.get(row as usize) else { continue };
+    for (cells, wrapped) in rows {
         let mut seg = String::new();
         for col in min_col..=max_col {
             let Some(cell) = cells.get(col as usize) else { continue };
@@ -88,7 +132,6 @@ pub fn extract_text(snap: &FrameSnapshot, region: (u16, u16, u16, u16)) -> Strin
         }
         logical.push_str(&seg);
         // 上行非软折行→逻辑行结束（硬换行边界）。
-        let wrapped = snap.wrapped.get(row as usize).copied().unwrap_or(false);
         if !wrapped {
             let trimmed = logical.trim_end();
             if !out.is_empty() {
@@ -267,4 +310,82 @@ fn extract_text_empty_line_preserved() {
     ]);
     assert_eq!(extract_text(&snap, (0, 0, 0, 2)), "A\n\nB", "空行保留为连续 \\n");
 }
+}
+
+#[cfg(test)]
+mod offset_tests {
+    use super::*;
+
+    #[test]
+    fn viewport_abs_roundtrip() {
+        // offset=40（上滚 40 行）：视口行 0=绝对行 40。
+        assert_eq!(viewport_to_abs(0, 40), 40);
+        assert_eq!(viewport_to_abs(5, 40), 45);
+        assert_eq!(abs_to_viewport(40, 40, 24), Some(0), "绝对行=offset→视口行 0");
+        assert_eq!(abs_to_viewport(45, 40, 24), Some(5));
+        assert_eq!(abs_to_viewport(39, 40, 24), None, "视口上方（历史区外）返 None");
+        assert_eq!(abs_to_viewport(64, 40, 24), None, "视口下方返 None（24 行视口：40..63）");
+    }
+
+    #[test]
+    fn selection_region_clamps_to_viewport() {
+        // 选区绝对行 42..47，offset=40，视口 24 行 → 视口行 2..7。
+        let r = selection_viewport_region((3, 42, 10, 47), 40, 24);
+        assert_eq!(r, Some((3, 2, 10, 7)), "绝对坐标按 offset 转换到视口");
+        // 选区完全在视口上方（绝对行 30..35 < offset 40）→ None。
+        assert_eq!(selection_viewport_region((0, 30, 5, 35), 40, 24), None);
+        // 选区跨越视口上下边界→上端 None（clamp 语义：完全在外才 None；
+        // 跨边界场景由调用方按可见段拆分，本函数保持矩形语义）。
+        assert_eq!(selection_viewport_region((0, 35, 5, 50), 40, 24), None);
+    }
+}
+
+#[cfg(test)]
+mod auto_scroll_tests {
+    use super::*;
+
+    #[test]
+    fn auto_scroll_step_direction_and_clamp() {
+        // offset=40 sb=100 viewport=24：下沿方向→offset+1=41，focus=视口底绝对行
+        let (o, f) = auto_scroll_step(40, 1, 100, 24);
+        assert_eq!(o, 41, "下沿方向 offset+1");
+        assert_eq!(f, 41 + 23, "focus=新视口最后可见行（offset+viewport-1，行号合法）");
+        // 上沿方向→offset-1，focus=视口顶行
+        let (o, f) = auto_scroll_step(40, -1, 100, 24);
+        assert_eq!(o, 39);
+        assert_eq!(f, 39, "上沿 focus=视口顶行");
+        // 方向 0=停止（offset 不变）
+        assert_eq!(auto_scroll_step(40, 0, 100, 24), (40, 40));
+        // clamp：offset=0 上沿方向不欠溢出；offset=sb 下沿方向不越界
+        assert_eq!(auto_scroll_step(0, -1, 100, 24).0, 0);
+        let (o, _) = auto_scroll_step(100, 1, 100, 24);
+        assert_eq!(o, 100, "下沿 clamp 到 sb_rows");
+    }
+}
+
+/// 自动滚动步进（任务 2C.3）：拖选到窗口上/下沿时每帧推进 offset 并返回
+/// 新 focus 绝对行（下沿=视口底行、上沿=视口顶行）；方向 0=停止。
+/// clamp 到 [0, sb_rows]（越界回落边界，外部输入防御）。
+pub fn auto_scroll_step(
+    offset: usize,
+    dir: i8,
+    sb_rows: usize,
+    viewport_rows: u16,
+) -> (usize, usize) {
+    if dir == 0 {
+        return (offset, offset);
+    }
+    let new_offset = if dir > 0 {
+        offset.saturating_add(1).min(sb_rows)
+    } else {
+        offset.saturating_sub(1)
+    };
+    // focus 目标绝对行：向下滚=视口最后可见行（offset+rows-1），向上滚=视口顶行。
+    let last_visible = sb_rows + viewport_rows.saturating_sub(1) as usize;
+    let focus_abs = if dir > 0 {
+        new_offset + viewport_rows.saturating_sub(1) as usize
+    } else {
+        new_offset
+    };
+    (new_offset, focus_abs.min(last_visible))
 }

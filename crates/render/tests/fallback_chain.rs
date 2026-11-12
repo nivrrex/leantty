@@ -36,6 +36,7 @@ fn snap_of(cells: Vec<Cell>) -> FrameSnapshot {
         },
         scrollback_rows: 0,
         alternate_screen: false,
+        wrapped: Vec::new(),
     }
 }
 

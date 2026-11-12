@@ -177,6 +177,7 @@ fn render_cursor_styles_draw() {
             cursor: Cursor { x: 0, y: 0, visible: true, style },
             scrollback_rows: 0,
             alternate_screen: false,
+            wrapped: Vec::new(),
         };
         renderer.render(&snap, 16, 24).expect("render");
         // 光标色（默认黑）在黑色背景格上不可见——改用 cursor 色非 bg 的 palette 断言太绕；

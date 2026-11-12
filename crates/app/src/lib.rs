@@ -22,7 +22,7 @@ use std::time::{Duration, Instant};
 
 use pty::{NativePty, Pty};
 use render::{CpuRenderer, Renderer};
-use vt::{Action, Mods, VtTerminal};
+use vt::{Action, Cell, Mods, VtTerminal};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
@@ -151,7 +151,10 @@ pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard}
 pub use ime::{normalize_ime_commit, preedit_display};
 pub use paste::{normalize_paste, paste_chunks, PASTE_CHUNK};
 pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
-pub use selection::{extract_text, word_region, CellPos, Selection};
+pub use selection::{
+    abs_to_viewport, auto_scroll_step, extract_rows, extract_text, selection_viewport_region,
+    viewport_to_abs, word_region, CellPos, Selection,
+};
 
 type SoftSurface =
     softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
@@ -219,6 +222,7 @@ impl App {
             follow_bottom: true,
             scrollbar_drag: false,
             ime_preedit: String::new(),
+            auto_scroll: 0,
             vt: None,
             pty: None,
             renderer: None,
@@ -329,6 +333,8 @@ struct AppHandler {
     scrollbar_drag: bool,
     /// IME 组合中间态（Preedit 串；Commit/Disabled 时清空）。
     ime_preedit: String,
+    /// 拖选自动滚动方向（-1 上沿/0 停/+1 下沿；任务 2C.3 每帧推进）。
+    auto_scroll: i8,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -646,6 +652,25 @@ impl ApplicationHandler for AppHandler {
             }
             self.offset_from_top = self.sb_rows();
         }
+        // scrollback 截断（超 history）致选区行消失：clamp 到可见历史边界并记日志。
+        if let Some(sel) = self.selection {
+            let (_, _, _, max_abs) = sel.region();
+            let sb = self.sb_rows();
+            let visible_max = sb + self.rows as usize;
+            if max_abs as usize > visible_max {
+                eprintln!(
+                    "[selection] scrollback 截断：选区末行 {} 超出可见历史边界 {}，clamp",
+                    max_abs, visible_max
+                );
+                self.selection = Some(Selection {
+                    anchor: sel.anchor,
+                    focus: CellPos {
+                        col: sel.focus.col,
+                        row: visible_max.min(max_abs as usize) as u16,
+                    },
+                });
+            }
+        }
         // 5. vt 响应字节 → 写 PTY
         if let Some(pty_write_rx) = self.pty_write_rx.as_ref()
             && let Some(pty) = self.pty.as_mut()
@@ -673,7 +698,15 @@ impl ApplicationHandler for AppHandler {
             match vt.snapshot() {
                 Ok(snap) => {
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
-                    renderer.set_selection(self.selection.map(|s| s.region()));
+                    // 选区绝对坐标→视口坐标（滚动后高亮跟随内容）；
+                    // scrollback 截断致选区行越界时 clamp 到可见历史边界。
+                    let vis_region = self
+                        .selection
+                        .and_then(|s| {
+                            let (c0, a0, c1, a1) = s.region();
+                            selection_viewport_region((c0, a0, c1, a1), self.offset_from_top, self.rows)
+                        });
+                    renderer.set_selection(vis_region);
                     // 滚动条几何（scrollback=0 时不绘制）
                     let sb = sb_render;
                     let geom = if sb == 0 {
@@ -710,6 +743,29 @@ impl ApplicationHandler for AppHandler {
                     }
                 }
                 Err(e) => eprintln!("snapshot: {}", e),
+            }
+        }
+        // 拖选自动滚动：每帧按方向推进 offset 并扩展 focus 到新视口边界行
+        // （任务 2C.3；释放后 auto_scroll=0 自然停止）。
+        if self.mouse_down && self.auto_scroll != 0 {
+            let sb = self.sb_rows();
+            let (new_offset, focus_abs) =
+                auto_scroll_step(self.offset_from_top, self.auto_scroll, sb, self.rows);
+            self.offset_from_top = new_offset;
+            self.follow_bottom = new_offset >= sb;
+            if let Some(sel) = self.selection.as_mut() {
+                sel.set_focus(CellPos {
+                    col: sel.focus.col,
+                    row: focus_abs as u16,
+                });
+            }
+            if let Some(vt) = self.vt.as_mut() {
+                vt.scroll_viewport(ScrollViewport::Row(new_offset));
+            }
+            // 事件循环无事件时会阻塞在 epoll（about_to_wait 不再触发），
+            // 主动请求重绘驱动下一帧，使自动滚动持续到释放。
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
             }
         }
         // IME 光标区跟随快照光标（每帧；match 外调用避免与 renderer mut 借冲突；
@@ -775,6 +831,7 @@ impl AppHandler {
             if button == MouseButton::Left {
                 self.scrollbar_drag = false;
                 self.mouse_down = false;
+                self.auto_scroll = 0;
                 if self.selection.is_some() {
                     self.commit_selection();
                 }
@@ -803,10 +860,13 @@ impl AppHandler {
                     return;
                 }
                 if shift {
-                    // Shift+点击：扩展选区 focus（anchor 不动）。pos 先算避免借用冲突。
+                    // Shift+点击：扩展选区 focus（anchor 不动）；行号转绝对坐标。
                     let pos = self.last_mouse_pos.and_then(|p| self.pixel_to_cell(p));
                     if let (Some(sel), Some(pos)) = (self.selection.as_mut(), pos) {
-                        sel.set_focus(pos);
+                        sel.set_focus(CellPos {
+                            col: pos.col,
+                            row: viewport_to_abs(pos.row, self.offset_from_top) as u16,
+                        });
                     }
                 } else {
                     self.start_selection();
@@ -821,6 +881,17 @@ impl AppHandler {
     /// 鼠标移动：更新缓存坐标；拖选中扩展 focus；跟踪模式下 Motion 上报。
     fn on_cursor_moved(&mut self, position: winit::dpi::PhysicalPosition<f64>) {
         self.last_mouse_pos = Some(position);
+        // 拖选自动滚动方向（任务 2C.3）：指针到窗口上/下沿 12px 内时每帧推进。
+        if self.mouse_down && !self.scrollbar_drag {
+            let h = self.last_size.map(|(_, h)| h).unwrap_or(0);
+            self.auto_scroll = if position.y < 12.0 {
+                -1
+            } else if h > 24 && position.y > f64::from(h - 12) {
+                1
+            } else {
+                0
+            };
+        }
         // 滚动条拖拽中：offset 实时更新（优先于选区扩展）。
         if self.scrollbar_drag {
             let track_h = self.last_size.map(|(_, h)| h).unwrap_or(0);
@@ -838,7 +909,11 @@ impl AppHandler {
             && let Some(sel) = self.selection.as_mut()
             && let Some(pos) = pos
         {
-            sel.set_focus(pos);
+            // 拖拽扩展：行号转绝对坐标（滚动时选区跟随内容）。
+            sel.set_focus(CellPos {
+                col: pos.col,
+                row: viewport_to_abs(pos.row, self.offset_from_top) as u16,
+            });
         }
         if !self.mods_state.shift_key()
             && self.mouse_down
@@ -1015,6 +1090,11 @@ impl AppHandler {
         let Some(pos) = self.last_mouse_pos.and_then(|p| self.pixel_to_cell(p)) else {
             return;
         };
+        // 选区坐标=内容绝对行（视口行+offset；滚动后选区附着内容不动）。
+        let abs_pos = CellPos {
+            col: pos.col,
+            row: viewport_to_abs(pos.row, self.offset_from_top) as u16,
+        };
         let now = Instant::now();
         let count = match self.last_click {
             Some((t, p)) if t.elapsed() < Duration::from_millis(300) && p == pos => {
@@ -1023,18 +1103,18 @@ impl AppHandler {
             _ => 1,
         };
         self.click_count = count;
-        self.last_click = Some((now, pos));
+        self.last_click = Some((now, abs_pos));
         self.mouse_down = true;
         let region = match count {
             2 => self.word_region_at(pos.row, pos.col).map(|(sc, ec)| Selection {
-                anchor: CellPos { col: sc, row: pos.row },
-                focus: CellPos { col: ec, row: pos.row },
+                anchor: CellPos { col: sc, row: abs_pos.row },
+                focus: CellPos { col: ec, row: abs_pos.row },
             }),
             3 => Some(Selection {
-                anchor: CellPos { col: 0, row: pos.row },
-                focus: CellPos { col: self.cols.saturating_sub(1), row: pos.row },
+                anchor: CellPos { col: 0, row: abs_pos.row },
+                focus: CellPos { col: self.cols.saturating_sub(1), row: abs_pos.row },
             }),
-            _ => Some(Selection::new(pos)),
+            _ => Some(Selection::new(abs_pos)),
         };
         if let Some(r) = region {
             self.selection = Some(r);
@@ -1042,8 +1122,10 @@ impl AppHandler {
     }
 
     /// 双击选词：以 semantic_escape_chars 为边界计算词区域（网格坐标）。
-    fn word_region_at(&self, row: u16, focus_col: u16) -> Option<(u16, u16)> {
+    fn word_region_at(&self, viewport_row: u16, focus_col: u16) -> Option<(u16, u16)> {
         let snap = self.vt.as_ref()?.snapshot().ok()?;
+        // 绝对行=viewport_row+offset（调用方传视口行）；读视口内行文本。
+        let row = viewport_row;
         let line = Self::row_text(&snap, row);
         let escape = self
             .config
@@ -1073,7 +1155,31 @@ impl AppHandler {
         let Some(sel) = self.selection else { return; };
         let Some(vt) = self.vt.as_ref() else { return; };
         let Ok(snap) = vt.snapshot() else { return; };
-        let text = extract_text(&snap, sel.region());
+        // 绝对行→视口行（视口内走 snapshot；跨视口走 rows_text 只读读历史，
+        // 同语义提取 extract_rows，不改变视口）。
+        let (c0, a0, c1, a1) = sel.region();
+        let offset = self.offset_from_top;
+        let viewport_rows = self.rows as usize;
+        let in_viewport = (a0 as usize) >= offset && (a1 as usize) < offset + viewport_rows;
+        let text = if in_viewport {
+            let v0 = (a0 as usize - offset).min(u16::MAX as usize) as u16;
+            let v1 = (a1 as usize - offset).min(u16::MAX as usize) as u16;
+            extract_text(&snap, (c0, v0, c1, v1))
+        } else {
+            match vt.rows_text(a0 as usize, a1 as usize, self.cols) {
+                Ok(history) => {
+                    let rows_ref: Vec<(&[Cell], bool)> = history
+                        .iter()
+                        .map(|(cs, w)| (cs.as_slice(), *w))
+                        .collect();
+                    extract_rows(&rows_ref, c0, c1)
+                }
+                Err(e) => {
+                    eprintln!("rows_text: {}", e);
+                    String::new()
+                }
+            }
+        };
         if text.is_empty() {
             return;
         }

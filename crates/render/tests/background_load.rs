@@ -48,6 +48,7 @@ fn snap(text: &str) -> FrameSnapshot {
         },
         scrollback_rows: 0,
         alternate_screen: false,
+        wrapped: Vec::new(),
     }
 }
 

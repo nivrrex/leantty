@@ -149,6 +149,51 @@ impl VtTerminal {
         self.inner.scroll_viewport(scroll);
     }
 
+    /// 读内容绝对行范围文本（任务 2C.2：选区跨视口外历史行，只读不改变视口）。
+    ///
+    /// 坐标：Point::Screen（full incl scrollback），y=scrollback 顶起绝对行
+    /// （与 Selection 绝对行模型一致）。返回 (行文本, 上行是否软折行)。
+    /// 代价：逐 cell grid_ref+graphemes（2 FFI/cell，cols×rows 次——百行级
+    /// 毫秒级；DECISIONS 登记评估结论）。视口不变（grid_ref 不移动视口）。
+    pub fn rows_text(
+        &self,
+        abs_start: usize,
+        abs_end: usize,
+        cols: u16,
+    ) -> Result<Vec<(Vec<Cell>, bool)>, Error> {
+        let mut out = Vec::with_capacity(abs_end - abs_start + 1);
+        for abs in abs_start..=abs_end {
+            let coord = libghostty_vt::terminal::PointCoordinate { x: 0, y: abs as u32 };
+            let grid = self
+                .inner
+                .grid_ref(libghostty_vt::terminal::Point::Screen(coord))?;
+            let wrapped = grid.row()?.is_wrapped().unwrap_or(false);
+            let mut line = Vec::with_capacity(cols as usize);
+            for col in 0..cols {
+                let coord = libghostty_vt::terminal::PointCoordinate { x: col, y: abs as u32 };
+                let cell_grid = self
+                    .inner
+                    .grid_ref(libghostty_vt::terminal::Point::Screen(coord))?;
+                let mut buf = ['\0'; 8];
+                let n = cell_grid.graphemes(&mut buf)?;
+                let chars: String = buf[..n].iter().collect();
+                let wide = match cell_grid.cell()?.wide()? {
+                    libghostty_vt::screen::CellWide::Narrow => CellWide::Narrow,
+                    libghostty_vt::screen::CellWide::Wide => CellWide::Wide,
+                    libghostty_vt::screen::CellWide::SpacerTail => CellWide::SpacerTail,
+                    libghostty_vt::screen::CellWide::SpacerHead => CellWide::SpacerHead,
+                };
+                line.push(Cell {
+                    chars,
+                    wide,
+                    ..Default::default()
+                });
+            }
+            out.push((line, wrapped));
+        }
+        Ok(out)
+    }
+
     /// 暴露内部引用，供 encoder 的 set_options_from_terminal 使用。
     pub(crate) fn inner(&self) -> &Terminal<'static, 'static> {
         &self.inner

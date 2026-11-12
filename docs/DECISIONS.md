@@ -72,3 +72,8 @@
 - is_wrapped 语义（已验证事实）：true=本行行尾软折行（内容续下一行），false=硬换行边界或普通行；提取逻辑用上行 is_wrapped 判定拼接（软折行处不插分隔），与探针实测一致（100A/80 列→row0 wrapped=true+row1 续行）。
 - FrameSnapshot 新增 wrapped: Vec<bool>（owned，不含 libghostty 类型；构造点 render/app 测试同步补字段）。
 - extract_text 新语义（已验证事实）：软折行拼接无分隔、硬换行插 \n、行尾空白只作用于逻辑行末尾、空行保留、宽字符续格不重复；e2e case19 断言长行 A×100 连续+三行 B1/B2/B3 含 \n。
+- 选区滚动联动新模型（已验证事实，取代 2B "选区滚动联动未接" 遗留登记；PHASE2B-LINUX.md 原文按规则不改，勘误见 PHASE2C-LINUX.md）：选区改存内容绝对坐标（行号=scrollback 顶起绝对行），视口行=abs-offset_from_top；渲染经 selection_viewport_region 转换，滚动/新输出时高亮稳定附着内容（e2e case20：上滚后选两行复制→滚动往返→中键再复制，文本一致）。
+- 跨视口提取（已验证事实）：选区跨出视口时走 VtTerminal::rows_text（Point::Screen 逐 cell grid_ref+graphemes，2 FFI/cell，百行级毫秒级；只读不改变视口，单测断言 rows_text 前后视口一致）。格级行源统一由 extract_rows 处理，视口路径与历史路径同语义（软折拼接/硬换行 \n/行尾 trim/空行保留）。
+- scrollback 截断处理（工程判断）：max_abs > sb_rows+viewport_rows 时选区末行 clamp 到可见历史边界并打日志（history=10000 时 e2e 不可达，逻辑由 clamp 分支覆盖；截断后绝对行基准随该窗口重置，未做内容锚点重定位，登记为已知限制）。
+- 拖选自动滚动（已验证事实）：指针进入窗口上/下沿 12px 时 auto_scroll=∓1，about_to_wait 每帧 auto_scroll_step 推进 1 行并扩展 focus 到新视口边界行；winit 事件循环无事件会阻塞 epoll，必须 window.request_redraw() 自驱动，否则只推进 1 行（e2e case21 实测 25 行→加 request_redraw 后 40 行）。
+- e2e 修饰键清理（已验证事实）：前序用例 ctrl+d 的 keyup 在 Xvfb 下偶发丢失，后续 type 字母被解释为控制字符（^E/^C/^H）；start_app 末尾 xdotool keyup ctrl shift alt super 消除该污染。

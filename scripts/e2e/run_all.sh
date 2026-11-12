@@ -99,6 +99,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     fi
     xdotool windowactivate "$WID" >/dev/null 2>&1
     xdotool windowfocus "$WID" >/dev/null 2>&1
+    # 清除残留修饰键：前序用例 ctrl+d 的 keyup 在 Xvfb 下偶发丢失，
+    # 会把后续 type 的字母变成控制字符（^E/^C/^H...）。
+    xdotool keyup ctrl shift alt super 2>/dev/null
     return 0
 }
 
@@ -692,6 +695,96 @@ B2'; then
     xdotool key --window "$WID" ctrl+d
     assert_app_exits "case19-wrap-exits"
     assert_no_wake "case19-wrap-no-wake" "$L"
+fi
+
+
+# 用例 20：选区与滚动联动（任务 2C.2）——上滚后选视口内两行→复制；
+# 再滚动→中键 Copy 重提取→断言两次内容一致（选区锚定内容而非视口坐标）。
+D="$OUT/case20-selection-anchor.dump"
+L="$OUT/case20-selection-anchor.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq -w 1 100); do echo L\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.8
+    # 上滚 4 次（multiplier 10 → 40 行）
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    i=0; while [ $i -lt 4 ]; do xdotool click 4; sleep 0.05; i=$((i+1)); done
+    sleep 0.5
+    # 拖选视口内三行（y 40..90）
+    xdotool mousemove --window "$WID" 10 40
+    sleep 0.2
+    xdotool mousedown 1
+    xdotool mousemove --window "$WID" 200 90
+    sleep 0.2
+    xdotool mouseup 1
+    sleep 0.5
+    P_A=$(xclip -o -selection primary 2>/dev/null)
+    # 下滚 2 次（20 行）后再上滚 2 次回到原偏移，中键 Copy 重提取
+    i=0; while [ $i -lt 2 ]; do xdotool click 5; sleep 0.05; i=$((i+1)); done
+    sleep 0.4
+    i=0; while [ $i -lt 2 ]; do xdotool click 4; sleep 0.05; i=$((i+1)); done
+    sleep 0.4
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    xdotool click 2
+    sleep 0.6
+    P_B=$(xclip -o -selection primary 2>/dev/null)
+    if [ -n "$P_A" ] && [ "$P_A" = "$P_B" ] && printf '%s' "$P_A" | grep -q 'L0'; then
+        echo "PASS case20-selection-anchor (滚动后重提取内容一致：$(printf '%s' "$P_A" | tr '\n' '|' | head -c 40))"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case20-selection-anchor (A=[$(printf '%s' "$P_A" | tr '\n' '|' | head -c 40)] B=[$(printf '%s' "$P_B" | tr '\n' '|' | head -c 40)])"
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case20-selection-anchor-exits"
+    assert_no_wake "case20-selection-anchor-no-wake" "$L"
+fi
+
+# 用例 21：跨视口拖选自动滚动（任务 2C.3）——拖到窗口下沿悬停，每帧推进
+# 视口并扩展选区；释放后复制应含多屏行（>28 行，视口 24 行）。
+D="$OUT/case21-autoscroll.dump"
+L="$OUT/case21-autoscroll.log"
+if start_app "$D" "$L"; then
+    sleep 1
+    xdotool type --window "$WID" "for i in \$(seq -w 1 100); do echo M\$i; done"
+    xdotool key --window "$WID" Return
+    sleep 0.8
+    # 先上滚到顶（8 次×10 行），留出向下滚动空间
+    xdotool mousemove --window "$WID" 400 300
+    sleep 0.2
+    i=0; while [ $i -lt 8 ]; do xdotool click 4; sleep 0.05; i=$((i+1)); done
+    sleep 0.4
+    GH=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+    # 从第 2 行按下，拖到下沿悬停（自动滚动 1.5s）
+    GW=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+    xdotool mousemove --window "$WID" 10 40
+    sleep 0.2
+    xdotool mousedown 1
+    xdotool mousemove --window "$WID" 10 $((GH-6))
+    sleep 1.2
+    # 下沿悬停自动滚动后向右扩展列范围（同列拖拽只选 1 列，文本近似空）
+    xdotool mousemove --window "$WID" $((GW-10)) $((GH-6))
+    sleep 0.4
+    xdotool mouseup 1
+    sleep 0.5
+    P=$(xclip -o -selection primary 2>/dev/null)
+    N=$(printf '%s' "$P" | grep -c 'M[0-9]' 2>/dev/null || echo 0)
+    if [ "$N" -gt 28 ]; then
+        echo "PASS case21-autoscroll (跨屏拖选 $N 行 > 视口 24)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case21-autoscroll (仅 $N 行，自动滚动未生效)"
+        FAIL=$((FAIL+1))
+    fi
+    xdotool key --window "$WID" ctrl+d
+    sleep 0.3
+    xdotool key --window "$WID" ctrl+d
+    assert_app_exits "case21-autoscroll-exits"
+    assert_no_wake "case21-autoscroll-no-wake" "$L"
 fi
 
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
