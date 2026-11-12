@@ -60,6 +60,11 @@ fn main() {
     let _ = std::io::stdout().flush();
 
     let mut total = 0usize;
+    let mut marks = 0usize;
+    let mut carry: Vec<u8> = Vec::new();
+    let mut cm = 0usize;
+    let mut cr = 0usize;
+    let mut ck = 0usize;
     let mut head: Vec<u8> = Vec::new();
     let mut tail: Vec<u8> = Vec::new();
     let mut buf = [0u8; 8192];
@@ -87,13 +92,50 @@ fn main() {
             tail.drain(..cut);
         }
         total += n as usize;
+        // count occurrences of the e2e marker typed while a large paste drains
+        {
+            // a marker may straddle a read boundary: prepend the tail of the
+            // previous chunk before scanning
+            let mut scan: Vec<u8> = Vec::with_capacity(carry.len() + chunk.len());
+            scan.extend_from_slice(&carry);
+            scan.extend_from_slice(chunk);
+            let mut i = 0;
+            while i + 4 <= scan.len() {
+                if &scan[i..i + 4] == b"MARK" {
+                    marks += 1;
+                    i += 4;
+                } else {
+                    i += 1;
+                }
+            }
+            // interleaved paste data can split a marker, so also count the
+            // individual characters that never appear in the pasted payload
+            for b in scan[carry.len()..].iter() {
+                match *b {
+                    b'M' => cm += 1,
+                    b'R' => cr += 1,
+                    b'K' => ck += 1,
+                    _ => {}
+                }
+            }
+            carry.clear();
+            let keep = scan.len().saturating_sub(3);
+            carry.extend_from_slice(&scan[keep..]);
+        }
         // incremental report: the reader can block on the next read, so the
         // e2e must be able to assert on the latest values at any time
         println!();
         println!("BYTES={}", total);
         println!("FIRSTHEX={}", hex(&head));
         println!("LASTHEX={}", hex(&tail));
+        println!("MARKCOUNT={}", marks);
         let _ = std::io::stdout().flush();
+        if let Ok(path) = std::env::var("PROBE_OUT") {
+            let _ = std::fs::write(
+                &path,
+                format!("BYTES={} MARKCOUNT={} CHARM={} CHARR={} CHARK={}", total, marks, cm, cr, ck),
+            );
+        }
     }
     // restore line input mode before printing the report
     unsafe { SetConsoleMode(hin, 0x0001 | 0x0002 | 0x0004) };
@@ -101,4 +143,11 @@ fn main() {
     println!("BYTES={}", total);
     println!("FIRSTHEX={}", hex(&head));
     println!("LASTHEX={}", hex(&tail));
+    println!("MARKCOUNT={}", marks);
+    if let Ok(path) = std::env::var("PROBE_OUT") {
+        let _ = std::fs::write(
+            &path,
+            format!("BYTES={} MARKCOUNT={} CHARM={} CHARR={} CHARK={}", total, marks, cm, cr, ck),
+        );
+    }
 }

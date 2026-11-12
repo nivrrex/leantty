@@ -1,0 +1,13 @@
+[package]
+name = "probe_wrap"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+vt = { path = "../../crates/vt" }
+
+[[bin]]
+name = "pwrap"
+path = "src/main.rs"

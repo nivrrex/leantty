@@ -1,0 +1,4 @@
+PASS d4-default (first=(467,284,263,239,283) median=283ms spread=228ms; bg=(605,413,412,349,424) median=413ms)
+PASS d4-cmd-yahei (first=(1867,1824,1790,1725,1696) median=1790ms spread=171ms; bg=(2442,2383,2405,2320,2282) median=2383ms)
+PASS d4-consolas-yahei (first=(1468,1465,1395,1468,1376) median=1465ms spread=92ms; bg=(2061,2032,1899,2048,1997) median=2032ms)
+==== 2D perf summary: PASS=3 FAIL=0 ====

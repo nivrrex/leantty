@@ -1,0 +1,10 @@
+[perf] fontdb_ms=107.4 since_start=151.0
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3990.4 since_start=4176.0
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=210.9 since_start=4461.2
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=204.4 since_start=4733.9
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=233.4 since_start=5032.5
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=88.4 since_start=5227.2
+[perf] surface_ms=8.1 since_start=5267.0
+[perf] first_frame_ms=5414
+[perf] bg_fonts_ms=9265 count=3

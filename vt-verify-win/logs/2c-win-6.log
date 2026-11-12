@@ -1,0 +1,36 @@
+FAIL c1-wrap-newline (rA=3 rB=7 firstSegLen=118 newlines=False len=266; wrap is materialised by ConPTY)
+GUARD: foreground is not the app window (fg=0 app=263010); input refused
+无法将“mouse_event”的参数“dwData”(其值为“-120”)转换为类型“System.UInt32”:“无法将值“-120”转换为类型“System.UInt32”。错误:
+“值对于 UInt32 太大或太小。””
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2c_win.ps1:107 字符: 9
++         [WB2]::mouse_event(0x0800, 0, 0, 0xFFFFFF88, [UIntPtr]::Zero) ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+无法将“mouse_event”的参数“dwData”(其值为“-120”)转换为类型“System.UInt32”:“无法将值“-120”转换为类型“System.UInt32”。错误:
+“值对于 UInt32 太大或太小。””
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2c_win.ps1:107 字符: 9
++         [WB2]::mouse_event(0x0800, 0, 0, 0xFFFFFF88, [UIntPtr]::Zero) ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+无法将“mouse_event”的参数“dwData”(其值为“-120”)转换为类型“System.UInt32”:“无法将值“-120”转换为类型“System.UInt32”。错误:
+“值对于 UInt32 太大或太小。””
+所在位置 C:\dev\tty\scripts\windows\e2e\run_2c_win.ps1:107 字符: 9
++         [WB2]::mouse_event(0x0800, 0, 0, 0xFFFFFF88, [UIntPtr]::Zero) ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodException
+    + FullyQualifiedErrorId : MethodArgumentConversionInvalidCastArgument
+ 
+GUARD: foreground is not the app window (fg=0 app=263010); input refused
+FAIL c2a-selection-scroll-stable (len=0 same=False multiLine=False first='')
+GUARD: foreground is not the app window (fg=0 app=393704); input refused
+FAIL c2b-autoscroll-drag (lines=1 viewport=30 topRow='L34')
+PASS c3-ime-preedit (diffPixels=125 dumpHasPreedit=False)
+PASS c4a-osc-title (title='T123')
+PASS c4b-title-fixed (title='app.exe')
+PASS c4c-window-position (winRect=60,50 requested=60,50 dx=0 dy=0 frame=8,31)
+FAIL c5-paste-10mb-typing (bytes=-1 target=10485780 marks=-1)
+==== 2C-win summary: PASS=4 FAIL=4 ====

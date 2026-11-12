@@ -1,0 +1,15 @@
+[perf] fontdb_ms=139.7 since_start=184.9
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3787.5 since_start=4001.7
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=222.4 since_start=5123.5
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=227.2 since_start=5602.9
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=187.3 since_start=5853.4
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=67.6 since_start=6042.4
+[perf] surface_ms=4.6 since_start=6443.8
+[perf] first_frame_ms=6633
+[perf] present_us n=20 full=true median=34255 p95=51976
+[perf] present_us n=20 full=true median=32151 p95=63816
+[perf] bg_fonts_ms=10317 count=3
+[perf] present_us n=20 full=true median=31720 p95=39820
+[perf] present_us n=20 full=true median=31478 p95=49184
+[perf] present_us n=20 full=true median=32422 p95=44059

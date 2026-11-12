@@ -6,7 +6,10 @@ $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 function Start-Case([string]$name, [string]$cfgName) {
     # NOTE: $cfg is the same variable as $CFG in PowerShell (case-insensitive)
     $a = Start-App2 $name (Join-Path $CFG $cfgName)
-    if ($a.hwnd -ne [IntPtr]::Zero) { $null = Focus-App2 $a.hwnd }
+    if ($a.hwnd -ne [IntPtr]::Zero) {
+        $null = Focus-App2 $a.hwnd
+        if (-not (Assert-AppFocus $a.hwnd $name)) { Write-Host "CASE-ABORT $name (focus)" }
+    }
     $a
 }
 
@@ -81,11 +84,19 @@ if ($a.hwnd -ne [IntPtr]::Zero) {
 } else { Report2 'n3-paste-newline' $false '(no window)' }
 Start-Sleep -Seconds 1
 
-# ---------- n4: 1 MB paste. Two measurements:
-#   n4a idle  -> drains only while the event loop wakes up (one chunk per
-#                about_to_wait); observed to stall far short of 1 MB
-#   n4b busy  -> with mouse motion the remainder flows and the child sees
-#                exactly 1048576 bytes
+# ---------- n4: 1 MB paste (2D.2 drain fix). The reader reports its running
+# total repeatedly, so take the maximum seen rather than the last match.
+function Get-MaxBytes([string]$dump) {
+    $t = Get-Content $dump -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if (-not $t) { return -1 }
+    $mx = -1
+    foreach ($x in [regex]::Matches($t, 'BYTES=(\d+)')) {
+        $v = [int]$x.Groups[1].Value
+        if ($v -gt $mx) { $mx = $v }
+    }
+    $mx
+}
+
 function Invoke-1MbPaste([bool]$wiggle) {
     $name = if ($wiggle) { 'n4b-paste-1mb-busy' } else { 'n4a-paste-1mb-idle' }
     $a = Start-Case $name 'clip-win.toml'
@@ -100,23 +111,11 @@ function Invoke-1MbPaste([bool]$wiggle) {
     $c = Cell-XY $geom $g0.cols $g0.rows 1 40
     Click-Right $c.x $c.y
     $bytes = -1
-    if ($wiggle) {
-        for ($i = 0; $i -lt 200; $i++) {
-            Move-To ($c.x + ($i % 7)) ($c.y + ($i % 5))
-            Start-Sleep -Milliseconds 120
-            if ($i % 10 -eq 0) {
-                $t = Get-Content $a.dump -Raw -Encoding UTF8
-                if ($t -match 'BYTES=(\d+)') { $bytes = [int]$Matches[1]; break }
-            }
-        }
-    } else {
-        $null = Wait-Dump2 $a.dump 'BYTES=' 45
-        $t = Get-Content $a.dump -Raw -Encoding UTF8
-        if ($t -match 'BYTES=(\d+)') { $bytes = [int]$Matches[1] }
-    }
-    if ($bytes -lt 0) {
-        $t = Get-Content $a.dump -Raw -Encoding UTF8
-        if ($t -match 'BYTES=(\d+)') { $bytes = [int]$Matches[1] }
+    for ($i = 0; $i -lt 90; $i++) {
+        Start-Sleep -Milliseconds 1000
+        if ($wiggle) { Move-To ($c.x + ($i % 7)) ($c.y + ($i % 5)) }
+        $bytes = Get-MaxBytes $a.dump
+        if ($bytes -ge 1048576) { break }
     }
     $alive = -not $a.proc.HasExited
     Stop-App2 $a.proc
@@ -124,12 +123,10 @@ function Invoke-1MbPaste([bool]$wiggle) {
 }
 
 $r1 = Invoke-1MbPaste $false
-# documented defect: idle delivery stalls short of 1 MB (see PHASE2B-WIN.md)
-$n4aDetail = if ($r1.bytes -lt 0) { 'no BYTES report within 45 s (reader still blocked)' } else { "bytes=$($r1.bytes) of 1048576" }
-Report2 'n4a-paste-1mb-idle' ($r1.ready -and ($r1.bytes -lt 1048576)) "($n4aDetail; stalled as documented)"
+Report2 'n4a-paste-1mb-idle' $r1.ok "(bytes=$($r1.bytes) of 1048576, no extra input events)"
 Start-Sleep -Seconds 1
 $r2 = Invoke-1MbPaste $true
-Report2 'n4b-paste-1mb-busy' $r2.ok "(bytes=$($r2.bytes) of 1048576)"
+Report2 'n4b-paste-1mb-busy' $r2.ok "(bytes=$($r2.bytes) of 1048576, with mouse motion)"
 Start-Sleep -Seconds 1
 
 # ---------- n5: bracketed paste through ConPTY.

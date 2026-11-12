@@ -1,0 +1,11 @@
+config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
+[perf] fontdb_ms=83.2 since_start=133.0
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=37.1 since_start=235.6
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=33.0 since_start=333.5
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=35.6 since_start=425.0
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=29.9 since_start=508.1
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=134.3 since_start=722.1
+[perf] surface_ms=5.1 since_start=756.0
+[perf] first_frame_ms=798
+[perf] bg_fonts_ms=929 count=2

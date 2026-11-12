@@ -1,0 +1,23 @@
+--- default ---
+run1 fontdb=58.6 fontGroups=4 fontSum=142.7 window=74 surface=1.3 firstFrame=723 bgFonts=-1
+run2 fontdb=53.5 fontGroups=4 fontSum=124.7 window=61.6 surface=17.1 firstFrame=673 bgFonts=-1
+run3 fontdb=56.9 fontGroups=4 fontSum=163.9 window=84.3 surface=1.4 firstFrame=-1 bgFonts=-1
+run4 fontdb=50.2 fontGroups=4 fontSum=155.5 window=77.3 surface=35.5 firstFrame=-1 bgFonts=-1
+run5 fontdb=47.5 fontGroups=4 fontSum=171.9 window=102.3 surface=11.9 firstFrame=735 bgFonts=-1
+median fontdb_ms=53.5
+median font_sum_ms=155.5
+median window_ms=77.3
+median surface_ms=11.9
+median first_frame_ms=723
+--- clip-win.toml (Consolas? see cfg) ---
+run1 fontdb=61.4 fontGroups=4 fontSum=1266.5 window=80.7 surface=-1 firstFrame=-1 bgFonts=-1
+run2 fontdb=48.6 fontGroups=4 fontSum=1234.3 window=107.8 surface=18.5 firstFrame=-1 bgFonts=-1
+run3 fontdb=45.7 fontGroups=4 fontSum=1274.7 window=109.9 surface=22.2 firstFrame=-1 bgFonts=-1
+run4 fontdb=70.9 fontGroups=4 fontSum=1277.7 window=66.8 surface=1.6 firstFrame=1868 bgFonts=-1
+run5 fontdb=64.2 fontGroups=4 fontSum=1356.4 window=104.2 surface=19.6 firstFrame=1973 bgFonts=-1
+median fontdb_ms=61.4
+median font_sum_ms=1274.7
+median window_ms=104.2
+median surface_ms=19.6
+median first_frame_ms=1973
+PASS e3-startup-phases (default runs=5 config runs=5)

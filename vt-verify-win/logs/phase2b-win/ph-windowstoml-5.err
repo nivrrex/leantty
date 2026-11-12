@@ -1,0 +1,10 @@
+[perf] fontdb_ms=65.6 since_start=115.8
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=37.8 since_start=216.2
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=29.8 since_start=299.9
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=35.0 since_start=398.9
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=52.1 since_start=507.5
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=117.5 since_start=688.2
+[perf] surface_ms=35.8 since_start=761.3
+[perf] first_frame_ms=878
+[perf] bg_fonts_ms=1548 count=3
