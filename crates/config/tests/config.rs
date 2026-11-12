@@ -1,5 +1,4 @@
 //! config crate 测试：examples 无警告加载、严格校验、绑定表、路径优先级。
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use config::{Action, Config, Mouse, Rgb};
