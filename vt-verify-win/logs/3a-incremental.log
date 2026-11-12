@@ -1,0 +1,10 @@
+   Compiling render v0.1.0 (C:\dev\tty\crates\render)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 16.26s
+     Running tests\incremental.rs (target\debug\deps\incremental-e4f2cee837dd4729.exe)
+
+running 2 tests
+test incremental_matches_full_pixel_exact ... ok
+test incremental_random_sequence_2000_steps ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 51.18s
+

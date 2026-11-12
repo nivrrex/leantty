@@ -1,6 +1,12 @@
+[perf] fontdb_ms=115.2 since_start=151.6
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3731.3 since_start=4083.8
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=168.7 since_start=4388.3
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=132.8 since_start=4603.3
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=144.2 since_start=4799.2
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] first_frame_ms=12037
-[perf] bg_fonts_ms=15511 count=3
+[perf] window_ms=77.2 since_start=4996.3
+[perf] surface_ms=17.6 since_start=5039.8
+[perf] first_frame_ms=5194
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
-copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+[perf] bg_fonts_ms=8828 count=3

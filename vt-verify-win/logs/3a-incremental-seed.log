@@ -1,0 +1,20 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.59s
+     Running tests\incremental.rs (target\debug\deps\incremental-e4f2cee837dd4729.exe)
+
+running 1 test
+随机序列种子: 987654321（可用 APP_RANDOM_SEED 覆盖）
+[perf] fontdb_ms=393.5 since_start=0.0
+[perf] font_ms=0 family='DejaVu Sans Mono' style='Regular' used_style='Regular' cached=false ms=393.0 since_start=0.0
+[perf] font_ms=1 family='DejaVu Sans Mono' style='Bold' used_style='Bold' cached=false ms=642.1 since_start=0.0
+[perf] font_ms=2 family='DejaVu Sans Mono' style='Italic' used_style='Italic' cached=false ms=326.3 since_start=0.0
+[perf] font_ms=3 family='DejaVu Sans Mono' style='Bold Italic' used_style='Bold Italic' cached=false ms=236.2 since_start=0.0
+[perf] fontdb_ms=223.4 since_start=0.0
+[perf] font_ms=0 family='DejaVu Sans Mono' style='Regular' used_style='Regular' cached=false ms=440.1 since_start=0.0
+[perf] font_ms=1 family='DejaVu Sans Mono' style='Bold' used_style='Bold' cached=false ms=530.4 since_start=0.0
+[perf] font_ms=2 family='DejaVu Sans Mono' style='Italic' used_style='Italic' cached=false ms=279.7 since_start=0.0
+[perf] font_ms=3 family='DejaVu Sans Mono' style='Bold Italic' used_style='Bold Italic' cached=false ms=337.1 since_start=0.0
+随机序列 2000 步：增量与全量逐像素一致（种子 987654321）
+test incremental_random_sequence_2000_steps ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 53.19s
+

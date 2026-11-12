@@ -6,3 +6,4 @@ target/
 /vt-verify/vendor/ghostty-src/
 /vt-verify/build*.log
 scripts/e2e/out/
+/vt-verify-win/conpty-test/

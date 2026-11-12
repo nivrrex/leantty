@@ -1,0 +1,26 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.70s
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 21 tests
+test ctrl_c_probe_cmd_ping_twice ... ok
+test ctrl_c_probe_cmd_sort ... ok
+test ctrl_c_probe_powershell_ping ... FAILED
+test key_encoder_ctrl_c_maps_to_0x03 ... ok
+test pty_cmd_echo_cn_resize_close ... ok
+test pty_default_shell_is_cmd ... ok
+test pty_on_pty_write_dsr_response ... ok
+test pty_powershell_echo_cn ... ok
+test t4_e11_powershell_testconnection_ctrl_c ... ok
+test t4_e12_cmd_sort_full_data ... ok
+test t4_e1_cmd_prompt_ctrl_c ... ok
+test t4_e2_cmd_ping_ctrl_c ... ok
+test t4_e3_cmd_ping_finite_ctrl_c ... ok
+test t4_e4_cmd_ping_ctrl_c_cr ... ok
+test t4_e5_powershell_ping_ctrl_c ... ok
+test t4_e6_cmd_ping_ctrl_break ... ok
+test t4_e7_cmd_ping_ctrl_c_spaced ... ok
+test t4_e8_ffi_ctrl_c_to_ping ... error: test failed, to rerun pass `-p pty --test pty_windows`
+
+Caused by:
+  process didn't exit successfully: `C:\dev\tty\target\debug\deps\pty_windows-61f09314beb151c6.exe --test-threads=1` (exit code: 0xc000013a, STATUS_CONTROL_C_EXIT)
+note: test exited abnormally; to see the full output pass --no-capture to the harness.

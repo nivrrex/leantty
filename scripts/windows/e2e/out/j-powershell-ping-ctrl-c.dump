@@ -12,8 +12,8 @@ Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
     最短 = 0ms，最长 = 0ms，平均 = 0ms
 Control-C
 PS C:\Users\Admin> echo CCCDONE
-CCCDONE
-PS C:\Users\Admin>
+
+
 
 
 

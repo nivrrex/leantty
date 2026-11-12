@@ -1,25 +1,25 @@
-# cols=80 rows=24 wide=4 spacer=4 alternate=false
--a----        2026/11/11     17:49          11243 run_2a.ps1
--a----        2026/11/12     14:32          12718 run_2b_clip.ps1
--a----        2026/11/12     14:47           9465 run_2b_mouse.ps1
--a----        2026/11/12     15:15           3361 run_2b_perf.ps1
--a----        2026/11/12      9:16          22173 run_all.ps1
--a----        2026/11/12     12:56           2773 run_mouse_diag.ps1
--a----        2026/11/12     14:32          11461 wb2_lib.ps1
+# cols=80 rows=24 wide=30 spacer=30 alternate=false
 
 
-    目录: C:\dev\tty\scripts\windows\e2e\cfg
+    目录: C:\c\Users\Admin\Desktop\要客集团“铸优”攻坚行动
 
 
 Mode                 LastWriteTime         Length Name
 ----                 -------------         ------ ----
--a----        2026/11/12     10:22           2513 clip-win.toml
--a----        2026/11/12     10:22            382 pastesel.toml
--a----        2026/11/12     10:22           2520 ps-win.toml
--a----        2026/11/12     14:15           3065 scroll-win.toml
+d-----         2026/11/5     12:18                prev_media
 
 
-    目录: C:\dev\tty\scripts\windows\e2e\out
+    目录: C:\c\Users\Admin\Desktop\要客集团“铸优”攻坚行动\prev_media
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         2026/11/5     12:18           5212 三低23_emf
+
+-a----         2026/11/5     12:18          26458 三低23_png
+
+-a----         2026/11/5     12:18           5192 扩容23_emf
+
 PS C:\Users\Admin> echo CCCDONE
 CCCDONE
 PS C:\Users\Admin>

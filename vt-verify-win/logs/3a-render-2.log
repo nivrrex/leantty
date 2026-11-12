@@ -1,0 +1,9 @@
+PASS a1-incremental-vs-full (size=15089/15089 diffPixels=0 first=)
+PASS a2-present-stats (damageSamples=2 fullSamples=5)
+  damage: [perf] present_us n=20 full=false median=149 p95=32285
+  damage: [perf] present_us n=20 full=false median=197 p95=30944
+  full  : [perf] present_us n=20 full=true median=31720 p95=39820
+  full  : [perf] present_us n=20 full=true median=31478 p95=49184
+  full  : [perf] present_us n=20 full=true median=32422 p95=44059
+PASS a3-burst-echo-latency (burst2000=True echoMedianMs=453 p95=583 max=583)
+==== 3A-win render summary: PASS=3 FAIL=0 ====

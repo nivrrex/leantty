@@ -1,7 +1,7 @@
 # cols=120 rows=30 wide=0 spacer=0 alternate=false
+Active code page: 65001
 
-
-powershell -NoProfile -File %TEMP%\rs.ps1
+C:\Users\Admin>powershell -NoProfile -File %TEMP%\rs.ps1
 AA
 41-41
 BRKTXT

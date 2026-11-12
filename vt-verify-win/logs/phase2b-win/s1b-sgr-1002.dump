@@ -1,7 +1,7 @@
 # cols=120 rows=30 wide=0 spacer=0 alternate=false
+Active code page: 65001
 
-
-%TEMP%\pp.exe m1002
+C:\Users\Admin>%TEMP%\pp.exe m1002
 MODE=1
 READY
 

@@ -16,6 +16,7 @@ Copy-Item (Join-Path $ROOT 'vt-verify-win\probe_paste\target\release\pp.exe') (J
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc123.ps1') (Join-Path $env:TEMP 'osc123.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc999.ps1') (Join-Path $env:TEMP 'osc999.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc123hold.ps1') (Join-Path $env:TEMP 'osc123hold.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc123loop.ps1') (Join-Path $env:TEMP 'osc123loop.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc999hold.ps1') (Join-Path $env:TEMP 'osc999hold.ps1') -Force
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 $PASS = 0; $FAIL = 0

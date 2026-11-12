@@ -1,0 +1,25 @@
+--- default ---
+run1 fontdb=66.3 fontGroups=4 fontSum=161.5 window=151.7 surface=11.7 firstFrame=819 bgFonts=972
+run2 fontdb=68.8 fontGroups=4 fontSum=153.4 window=102.1 surface=16.1 firstFrame=1245 bgFonts=1370
+run3 fontdb=83.2 fontGroups=4 fontSum=135.6 window=134.3 surface=5.1 firstFrame=798 bgFonts=929
+run4 fontdb=93.4 fontGroups=4 fontSum=191.6 window=115.9 surface=11 firstFrame=799 bgFonts=952
+run5 fontdb=68 fontGroups=4 fontSum=149.4 window=88.2 surface=1.3 firstFrame=874 bgFonts=1057
+median fontdb_ms=68.8
+median font_sum_ms=153.4
+median window_ms=115.9
+median surface_ms=11
+median first_frame_ms=819
+median bg_fonts_ms=972
+--- examples/windows.toml (Consolas + YaHei fallback, shell=pwsh) ---
+run1 fontdb=60.4 fontGroups=4 fontSum=142.2 window=65 surface=1.8 firstFrame=827 bgFonts=1449
+run2 fontdb=55.4 fontGroups=4 fontSum=126.1 window=91.3 surface=20.4 firstFrame=850 bgFonts=1534
+run3 fontdb=88.5 fontGroups=4 fontSum=185.4 window=100.2 surface=39.1 firstFrame=851 bgFonts=1509
+run4 fontdb=110.5 fontGroups=4 fontSum=136.2 window=135.3 surface=16.1 firstFrame=907 bgFonts=1584
+run5 fontdb=65.6 fontGroups=4 fontSum=154.7 window=117.5 surface=35.8 firstFrame=878 bgFonts=1548
+median fontdb_ms=65.6
+median font_sum_ms=142.2
+median window_ms=100.2
+median surface_ms=20.4
+median first_frame_ms=851
+median bg_fonts_ms=1534
+PASS e3-startup-phases (default runs=5 config runs=5)

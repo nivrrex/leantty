@@ -1,0 +1,17 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.08s
+     Running tests\config.rs (target\debug\deps\config-339e4af65e7b090f.exe)
+
+running 10 tests
+test bad_color_falls_back_with_warning ... ok
+test bindings_parsed_with_mods ... ok
+test action_and_mouse_parsing ... ok
+test defaults_are_sane ... ok
+test invalid_binding_skipped_with_warning ... ok
+test out_of_range_and_type_errors_fall_back ... ok
+test path_priority_cli_env_default ... ok
+test rgb_rejects_bad_formats ... ok
+test unknown_fields_warn_with_path ... ok
+test examples_load_without_warnings ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

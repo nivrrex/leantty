@@ -1,7 +1,7 @@
 # cols=120 rows=30 wide=0 spacer=0 alternate=false
 Active code page: 65001
 
-C:\Users\Admin>powershell -NoProfile -File %
+C:\Users\Admin>powershell -NoProfile -File %TEMP%\osc999hold.ps1
 
 
 
