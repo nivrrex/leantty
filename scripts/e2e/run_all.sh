@@ -11,6 +11,23 @@ mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
 
+# release 零告警门禁（阶段 3C 任务 2）：release 构建与 clippy 必须无告警，
+# 否则失败即中止（debug 下被 cfg 门控掉的变量容易在 release 变成 unused）。
+if command -v cargo >/dev/null 2>&1; then
+    _rel_warn=$(cargo build --release -p app 2>&1 | grep -cE "^warning|^error" || true)
+    if [ "${_rel_warn:-0}" -ne 0 ]; then
+        echo "FATAL: cargo build --release 存在 warning/error（${_rel_warn} 条）" >&2
+        cargo build --release -p app 2>&1 | grep -E "^warning|^error" -A4 | head -20 >&2
+        exit 1
+    fi
+    _rel_clippy=$(cargo clippy --release --workspace --all-targets -- -D warnings 2>&1 | grep -cE "^error|^warning" || true)
+    if [ "${_rel_clippy:-0}" -ne 0 ]; then
+        echo "FATAL: cargo clippy --release --all-targets -D warnings 未通过（${_rel_clippy} 条）" >&2
+        exit 1
+    fi
+    echo "PASS release-zero-warning (build --release 与 clippy --release 均无告警)"
+fi
+
 # 脚本级 lint（禁止模式/裸 X11 调用）：失败即中止，避免回归到危险写法。
 sh "$ROOT/scripts/e2e/lint_scripts.sh" || {
     echo "FATAL: e2e 脚本安全 lint 未通过" >&2

@@ -147,3 +147,4 @@
 - ali/win 实际 hash 变化（已验证事实）：本轮开始时 git fetch ali 得到 41dc491，收尾 ls-remote 核对时为 4bd466c（Windows 侧期间有新提交）；两次均未合并，合流以届时 ls-remote 为准。
 - 阶段3C 合并（已验证事实）：ali/win 实际 hash=4bd466c（ls-remote 核对）；merge-base=f32b986（phase3a-done 交付）；win 侧相对 merge-base 的改动仅 Windows 专属路径（vt-verify-win/、scripts/windows/、docs/WIN-NOTES.md、PHASE2D-WIN.md、PHASE3A-WIN.md）与 .gitignore 新增 `/vt-verify-win/conpty-test/`，**无 shared 代码改动**；`git merge --no-ff` 无冲突（合并提交 b7f6ee6）。
 - release 告警清零（已验证事实）：3B 引入的三处 debug 专用变量在 release 下未使用——render 的 `drawn_rows`（[incr] 统计用，两处告警）与 app 的 `t_present`（present 统计用）。用 `#[cfg(debug_assertions)]` 最小门控修复后，`cargo build --release` 0 告警、`cargo clippy --release --workspace --all-targets -- -D warnings` 0。
+- run_all 内建 release 零告警门禁（已验证事实）：run_all.sh 开头执行 `cargo build --release -p app`（计数 warning/error）与 `cargo clippy --release --workspace --all-targets -- -D warnings`，任一非零即中止；输出 PASS release-zero-warning 计入用例。目的：debug 下被 cfg 门控掉的变量不会在 release 悄悄变成告警。
