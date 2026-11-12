@@ -17,6 +17,10 @@
 //!   取首个含该码点字形的字体；全无则用组首字体光栅化（fontdue 对缺字形返 default
 //!   glyph，不 panic）。
 
+pub mod preedit;
+
+pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
+
 use std::collections::HashMap;
 
 use fontdb::{Database, Family, Query, Source, Style as DbStyle, Weight};
@@ -56,6 +60,12 @@ pub trait Renderer {
         pixel_width: u32,
         pixel_height: u32,
     ) -> Result<(), Error>;
+
+    /// 设置 IME 预编辑叠加层（不写入终端网格；None=清除）。
+    ///
+    /// 默认空实现：Windows 侧共用本 trait，新增方法不破坏既有实现
+    /// （DECISIONS 登记 trait 扩展）。
+    fn set_preedit(&mut self, _overlay: Option<PreeditOverlay>) {}
 }
 
 /// 抗锯齿模式（font.antialiasing）。
@@ -270,6 +280,8 @@ pub struct CpuRenderer {
     /// 滚动条拇指几何 (thumb_y, thumb_h)，轨道内 px；None=无滚动条。
     /// 由 app 层每帧 set_scrollbar 更新；渲染层只画轨道+拇指。
     scrollbar: Option<(u32, u32)>,
+    /// IME 预编辑叠加层（不写入网格，绘制在光标处）。
+    preedit: Option<PreeditOverlay>,
 }
 
 impl CpuRenderer {
@@ -324,6 +336,7 @@ impl CpuRenderer {
             fb_height: 0,
             selection: None,
             scrollbar: None,
+            preedit: None,
         })
     }
 
@@ -622,7 +635,12 @@ impl Renderer for CpuRenderer {
 
         self.draw_cursor(frame, cell_w, cell_h, px);
         self.draw_scrollbar(pixel_height);
+        self.draw_preedit(frame, cell_w, cell_h, px);
         Ok(())
+    }
+
+    fn set_preedit(&mut self, overlay: Option<PreeditOverlay>) {
+        self.preedit = overlay;
     }
 }
 
@@ -708,6 +726,94 @@ impl CpuRenderer {
         let thumb_h = thumb_h.min(pixel_height);
         let thumb_y = thumb_y.min(pixel_height.saturating_sub(thumb_h));
         fill_rect(&mut self.framebuffer, width, track_x, thumb_y, 4, thumb_h, fg);
+    }
+
+    /// IME 预编辑叠加绘制（任务 2C.3）：在终端光标处以叠加层绘制文本
+    /// （带下划线，宽字符占 2 格），不写入网格；组合光标以反色标示。
+    /// 超出右边界整体换行、贴底平移、超整行截断（布局规则见 preedit::layout_preedit）。
+    fn draw_preedit(&mut self, frame: &FrameSnapshot, cell_w: u32, cell_h: u32, px: f32) {
+        let Some(overlay) = self.preedit.clone() else { return; };
+        let cols = u32::from(frame.cols).max(1);
+        let rows = u32::from(frame.rows).max(1);
+        let Some(layout) = preedit::layout_preedit(
+            &overlay.text,
+            frame.cursor.x,
+            frame.cursor.y,
+            cols as u16,
+            rows as u16,
+        ) else {
+            return;
+        };
+        // 组合光标所在单元下标（cursor_range 起点所在的字符序号）。
+        let cursor_cell_idx = overlay.cursor_range.map(|(begin, _)| {
+            overlay
+                .text
+                .char_indices()
+                .position(|(i, _)| i >= begin)
+                .unwrap_or(0)
+        });
+        let bg = rgb_to_u32(self.palette.primary_bg);
+        let fg = rgb_to_u32(self.palette.primary_fg);
+        let mut x_cells = u32::from(layout.col);
+        let y = u32::from(layout.row) * cell_h;
+        let gamma = self.options.text_gamma;
+        for (idx, pc) in layout.cells.iter().enumerate() {
+            let px0 = x_cells * cell_w;
+            let span = u32::from(pc.width).max(1);
+            let area_w = cell_w * span;
+            if px0 + area_w > self.fb_width {
+                break;
+            }
+            let is_cursor = cursor_cell_idx == Some(idx);
+            // 叠加层底色覆盖（遮住原格内容），组合光标格反色。
+            let (cell_bg, cell_fg) = if is_cursor { (fg, bg) } else { (bg, fg) };
+            fill_rect(&mut self.framebuffer, self.fb_width, px0, y, area_w, cell_h, cell_bg);
+            // 字形：宽字符按 2 格内缩放绘制（与终端宽字符规则一致）。
+            let group = GROUP_NORMAL as u8;
+            let font_idx = self.font_index_for(group, pc.ch);
+            let (m, bitmap) = self.rasterize_glyph(group, font_idx, pc.ch, px);
+            let bw = m.width.max(1) as f32;
+            let bh = m.height.max(1) as f32;
+            let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+            if (s - 1.0).abs() < f32::EPSILON {
+                blit(
+                    &mut self.framebuffer,
+                    self.fb_width,
+                    (px0, y, area_w, cell_h),
+                    &m,
+                    &bitmap,
+                    (cell_fg, cell_bg),
+                    (self.options.antialiasing, gamma),
+                );
+            } else {
+                let sw = (bw * s).ceil() as usize;
+                let sh = (bh * s).ceil() as usize;
+                let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
+                let ox = (area_w as i32 - sw as i32) / 2;
+                let sm = fontdue::Metrics {
+                    xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
+                    ymin: (m.ymin as f32 * s).ceil() as i32,
+                    width: sw,
+                    height: sh,
+                    advance_width: m.advance_width * s,
+                    advance_height: m.advance_height * s,
+                    bounds: m.bounds,
+                };
+                blit(
+                    &mut self.framebuffer,
+                    self.fb_width,
+                    (px0, y, area_w, cell_h),
+                    &sm,
+                    &scaled,
+                    (cell_fg, cell_bg),
+                    (self.options.antialiasing, gamma),
+                );
+            }
+            // 下划线：格底部 2px（组合态统一单线）。
+            let uy = y + cell_h.saturating_sub(2);
+            fill_rect(&mut self.framebuffer, self.fb_width, px0, uy, area_w, 2, cell_fg);
+            x_cells += span;
+        }
     }
 
     /// 单像素写（裁剪到帧缓冲）。

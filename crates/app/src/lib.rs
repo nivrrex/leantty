@@ -222,7 +222,10 @@ impl App {
             follow_bottom: true,
             scrollbar_drag: false,
             ime_preedit: String::new(),
+            ime_preedit_cursor: None,
             auto_scroll: 0,
+            #[cfg(debug_assertions)]
+            test_preedit: None,
             vt: None,
             pty: None,
             renderer: None,
@@ -333,8 +336,13 @@ struct AppHandler {
     scrollbar_drag: bool,
     /// IME 组合中间态（Preedit 串；Commit/Disabled 时清空）。
     ime_preedit: String,
+    /// IME 组合内光标字节范围（Preedit 时随事件更新；清空时置 None）。
+    ime_preedit_cursor: Option<(usize, usize)>,
     /// 拖选自动滚动方向（-1 上沿/0 停/+1 下沿；任务 2C.3 每帧推进）。
     auto_scroll: i8,
+    /// 测试注入的预编辑串（仅 debug 构建；粘性，不被 winit Ime 事件清除）。
+    #[cfg(debug_assertions)]
+    test_preedit: Option<String>,
 }
 
 impl ApplicationHandler for AppHandler {
@@ -491,6 +499,14 @@ impl ApplicationHandler for AppHandler {
         // 运行时绑定查表/选区参数访问（resumed take 后回填；AppHandler.config
         // 字段语义从"待消费配置"扩展为"运行时配置"，阶段 2B 任务 2.5 起用）。
         self.config = Some(config);
+        // 测试专用开关（仅 debug 构建；release 中不存在）：APP_TEST_PREEDIT
+        // 注入一个预编辑串，供 e2e 断言叠加层渲染而不经过真实输入法。
+        #[cfg(debug_assertions)]
+        if let Ok(t) = std::env::var("APP_TEST_PREEDIT")
+            && !t.is_empty()
+        {
+            self.test_preedit = Some(t);
+        }
         self.clipboard = match ArboardClipboard::new() {
             Ok(c) => Some(c),
             Err(e) => {
@@ -716,6 +732,23 @@ impl ApplicationHandler for AppHandler {
                             .map(|g| (g.thumb_y, g.thumb_h))
                     };
                     renderer.set_scrollbar(geom);
+                    // IME 预编辑叠加层（不写入网格；空串=清除）。
+                    // debug 测试注入（APP_TEST_PREEDIT）优先于真实 Ime 事件。
+                    #[cfg(debug_assertions)]
+                    let test_text = self.test_preedit.clone();
+                    #[cfg(not(debug_assertions))]
+                    let test_text: Option<String> = None;
+                    let overlay = if let Some(t) = test_text {
+                        Some(render::PreeditOverlay::new(t, None))
+                    } else if self.ime_preedit.is_empty() {
+                        None
+                    } else {
+                        Some(render::PreeditOverlay::new(
+                            self.ime_preedit.clone(),
+                            self.ime_preedit_cursor,
+                        ))
+                    };
+                    renderer.set_preedit(overlay);
                     #[cfg(debug_assertions)]
                     dump_snapshot_if_requested(&snap, Some(&*renderer));
                     if let Err(e) = renderer.render(&snap, pw, ph) {
@@ -938,27 +971,21 @@ impl AppHandler {
     /// 组合下划线本阶段未实现，DECISIONS 登记限制）；Disabled 清空并更新光标区。
     fn on_ime_event(&mut self, event: winit::event::Ime) {
         use winit::event::Ime;
-        match event {
-            Ime::Enabled => self.update_ime_cursor_area(),
-            Ime::Preedit(s, _cursor) => {
-                self.ime_preedit = s;
-                self.update_ime_cursor_area();
-            }
-            Ime::Commit(s) => {
-                self.ime_preedit.clear();
-                let norm = normalize_ime_commit(&s);
-                if !norm.is_empty()
-                    && let Some(pty) = self.pty.as_mut()
-                {
-                    write_pty(pty, norm.as_bytes());
-                }
-                self.update_ime_cursor_area();
-            }
-            Ime::Disabled => {
-                self.ime_preedit.clear();
-                self.update_ime_cursor_area();
+        let (changed, text, cursor) = ime_preedit_update(&event);
+        if changed {
+            self.ime_preedit = text;
+            self.ime_preedit_cursor = cursor;
+        }
+        if let Ime::Commit(s) = &event {
+            // Commit 文本归一化（\n→\r）后写 PTY；Preedit 不写 PTY。
+            let norm = normalize_ime_commit(s);
+            if !norm.is_empty()
+                && let Some(pty) = self.pty.as_mut()
+            {
+                write_pty(pty, norm.as_bytes());
             }
         }
+        self.update_ime_cursor_area();
     }
 
     /// 更新 IME 光标区（快照光标所在格像素矩形；窗口未建时跳过）。
@@ -967,8 +994,16 @@ impl AppHandler {
             return;
         };
         let Ok(snap) = vt.snapshot() else { return; };
-        let cx = u32::from(snap.cursor.x);
-        let cy = u32::from(snap.cursor.y);
+        // Preedit 期间 IME 候选窗跟随组合末尾（任务 2C.3），否则跟随终端光标。
+        let (cy_cell, cx_cell) = ime_cursor_cell(
+            &self.ime_preedit,
+            snap.cursor.x,
+            snap.cursor.y,
+            snap.cols,
+            snap.rows,
+        );
+        let cx = u32::from(cx_cell);
+        let cy = u32::from(cy_cell);
         let x = f64::from(self.pad_x) * self.scale_factor + f64::from(cx) * f64::from(self.cell_w);
         let y = f64::from(self.pad_y) * self.scale_factor + f64::from(cy) * f64::from(self.cell_h);
         window.set_ime_cursor_area(
@@ -1291,6 +1326,38 @@ impl AppHandler {
         } else if let Some(pty) = self.pty.as_mut() {
             write_pty(pty, norm.as_bytes());
         }
+    }
+}
+
+/// IME 事件对预编辑状态的更新（纯函数，便于单测）：
+/// 返回 (是否改动, 新文本, 新光标范围)。Enabled 不改动（仅重新定位候选窗）。
+pub fn ime_preedit_update(
+    event: &winit::event::Ime,
+) -> (bool, String, Option<(usize, usize)>) {
+    use winit::event::Ime;
+    match event {
+        Ime::Enabled => (false, String::new(), None),
+        Ime::Preedit(s, cursor) => (true, s.clone(), *cursor),
+        Ime::Commit(_) => (true, String::new(), None),
+        Ime::Disabled => (true, String::new(), None),
+    }
+}
+
+/// IME 候选窗定位格：Preedit 非空时返回组合末尾格（layout_end_position），
+/// 否则返回终端光标格（任务 2C.3；纯函数便于单测）。
+pub fn ime_cursor_cell(
+    preedit: &str,
+    cursor_x: u16,
+    cursor_y: u16,
+    cols: u16,
+    rows: u16,
+) -> (u16, u16) {
+    if preedit.is_empty() {
+        return (cursor_y, cursor_x);
+    }
+    match render::layout_preedit(preedit, cursor_x, cursor_y, cols, rows) {
+        Some(l) => render::layout_end_position(&l, cols),
+        None => (cursor_y, cursor_x),
     }
 }
 
@@ -1677,5 +1744,72 @@ mod binding_tests {
             find_key_binding(&kb, "v", &ctrl_shift),
             Some(ConfigAction::Paste)
         );
+    }
+}
+
+/// IME 候选窗定位单测（任务 2C.3）。
+#[cfg(test)]
+mod ime_cursor_tests {
+    use super::*;
+
+    #[test]
+    fn no_preedit_follows_terminal_cursor() {
+        assert_eq!(ime_cursor_cell("", 5, 3, 80, 24), (3, 5), "无 Preedit 跟随光标（row,col）");
+    }
+
+    #[test]
+    fn preedit_end_position() {
+        // ASCII：起点 (5,3) + 3 宽 → (8,3)
+        assert_eq!(ime_cursor_cell("abc", 5, 3, 80, 24), (3, 8));
+        // 宽字符：2 个汉字占 4 格
+        assert_eq!(ime_cursor_cell("中文", 5, 3, 80, 24), (3, 9));
+    }
+
+    #[test]
+    fn preedit_wraps_at_right_edge() {
+        // 光标在倒数第 2 列，3 个字符超宽 → 换到下一行行首，末尾 (3,1)
+        assert_eq!(ime_cursor_cell("abc", 78, 0, 80, 24), (1, 3));
+    }
+
+    #[test]
+    fn preedit_cleared_keeps_cursor() {
+        assert_eq!(ime_cursor_cell("", 0, 23, 80, 24), (23, 0), "清空后回到光标格");
+    }
+}
+
+/// IME 事件状态更新单测（任务 2C.3：Preedit/Commit/Disabled 清空语义）。
+#[cfg(test)]
+mod ime_event_tests {
+    use super::*;
+    use winit::event::Ime;
+
+    #[test]
+    fn preedit_sets_text_and_cursor() {
+        let (changed, text, cursor) = ime_preedit_update(&Ime::Preedit("中".into(), Some((0, 3))));
+        assert!(changed);
+        assert_eq!(text, "中");
+        assert_eq!(cursor, Some((0, 3)));
+    }
+
+    #[test]
+    fn commit_clears_preedit() {
+        let (changed, text, cursor) = ime_preedit_update(&Ime::Commit("确定".into()));
+        assert!(changed, "Commit 后应清空组合态");
+        assert!(text.is_empty());
+        assert_eq!(cursor, None);
+    }
+
+    #[test]
+    fn disabled_clears_preedit() {
+        let (changed, text, cursor) = ime_preedit_update(&Ime::Disabled);
+        assert!(changed, "Disabled 应清空组合态");
+        assert!(text.is_empty());
+        assert_eq!(cursor, None);
+    }
+
+    #[test]
+    fn enabled_keeps_state() {
+        let (changed, _, _) = ime_preedit_update(&Ime::Enabled);
+        assert!(!changed, "Enabled 不改动组合态（仅重定位候选窗）");
     }
 }

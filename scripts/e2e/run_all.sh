@@ -787,5 +787,70 @@ if start_app "$D" "$L"; then
     assert_no_wake "case21-autoscroll-no-wake" "$L"
 fi
 
+
+# 用例 22：IME 预编辑叠加渲染（任务 2C.3）——APP_TEST_PREEDIT（仅 debug）
+# 注入组合串后：叠加区域像素与无 Preedit 时不同、下划线像素存在、
+# dump（终端网格）不含该文本（证明未写入终端状态）。
+D="$OUT/case22-preedit.dump"
+L="$OUT/case22-preedit.log"
+A="$OUT/case22-no-preedit.png"
+B="$OUT/case22-preedit.png"
+if start_app "$D" "$L"; then
+    sleep 1
+    import -window root "$A" 2>/dev/null
+    stop_app
+    # 带 Preedit 注入再启动（debug 专有开关）
+    export APP_TEST_PREEDIT="中文字"
+    if start_app "$D" "$L"; then
+        sleep 1.2
+        import -window root "$B" 2>/dev/null
+        # 1) 叠加区域像素与无 Preedit 不同
+        DIFF=$(compare -metric AE "$A" "$B" null: 2>&1 | head -1 | tr -dc '0-9')
+        : "${DIFF:=0}"
+        if [ "$DIFF" -gt 0 ]; then
+            echo "PASS case22-preedit-pixels (差异像素 $DIFF)"
+            PASS=$((PASS+1))
+        else
+            echo "FAIL case22-preedit-pixels (叠加前后无像素差异)"
+            FAIL=$((FAIL+1))
+        fi
+        # 2) 下划线像素存在：裁剪预编辑区域底部 2px，白色像素最大值应为 1
+        GW=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+        GH=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+        CW=$((GW / 80)); CH=$((GH / 24))
+        # 窗口客户区原点（屏幕坐标）
+        WX=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^X=' | cut -d= -f2)
+        WY=$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^Y=' | cut -d= -f2)
+        # 预编辑起点=提示符后一列（dump 首行长度+1），下划线在行 0 底部 2px。
+        COL=$(awk 'NR==2{print length($0)+1; exit}' "$D" 2>/dev/null)
+        : "${COL:=8}"
+        MAXV=$(convert "$B" -crop $((CW*6))x2+$((WX+COL*CW))+$((WY+CH-2)) -colorspace Gray -format "%[fx:maxima]" info: 2>/dev/null)
+        case "$MAXV" in
+            1*)
+                echo "PASS case22-preedit-underline (下划线像素存在 maxima=$MAXV)"
+                PASS=$((PASS+1)) ;;
+            *)
+                echo "FAIL case22-preedit-underline (下划线区域无前景像素 maxima=$MAXV)"
+                cp "$B" "$OUT/case22-underline-fail.png" 2>/dev/null
+                FAIL=$((FAIL+1)) ;;
+        esac
+        # 3) dump 不含预编辑文本（未写入网格）
+        if grep -q "中文字" "$D" 2>/dev/null; then
+            echo "FAIL case22-preedit-not-in-grid (dump 含预编辑文本)"
+            FAIL=$((FAIL+1))
+        else
+            echo "PASS case22-preedit-not-in-grid (dump 不含预编辑文本)"
+            PASS=$((PASS+1))
+        fi
+        unset APP_TEST_PREEDIT
+        xdotool key --window "$WID" ctrl+d
+        sleep 0.3
+        xdotool key --window "$WID" ctrl+d
+        assert_app_exits "case22-preedit-exits"
+        assert_no_wake "case22-preedit-no-wake" "$L"
+    fi
+    unset APP_TEST_PREEDIT
+fi
+
 echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

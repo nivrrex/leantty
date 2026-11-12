@@ -77,3 +77,9 @@
 - scrollback 截断处理（工程判断）：max_abs > sb_rows+viewport_rows 时选区末行 clamp 到可见历史边界并打日志（history=10000 时 e2e 不可达，逻辑由 clamp 分支覆盖；截断后绝对行基准随该窗口重置，未做内容锚点重定位，登记为已知限制）。
 - 拖选自动滚动（已验证事实）：指针进入窗口上/下沿 12px 时 auto_scroll=∓1，about_to_wait 每帧 auto_scroll_step 推进 1 行并扩展 focus 到新视口边界行；winit 事件循环无事件会阻塞 epoll，必须 window.request_redraw() 自驱动，否则只推进 1 行（e2e case21 实测 25 行→加 request_redraw 后 40 行）。
 - e2e 修饰键清理（已验证事实）：前序用例 ctrl+d 的 keyup 在 Xvfb 下偶发丢失，后续 type 字母被解释为控制字符（^E/^C/^H）；start_app 末尾 xdotool keyup ctrl shift alt super 消除该污染。
+- Renderer trait 扩展（已验证事实，impl 影响 Windows）：新增 `set_preedit(&mut self, Option<PreeditOverlay>)`，带默认空实现——Windows 侧共用本 trait，不实现该方法也能编译；CpuRenderer 覆写为保存叠加层并在帧末绘制。叠加层类型 PreeditOverlay{text, cursor_range} 位于 render crate，不含任何后端类型。
+- Preedit 布局规则（工程判断，任务给定二选一）：超出右边界整体换到下一行行首（不拆分宽字符）；换行后越界或贴底时平移起点使其可见；总宽超过一整行时截断显示（PreeditLayout.truncated=true），不做多行折行。
+- 宽字符判定不引入新依赖（已验证事实）：render::preedit::is_wide_char 使用内置 CJK/全角/emoji 区间表（覆盖 0x1100..0x115F、0x2E80..0x303E、0x3041..0x33FF、0x3400..0x9FFF、0xAC00..0xD7A3、0xF900..0xFAFF、0xFE10..0xFE6F、0xFF00..0xFF66、0x1F300..0x1F64F、0x20000..0x3FFFD 等），避免引入 unicode-width 这类新依赖类别。
+- IME 事件→预编辑状态纯函数化（已验证事实）：ime_preedit_update(&Ime) 返回 (是否改动, 新文本, 新光标范围)；Enabled 不改动仅重定位候选窗，Preedit 写入，Commit/Disabled 清空（单测覆盖四态）。
+- 候选窗位置（已验证事实）：Preedit 非空时 set_ime_cursor_area 指向组合末尾格（layout_end_position），否则指向终端光标格；ime_cursor_cell 纯函数单测覆盖空串/ASCII/宽字符/越界换行。
+- debug 测试注入（工程判断）：APP_TEST_PREEDIT 注入写在 #[cfg(debug_assertions)] 的粘性字段 test_preedit，而非复用 ime_preedit——winit X11 在无输入法时会发出 Ime::Preedit("")/Disabled 把注入值清掉（实测复现），粘性字段可稳定供 e2e 断言；release 构建中字段、注入与字符串均不存在。
