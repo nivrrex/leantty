@@ -78,6 +78,32 @@ pub fn start_time_set() {
     let _ = START.set(Instant::now());
 }
 
+/// 进程启动时刻（用于计算"进程启动 → main 首行"的偏移）。
+///
+/// Linux 下取 `/proc/self/stat` 的 starttime（系统启动后的时钟滴答数，按
+/// sysconf(_SC_CLK_TCK) 换算）与系统 uptime 推算；取不到时返回 None，
+/// 此时 [perf] main_ms 会打印为 0 并标注 unknown。
+pub fn process_start_time() -> Option<Instant> {
+    // 读取 /proc/uptime（秒，浮点）与 /proc/self/stat 第 22 字段（starttime, ticks）
+    let uptime: f64 = std::fs::read_to_string("/proc/uptime")
+        .ok()?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()?;
+    let stat = std::fs::read_to_string("/proc/self/stat").ok()?;
+    // comm 可能含空格/括号：从最后一个 ')' 之后开始数
+    let tail = stat.rsplit_once(')')?.1;
+    let ticks: f64 = tail.split_whitespace().nth(19)?.parse().ok()?;
+    // CLK_TCK 在 Linux 上固定为 100（user_hz），与 sysconf(_SC_CLK_TCK) 一致。
+    let hz = 100.0f64;
+    let age_s = uptime - ticks / hz;
+    if !age_s.is_finite() || age_s < 0.0 {
+        return None;
+    }
+    Some(Instant::now() - std::time::Duration::from_secs_f64(age_s))
+}
+
 /// 启动时刻（供首帧耗时日志）。
 pub fn start_time() -> Option<Instant> {
     START.get().copied()
@@ -337,6 +363,7 @@ impl App {
             bg_rx: None,
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
+            first_pty_byte_logged: false,
         };
         event_loop
             .run_app(&mut handler)
@@ -404,6 +431,8 @@ struct AppHandler {
     scale_factor: f64,
     /// 首帧 present 耗时日志标志（perf 钩子，仅打印一次）。
     first_frame_logged: bool,
+    /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
+    first_pty_byte_logged: bool,
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
@@ -599,10 +628,18 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
+        let t_spawn = Instant::now();
         let mut pty = NativePty::new();
         if let Err(e) = pty.spawn(&config.shell, config.cols, config.rows) {
             eprintln!("pty spawn: {}", e);
             return;
+        }
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] pty_spawn_ms={:.1} since_start={:.1}",
+                t_spawn.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
         }
         let mut reader = match pty.take_reader() {
             Ok(r) => r,
@@ -903,6 +940,16 @@ impl ApplicationHandler for AppHandler {
         {
             let mut n_drained = 0usize;
             while let Ok(bytes) = rx.try_recv() {
+                if !self.first_pty_byte_logged {
+                    self.first_pty_byte_logged = true;
+                    if let Some(t0) = crate::start_time() {
+                        eprintln!(
+                            "[perf] first_pty_byte_ms={} since_start={}",
+                            t0.elapsed().as_millis(),
+                            t0.elapsed().as_millis()
+                        );
+                    }
+                }
                 vt.feed(&bytes);
                 n_drained += 1;
             }

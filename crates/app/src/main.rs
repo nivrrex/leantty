@@ -10,6 +10,9 @@
 use std::path::PathBuf;
 
 fn main() -> Result<(), app::Error> {
+    // 阶段 3C 任务 7：进程入口分段。先记录进程启动时刻，再设"锚点"，
+    // 据此算出"进程启动 → main 首行"的偏移（覆盖 loader/动态链接耗时）。
+    let proc_start = app::process_start_time();
     app::start_time_set();
     // 渲染侧启动锚点（阶段 3A 任务 2：字体加载分段耗时按同一锚点打印）。
     render::mark_start();
@@ -25,7 +28,22 @@ fn main() -> Result<(), app::Error> {
             _ => {}
         }
     }
+    if let (Some(p), Some(t0)) = (proc_start, app::start_time()) {
+        eprintln!(
+            "[perf] main_ms={:.1} since_start={:.1}",
+            t0.duration_since(p).as_secs_f64() * 1000.0,
+            t0.elapsed().as_secs_f64() * 1000.0
+        );
+    } else {
+        eprintln!("[perf] main_ms=unknown（无法读取进程启动时刻）");
+    }
+    let t_cfg = std::time::Instant::now();
     let config = load_config(cli_config, cli_font, cli_font_size);
+    eprintln!(
+        "[perf] config_ms={:.1} since_start={:.1}",
+        t_cfg.elapsed().as_secs_f64() * 1000.0,
+        app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
+    );
     let app = app::App::new(config);
     app.run()
 }
