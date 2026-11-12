@@ -44,7 +44,7 @@ impl Clipboard for ArboardClipboard {
                 .inner
                 .get_text()
                 .map_err(|e| Error::Clipboard(format!("get clipboard: {e}"))),
-            ClipboardKind::Primary => primary_get(&self.inner),
+            ClipboardKind::Primary => primary_get(&mut self.inner),
         }
     }
 
@@ -54,7 +54,7 @@ impl Clipboard for ArboardClipboard {
                 .inner
                 .set_text(text)
                 .map_err(|e| Error::Clipboard(format!("set clipboard: {e}"))),
-            ClipboardKind::Primary => primary_set(&self.inner, text),
+            ClipboardKind::Primary => primary_set(&mut self.inner, text),
         }
     }
 }
@@ -62,7 +62,7 @@ impl Clipboard for ArboardClipboard {
 /// arboard X11 PRIMARY 扩展（仅 unix：arboard 的 Linux 扩展 trait，
 /// Windows 后端无 PRIMARY 概念）。
 #[cfg(unix)]
-fn primary_get(clip: &arboard::Clipboard) -> Result<String, Error> {
+fn primary_get(clip: &mut arboard::Clipboard) -> Result<String, Error> {
     clip.get()
         .clipboard(arboard::LinuxClipboardKind::Primary)
         .text()
@@ -73,7 +73,7 @@ fn primary_get(clip: &arboard::Clipboard) -> Result<String, Error> {
 /// 实际行为（Copy 仅 save_to_clipboard 时落 CLIPBOARD、PasteSelection 为
 /// no-op+日志、不回落）由调用方实测记录，见 PHASE2B-WIN.md 与 WIN-NOTES。
 #[cfg(not(unix))]
-fn primary_get(_clip: &arboard::Clipboard) -> Result<String, Error> {
+fn primary_get(_clip: &mut arboard::Clipboard) -> Result<String, Error> {
     Err(Error::Clipboard(
         "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
     ))
@@ -81,7 +81,7 @@ fn primary_get(_clip: &arboard::Clipboard) -> Result<String, Error> {
 
 /// arboard X11 PRIMARY 扩展（仅 unix）。
 #[cfg(unix)]
-fn primary_set(clip: &arboard::Clipboard, text: &str) -> Result<(), Error> {
+fn primary_set(clip: &mut arboard::Clipboard, text: &str) -> Result<(), Error> {
     clip.set()
         .clipboard(arboard::LinuxClipboardKind::Primary)
         .text(text)
@@ -90,7 +90,7 @@ fn primary_set(clip: &arboard::Clipboard, text: &str) -> Result<(), Error> {
 
 /// Windows 无 PRIMARY：写返 Err（行为记录同上）。
 #[cfg(not(unix))]
-fn primary_set(_clip: &arboard::Clipboard, _text: &str) -> Result<(), Error> {
+fn primary_set(_clip: &mut arboard::Clipboard, _text: &str) -> Result<(), Error> {
     Err(Error::Clipboard(
         "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
     ))
