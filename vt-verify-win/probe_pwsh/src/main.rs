@@ -16,14 +16,17 @@ fn main() {
     let program = args.remove(0);
     let program_disp = program.clone();
     let reply = std::env::var("PROBE_REPLY").is_ok();
+    let cols: u16 = std::env::var("PROBE_COLS").ok().and_then(|v| v.parse().ok()).unwrap_or(120);
+    let rows: u16 = std::env::var("PROBE_ROWS").ok().and_then(|v| v.parse().ok()).unwrap_or(30);
+    let do_resize = std::env::var("PROBE_RESIZE").is_ok();
     let pair = native_pty_system()
         .openpty(PtySize {
-            rows: 30,
-            cols: 120,
+            rows,
+            cols,
             pixel_width: 0,
             pixel_height: 0,
         })
-        .expect("openpty 120x30");
+        .expect("openpty");
     let mut cmd = CommandBuilder::new(program);
     for a in &args {
         cmd.arg(a);
@@ -52,7 +55,18 @@ fn main() {
     let mut esc6n_seen = false;
     let mut replied = false;
     let t0 = Instant::now();
+    let mut resized = false;
     while t0.elapsed() < Duration::from_secs(10) {
+        if do_resize && !resized && t0.elapsed() > Duration::from_secs(4) {
+            let r = pair.master.resize(PtySize {
+                rows: rows + 10,
+                cols: cols + 40,
+                pixel_width: 0,
+                pixel_height: 0,
+            });
+            eprintln!("resize -> {}x{}: {:?}", cols + 40, rows + 10, r.is_ok());
+            resized = true;
+        }
         match rx.recv_timeout(Duration::from_millis(200)) {
             Ok(chunk) => {
                 all.extend_from_slice(&chunk);

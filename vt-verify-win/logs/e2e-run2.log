@@ -1,0 +1,11 @@
+PASS release-hook-gated (release binary has no APP_DUMP_SNAPSHOT string)
+Start-Process : 无法对参数“ArgumentList”执行参数验证。该参数为 Null、为空或参数集合的某个元素包含 Null 值。请提供一个不包
+含任何 Null 值的集合，然后重试此命令。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:167 字符: 56
++ ...   $p = Start-Process -FilePath $AppBin -ArgumentList $argList -Workin ...
++                                                          ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Start-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationError,Microsoft.PowerShell.Commands.StartProcessCommand
+ 
+FAIL fgprobe (Start-Process returned null)
+FATAL: cannot start app for foreground probe; stop per spec

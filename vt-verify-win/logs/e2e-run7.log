@@ -1,0 +1,3752 @@
+PASS release-hook-gated (release binary has no APP_DUMP_SNAPSHOT string)
+INFO foreground window ready (pid=21068 hwnd=18483014); keyboard injection available
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL a-cmd-echo-hello (dump has hello)
+  dump: # cols=80 rows=24 wide=0 spacer=0 alternate=false
+Active code page: 65001
+
+C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL b-powershell-echo-hello (dump has hello)
+  dump: # cols=80 rows=24 wide=0 spacer=0 alternate=false
+Active code page: 65001
+PS C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL c-cjk-wide (text=False wide=0 spacer=0)
+  dump: # cols=80 rows=24 wide=0 spacer=0 alternate=false
+Active code page: 65001
+
+C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL d-backspace-arrows (dump has acd)
+  dump: # cols=80 rows=24 wide=0 spacer=0 alternate=false
+Active code page: 65001
+
+C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL e-wmclose-exit (exited5s=False no-wake=True)
+  stderr: config: C:\Users\Admin\AppData\Roaming\app\app.toml 鏈鍙?(绯荤粺鎵句笉鍒版寚瀹氱殑璺緞銆?(os error 3)); using defaults
+hinting: fontdue 涓嶆敮鎸?hinting锛屽凡瑙ｆ瀽鏈敓鏁堬紙unsupported锛?
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL f-exit-command (exited5s=False no-wake=True)
+  stderr: config: C:\Users\Admin\AppData\Roaming\app\app.toml 鏈鍙?(绯荤粺鎵句笉鍒版寚瀹氱殑璺緞銆?(os error 3)); using defaults
+hinting: fontdue 涓嶆敮鎸?hinting锛屽凡瑙ｆ瀽鏈敓鏁堬紙unsupported锛?
+FAIL g-resize-mode-consistent (header did not change after SetWindowPos)
+  dump tail: # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL h-default-shell-cmd (dump has DEFOK)
+  dump: # cols=80 rows=24 wide=0 spacer=0 alternate=false
+Active code page: 65001
+
+C:\Users\Admin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:95 字符: 5
++     [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropServic ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL i-cmd-ping-ctrl-c (pre=False ttlBefore=0 ttlMid=0 ttlAfter=0 marker=False)
+  dump tail: # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:95 字符: 5
++     [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropServic ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL j-powershell-ping-ctrl-c (pre=False ttlBefore=0 ttlMid=0 ttlAfter=0 marker=False)
+  dump tail: # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:95 字符: 5
++     [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropServic ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:77 字符: 34
++         $inputs[0].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:82 字符: 34
++         $inputs[1].u.ki.wScan = [ushort][char]$ch
++                                  ~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+使用“1”个参数调用“SizeOf”时发生异常:“类型“System.RuntimeType”不能作为非托管结构进行封送处理；无法计算有意义的大小或偏移
+量。”
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:84 字符: 9
++         [void][Win]::SendInput($n, $inputs, [System.Runtime.InteropSe ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+找不到类型 [ushort]。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_all.ps1:56 字符: 18
++ function Send-Vk([ushort]$vk) {
++                  ~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (ushort:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+FAIL k-powershell-sleep-ctrl-c (pre=True ttlBefore=0 ttlMid=0 ttlAfter=0 marker=False)
+  dump tail: # font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+# font: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+==== e2e summary: PASS=1 FAIL=11 ====

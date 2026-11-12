@@ -1,0 +1,6 @@
+FAIL k1-ctrl-insert-copy (row=-1 clip='')
+FAIL k2-shift-insert-paste (pasted=False executed=False)
+FAIL w1-wheel-autofollow (bottom=300 scrolled=252 afterOut=252 end=252)
+PASS w2-scrollbar-drag (bottom=300 afterDrag=29)
+FAIL s1-sgr-report (ready=True bytes= first='')
+==== 2B mouse/sgr summary: PASS=1 FAIL=4 ====

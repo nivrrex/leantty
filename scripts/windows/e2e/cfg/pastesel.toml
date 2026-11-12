@@ -1,0 +1,15 @@
+# PasteSelection behavior probe config: F12 -> PasteSelection (reads PRIMARY),
+# cmd shell, Consolas primary font. Windows has no PRIMARY -> expected no-op.
+[terminal]
+shell = { program = "cmd.exe", args = [] }
+
+[selection]
+save_to_clipboard = true
+
+[[keyboard.bindings]]
+key = "F12"
+action = "PasteSelection"
+
+[font]
+size = 13.0
+normal = { family = "Consolas", style = "Regular" }
