@@ -2,7 +2,7 @@ param([string]$AppBin = '')
 $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
 $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
-$keys = @('config_ms','window_ms','surface_ms','pty_spawn_ms','renderer_ready_ms','first_pty_byte_ms','pre_first_submit_ms','first_frame_ms','bg_fonts_ms')
+$keys = @('config_ms','window_ms','surface_ms','pty_spawn_ms','renderer_ready_ms','cpu_renderer_ready_ms','first_pty_byte_ms','pre_first_submit_ms','first_frame_ms','bg_fonts_ms')
 function Measure-Phases([string]$name, [string]$cfgPath, [int]$runs) {
   for ($i = 1; $i -le $runs; $i++) {
     $err = Join-Path $OUT ("p3-$name-$i.err")

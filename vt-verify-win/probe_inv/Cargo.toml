@@ -1,0 +1,9 @@
+[package]
+name = "probe_inv"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+vt = { path = "../../crates/vt" }

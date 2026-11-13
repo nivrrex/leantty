@@ -1,0 +1,17 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=2.1 since_start=9.5
+[perf] fontdb_ms=92.2 since_start=164.7
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=764.3 since_start=955.2
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=198.7 since_start=1210.6
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=183.2 since_start=1443.9
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=154.4 since_start=1706.8
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1734.4 since_start=1806.9
+[perf] window_ms=81.9 since_start=1909.4
+[perf] renderer_ready_ms=1933 since_start=1933
+[perf] surface_ms=7.6 since_start=1952.6
+[perf] pty_spawn_ms=34.9 since_start=2010.6
+[perf] pre_first_submit_ms=2039 since_start=2039
+[perf] first_frame_ms=2065
+[perf] first_pty_byte_ms=2108 since_start=2108
+[perf] bg_fonts_ms=2667 count=3

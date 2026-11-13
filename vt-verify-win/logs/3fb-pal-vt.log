@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running tests\palette_config.rs (target\debug\deps\palette_config-69fa208d11d270aa.exe)
+
+running 6 tests
+test osc_overrides_then_resets_back_to_configured_palette ... ok
+test ansi_basic_colors_follow_configured_palette ... ok
+test truecolor_and_256_cube_are_not_affected ... ok
+test ansi_background_colors_follow_configured_palette ... ok
+test ansi_bright_colors_follow_configured_palette ... ok
+test default_inverse_uses_configured_or_marked_defaults ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

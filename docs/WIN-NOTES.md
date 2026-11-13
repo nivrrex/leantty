@@ -66,6 +66,11 @@
 - 事实（3F-a，已验证）：`--config` 的 `[colors.primary]` **生效**（#000000/#ffffff 与对照 #003300/#ffff00 均精确命中），但 `[colors.normal]`/`[colors.bright]` **不生效**：两份配置下 `ESC[31m` 都是 #CC6666。机制：`crates/vt/src/terminal.rs:28` 的 `VtTerminal::new(cols, rows)` 不接受 palette、`crates/vt` 无 palette 概念，VT 层用内置默认调色板把 ANSI 色解析成显式 RGB，renderer 的 `cell.fg.unwrap_or(fg_default)` 只会对“VT 未给色”的格子用配置 palette（`crates/render/src/decide.rs`）。反色格底色同样取自 VT 层（#C5C8C6），不是配置前景色。
 - 请求 17（3F-a，P2 跨平台）：配置调色板未到达 VT 层——建议把 palette 传入 VT（`Terminal::new`/`set_palette`），或在 renderer 侧对“VT 给出显式 RGB 的 ANSI 索引格”做 palette 覆盖。属共用代码，未修。状态=已验证事实（Windows release 实测）。
 - 事实（3F-a，未核实）：#C5C8C6 / #CC6666 在仓库源码中检索不到，判定为编译进 libghostty-vt-sys 的默认调色板取值；具体出处未逐行核实。
+- 事实（3F-b，已验证）：4F 的调色板接线在 Windows **生效**——`ESC[31m` 与彩色反色块均为配置的 normal.red（#d32f2f / (211,47,47)），3F-a 时的 (204,102,102) 是合并前的内置 palette 值；primary 背景/前景仍正常。
+- 事实（3F-b，缺陷候选，待验证）：**默认色反色块取的是 normal[7]（#757575），不是 primary.foreground**——把 primary.foreground 从 #ffffff 改成 #ffff00 后该块仍是 #757575（10 格 1280 px）。三处口径不一致：屏幕实测 #757575、vt 探针报 cell.fg=None/bg=None、render 单测对同样格子渲出 primary fg。请求 18。
+- 事实（3F-b，未核实）：OSC 4/104 在 vt 层单测通过（osc_overrides_then_resets_back_to_configured_palette），但 app 层三次截图都未出现 #AABBCC（31m 仍为配置红），无法区分序列未送达还是未生效；请求 19（OSC 状态观测点）。
+- 事实（3F-b，已验证）：4E 放开门控后，Windows 上首次真实运行 background_load(2)/baseline_alignment(1)/cell_metrics(1)/fallback_chain(3)/glyph_clip(1)/preedit_ghost(2)/wide_glyph(4)/inverse_pixels(4) 全通过；无运行时 SKIP，仅 2 个 `#[ignore]` 基准（bench_frame、font_load_time）。DejaVu Sans Mono / Liberation Mono / Noto Sans CJK SC / Consolas / Courier New 在本机均已安装，测试不是靠回退字体勉强通过。
+- 事实（3F-b，已验证）：启动新点 cpu_renderer_ready_ms 中位 465.9（5 次 446–561），first_frame 781（751–846）；字体加载结束后到 cpu_renderer_ready 约 362 ms、window 后到 renderer_ready 约 120 ms 仍无打点（请求 20）。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

@@ -9,7 +9,11 @@ param(
     [string]$ExpectBg = '',
     [string]$ExpectFg = '',
     [switch]$Inverse,
-    [switch]$RedInverse
+    [switch]$RedInverse,
+    [switch]$InvGfx,
+    [switch]$RawInv,
+    [switch]$Osc4,
+    [switch]$Osc104
 )
 $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
@@ -32,7 +36,24 @@ Write-Host ("3FA {0} pid={1} hwnd={2}" -f $Tag, $p.Id, $hwnd)
 if ($hwnd -ne [IntPtr]::Zero) {
     $null = Focus-App2 $hwnd
     Start-Sleep -Milliseconds 600
-    if ($RedInverse) {
+    if ($Osc4 -or $Osc104) {
+        # OSC 4 override, optional OSC 104 reset, then ANSI red text
+        $seq = [char]27 + ']4;1;rgb:aa/bb/cc' + [char]27 + ''
+        if ($Osc104) { $seq = $seq + [char]27 + ']104' + [char]27 + '' }
+        Send-Text2 ('powershell -NoProfile -Command "Write-Host -NoNewline (''' + $seq + '''); Write-Host ([char]27 + ''[31m'' + ''REDOSC'' + [char]27 + ''[0m'')"')
+        Send-Vk2 0x0D
+        Start-Sleep -Seconds 4
+    } elseif ($RawInv) {
+        # raw ESC through [Console]::Write (no PowerShell host translation)
+        Send-Text2 'powershell -NoProfile -File %TEMP%\inv_block.ps1'
+        Send-Vk2 0x0D
+        Start-Sleep -Seconds 3
+    } elseif ($InvGfx) {
+        # inverse with visible glyphs instead of blanks
+        Send-Text2 ('powershell -NoProfile -Command "Write-Host -NoNewline ([char]27 + ''[7m'' + ''##########'' + [char]27 + ''[0m'')"')
+        Send-Vk2 0x0D
+        Start-Sleep -Seconds 3
+    } elseif ($RedInverse) {
         Send-Text2 ('powershell -NoProfile -Command "Write-Host -NoNewline ([char]27 + ''[7m'' + [char]27 + ''[31m'' + ''          '' + [char]27 + ''[0m'')"')
         Send-Vk2 0x0D
         Start-Sleep -Seconds 3
