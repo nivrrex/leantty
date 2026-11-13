@@ -1277,6 +1277,99 @@ else
     echo "FAIL case29-nonintegral-bg-fill (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 30（4B-fix1 任务 C）：预编辑清除后不留残影 —— 清除后的截图必须与
+#   "从未设置预编辑"的截图在阈值内一致（叠加层覆盖过的行已重绘回网格内容）。
+CFG30="$OUT/case30-preedit-clear.toml"
+S30A="$OUT/case30-with-preedit.png"
+S30B="$OUT/case30-after-clear.png"
+S30C="$OUT/case30-no-preedit.png"
+L30="$OUT/case30-preedit-clear.log"
+cat >"$CFG30" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+TOML
+# 参照：不注入预编辑，内容固定
+APP_CONFIG="$CFG30" SHELL=/bin/sh "$APP_BIN" >"$L30" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo PREEDIT_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    x11 import -window "$WID" "$S30C" 2>/dev/null
+    stop_app
+fi
+# 注入预编辑，1.2s 后自动清除：先抓"有预编辑"，再抓"清除后"
+APP_CONFIG="$CFG30" APP_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" APP_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/sh "$APP_BIN" >>"$L30" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo PREEDIT_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.4
+    x11 import -window "$WID" "$S30A" 2>/dev/null
+    sleep 3.2
+    x11 import -window "$WID" "$S30B" 2>/dev/null
+    stop_app
+fi
+if [ -s "$S30A" ] && [ -s "$S30B" ] && [ -s "$S30C" ]; then
+    # 有预编辑 vs 无预编辑：应有可见差异（证明钩子生效）
+    DIFF_A=$(compare -metric AE "$S30A" "$S30C" null: 2>&1 | head -1)
+    # 清除后 vs 无预编辑：应在阈值内（残影 = 大差异）
+    DIFF_B=$(compare -metric AE -fuzz 3% "$S30B" "$S30C" null: 2>&1 | head -1)
+    echo "  preedit 有/无差异=$DIFF_A，清除后差异=$DIFF_B"
+    if [ -n "$DIFF_A" ] && [ "$DIFF_A" -gt 50 ] && [ -n "$DIFF_B" ] && [ "$DIFF_B" -lt 2000 ]; then
+        echo "PASS case30-preedit-clear-no-ghost (清除后差异 $DIFF_B px)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case30-preedit-clear-no-ghost (有/无=$DIFF_A 清除后=$DIFF_B)"; FAIL=$((FAIL+1))
+    fi
+else
+    echo "FAIL case30-preedit-clear-no-ghost (截图缺失)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 31（4B-fix1 任务 C）：OS 发起的 Expose 必须整帧重绘。
+#   用 python-xlib 自建一个覆盖窗压住本窗口再销毁，触发系统重绘，比对截图。
+CFG31="$OUT/case31-expose.toml"
+S31A="$OUT/case31-before.png"
+S31B="$OUT/case31-after-expose.png"
+L31="$OUT/case31-expose.log"
+cat >"$CFG31" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+TOML
+APP_CONFIG="$CFG31" SHELL=/bin/sh "$APP_BIN" >"$L31" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo EXPOSE_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    x11 import -window "$WID" "$S31A" 2>/dev/null
+    # 覆盖 → 销毁 → 触发 Expose（只操作自己创建的窗口）
+    x11 python3 "$ROOT/scripts/e2e/expose_overlay.py" "$(echo "$WID" | sed 's/^0x//')" >"$OUT/case31-overlay.log" 2>&1 || true
+    sleep 1.2
+    x11 import -window "$WID" "$S31B" 2>/dev/null
+    stop_app
+fi
+if [ -s "$S31A" ] && [ -s "$S31B" ]; then
+    DIFF31=$(compare -metric AE -fuzz 3% "$S31A" "$S31B" null: 2>&1 | head -1)
+    OS_REDRAW=$(grep -c "\[perf\] os_redraw" "$L31" 2>/dev/null || echo 0)
+    echo "  expose 前后差异=$DIFF31，os_redraw 次数=$OS_REDRAW"
+    # 行为级断言：OS 触发重绘的分支必须真的被走到（截图在 Xvfb 有 backing store
+    # 时可能恒等，单看差异无法证伪），且画面保持不变。
+    if [ "$OS_REDRAW" -ge 1 ] && [ -n "$DIFF31" ] && [ "$DIFF31" -lt 2000 ]; then
+        echo "PASS case31-expose-full-redraw (os_redraw=$OS_REDRAW，差异 $DIFF31 px)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case31-expose-full-redraw (os_redraw=$OS_REDRAW 差异=$DIFF31)"; FAIL=$((FAIL+1))
+    fi
+else
+    echo "FAIL case31-expose-full-redraw (截图缺失)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

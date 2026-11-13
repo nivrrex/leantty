@@ -323,6 +323,8 @@ impl App {
             auto_scroll: 0,
             #[cfg(debug_assertions)]
             test_preedit: None,
+            #[cfg(debug_assertions)]
+            test_preedit_clear_at: None,
             last_title: None,
             last_sel_region: None,
             last_render_offset: 0,
@@ -364,6 +366,9 @@ impl App {
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
+            os_redraw_pending: false,
+            #[cfg(debug_assertions)]
+            os_redraw_count: 0,
             fatal: None,
         };
         event_loop
@@ -699,6 +704,12 @@ struct AppHandler {
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
     first_pty_byte_logged: bool,
+    /// OS 发起的重绘（X11 Expose / 遮挡后恢复等）待处理：必须整帧重绘 + 整窗提交，
+    /// 不能按脏行增量（窗口内容可能已被系统丢弃）。应用自驱动的重绘不受影响。
+    os_redraw_pending: bool,
+    /// debug 专有：OS 触发重绘次数（e2e 行为级断言）。
+    #[cfg(debug_assertions)]
+    os_redraw_count: u32,
     /// 致命错误（如强制 GPU 后端不可用）：置位后退出事件循环，run() 据此返回 Err
     /// 使进程以非零码退出（不得 panic、不得中途回退 CPU）。
     fatal: Option<Error>,
@@ -739,6 +750,9 @@ struct AppHandler {
     /// 测试注入的预编辑串（仅 debug 构建；粘性，不被 winit Ime 事件清除）。
     #[cfg(debug_assertions)]
     test_preedit: Option<String>,
+    /// 测试钩子：预编辑自动清除时刻（debug 专有，配合 APP_TEST_PREEDIT_CLEAR_MS）。
+    #[cfg(debug_assertions)]
+    test_preedit_clear_at: Option<std::time::Instant>,
     /// 上次应用的窗口标题（避免每帧重复 set_title）。
     last_title: Option<String>,
     /// 上次渲染时的选区区域（绝对坐标），用于选区叠加层脏判定。
@@ -1045,6 +1059,16 @@ impl ApplicationHandler for AppHandler {
             && !t.is_empty()
         {
             self.test_preedit = Some(t);
+            // 配套测试钩子（debug 专有）：设置 APP_TEST_PREEDIT_CLEAR_MS 后，
+            // 从注入时刻起经过该毫秒数即清除预编辑，用于验证"清除后不留残影"
+            // （阶段 4B-fix1 任务 C 的 e2e 场景）。
+            if let Ok(ms) = std::env::var("APP_TEST_PREEDIT_CLEAR_MS")
+                && let Ok(ms) = ms.parse::<u64>()
+            {
+                self.test_preedit_clear_at =
+                    Some(std::time::Instant::now() + std::time::Duration::from_millis(ms));
+                eprintln!("[perf] test_preedit_clear_scheduled ms={ms}");
+            }
         }
         self.clipboard = match ArboardClipboard::new() {
             Ok(c) => Some(c),
@@ -1066,6 +1090,23 @@ impl ApplicationHandler for AppHandler {
         event: WindowEvent,
     ) {
         match event {
+            // winit 0.30 把 X11 的 Expose（以及遮挡恢复、窗口首次映射）都映射为
+            // RedrawRequested；本 app 的自驱动重绘走 about_to_wait 的节流逻辑，
+            // 因此本分支只可能是"系统要求重绘"。必须整帧重绘 + 整窗提交，
+            // 否则静止画面在遮挡/恢复后会留下残影（阶段 4B-fix1 任务 C）。
+            WindowEvent::RedrawRequested => {
+                // debug 钩子：记录 OS 触发的重绘次数（e2e 断言"整帧重绘路径被走到"，
+                // 因为 Xvfb/openbox 有 backing store 时截图可能恒等，截图不足以证伪）。
+                #[cfg(debug_assertions)]
+                {
+                    self.os_redraw_count += 1;
+                    if self.os_redraw_count <= 3 {
+                        eprintln!("[perf] os_redraw #{}", self.os_redraw_count);
+                    }
+                }
+                self.os_redraw_pending = true;
+                self.urgent_render = true;
+            }
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -1199,7 +1240,26 @@ impl ApplicationHandler for AppHandler {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // 测试钩子（debug 专有）：预编辑到期清除。必须放在渲染节流之前——静止画面
+        // 时 will_render 可能为 false，若把清除逻辑放在渲染路径里就永远不会执行。
+        #[cfg(debug_assertions)]
+        if let Some(t) = self.test_preedit_clear_at {
+            if std::time::Instant::now() >= t {
+                self.test_preedit = None;
+                self.test_preedit_clear_at = None;
+                eprintln!("[perf] test_preedit_cleared");
+                self.urgent_render = true;
+                if let Some(w) = self.window.as_ref() {
+                    w.request_redraw();
+                }
+            } else {
+                // 静止画面时渲染路径不会再设 WaitUntil（due 分支直接返回），
+                // 事件循环会永久 Wait，导致到期清除永远不执行（实测）。这里显式
+                // 安排一次唤醒；渲染路径若设置了更早的时刻会覆盖本值（无害）。
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+            }
+        }
         // 大段粘贴排空（任务 2D.2 修复）：每轮按预算写出有限字节，剩余数据
         // 通过 request_redraw 在下一帧继续驱动。
         // 原缺陷：每轮只写一块且写完不自驱动，事件循环进入 Wait 后不再运行，
@@ -1314,11 +1374,11 @@ impl ApplicationHandler for AppHandler {
         // 6. 子进程退出 → 关闭窗口
         if let Some(pty) = self.pty.as_mut() {
             match pty.try_wait() {
-                Ok(Some(_status)) => _event_loop.exit(),
+                Ok(Some(_status)) => event_loop.exit(),
                 Ok(None) => {}
                 Err(e) => {
                     eprintln!("try_wait: {}", e);
-                    _event_loop.exit();
+                    event_loop.exit();
                 }
             }
         }
@@ -1361,7 +1421,7 @@ impl ApplicationHandler for AppHandler {
                 } else {
                     t + self.frame_interval
                 };
-                _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
             }
             return;
         }
@@ -1386,6 +1446,12 @@ impl ApplicationHandler for AppHandler {
                     if self.offset_from_top != self.last_render_offset {
                         snap.full_redraw = true;
                         self.last_render_offset = self.offset_from_top;
+                    }
+                    // OS 发起的重绘（Expose/遮挡恢复）：整帧重绘（full_redraw 会让
+                    // 所有行进 damage，CPU 侧等价整窗提交；GPU 本就整帧 present）。
+                    if self.os_redraw_pending {
+                        self.os_redraw_pending = false;
+                        snap.full_redraw = true;
                     }
                     // 选区变化：旧区域与新区域的所有行标脏。
                     let vis_region = self.selection.and_then(|s| {

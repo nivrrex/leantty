@@ -366,7 +366,7 @@ pub struct CpuRenderer {
     /// 上次绘制的滚动条几何。
     last_scrollbar: Option<(u32, u32)>,
     /// 上次绘制的预编辑布局键（行, 列, 单元数）。
-    last_preedit: Option<(u16, u16, usize, u64)>,
+    last_preedit: Option<(u16, u16, u16, usize, u64)>,
     /// 滚动条条带（右缘 4px）在"不含滚动条时"的像素备份。
     band_backup: Option<Vec<u32>>,
     /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
@@ -604,7 +604,7 @@ fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
 fn preedit_key(
     overlay: &Option<PreeditOverlay>,
     frame: &FrameSnapshot,
-) -> Option<(u16, u16, usize, u64)> {
+) -> Option<(u16, u16, u16, usize, u64)> {
     let o = overlay.as_ref()?;
     let layout =
         preedit::layout_preedit(&o.text, frame.cursor.x, frame.cursor.y, frame.cols, frame.rows)?;
@@ -613,7 +613,12 @@ fn preedit_key(
         hash ^= u64::from(*b);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
-    Some((layout.row, layout.col, layout.cells.len(), hash))
+    // 叠加层可能跨行：按"起始列 + 总宽度"换算跨越行数，供标脏时整段重绘
+    // （只标起始行会在旧布局多行时留下残影，阶段 4B-fix1 任务 C）。
+    let cols = u32::from(frame.cols).max(1);
+    let width: u32 = layout.cells.iter().map(|c| u32::from(c.width)).sum();
+    let spanned = ((u32::from(layout.col) + width) / cols + 1).min(u32::from(frame.rows)) as u16;
+    Some((layout.row, spanned, layout.col, layout.cells.len(), hash))
 }
 
 impl CpuRenderer {
@@ -703,16 +708,17 @@ impl CpuRenderer {
         let new_preedit = preedit_key(&self.preedit, frame);
         let preedit_changed = self.last_preedit != new_preedit;
         if preedit_changed {
-            if let Some((row, _, _, _)) = self.last_preedit
-                && let Some(d) = dirty.get_mut(row as usize)
-            {
-                *d = true;
-            }
-            if let Some((row, _, _, _)) = new_preedit
-                && let Some(d) = dirty.get_mut(row as usize)
-            {
-                *d = true;
-            }
+            let mut mark = |key: Option<(u16, u16, u16, usize, u64)>| {
+                if let Some((row, spanned, _, _, _)) = key {
+                    for r in row..row.saturating_add(spanned) {
+                        if let Some(d) = dirty.get_mut(r as usize) {
+                            *d = true;
+                        }
+                    }
+                }
+            };
+            mark(self.last_preedit);
+            mark(new_preedit);
         }
         let mut rows_drawn = false;
         for (y, is_dirty) in dirty.iter().enumerate() {
