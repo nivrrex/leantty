@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["common", "src-wgpu", "src-gl"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.96"
+publish = false
