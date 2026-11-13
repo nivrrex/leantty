@@ -32,6 +32,9 @@ pub struct FrameInstances {
     pub glyphs: Vec<GlyphInstance>,
     pub bg_n: u32,
     pub glyph_n: u32,
+    /// quads 末尾 `tail_n` 个在**所有字形之后**绘制（Preedit 下划线：CPU 侧每个
+    /// 字符是"底色 → 字形 → 下划线"，若下划线排在中段会被后画的字形盖住）。
+    pub tail_n: u32,
 }
 
 /// 单元格的绘制决策（CPU/GPU 共用的纯逻辑结果）。
@@ -351,11 +354,7 @@ impl GpuRenderer {
             .first()
             .and_then(|g| g.first())
             .and_then(|f| f.horizontal_line_metrics(px))
-            .map(|lm| {
-                let descent_px = (-lm.descent).ceil().max(0.0);
-                let gap_px = lm.line_gap.ceil().max(0.0);
-                (cell_h as f32 - descent_px - gap_px).clamp(0.0, cell_h as f32) as i32
-            })
+            .map(|lm| crate::baseline_from_metrics(cell_h, &lm))
             .unwrap_or(0)
     }
 
@@ -482,11 +481,12 @@ impl GpuRenderer {
                 else {
                     continue;
                 };
+                let shift = crate::glyph_shift(baseline, gy, gh as i32, cell_h);
                 glyphs.push(GlyphInstance {
-                    // 顶边 = 格顶 + 基线 - ymin - height（与 CPU 的 blit 同公式）。
+                    // 顶边 = 格顶 + 基线 - ymin - height + 平移（与 CPU 的 blit 同公式）。
                     rect: [
                         (px0 as i32 + gx) as f32,
-                        (py0 as i32 + baseline - gy - gh as i32) as f32,
+                        (py0 as i32 + baseline - gy - gh as i32 + shift) as f32,
                         gw as f32,
                         gh as f32,
                     ],
@@ -556,11 +556,18 @@ impl GpuRenderer {
                                 gh,
                                 &bitmap,
                             ) {
+                                let cshift = crate::glyph_shift(
+                                    baseline,
+                                    m.ymin,
+                                    m.height as i32,
+                                    cell_h,
+                                );
                                 glyphs.push(GlyphInstance {
                                     rect: [
                                         (cx as i32 + m.xmin) as f32,
                                         (cy as i32 + baseline - m.ymin
-                                            - m.height as i32) as f32,
+                                            - m.height as i32
+                                            + cshift) as f32,
                                         gw as f32,
                                         gh as f32,
                                     ],
@@ -594,9 +601,9 @@ impl GpuRenderer {
         // 滚动条（t5 补：轨道 + 拇指）
         if let Some((thumb_y, thumb_h)) = self.scrollbar
             && thumb_h > 0
-            && pixel_w >= 4
+            && pixel_w >= crate::SCROLLBAR_WIDTH
         {
-                let track_x = pixel_w - 4;
+                let track_x = pixel_w - crate::SCROLLBAR_WIDTH;
                 let fg = rgb_to_u32(self.palette.primary_fg);
                 let bg = rgb_to_u32(self.palette.primary_bg);
                 let avg = |a: u32, b: u32| (a + b) / 2;
@@ -604,19 +611,21 @@ impl GpuRenderer {
                     | (avg((fg >> 8) & 0xFF, (bg >> 8) & 0xFF) << 8)
                     | avg(fg & 0xFF, bg & 0xFF);
                 quads.push(BgInstance {
-                    rect: [track_x as f32, 0.0, 4.0, pixel_h as f32],
+                    rect: [track_x as f32, 0.0, crate::SCROLLBAR_WIDTH as f32, pixel_h as f32],
                     color: unpack3(track),
                     _pad: 0.0,
                 });
             let th = thumb_h.min(pixel_h);
             let ty = thumb_y.min(pixel_h.saturating_sub(th));
             quads.push(BgInstance {
-                rect: [track_x as f32, ty as f32, 4.0, th as f32],
+                rect: [track_x as f32, ty as f32, crate::SCROLLBAR_WIDTH as f32, th as f32],
                 color: unpack3(fg),
                 _pad: 0.0,
             });
         }
 
+        // Preedit 下划线单独收集：必须在字形之后画（见 FrameInstances::tail_n）。
+        let mut tail_quads: Vec<BgInstance> = Vec::new();
         // IME 预编辑叠加层：复刻 CpuRenderer::draw_preedit 的视觉规则
         // （每格先盖底色遮住原内容、组合光标格反色、字形按 2 格内缩放、格底 2px 下划线）。
         if let Some(overlay) = self.preedit.clone() {
@@ -677,10 +686,11 @@ impl GpuRenderer {
                             gh,
                             &data,
                         ) {
+                            let pshift = crate::glyph_shift(baseline, gy, gh as i32, cell_h);
                             glyphs.push(GlyphInstance {
                                 rect: [
                                     (px0 as i32 + gx) as f32,
-                                    (y as i32 + baseline - gy - gh as i32) as f32,
+                                    (y as i32 + baseline - gy - gh as i32 + pshift) as f32,
                                     gw as f32,
                                     gh as f32,
                                 ],
@@ -692,8 +702,8 @@ impl GpuRenderer {
                             });
                         }
                     }
-                    // 下划线：格底 2px。
-                    quads.push(BgInstance {
+                    // 下划线：格底 2px（延后到所有字形之后绘制）。
+                    tail_quads.push(BgInstance {
                         rect: [
                             px0 as f32,
                             (y + cell_h.saturating_sub(2)) as f32,
@@ -708,11 +718,14 @@ impl GpuRenderer {
             }
         }
 
+        let tail_n = tail_quads.len() as u32;
+        quads.append(&mut tail_quads);
         Ok(FrameInstances {
             quads,
             glyphs,
             bg_n,
             glyph_n,
+            tail_n,
         })
     }
 
@@ -1362,17 +1375,27 @@ impl Pipelines {
                 pass.set_pipeline(&self.bg);
                 pass.set_bind_group(0, &self.bg_bind, &[]);
                 pass.set_vertex_buffer(0, self.bg_inst.slice(..));
-                pass.draw(0..6, inst.bg_n..inst.quads.len() as u32);
+                let mid_end = (inst.quads.len() as u32).saturating_sub(inst.tail_n);
+                pass.draw(0..6, inst.bg_n..mid_end);
                 if inst.glyphs.len() as u32 > inst.glyph_n {
                     pass.set_pipeline(&self.glyph);
                     pass.set_bind_group(0, &self.glyph_bind, &[]);
                     pass.set_vertex_buffer(0, self.glyph_inst.slice(..));
                     pass.draw(0..6, inst.glyph_n..inst.glyphs.len() as u32);
                 }
+                // 最后画 quads 尾段（Preedit 下划线），保证不被字形覆盖。
+                let tail_start = (inst.quads.len() as u32).saturating_sub(inst.tail_n);
+                if inst.tail_n > 0 {
+                    pass.set_pipeline(&self.bg);
+                    pass.set_bind_group(0, &self.bg_bind, &[]);
+                    pass.set_vertex_buffer(0, self.bg_inst.slice(..));
+                    pass.draw(0..6, tail_start..inst.quads.len() as u32);
+                }
             } else if inst.quads.len() as u32 > inst.bg_n {
                 pass.set_pipeline(&self.bg);
                 pass.set_vertex_buffer(0, self.bg_inst.slice(..));
-                pass.draw(0..6, inst.bg_n..inst.quads.len() as u32);
+                let mid_end = (inst.quads.len() as u32).saturating_sub(inst.tail_n);
+                pass.draw(0..6, inst.bg_n..mid_end);
             }
         }
         queue.submit([enc.finish()]);

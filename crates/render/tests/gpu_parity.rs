@@ -393,6 +393,47 @@ fn gpu_parity_preedit_overlay() {
         cpu.render(&snap, pw, ph).expect("cpu");
         gpu.render(&snap, pw, ph).expect("gpu");
         let d = compare(cpu.framebuffer(), gpu.framebuffer_rgba(), pw, ph);
+        if d.all_max > 1 {
+            // 差异 bbox（定位是字形位置还是别处）
+            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+            for y in 0..ph {
+                for x in 0..pw {
+                    let i = (y * pw + x) as usize;
+                    let c = cpu.framebuffer()[i];
+                    let g = &gpu.framebuffer_rgba()[i * 4..i * 4 + 3];
+                    let cr = ((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
+                    let gc = (u32::from(g[0]), u32::from(g[1]), u32::from(g[2]));
+                    if cr.0.abs_diff(gc.0) > 1 || cr.1.abs_diff(gc.1) > 1 || cr.2.abs_diff(gc.2) > 1 {
+                        x0 = x0.min(x);
+                        y0 = y0.min(y);
+                        x1 = x1.max(x);
+                        y1 = y1.max(y);
+                    }
+                }
+            }
+            eprintln!("  preedit {text:?} 差异 bbox=({x0},{y0})-({x1},{y1}) cell={cw}x{ch}");
+            let mut shown = 0;
+            for y in 0..ph {
+                for x in 0..pw {
+                    let i = (y * pw + x) as usize;
+                    let c = cpu.framebuffer()[i];
+                    let g = &gpu.framebuffer_rgba()[i * 4..i * 4 + 3];
+                    let cr = ((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
+                    let gc = (u32::from(g[0]), u32::from(g[1]), u32::from(g[2]));
+                    if (cr.0.abs_diff(gc.0) > 1
+                        || cr.1.abs_diff(gc.1) > 1
+                        || cr.2.abs_diff(gc.2) > 1)
+                        && shown < 8
+                    {
+                        eprintln!(
+                            "    ({x},{y}) cpu=#{:02x}{:02x}{:02x} gpu=#{:02x}{:02x}{:02x}",
+                            cr.0, cr.1, cr.2, gc.0, gc.1, gc.2
+                        );
+                        shown += 1;
+                    }
+                }
+            }
+        }
         eprintln!(
             "  preedit {text:?}: bg_diff={} glyph_diff={} all_max={}",
             d.bg_diff, d.glyph_diff, d.all_max

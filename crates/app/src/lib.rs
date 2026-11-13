@@ -1701,7 +1701,8 @@ impl AppHandler {
     fn hit_scrollbar(&self, position: Option<winit::dpi::PhysicalPosition<f64>>) -> bool {
         let Some(pos) = position else { return false; };
         let Some((w, _h)) = self.last_size else { return false; };
-        pos.x >= w.saturating_sub(4) as f64 && w > 4
+        pos.x >= w.saturating_sub(render::SCROLLBAR_WIDTH) as f64
+            && w > render::SCROLLBAR_WIDTH
     }
 
     /// 物理像素坐标 → 网格坐标（含 padding；cell_w/h 已含 scale，越界返 None）。

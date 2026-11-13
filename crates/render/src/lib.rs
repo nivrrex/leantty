@@ -56,6 +56,11 @@ pub enum Error {
     Backend(String),
 }
 
+/// 滚动条宽度（像素，右缘竖直条带）：阶段 4B-fix2 由 4 放宽到 8——
+/// 4px 在 HiDPI 与 4K 屏上难以命中，用户反馈"鼠标不容易点中"。
+/// CPU/GPU 绘制与 app 的命中测试共用该常量，避免三处各写一个魔数。
+pub const SCROLLBAR_WIDTH: u32 = 8;
+
 /// Linux 默认等宽字体 family。
 #[cfg(target_os = "linux")]
 pub const DEFAULT_FONT_FAMILY: &str = "monospace";
@@ -425,12 +430,7 @@ impl CpuRenderer {
             .first()
             .and_then(|g| g.first())
             .and_then(|f| f.horizontal_line_metrics(px))
-            .map(|lm| {
-                let descent_px = (-lm.descent).ceil().max(0.0);
-                let gap_px = lm.line_gap.ceil().max(0.0);
-                (cell_h as f32 - descent_px - gap_px)
-                    .clamp(0.0, cell_h as f32) as i32
-            })
+            .map(|lm| baseline_from_metrics(cell_h, &lm))
             .unwrap_or(0)
     }
 
@@ -595,6 +595,51 @@ fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
         CursorStyle::Bar => 3,
     };
     (frame.cursor.x, frame.cursor.y, frame.cursor.visible, style)
+}
+
+/// 由字体度量与格高算基线（阶段 4B-fix2，CPU/GPU 共用）。
+///
+/// `baseline = ceil(ascent) + floor(line_gap/2)`：把 line_gap **居中**分配（此前
+/// 全放在格底，Consolas 的 line_gap=2.22 使 baseline 比 ceil(ascent) 小 1，高字形
+/// 顶边落到格顶之上被裁）。若这样会让下行放不下（`cell_h - baseline < ceil(-descent)`），
+/// 按"先保下行、再保上顶"的顺序把 baseline 压到 `cell_h - ceil(-descent)`；
+/// 顶部不足由 `glyph_shift()` 做逐字形平移兜底。
+pub fn baseline_from_metrics(cell_h: u32, lm: &fontdue::LineMetrics) -> i32 {
+    let ascent_px = lm.ascent.ceil().max(0.0);
+    let gap_half = (lm.line_gap / 2.0).floor().max(0.0);
+    let descent_px = (-lm.descent).ceil().max(0.0);
+    let mut baseline = ascent_px + gap_half;
+    if cell_h as f32 - baseline < descent_px {
+        baseline = cell_h as f32 - descent_px;
+        if baseline < 0.0 {
+            baseline = 0.0;
+        }
+    }
+    baseline.clamp(0.0, cell_h as f32) as i32
+}
+
+/// 字形整体的垂直平移（像素）：让字形完整落入格内，不缩放。
+///
+/// 用于 CJK 回退字体（ascent 常大于主字体的格内空间）：其字形高度通常 ≤ cell_h，
+/// 通过整体平移即可不裁剪；仅当字形高度 > cell_h 时无法两全，此时**保上顶**、
+/// 允许底部溢出被裁（DECISIONS 记录该取舍）。
+pub fn glyph_shift(baseline: i32, ymin: i32, height: i32, cell_h: u32) -> i32 {
+    if height <= 0 {
+        return 0;
+    }
+    let top = baseline - ymin - height;
+    let mut shift = 0;
+    if top < 0 {
+        shift = -top; // 顶部越界 → 整体下移
+    }
+    if height <= cell_h as i32 {
+        let bottom = top + height + shift;
+        let overflow = bottom - cell_h as i32;
+        if overflow > 0 {
+            shift -= overflow; // 底部越界 → 回移（height ≤ cell_h 时必然可行）
+        }
+    }
+    shift
 }
 
 /// 预编辑叠加层键（起始行, 起始列, 单元数, 文本哈希）；无预编辑为 None。
@@ -768,12 +813,12 @@ impl CpuRenderer {
     fn capture_band(&mut self) {
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 {
+        if w < SCROLLBAR_WIDTH || h == 0 {
             self.band_backup = None;
             return;
         }
-        let x0 = (w - 4) as usize;
-        let mut buf = Vec::with_capacity(4 * h as usize);
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
+        let mut buf = Vec::with_capacity(SCROLLBAR_WIDTH as usize * h as usize);
         for y in 0..h as usize {
             let base = y * w as usize;
             buf.extend_from_slice(&self.framebuffer[base + x0..base + w as usize]);
@@ -788,10 +833,10 @@ impl CpuRenderer {
     fn capture_band_char_row(&mut self, char_y: usize, cell_h: u32) {
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 || cell_h == 0 {
+        if w < SCROLLBAR_WIDTH || h == 0 || cell_h == 0 {
             return;
         }
-        let need = (4 * h) as usize;
+        let need = (SCROLLBAR_WIDTH * h) as usize;
         if self.band_backup.as_ref().map(|b| b.len()) != Some(need) {
             // 尺寸变化后首次：整条带回落到当前帧缓冲（此时无滚动条覆盖）。
             self.capture_band();
@@ -799,13 +844,14 @@ impl CpuRenderer {
         }
         let py0 = (char_y as u32).saturating_mul(cell_h).min(h);
         let py1 = ((char_y as u32 + 1).saturating_mul(cell_h)).min(h);
-        let x0 = (w - 4) as usize;
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
         let wu = w as usize;
         if let Some(buf) = self.band_backup.as_mut() {
+            let sw = SCROLLBAR_WIDTH as usize;
             for py in py0..py1 {
                 let base = py as usize * wu;
-                let dst = py as usize * 4;
-                buf[dst..dst + 4].copy_from_slice(&self.framebuffer[base + x0..base + wu]);
+                let dst = py as usize * sw;
+                buf[dst..dst + sw].copy_from_slice(&self.framebuffer[base + x0..base + wu]);
             }
         }
     }
@@ -815,10 +861,10 @@ impl CpuRenderer {
         let Some(buf) = self.band_backup.clone() else { return; };
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 || buf.len() != (4 * h) as usize {
+        if w < SCROLLBAR_WIDTH || h == 0 || buf.len() != (SCROLLBAR_WIDTH * h) as usize {
             return;
         }
-        let x0 = (w - 4) as usize;
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
         let mut i = 0usize;
         for y in 0..h as usize {
             let base = y * w as usize;
@@ -1096,10 +1142,10 @@ impl CpuRenderer {
     fn draw_scrollbar(&mut self, pixel_height: u32) {
         let Some((thumb_y, thumb_h)) = self.scrollbar else { return; };
         let width = self.fb_width;
-        if width < 4 || pixel_height == 0 || thumb_h == 0 {
+        if width < SCROLLBAR_WIDTH || pixel_height == 0 || thumb_h == 0 {
             return;
         }
-        let track_x = width - 4;
+        let track_x = width - SCROLLBAR_WIDTH;
         let fg = rgb_to_u32(self.palette.primary_fg);
         let bg = rgb_to_u32(self.palette.primary_bg);
         // 轨道色=前景/背景逐通道平均（softbuffer 无 alpha 混合通道，平均近似半透明）。
@@ -1108,10 +1154,10 @@ impl CpuRenderer {
             | (avg(fg >> 16 & 0xFF, bg >> 16 & 0xFF) << 16)
             | (avg(fg >> 8 & 0xFF, bg >> 8 & 0xFF) << 8)
             | avg(fg & 0xFF, bg & 0xFF);
-        fill_rect(&mut self.framebuffer, width, track_x, 0, 4, pixel_height, track);
+        fill_rect(&mut self.framebuffer, width, track_x, 0, SCROLLBAR_WIDTH, pixel_height, track);
         let thumb_h = thumb_h.min(pixel_height);
         let thumb_y = thumb_y.min(pixel_height.saturating_sub(thumb_h));
-        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, 4, thumb_h, fg);
+        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, SCROLLBAR_WIDTH, thumb_h, fg);
     }
 
     /// IME 预编辑叠加绘制（任务 2C.3）：在终端光标处以叠加层绘制文本
@@ -1291,6 +1337,7 @@ fn blit(
     let (cell_x, cell_y, cell_w, cell_h, baseline) = cell;
     let bw = metrics.width as i32;
     let bh = metrics.height as i32;
+    let shift = glyph_shift(baseline, metrics.ymin, bh, cell_h);
     for gy in 0..bh {
         for gx in 0..bw {
             let alpha = bitmap[(gy as usize) * metrics.width + gx as usize];
@@ -1299,8 +1346,8 @@ fn blit(
             }
             let px = cell_x as i32 + gx + metrics.xmin;
             // 字形顶边 = 基线 - ymin - height（fontdue 的 ymin 是位图**底边**相对
-            // 基线的偏移，向上为负）。等价：底边 = 基线 - ymin。
-            let py = cell_y as i32 + baseline - metrics.ymin - bh + gy;
+            // 基线的偏移，向上为负），再叠加逐字形平移（CJK 回退字体兜底）。
+            let py = cell_y as i32 + baseline - metrics.ymin - bh + gy + shift;
             // 裁剪：只绘制落在当前单元格矩形 [cell_x, cell_x+cell_w) x [cell_y, cell_y+cell_h) 内的像素；
             // 负 xmin/ymin 或超宽超高位图不得侵入邻格。
             if px < cell_x as i32
@@ -1360,8 +1407,10 @@ fn blit_subpixel(
             let sx = gx3 / 3;
             let sub = gx3 % 3; // 0=R,1=G,2=B（位图列序）
             let px = cell_x as i32 + sx + metrics.xmin / 3;
-            // 同灰度路径：顶边 = 基线 - ymin - height（3x 采样下全部除以 3）。
-            let py = cell_y as i32 + baseline - metrics.ymin / 3 - bh3 / 3 + gy3 / 3;
+            // 同灰度路径：顶边 = 基线 - ymin - height（3x 采样下全部除以 3），
+            // 平移量按缩放后的实际高度计算。
+            let shift = glyph_shift(baseline, metrics.ymin / 3, bh3 / 3, cell_h);
+            let py = cell_y as i32 + baseline - metrics.ymin / 3 - bh3 / 3 + gy3 / 3 + shift;
             if px < cell_x as i32
                 || px >= (cell_x + cell_w) as i32
                 || py < cell_y as i32

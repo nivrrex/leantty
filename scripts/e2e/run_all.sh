@@ -1256,15 +1256,13 @@ if wait_window; then
         sleep 1.2
         x11 import -window "$WID" "$S29" 2>/dev/null
         if [ -s "$S29" ]; then
-            # 右下角 3x3 区域应为背景色 #008040（允许 ±8 通道误差）。
-            BAD=$(convert "$S29" -gravity southeast -crop 3x3+0+0 +repage txt:- 2>/dev/null \
-                | grep -cE "#[0-9A-Fa-f]{6}" | head -1)
-            NEAR=$(convert "$S29" -gravity southeast -crop 3x3+0+0 +repage txt:- 2>/dev/null \
+            # 左下角 3x3 区域应为背景色 #008040（右侧 8px 是滚动条条带，不能取样）。
+            NEAR=$(convert "$S29" -gravity southwest -crop 3x3+0+0 +repage txt:- 2>/dev/null \
                 | grep -cE "#00[0-9A-Fa-f]{2}4[0-9A-Fa-f]" || true)
             if [ "$NEAR" -ge 6 ]; then
-                echo "PASS case29-nonintegral-bg-fill (右下角 $NEAR/9 像素为背景色)"; PASS=$((PASS+1))
+                echo "PASS case29-nonintegral-bg-fill (左下角 $NEAR/9 像素为背景色)"; PASS=$((PASS+1))
             else
-                echo "FAIL case29-nonintegral-bg-fill (右下角仅 $NEAR/9 像素接近背景色，见 $S29)"; FAIL=$((FAIL+1))
+                echo "FAIL case29-nonintegral-bg-fill (左下角仅 $NEAR/9 像素接近背景色，见 $S29)"; FAIL=$((FAIL+1))
             fi
         else
             echo "FAIL case29-nonintegral-bg-fill (截图缺失)"; FAIL=$((FAIL+1))
