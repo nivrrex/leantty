@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.51s
+     Running tests\palette_config_render.rs (target\debug\deps\palette_config_render-3a1ef88795f78596.exe)
+
+running 3 tests
+test indexed_fg_cell_uses_configured_palette_color ... ok
+test inverse_default_cell_uses_configured_colors ... ok
+test bold_with_bright_maps_normal_to_bright_only_when_enabled ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.56s
+
