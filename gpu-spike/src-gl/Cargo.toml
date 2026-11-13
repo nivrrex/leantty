@@ -1,0 +1,12 @@
+[package]
+name = "spike-gl"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+spike-common = { path = "../common" }
+glow = "0.18"
+khronos-egl = { version = "6.0", features = ["dynamic"] }
+vt = { path = "../../crates/vt" }

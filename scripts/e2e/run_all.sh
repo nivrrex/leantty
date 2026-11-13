@@ -48,6 +48,35 @@ for tool in Xvfb xdotool openbox import python3 strings; do
 done
 [ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：APP_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
 PASS=0; FAIL=0
+
+# e2e 默认后端：阶段 4B 起默认配置是 renderer.backend=auto（会优先 GPU），
+# 而本轮的断言（增量渲染/脏区/damage 等）针对 CPU 后端语义，故显式指定 cpu。
+# t5 会在此基础上增加 backend=gpu 的整轮。
+E2E_CFG="$OUT/e2e-default.toml"
+cat >"$E2E_CFG" <<'TOML'
+[renderer]
+backend = "cpu"
+TOML
+export APP_CONFIG="$E2E_CFG"
+
+# GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
+# 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
+GPU_LOG="$OUT/gpu-parity.log"
+if cargo test -p render --test gpu_parity --release -- --nocapture >"$GPU_LOG" 2>&1; then
+    GPU_SKIP=$(grep -c "SKIP:" "$GPU_LOG" || true)
+    GPU_CASES=$(grep -cE "^test result:" "$GPU_LOG" || true)
+    GPU_PASSED=$(grep -oE "test result: ok\. [0-9]+ passed" "$GPU_LOG" | grep -oE "[0-9]+" | head -1)
+    GPU_SKIP=${GPU_SKIP:-0}
+    echo "PASS gpu-parity (passed=${GPU_PASSED:-0} skip=$GPU_SKIP)"
+    PASS=$((PASS+1))
+    if [ "$GPU_SKIP" -gt 0 ]; then
+        echo "NOTE gpu-parity: $GPU_SKIP 个用例因无真实 GPU 适配器而 SKIP（见 $GPU_LOG）"
+    fi
+else
+    echo "FAIL gpu-parity (见 $GPU_LOG)"
+    FAIL=$((FAIL+1))
+fi
+
 # release 构建检查：APP_DUMP_SNAPSHOT 钩子仅 debug（#[cfg(debug_assertions)] 门控整个
 # 函数与钩子字符串）——release 二进制中该字符串不应存在。
 if strings "$ROOT/target/release/app" 2>/dev/null | grep -q APP_DUMP_SNAPSHOT; then
@@ -358,7 +387,11 @@ fi
 # 本环境不可用；case2 同结论，DECISIONS 登记）。
 D="$OUT/case10-cjk-config.dump"
 L="$OUT/case10-cjk-config.log"
-APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$ROOT/examples/linux.toml" >>"$L" 2>&1 &
+# examples/linux.toml 的 renderer.backend 是 auto（会优先 GPU）；本用例断言的是
+# CPU 后端的 dump 钩子（# font 行），故派生一份把 backend 固定为 cpu 的副本。
+CFG10="$OUT/case10-cfg.toml"
+sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/examples/linux.toml" >"$CFG10"
+APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$CFG10" >>"$L" 2>&1 &
 APP_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -887,12 +920,16 @@ L="$OUT/case23-title.log"
 CFG_ON="$OUT/case23-on.toml"
 CFG_OFF="$OUT/case23-off.toml"
 cat >"$CFG_ON" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 position = { x = 60, y = 50 }
 dimensions = { columns = 80, lines = 24 }
 dynamic_title = true
 TOML
 cat >"$CFG_OFF" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 dimensions = { columns = 80, lines = 24 }
 dynamic_title = false
@@ -948,7 +985,7 @@ if start_app "$D" "$L"; then
     assert_app_exits "case23-static-exits"
     assert_no_wake "case23-static-no-wake" "$L"
 fi
-unset APP_CONFIG
+export APP_CONFIG="$E2E_CFG"
 
 
 # 用例 24：大段粘贴静止排空（任务 2D.2，P1）——1MB 已知模式粘贴后不产生任何
@@ -1101,6 +1138,8 @@ A27="$OUT/case27-incr.png"
 B27="$OUT/case27-full.png"
 CFG27="$OUT/case27.toml"
 cat >"$CFG27" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 dimensions = { columns = 120, lines = 30 }
 [[keyboard.bindings]]
@@ -1155,9 +1194,9 @@ if start_app "$D27" "$L27"; then
     else
         echo "FAIL case27-scroll-incremental-equals-full (截图缺失)"; FAIL=$((FAIL+1))
     fi
-    unset APP_CONFIG
+    export APP_CONFIG="$E2E_CFG"
 fi
-unset APP_CONFIG
+export APP_CONFIG="$E2E_CFG"
 
 
 # 用例 28：自适应帧间隔的尾沿渲染（阶段 3C 任务 4）——大量输出后立即打印结束标记，
@@ -1190,5 +1229,205 @@ if start_app "$D28" "$L28"; then
     stop_app
 fi
 
-echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
+# 用例 29（4B-fix1 任务 B）：窗口被强制设为非整格尺寸时，网格外余数区必须是背景色。
+#   cols*cell_w 与 cols*cell_h 通常不能整除窗口像素尺寸，右侧/底部余数区若未铺背景，
+#   会显示未初始化像素（窗口大于字符网格时的"空白带"）。
+CFG29="$OUT/case29-nonintegral.toml"
+D29="$OUT/case29-nonintegral.dump"
+L29="$OUT/case29-nonintegral.log"
+S29="$OUT/case29-nonintegral.png"
+cat >"$CFG29" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 100, lines = 30 }
+[colors.primary]
+background = "#008040"
+TOML
+APP_CONFIG="$CFG29" APP_DUMP_SNAPSHOT="$D29" SHELL=/bin/sh "$APP_BIN" >"$L29" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    # 强制一个"非整格"窗口尺寸：在网格尺寸上各加 7/5 像素。
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null)
+    WW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2)
+    WH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    if [ -n "$WW" ] && [ -n "$WH" ]; then
+        x11 xdotool windowsize "$WID" $((WW + 7)) $((WH + 5))
+        sleep 1.2
+        x11 import -window "$WID" "$S29" 2>/dev/null
+        if [ -s "$S29" ]; then
+            # 左下角 3x3 区域应为背景色 #008040（右侧 8px 是滚动条条带，不能取样）。
+            NEAR=$(convert "$S29" -gravity southwest -crop 3x3+0+0 +repage txt:- 2>/dev/null \
+                | grep -cE "#00[0-9A-Fa-f]{2}4[0-9A-Fa-f]" || true)
+            if [ "$NEAR" -ge 6 ]; then
+                echo "PASS case29-nonintegral-bg-fill (左下角 $NEAR/9 像素为背景色)"; PASS=$((PASS+1))
+            else
+                echo "FAIL case29-nonintegral-bg-fill (左下角仅 $NEAR/9 像素接近背景色，见 $S29)"; FAIL=$((FAIL+1))
+            fi
+        else
+            echo "FAIL case29-nonintegral-bg-fill (截图缺失)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case29-nonintegral-bg-fill (取不到窗口尺寸)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case29-nonintegral-bg-fill (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 30（4B-fix1 任务 C）：预编辑清除后不留残影 —— 清除后的截图必须与
+#   "从未设置预编辑"的截图在阈值内一致（叠加层覆盖过的行已重绘回网格内容）。
+CFG30="$OUT/case30-preedit-clear.toml"
+S30A="$OUT/case30-with-preedit.png"
+S30B="$OUT/case30-after-clear.png"
+S30C="$OUT/case30-no-preedit.png"
+L30="$OUT/case30-preedit-clear.log"
+cat >"$CFG30" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+TOML
+# 参照：不注入预编辑，内容固定
+APP_CONFIG="$CFG30" SHELL=/bin/sh "$APP_BIN" >"$L30" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo PREEDIT_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    x11 import -window "$WID" "$S30C" 2>/dev/null
+    stop_app
+fi
+# 注入预编辑，1.2s 后自动清除：先抓"有预编辑"，再抓"清除后"
+APP_CONFIG="$CFG30" APP_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" APP_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/sh "$APP_BIN" >>"$L30" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo PREEDIT_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.4
+    x11 import -window "$WID" "$S30A" 2>/dev/null
+    sleep 3.2
+    x11 import -window "$WID" "$S30B" 2>/dev/null
+    stop_app
+fi
+if [ -s "$S30A" ] && [ -s "$S30B" ] && [ -s "$S30C" ]; then
+    # 有预编辑 vs 无预编辑：应有可见差异（证明钩子生效）
+    DIFF_A=$(compare -metric AE "$S30A" "$S30C" null: 2>&1 | head -1)
+    # 清除后 vs 无预编辑：应在阈值内（残影 = 大差异）
+    DIFF_B=$(compare -metric AE -fuzz 3% "$S30B" "$S30C" null: 2>&1 | head -1)
+    echo "  preedit 有/无差异=$DIFF_A，清除后差异=$DIFF_B"
+    if [ -n "$DIFF_A" ] && [ "$DIFF_A" -gt 50 ] && [ -n "$DIFF_B" ] && [ "$DIFF_B" -lt 2000 ]; then
+        echo "PASS case30-preedit-clear-no-ghost (清除后差异 $DIFF_B px)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case30-preedit-clear-no-ghost (有/无=$DIFF_A 清除后=$DIFF_B)"; FAIL=$((FAIL+1))
+    fi
+else
+    echo "FAIL case30-preedit-clear-no-ghost (截图缺失)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 31（4B-fix1 任务 C）：OS 发起的 Expose 必须整帧重绘。
+#   用 python-xlib 自建一个覆盖窗压住本窗口再销毁，触发系统重绘，比对截图。
+CFG31="$OUT/case31-expose.toml"
+S31A="$OUT/case31-before.png"
+S31B="$OUT/case31-after-expose.png"
+L31="$OUT/case31-expose.log"
+cat >"$CFG31" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+TOML
+APP_CONFIG="$CFG31" SHELL=/bin/sh "$APP_BIN" >"$L31" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo EXPOSE_BASE"; x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    x11 import -window "$WID" "$S31A" 2>/dev/null
+    # 覆盖 → 销毁 → 触发 Expose（只操作自己创建的窗口）
+    x11 python3 "$ROOT/scripts/e2e/expose_overlay.py" "$(echo "$WID" | sed 's/^0x//')" >"$OUT/case31-overlay.log" 2>&1 || true
+    sleep 1.2
+    x11 import -window "$WID" "$S31B" 2>/dev/null
+    stop_app
+fi
+if [ -s "$S31A" ] && [ -s "$S31B" ]; then
+    DIFF31=$(compare -metric AE -fuzz 3% "$S31A" "$S31B" null: 2>&1 | head -1)
+    OS_REDRAW=$(grep -c "\[perf\] os_redraw" "$L31" 2>/dev/null || echo 0)
+    echo "  expose 前后差异=$DIFF31，os_redraw 次数=$OS_REDRAW"
+    # 行为级断言：OS 触发重绘的分支必须真的被走到（截图在 Xvfb 有 backing store
+    # 时可能恒等，单看差异无法证伪），且画面保持不变。
+    if [ "$OS_REDRAW" -ge 1 ] && [ -n "$DIFF31" ] && [ "$DIFF31" -lt 2000 ]; then
+        echo "PASS case31-expose-full-redraw (os_redraw=$OS_REDRAW，差异 $DIFF31 px)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case31-expose-full-redraw (os_redraw=$OS_REDRAW 差异=$DIFF31)"; FAIL=$((FAIL+1))
+    fi
+else
+    echo "FAIL case31-expose-full-redraw (截图缺失)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 32（4B-fix3）：粘贴写入 PTY 后必须**由粘贴本身**主动排一帧。
+#   构造：`stty -echo` 关闭回显（此后无回显字节可驱动渲染），由 debug 钩子
+#   APP_TEST_PASTE 在事件循环内部触发同步粘贴（不产生鼠标/键盘事件，因此不会
+#   顺带触发 RedrawRequested）。断言：粘贴后出现首帧，且该帧由 urgent 路径驱动
+#   （urgent=true）——回退"写完主动排一帧"的加固后，将没有任何新帧、也没有该行。
+CFG32="$OUT/case32-paste-frame.toml"
+H32="$OUT/case32-frames.hash"
+L32="$OUT/case32-paste-frame.log"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG32"
+rm -f "$H32"
+APP_CONFIG="$CFG32" APP_FRAME_HASH="$H32" APP_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
+  APP_TEST_PASTE="SILENT_PASTE" APP_TEST_PASTE_AT_MS=3500 \
+  SHELL=/bin/sh "$APP_BIN" >"$L32" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    # 关闭回显并让画面静止：此后没有回显字节可以驱动渲染
+    x11 xdotool type --window "$WID" "stty -echo"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    N0=$(wc -l < "$H32" 2>/dev/null || echo 0)
+    i=0
+    while [ $i -lt 12 ]; do
+        grep -q "test_paste_first_frame" "$L32" 2>/dev/null && break
+        sleep 0.3
+        i=$((i+1))
+    done
+    N1=$(wc -l < "$H32" 2>/dev/null || echo 0)
+    LINE=$(grep "test_paste_first_frame" "$L32" | tail -1)
+    if [ -n "$LINE" ] && [ "$N1" -gt "$N0" ]; then
+        case "$LINE" in
+            *urgent=true*)
+                echo "PASS case32-paste-urgent-frame ($LINE, frames $N0→$N1)"; PASS=$((PASS+1)) ;;
+            *)
+                echo "FAIL case32-paste-urgent-frame (首帧未经 urgent 路径: $LINE)"; FAIL=$((FAIL+1)) ;;
+        esac
+    else
+        echo "FAIL case32-paste-urgent-frame (粘贴后无新帧: frames $N0→$N1, 指标='${LINE:-<无>}')"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case32-paste-urgent-frame (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
+# 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
+GPU_ROUND_LOG="$OUT/gpu-round.log"
+if sh "$ROOT/scripts/e2e/run_gpu_round.sh" >"$GPU_ROUND_LOG" 2>&1; then
+    GPU_ROUND_RC=0
+else
+    GPU_ROUND_RC=1
+fi
+grep -E "^(PASS|FAIL) gpu-round" "$GPU_ROUND_LOG" | sed 's/^/  /'
+GPU_ROUND_SUM=$(grep -oE "GPU 轮汇总: PASS=[0-9]+ FAIL=[0-9]+ SKIP=[0-9]+" "$GPU_ROUND_LOG" | head -1)
+if [ "$GPU_ROUND_RC" -eq 0 ]; then
+    PASS=$((PASS+1))
+else
+    FAIL=$((FAIL+1))
+fi
+echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL GPU_SKIP=${GPU_SKIP:-0} [$GPU_ROUND_SUM] ====="
 [ "$FAIL" -eq 0 ]

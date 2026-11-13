@@ -37,6 +37,14 @@ bold_italic = { family = "Consolas", style = "Bold Italic" }
 # CJK 回退：Windows 自带微软雅黑
 fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
 
+# --- [渲染后端：阶段 4B] ---
+# backend = "auto"  自动：优先 GPU（Linux 上为 wgpu/Vulkan），不可用时回落 CPU
+# backend = "cpu"   强制 CPU 光栅化
+# backend = "gpu"   强制 GPU：不可用时启动失败（非零退出）
+# 仅 Linux 目标提供 GPU 后端；Windows 目标一律 CPU（gpu 会警告并回落）。
+[renderer]
+backend = "auto"
+
 [selection]
 save_to_clipboard = true
 semantic_escape_chars = ",│`|:\"' ()[]{}<>"

@@ -1,0 +1,12 @@
+[package]
+name = "spike-common"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+vt = { path = "../../crates/vt" }
+render = { path = "../../crates/render" }
+fontdue = "0.9"
+fontdb = "0.23"

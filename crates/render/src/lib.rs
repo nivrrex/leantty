@@ -18,6 +18,8 @@
 //!   glyph，不 panic）。
 
 pub mod preedit;
+#[cfg(target_os = "linux")]
+pub mod gpu;
 
 /// 进程启动锚点（阶段 3A 任务 2：启动分段耗时日志；app 在 main 首行调用）。
 static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -53,6 +55,11 @@ pub enum Error {
     #[error("backend error: {0}")]
     Backend(String),
 }
+
+/// 滚动条宽度（像素，右缘竖直条带）：4（阶段 3A）→ 8（4B-fix2）→ **12**（4B-fix3）。
+/// 用户两次反馈"太窄、鼠标不容易点中"；12px 在 1x/2x 下都更易命中。
+/// CPU 绘制、GPU 绘制、条带备份、app 命中测试共用该常量（唯一来源）。
+pub const SCROLLBAR_WIDTH: u32 = 12;
 
 /// Linux 默认等宽字体 family。
 #[cfg(target_os = "linux")]
@@ -276,6 +283,61 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
     fonts
 }
 
+/// 构建四组字体链（CPU 与 GPU 后端共用）：每组 = [主字体, 后台 fallback..., 系统兜底]。
+///
+/// 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底由 app 层后台加载后
+/// 经 `add_background_fonts` 并入。返回顺序固定为 [normal, bold, italic, bold_italic]。
+pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>>, Error> {
+    let mut db = Database::new();
+    let t_db = std::time::Instant::now();
+    db.load_system_fonts();
+    eprintln!(
+        "[perf] fontdb_ms={:.1} since_start={:.1}",
+        t_db.elapsed().as_secs_f64() * 1000.0,
+        since_start_ms()
+    );
+    let specs = [
+        &settings.normal,
+        &settings.bold,
+        &settings.italic,
+        &settings.bold_italic,
+    ];
+    let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
+    // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
+    let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
+        std::collections::HashMap::new();
+    for (gi, spec) in specs.iter().enumerate() {
+        let t_font = std::time::Instant::now();
+        let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache)
+        {
+            Ok((f, cached, used_style)) => {
+                eprintln!(
+                    "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
+                    gi,
+                    spec.family,
+                    spec.style,
+                    used_style,
+                    cached,
+                    t_font.elapsed().as_secs_f64() * 1000.0,
+                    since_start_ms()
+                );
+                f
+            }
+            Err(e) => {
+                if gi == GROUP_NORMAL {
+                    return Err(e);
+                }
+                eprintln!(
+                    "font group {} ('{}' '{}') load failed: {}; using normal font",
+                    gi, spec.family, spec.style, e
+                );
+                groups[GROUP_NORMAL][0].clone()
+            }
+        };
+        groups.push(vec![main]);
+    }
+    Ok(groups)
+}
 pub struct CpuRenderer {
     /// 四组字体 [normal, bold, italic, bold_italic]，每组 = [主字体, fallback..., 系统兜底]。
     groups: Vec<Vec<Font>>,
@@ -309,7 +371,7 @@ pub struct CpuRenderer {
     /// 上次绘制的滚动条几何。
     last_scrollbar: Option<(u32, u32)>,
     /// 上次绘制的预编辑布局键（行, 列, 单元数）。
-    last_preedit: Option<(u16, u16, usize, u64)>,
+    last_preedit: Option<(u16, u16, u16, usize, u64)>,
     /// 滚动条条带（右缘 4px）在"不含滚动条时"的像素备份。
     band_backup: Option<Vec<u32>>,
     /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
@@ -324,57 +386,7 @@ impl CpuRenderer {
         options: RenderOptions,
         palette: Palette,
     ) -> Result<Self, Error> {
-        let mut db = Database::new();
-        let t_db = std::time::Instant::now();
-        db.load_system_fonts();
-        // 启动分段计时（阶段 3A 任务 2）：相对进程启动锚点，沿用 [perf] 日志机制。
-        eprintln!(
-            "[perf] fontdb_ms={:.1} since_start={:.1}",
-            t_db.elapsed().as_secs_f64() * 1000.0,
-            since_start_ms()
-        );
-        let specs = [
-            &settings.normal,
-            &settings.bold,
-            &settings.italic,
-            &settings.bold_italic,
-        ];
-        // 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底字体后台懒加载
-        // （任务 2B.1：from_bytes 对 19MB CJK 字体实测 806.8ms，同步加载将阻塞首帧）。
-        // 到位前码点画 U+25A1 占位方块；到位经 add_background_fonts 并入并重绘。
-        let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
-        // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
-        let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
-            std::collections::HashMap::new();
-        for (gi, spec) in specs.iter().enumerate() {
-            let t_font = std::time::Instant::now();
-            let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache) {
-                Ok((f, cached, used_style)) => {
-                    eprintln!(
-                        "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
-                        gi,
-                        spec.family,
-                        spec.style,
-                        used_style,
-                        cached,
-                        t_font.elapsed().as_secs_f64() * 1000.0,
-                        since_start_ms()
-                    );
-                    f
-                }
-                Err(e) => {
-                    if gi == GROUP_NORMAL {
-                        return Err(e);
-                    }
-                    eprintln!(
-                        "font group {} ('{}' '{}') load failed: {}; using normal font",
-                        gi, spec.family, spec.style, e
-                    );
-                    groups[GROUP_NORMAL][0].clone()
-                }
-            };
-            groups.push(vec![main]);
-        }
+        let groups = build_font_groups(settings)?;
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
@@ -401,6 +413,25 @@ impl CpuRenderer {
             band_backup: None,
             damage: Vec::new(),
         })
+    }
+
+
+
+
+
+    /// 基线相对格顶的偏移（像素）。
+    ///
+    /// 取 `cell_h - ceil(-descent) - ceil(line_gap)`：既保证下行字形（g/p/y）落在
+    /// 格内不被裁剪，又保证字形上缘不越界。等价于"ascent 向上取整后再为 descent
+    /// 与 line_gap 让出空间"，与 `cell_metrics` 的
+    /// `cell_h = ceil(ascent - descent + line_gap)` 配套。
+    fn baseline_px(&self, px: f32, cell_h: u32) -> i32 {
+        self.groups
+            .first()
+            .and_then(|g| g.first())
+            .and_then(|f| f.horizontal_line_metrics(px))
+            .map(|lm| baseline_from_metrics(cell_h, &lm))
+            .unwrap_or(0)
     }
 
     /// 缩放因子变化：更新 scale 并整体清空字形位图缓存（位图尺寸随 scale 变；
@@ -548,6 +579,11 @@ struct RowDrawCtx {
     bg_default: u32,
     gamma: f32,
     sub: Subpixel,
+    /// 基线相对格顶的偏移（像素）。字形落点 = cell_y + baseline + gy + ymin。
+    ///
+    /// 阶段 4B-fix1 任务 A：此前公式直接用 `cell_y + gy + ymin`（把 baseline 当成
+    /// 格顶），导致整块字形上移 ascent 像素、'.' 等小字形落在行上部、g/p/y 不下行。
+    baseline: i32,
 }
 
 /// 光标状态键（位置/可见性/样式），用于叠加层脏判定。
@@ -561,6 +597,51 @@ fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
     (frame.cursor.x, frame.cursor.y, frame.cursor.visible, style)
 }
 
+/// 由字体度量与格高算基线（阶段 4B-fix2，CPU/GPU 共用）。
+///
+/// `baseline = ceil(ascent) + floor(line_gap/2)`：把 line_gap **居中**分配（此前
+/// 全放在格底，Consolas 的 line_gap=2.22 使 baseline 比 ceil(ascent) 小 1，高字形
+/// 顶边落到格顶之上被裁）。若这样会让下行放不下（`cell_h - baseline < ceil(-descent)`），
+/// 按"先保下行、再保上顶"的顺序把 baseline 压到 `cell_h - ceil(-descent)`；
+/// 顶部不足由 `glyph_shift()` 做逐字形平移兜底。
+pub fn baseline_from_metrics(cell_h: u32, lm: &fontdue::LineMetrics) -> i32 {
+    let ascent_px = lm.ascent.ceil().max(0.0);
+    let gap_half = (lm.line_gap / 2.0).floor().max(0.0);
+    let descent_px = (-lm.descent).ceil().max(0.0);
+    let mut baseline = ascent_px + gap_half;
+    if cell_h as f32 - baseline < descent_px {
+        baseline = cell_h as f32 - descent_px;
+        if baseline < 0.0 {
+            baseline = 0.0;
+        }
+    }
+    baseline.clamp(0.0, cell_h as f32) as i32
+}
+
+/// 字形整体的垂直平移（像素）：让字形完整落入格内，不缩放。
+///
+/// 用于 CJK 回退字体（ascent 常大于主字体的格内空间）：其字形高度通常 ≤ cell_h，
+/// 通过整体平移即可不裁剪；仅当字形高度 > cell_h 时无法两全，此时**保上顶**、
+/// 允许底部溢出被裁（DECISIONS 记录该取舍）。
+pub fn glyph_shift(baseline: i32, ymin: i32, height: i32, cell_h: u32) -> i32 {
+    if height <= 0 {
+        return 0;
+    }
+    let top = baseline - ymin - height;
+    let mut shift = 0;
+    if top < 0 {
+        shift = -top; // 顶部越界 → 整体下移
+    }
+    if height <= cell_h as i32 {
+        let bottom = top + height + shift;
+        let overflow = bottom - cell_h as i32;
+        if overflow > 0 {
+            shift -= overflow; // 底部越界 → 回移（height ≤ cell_h 时必然可行）
+        }
+    }
+    shift
+}
+
 /// 预编辑叠加层键（起始行, 起始列, 单元数, 文本哈希）；无预编辑为 None。
 ///
 /// 必须包含文本哈希：组合串在长度/位置相同时内容仍可能变化（如"中"→"a"），
@@ -568,7 +649,7 @@ fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
 fn preedit_key(
     overlay: &Option<PreeditOverlay>,
     frame: &FrameSnapshot,
-) -> Option<(u16, u16, usize, u64)> {
+) -> Option<(u16, u16, u16, usize, u64)> {
     let o = overlay.as_ref()?;
     let layout =
         preedit::layout_preedit(&o.text, frame.cursor.x, frame.cursor.y, frame.cols, frame.rows)?;
@@ -577,7 +658,12 @@ fn preedit_key(
         hash ^= u64::from(*b);
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
-    Some((layout.row, layout.col, layout.cells.len(), hash))
+    // 叠加层可能跨行：按"起始列 + 总宽度"换算跨越行数，供标脏时整段重绘
+    // （只标起始行会在旧布局多行时留下残影，阶段 4B-fix1 任务 C）。
+    let cols = u32::from(frame.cols).max(1);
+    let width: u32 = layout.cells.iter().map(|c| u32::from(c.width)).sum();
+    let spanned = ((u32::from(layout.col) + width) / cols + 1).min(u32::from(frame.rows)) as u16;
+    Some((layout.row, spanned, layout.col, layout.cells.len(), hash))
 }
 
 impl CpuRenderer {
@@ -608,7 +694,10 @@ impl CpuRenderer {
     ) {
         self.fb_width = pixel_width;
         self.fb_height = pixel_height;
-        self.framebuffer = vec![0; (pixel_width * pixel_height) as usize];
+        // 整屏先铺背景色：网格像素尺寸通常不能整除窗口尺寸（cols*cell_w ≤ pw），
+        // 右侧/底部余数区必须也是背景色，否则窗口大于字符网格时那里会显示
+        // 未初始化像素（0x00000000）或旧内容（阶段 4B-fix1 任务 B）。
+        self.framebuffer = vec![ctx.bg_default; (pixel_width * pixel_height) as usize];
         for y in 0..frame.cells.len() {
             self.draw_row(frame, y, ctx);
         }
@@ -664,16 +753,17 @@ impl CpuRenderer {
         let new_preedit = preedit_key(&self.preedit, frame);
         let preedit_changed = self.last_preedit != new_preedit;
         if preedit_changed {
-            if let Some((row, _, _, _)) = self.last_preedit
-                && let Some(d) = dirty.get_mut(row as usize)
-            {
-                *d = true;
-            }
-            if let Some((row, _, _, _)) = new_preedit
-                && let Some(d) = dirty.get_mut(row as usize)
-            {
-                *d = true;
-            }
+            let mut mark = |key: Option<(u16, u16, u16, usize, u64)>| {
+                if let Some((row, spanned, _, _, _)) = key {
+                    for r in row..row.saturating_add(spanned) {
+                        if let Some(d) = dirty.get_mut(r as usize) {
+                            *d = true;
+                        }
+                    }
+                }
+            };
+            mark(self.last_preedit);
+            mark(new_preedit);
         }
         let mut rows_drawn = false;
         for (y, is_dirty) in dirty.iter().enumerate() {
@@ -723,12 +813,12 @@ impl CpuRenderer {
     fn capture_band(&mut self) {
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 {
+        if w < SCROLLBAR_WIDTH || h == 0 {
             self.band_backup = None;
             return;
         }
-        let x0 = (w - 4) as usize;
-        let mut buf = Vec::with_capacity(4 * h as usize);
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
+        let mut buf = Vec::with_capacity(SCROLLBAR_WIDTH as usize * h as usize);
         for y in 0..h as usize {
             let base = y * w as usize;
             buf.extend_from_slice(&self.framebuffer[base + x0..base + w as usize]);
@@ -743,10 +833,10 @@ impl CpuRenderer {
     fn capture_band_char_row(&mut self, char_y: usize, cell_h: u32) {
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 || cell_h == 0 {
+        if w < SCROLLBAR_WIDTH || h == 0 || cell_h == 0 {
             return;
         }
-        let need = (4 * h) as usize;
+        let need = (SCROLLBAR_WIDTH * h) as usize;
         if self.band_backup.as_ref().map(|b| b.len()) != Some(need) {
             // 尺寸变化后首次：整条带回落到当前帧缓冲（此时无滚动条覆盖）。
             self.capture_band();
@@ -754,13 +844,14 @@ impl CpuRenderer {
         }
         let py0 = (char_y as u32).saturating_mul(cell_h).min(h);
         let py1 = ((char_y as u32 + 1).saturating_mul(cell_h)).min(h);
-        let x0 = (w - 4) as usize;
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
         let wu = w as usize;
         if let Some(buf) = self.band_backup.as_mut() {
+            let sw = SCROLLBAR_WIDTH as usize;
             for py in py0..py1 {
                 let base = py as usize * wu;
-                let dst = py as usize * 4;
-                buf[dst..dst + 4].copy_from_slice(&self.framebuffer[base + x0..base + wu]);
+                let dst = py as usize * sw;
+                buf[dst..dst + sw].copy_from_slice(&self.framebuffer[base + x0..base + wu]);
             }
         }
     }
@@ -770,10 +861,10 @@ impl CpuRenderer {
         let Some(buf) = self.band_backup.clone() else { return; };
         let w = self.fb_width;
         let h = self.fb_height;
-        if w < 4 || h == 0 || buf.len() != (4 * h) as usize {
+        if w < SCROLLBAR_WIDTH || h == 0 || buf.len() != (SCROLLBAR_WIDTH * h) as usize {
             return;
         }
-        let x0 = (w - 4) as usize;
+        let x0 = (w - SCROLLBAR_WIDTH) as usize;
         let mut i = 0usize;
         for y in 0..h as usize {
             let base = y * w as usize;
@@ -794,6 +885,7 @@ impl CpuRenderer {
         let bg_default = ctx.bg_default;
         let gamma = ctx.gamma;
         let sub = ctx.sub;
+        let baseline = ctx.baseline;
         for (x, cell) in row.iter().enumerate() {
             let px0 = x as u32 * cell_w;
             let py0 = y as u32 * cell_h;
@@ -819,7 +911,13 @@ impl CpuRenderer {
                 .map(rgb_to_u32)
                 .unwrap_or(rgb_to_u32(self.palette.primary_fg));
             let bg = if sel { orig_fg } else { orig_bg };
-            fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+            // 宽字符续格（SpacerTail/SpacerHead）不重复填充背景：起始格的区域已按
+            // area_w = 2 格铺满，若这里再按自己的单格填一遍，会把宽字形已经画到
+            // 续格上的右半部分擦成背景色（阶段 4B t1 实测：'回' 位图非零 alpha
+            // 列 1..14，但渲染墨迹只到列 9）。
+            if !is_tail {
+                fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+            }
             if is_tail || cell.chars.is_empty() || cell.invisible {
                 continue;
             }
@@ -857,7 +955,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
-                        (px0, py0, area_w, cell_h),
+                        (px0, py0, area_w, cell_h, baseline),
                         &m,
                         &bitmap,
                         (fg, bg),
@@ -880,7 +978,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
-                        (px0, py0, area_w, cell_h),
+                        (px0, py0, area_w, cell_h, baseline),
                         &sm,
                         &scaled,
                         (fg, bg),
@@ -909,7 +1007,7 @@ impl CpuRenderer {
                 blit_subpixel(
                     &mut self.framebuffer,
                     pixel_width,
-                    (px0, py0, area_w, cell_h),
+                    (px0, py0, area_w, cell_h, baseline),
                     &sm,
                     &scaled,
                     fg,
@@ -920,7 +1018,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     pixel_width,
-                    (px0, py0, area_w, cell_h),
+                    (px0, py0, area_w, cell_h, baseline),
                     &m,
                     &bitmap,
                     (fg, bg),
@@ -951,13 +1049,17 @@ impl Renderer for CpuRenderer {
         let px = (self.font_size * self.scale as f32).max(0.1);
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
+        let cell_h = (pixel_height / rows).max(1);
         let ctx = RowDrawCtx {
             cell_w: (pixel_width / cols).max(1),
-            cell_h: (pixel_height / rows).max(1),
+            cell_h,
             px,
             bg_default: rgb_to_u32(self.palette.primary_bg),
             gamma: self.options.text_gamma,
             sub: self.options.subpixel,
+            // 基线 = ascent（向上取整），限制在格内；与 cell_metrics 的
+            // cell_h = ceil(ascent - descent + line_gap) 配套。
+            baseline: self.baseline_px(px, cell_h),
         };
         self.damage.clear();
         if self.should_full_redraw(frame, pixel_width, pixel_height) {
@@ -984,6 +1086,7 @@ impl CpuRenderer {
         let cy = u32::from(cur.y) * cell_h;
         let width = self.fb_width;
         let color = rgb_to_u32(self.palette.cursor);
+        let baseline = self.baseline_px(px, cell_h);
         match cur.style {
             CursorStyle::Block => {
                 fill_rect(&mut self.framebuffer, width, cx, cy, cell_w, cell_h, color);
@@ -999,7 +1102,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         width,
-                        (cx, cy, cell_w, cell_h),
+                        (cx, cy, cell_w, cell_h, baseline),
                         &m,
                         &bitmap,
                         (rgb_to_u32(self.palette.cursor_text), color),
@@ -1039,10 +1142,10 @@ impl CpuRenderer {
     fn draw_scrollbar(&mut self, pixel_height: u32) {
         let Some((thumb_y, thumb_h)) = self.scrollbar else { return; };
         let width = self.fb_width;
-        if width < 4 || pixel_height == 0 || thumb_h == 0 {
+        if width < SCROLLBAR_WIDTH || pixel_height == 0 || thumb_h == 0 {
             return;
         }
-        let track_x = width - 4;
+        let track_x = width - SCROLLBAR_WIDTH;
         let fg = rgb_to_u32(self.palette.primary_fg);
         let bg = rgb_to_u32(self.palette.primary_bg);
         // 轨道色=前景/背景逐通道平均（softbuffer 无 alpha 混合通道，平均近似半透明）。
@@ -1051,10 +1154,10 @@ impl CpuRenderer {
             | (avg(fg >> 16 & 0xFF, bg >> 16 & 0xFF) << 16)
             | (avg(fg >> 8 & 0xFF, bg >> 8 & 0xFF) << 8)
             | avg(fg & 0xFF, bg & 0xFF);
-        fill_rect(&mut self.framebuffer, width, track_x, 0, 4, pixel_height, track);
+        fill_rect(&mut self.framebuffer, width, track_x, 0, SCROLLBAR_WIDTH, pixel_height, track);
         let thumb_h = thumb_h.min(pixel_height);
         let thumb_y = thumb_y.min(pixel_height.saturating_sub(thumb_h));
-        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, 4, thumb_h, fg);
+        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, SCROLLBAR_WIDTH, thumb_h, fg);
     }
 
     /// IME 预编辑叠加绘制（任务 2C.3）：在终端光标处以叠加层绘制文本
@@ -1086,6 +1189,7 @@ impl CpuRenderer {
         let mut x_cells = u32::from(layout.col);
         let y = u32::from(layout.row) * cell_h;
         let gamma = self.options.text_gamma;
+        let baseline = self.baseline_px(px, cell_h);
         for (idx, pc) in layout.cells.iter().enumerate() {
             let px0 = x_cells * cell_w;
             let span = u32::from(pc.width).max(1);
@@ -1108,7 +1212,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     self.fb_width,
-                    (px0, y, area_w, cell_h),
+                    (px0, y, area_w, cell_h, baseline),
                     &m,
                     &bitmap,
                     (cell_fg, cell_bg),
@@ -1131,7 +1235,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     self.fb_width,
-                    (px0, y, area_w, cell_h),
+                    (px0, y, area_w, cell_h, baseline),
                     &sm,
                     &scaled,
                     (cell_fg, cell_bg),
@@ -1222,7 +1326,7 @@ fn fill_rect(fb: &mut [u32], width: u32, x: u32, y: u32, w: u32, h: u32, color: 
 fn blit(
     fb: &mut [u32],
     width: u32,
-    cell: (u32, u32, u32, u32),
+    cell: (u32, u32, u32, u32, i32),
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
     colors: (u32, u32),
@@ -1230,9 +1334,10 @@ fn blit(
 ) {
     let (fg, bg) = colors;
     let (antialiasing, gamma) = aa_gamma;
-    let (cell_x, cell_y, cell_w, cell_h) = cell;
+    let (cell_x, cell_y, cell_w, cell_h, baseline) = cell;
     let bw = metrics.width as i32;
     let bh = metrics.height as i32;
+    let shift = glyph_shift(baseline, metrics.ymin, bh, cell_h);
     for gy in 0..bh {
         for gx in 0..bw {
             let alpha = bitmap[(gy as usize) * metrics.width + gx as usize];
@@ -1240,7 +1345,9 @@ fn blit(
                 continue;
             }
             let px = cell_x as i32 + gx + metrics.xmin;
-            let py = cell_y as i32 + gy + metrics.ymin;
+            // 字形顶边 = 基线 - ymin - height（fontdue 的 ymin 是位图**底边**相对
+            // 基线的偏移，向上为负），再叠加逐字形平移（CJK 回退字体兜底）。
+            let py = cell_y as i32 + baseline - metrics.ymin - bh + gy + shift;
             // 裁剪：只绘制落在当前单元格矩形 [cell_x, cell_x+cell_w) x [cell_y, cell_y+cell_h) 内的像素；
             // 负 xmin/ymin 或超宽超高位图不得侵入邻格。
             if px < cell_x as i32
@@ -1277,14 +1384,14 @@ fn blit(
 fn blit_subpixel(
     fb: &mut [u32],
     width: u32,
-    cell: (u32, u32, u32, u32),
+    cell: (u32, u32, u32, u32, i32),
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
     fg: u32,
     sp: (Subpixel, f32),
 ) {
     let (order, gamma) = sp;
-    let (cell_x, cell_y, cell_w, cell_h) = cell;
+    let (cell_x, cell_y, cell_w, cell_h, baseline) = cell;
     let bw3 = metrics.width as i32;
     let bh3 = metrics.height as i32;
     let stride3 = metrics.width;
@@ -1300,7 +1407,10 @@ fn blit_subpixel(
             let sx = gx3 / 3;
             let sub = gx3 % 3; // 0=R,1=G,2=B（位图列序）
             let px = cell_x as i32 + sx + metrics.xmin / 3;
-            let py = cell_y as i32 + gy3 / 3 + metrics.ymin / 3;
+            // 同灰度路径：顶边 = 基线 - ymin - height（3x 采样下全部除以 3），
+            // 平移量按缩放后的实际高度计算。
+            let shift = glyph_shift(baseline, metrics.ymin / 3, bh3 / 3, cell_h);
+            let py = cell_y as i32 + baseline - metrics.ymin / 3 - bh3 / 3 + gy3 / 3 + shift;
             if px < cell_x as i32
                 || px >= (cell_x + cell_w) as i32
                 || py < cell_y as i32
@@ -1562,7 +1672,7 @@ mod blit_tests {
         blit(
             &mut fb,
             width,
-            (0, 0, 8, 4),
+            (0, 0, 8, 4, 2),
             &m,
             &bitmap,
             (FG, BG),
@@ -1589,7 +1699,7 @@ mod blit_tests {
         blit(
             &mut fb,
             width,
-            (0, 0, 8, 4),
+            (0, 0, 8, 4, 2),
             &m,
             &bitmap,
             (FG, BG),

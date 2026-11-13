@@ -323,6 +323,8 @@ impl App {
             auto_scroll: 0,
             #[cfg(debug_assertions)]
             test_preedit: None,
+            #[cfg(debug_assertions)]
+            test_preedit_clear_at: None,
             last_title: None,
             last_sel_region: None,
             last_render_offset: 0,
@@ -364,6 +366,16 @@ impl App {
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
+            os_redraw_pending: false,
+            #[cfg(debug_assertions)]
+            os_redraw_count: 0,
+            #[cfg(debug_assertions)]
+            test_paste_at: None,
+            #[cfg(debug_assertions)]
+            test_paste_text: None,
+            #[cfg(debug_assertions)]
+            test_paste_fired: None,
+            fatal: None,
         };
         event_loop
             .run_app(&mut handler)
@@ -372,6 +384,10 @@ impl App {
         // 读线程会阻塞在 send；drop Receiver 使其 send 立即返回 Disconnected 并退出，
         // 否则 reader join 会等满 5s 超时（阶段 3C 任务 4 case28 实测）。
         let _ = handler.rx.take();
+        // 致命错误优先返回：强制 GPU 后端不可用等情形必须以非零码退出。
+        if let Some(e) = handler.fatal.take() {
+            return Err(e);
+        }
         // run_app 返回后回收：先 close（先释放主端再回收子进程，kill 子进程使 reader
         // 读端得 EOF 而退出），再带超时 join reader 线程（顺序倒置将空等 5s 超时）。
         if let Some(mut pty) = handler.pty.take() {
@@ -406,13 +422,274 @@ pub enum Error {
     /// 渲染错误。
     #[error("render error: {0}")]
     Render(#[from] render::Error),
+    /// 请求的渲染后端在当前平台/构建不可用。
+    #[error("renderer backend unsupported: {0}")]
+    BackendUnsupported(String),
+}
+
+/// 渲染后端（阶段 4B t2）：由配置 `renderer.backend` 决定，**必须在首个
+/// present 之前**创建，运行期不切换（避免增量渲染状态与 surface 语义冲突）。
+///
+/// 之所以用枚举而不是给 `Renderer` trait 加方法：trait 只保留 `render` 与
+/// 默认空的 `set_preedit`（既有契约），CPU 专有方法（选区/滚动条/damage 等）
+/// 由 app 层按后端分发。
+pub enum RendererBackend {
+    /// CPU 光栅化（softbuffer 提交）。
+    Cpu(Box<CpuRenderer>),
+    /// GPU（wgpu/Vulkan，仅 Linux；渲染到 winit 窗口 surface，不回读）。
+    /// 用 Box 装箱：GpuRenderer 远大于 CpuRenderer，避免枚举整体膨胀。
+    #[cfg(target_os = "linux")]
+    Gpu(Box<render::gpu::GpuRenderer>),
+}
+
+impl RendererBackend {
+    /// 后端名字（日志/诊断用）。
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Cpu(_) => "cpu",
+            #[cfg(target_os = "linux")]
+            Self::Gpu(_) => "gpu",
+        }
+    }
+
+    /// 是否 GPU 后端（app 层据此决定叠加层/脏区分发）。
+    pub fn is_gpu(&self) -> bool {
+        match self {
+            Self::Cpu(_) => false,
+            #[cfg(target_os = "linux")]
+            Self::Gpu(_) => true,
+        }
+    }
+
+    /// 当前字体的格子尺寸（物理像素）。
+    pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
+        match self {
+            Self::Cpu(r) => r.cell_metrics(scale),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.cell_metrics(scale),
+        }
+    }
+
+    /// 更新缩放因子（字形缓存失效 + 整屏重绘）。
+    pub fn set_scale_factor(&mut self, scale: f64) {
+        match self {
+            Self::Cpu(r) => r.set_scale_factor(scale),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.set_scale_factor(scale),
+        }
+    }
+
+    /// 加载后台字体（CJK 回退）。
+    pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
+        match self {
+            Self::Cpu(r) => r.add_background_fonts(fonts),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.add_background_fonts(fonts),
+        }
+    }
+
+    /// 选区块（内容绝对坐标，含端点）。
+    pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
+        match self {
+            Self::Cpu(r) => r.set_selection(region),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.set_selection(region),
+        }
+    }
+
+    /// 滚动条拇指几何 (thumb_y, thumb_h)。
+    pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
+        match self {
+            Self::Cpu(r) => r.set_scrollbar(geom),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.set_scrollbar(geom),
+        }
+    }
+
+    /// IME 预编辑叠加层。
+    pub fn set_preedit(&mut self, overlay: Option<render::PreeditOverlay>) {
+        match self {
+            Self::Cpu(r) => r.set_preedit(overlay),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.set_preedit(overlay),
+        }
+    }
+
+    /// 渲染一帧（CPU：写入内部帧缓冲，随后由 softbuffer 提交）。
+    pub fn render(
+        &mut self,
+        frame: &vt::FrameSnapshot,
+        pixel_width: u32,
+        pixel_height: u32,
+    ) -> Result<(), render::Error> {
+        match self {
+            Self::Cpu(r) => r.render(frame, pixel_width, pixel_height),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.render_surface(frame, pixel_width, pixel_height),
+        }
+    }
+
+    /// 本帧脏区（CPU 专有；GPU 走后端自己的整帧提交）。
+    pub fn damage(&self) -> &[(u32, u32, u32, u32)] {
+        match self {
+            Self::Cpu(r) => r.damage(),
+            // GPU 后端每帧整帧提交，没有"脏区"概念（surface 纹理内容不保留）。
+            #[cfg(target_os = "linux")]
+            Self::Gpu(_) => &[],
+        }
+    }
+
+    /// 帧缓冲（softbuffer 提交与诊断用）。
+    pub fn framebuffer(&self) -> &[u32] {
+        match self {
+            Self::Cpu(r) => r.framebuffer(),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(_) => &[],
+        }
+    }
+
+    /// 帧缓冲尺寸。
+    pub fn framebuffer_size(&self) -> (u32, u32) {
+        match self {
+            Self::Cpu(r) => r.framebuffer_size(),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.pixel_size(),
+        }
+    }
+
+    /// 取 CPU 渲染器引用（诊断钩子/帧哈希用；GPU 后端返回 None）。
+    pub fn as_cpu(&self) -> Option<&CpuRenderer> {
+        match self {
+            Self::Cpu(r) => Some(r),
+            #[cfg(target_os = "linux")]
+            Self::Gpu(_) => None,
+        }
+    }
+
+    /// 窗口尺寸变化（GPU 后端需 reconfigure surface）。
+    pub fn resize_surface(&mut self, width: u32, height: u32) {
+        match self {
+            Self::Cpu(_) => {}
+            #[cfg(target_os = "linux")]
+            Self::Gpu(r) => r.resize_surface(width, height),
+        }
+    }
+}
+
+/// 按配置创建渲染器（阶段 4B t2：仅接通 CPU；GPU 分支在 t3/t4 接入）。
+///
+/// 依次尝试只发生在 `auto`；`gpu` 失败会直接返回错误（调用方非零退出），
+/// 不做静默降级。Windows 目标一律 CPU，`gpu` 给一行警告。
+pub fn create_renderer(
+    cfg: &config::Config,
+    font_settings: &render::FontSettings,
+    options: render::RenderOptions,
+    palette: render::Palette,
+    window: Option<&winit::window::Window>,
+    existing: Option<RendererBackend>,
+) -> Result<RendererBackend, Error> {
+    let requested = cfg.renderer.backend;
+    let build_cpu = |scale: f64, existing: Option<RendererBackend>| -> Result<RendererBackend, Error> {
+        // 复用窗口创建前已建好的 CPU 渲染器：debug 构建下 fontdb 扫描 + 四组
+        // 主字体解析约 400-600ms，重建一次会明显推迟首帧与后台字体到位时间。
+        if let Some(mut r) = existing {
+            r.set_scale_factor(scale);
+            return Ok(r);
+        }
+        let mut r = CpuRenderer::new(font_settings, options, palette)?;
+        r.set_scale_factor(scale);
+        Ok(RendererBackend::Cpu(Box::new(r)))
+    };
+    // 没有窗口时（仅用于窗口创建前估算格子尺寸）只能先用 CPU。
+    let Some(window) = window else {
+        return build_cpu(1.0, existing);
+    };
+    let scale = window.scale_factor();
+    match requested {
+        config::Backend::Cpu => build_cpu(scale, existing),
+        config::Backend::Auto => {
+            #[cfg(target_os = "linux")]
+            {
+                let t = std::time::Instant::now();
+                match build_gpu(font_settings, options, palette, window, scale) {
+                    Ok((gpu, adapter)) => {
+                        eprintln!(
+                            "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
+                            t.elapsed().as_secs_f64() * 1000.0,
+                            adapter
+                        );
+                        Ok(gpu)
+                    }
+                    Err(e) => {
+                        eprintln!("[renderer] gpu 不可用，回落 cpu：{e}");
+                        build_cpu(scale, existing)
+                    }
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                build_cpu(scale, existing)
+            }
+        }
+        config::Backend::Gpu => {
+            #[cfg(target_os = "linux")]
+            {
+                let t = std::time::Instant::now();
+                let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale)?;
+                eprintln!(
+                    "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
+                    t.elapsed().as_secs_f64() * 1000.0,
+                    adapter
+                );
+                Ok(gpu)
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                eprintln!("[renderer] backend=gpu 在当前平台不可用，回退 cpu");
+                build_cpu(scale, existing)
+            }
+        }
+    }
+}
+
+/// 用 winit 窗口的 raw handle 创建 GPU surface 渲染器（仅 Linux）。
+#[cfg(target_os = "linux")]
+fn build_gpu(
+    font_settings: &render::FontSettings,
+    options: render::RenderOptions,
+    palette: render::Palette,
+    window: &winit::window::Window,
+    scale: f64,
+) -> Result<(RendererBackend, String), Error> {
+    use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+    let wh = window
+        .window_handle()
+        .map_err(|e| Error::App(format!("window_handle: {e}")))?
+        .as_raw();
+    let dh = window
+        .display_handle()
+        .map_err(|e| Error::App(format!("display_handle: {e}")))?
+        .as_raw();
+    let size = window.inner_size();
+    let mut gpu = render::gpu::GpuRenderer::new_surface(
+        font_settings,
+        options,
+        palette,
+        wh,
+        dh,
+        size.width.max(1),
+        size.height.max(1),
+    )?;
+    gpu.set_scale_factor(scale);
+    let name = gpu.adapter_name().to_string();
+    Ok((RendererBackend::Gpu(Box::new(gpu)), name))
 }
 
 struct AppHandler {
     config: Option<App>,
     vt: Option<VtTerminal>,
     pty: Option<NativePty>,
-    renderer: Option<CpuRenderer>,
+    renderer: Option<RendererBackend>,
     window: Option<Rc<Window>>,
     surface: Option<SoftSurface>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -433,6 +710,25 @@ struct AppHandler {
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
     first_pty_byte_logged: bool,
+    /// OS 发起的重绘（X11 Expose / 遮挡后恢复等）待处理：必须整帧重绘 + 整窗提交，
+    /// 不能按脏行增量（窗口内容可能已被系统丢弃）。应用自驱动的重绘不受影响。
+    os_redraw_pending: bool,
+    /// debug 专有：OS 触发重绘次数（e2e 行为级断言）。
+    #[cfg(debug_assertions)]
+    os_redraw_count: u32,
+    /// debug 测试钩子：延迟触发一次同步粘贴（APP_TEST_PASTE / APP_TEST_PASTE_AT_MS）。
+    /// 由事件循环内部调用 `paste_text`，不产生鼠标/键盘事件，因此不会顺带触发
+    /// `RedrawRequested`，可以把"粘贴主动排帧"与其他重绘触发分离开来。
+    #[cfg(debug_assertions)]
+    test_paste_at: Option<std::time::Instant>,
+    #[cfg(debug_assertions)]
+    test_paste_text: Option<String>,
+    /// 已触发、等待第一帧渲染以打印延迟（debug 钩子）。
+    #[cfg(debug_assertions)]
+    test_paste_fired: Option<std::time::Instant>,
+    /// 致命错误（如强制 GPU 后端不可用）：置位后退出事件循环，run() 据此返回 Err
+    /// 使进程以非零码退出（不得 panic、不得中途回退 CPU）。
+    fatal: Option<Error>,
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
@@ -470,6 +766,9 @@ struct AppHandler {
     /// 测试注入的预编辑串（仅 debug 构建；粘性，不被 winit Ime 事件清除）。
     #[cfg(debug_assertions)]
     test_preedit: Option<String>,
+    /// 测试钩子：预编辑自动清除时刻（debug 专有，配合 APP_TEST_PREEDIT_CLEAR_MS）。
+    #[cfg(debug_assertions)]
+    test_preedit_clear_at: Option<std::time::Instant>,
     /// 上次应用的窗口标题（避免每帧重复 set_title）。
     last_title: Option<String>,
     /// 上次渲染时的选区区域（绝对坐标），用于选区叠加层脏判定。
@@ -513,13 +812,19 @@ impl ApplicationHandler for AppHandler {
             .take()
             .expect("resumed 只能调用一次");
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
-        let renderer = match CpuRenderer::new(&config.font_settings, config.options, config.palette) {
-            Ok(mut r) => {
-                r.set_scale_factor(1.0);
-                r
-            }
+        // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
+        // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
+        let renderer = match create_renderer(
+            &config.config,
+            &config.font_settings,
+            config.options,
+            config.palette,
+            None,
+            None,
+        ) {
+            Ok(r) => r,
             Err(e) => {
-                eprintln!("CpuRenderer::new: {}", e);
+                eprintln!("create_renderer: {e}");
                 return;
             }
         };
@@ -587,32 +892,69 @@ impl ApplicationHandler for AppHandler {
         // IME：窗口创建后无条件开启（任务 5）；Xvfb 无 IME 总线时事件不产生，
         // 开启调用本身无害（winit 内部按平台降级）。
         window.set_ime_allowed(true);
+        // 后端决定点：窗口已存在，auto/gpu 在此尝试创建 GPU 渲染器。
+        // cpu 后端保持上面的 CPU 渲染器；GPU 失败时 auto 回落到它。
+        let renderer = match create_renderer(
+            &config.config,
+            &config.font_settings,
+            config.options,
+            config.palette,
+            Some(&window),
+            Some(renderer),
+        ) {
+            Ok(r) => {
+                if r.name() != "cpu" {
+                    eprintln!(
+                        "[perf] backend={}（窗口创建后切换，首个 present 之前）",
+                        r.name()
+                    );
+                }
+                r
+            }
+            Err(e) => {
+                // gpu 强制模式失败：记录 fatal 并退出事件循环（非零退出码）。
+                eprintln!("create_renderer(gpu): {e}");
+                self.fatal = Some(e);
+                event_loop.exit();
+                return;
+            }
+        };
+        let gpu_backend = renderer.is_gpu();
         let t_surface = Instant::now();
-        let context = match softbuffer::Context::new(event_loop.owned_display_handle()) {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("softbuffer context: {}", e);
+        // GPU 后端直接渲染到 winit 窗口 surface，**不创建** softbuffer context/surface
+        // （同一窗口不允许同时挂两套 surface）。
+        let mut surface = None;
+        if !gpu_backend {
+            let context = match softbuffer::Context::new(event_loop.owned_display_handle()) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("softbuffer context: {}", e);
+                    return;
+                }
+            };
+            let mut s = match softbuffer::Surface::new(&context, window.clone()) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("softbuffer surface: {}", e);
+                    return;
+                }
+            };
+            // 初始尺寸：softbuffer present 前必须 resize，否则 panic（Xvfb 复现实测）。
+            let init_size = window.inner_size();
+            self.last_size = Some((init_size.width, init_size.height));
+            if let (Some(w), Some(h)) = (
+                std::num::NonZeroU32::new(init_size.width),
+                std::num::NonZeroU32::new(init_size.height),
+            )
+                && let Err(e) = s.resize(w, h)
+            {
+                eprintln!("surface initial resize: {}", e);
                 return;
             }
-        };
-        let mut surface = match softbuffer::Surface::new(&context, window.clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("softbuffer surface: {}", e);
-                return;
-            }
-        };
-        // 初始尺寸：softbuffer present 前必须 resize，否则 panic（Xvfb 复现实测）。
-        let init_size = window.inner_size();
-        self.last_size = Some((init_size.width, init_size.height));
-        if let (Some(w), Some(h)) = (
-            std::num::NonZeroU32::new(init_size.width),
-            std::num::NonZeroU32::new(init_size.height),
-        )
-            && let Err(e) = surface.resize(w, h)
-        {
-            eprintln!("surface initial resize: {}", e);
-            return;
+            surface = Some(s);
+        } else {
+            let init_size = window.inner_size();
+            self.last_size = Some((init_size.width, init_size.height));
         }
         if let Some(t0) = crate::start_time() {
             eprintln!(
@@ -701,7 +1043,11 @@ impl ApplicationHandler for AppHandler {
                 ))
                 .is_none()
             {
-                eprintln!("request_inner_size: 窗口未接受 HiDPI 修正尺寸");
+                // winit 0.30：request_inner_size 返回 None 表示"请求已异步提交，
+                // 结果稍后经 WindowEvent::Resized 返回"，不是被窗口管理器拒绝
+                // （阶段 4B-fix1 任务 B 取证）。实际尺寸以 Resized 为准，
+                // Resized 分支会按窗口真实像素反算 cols/rows 并 resize vt/pty。
+                eprintln!("request_inner_size: 尺寸请求异步提交，实际尺寸以 Resized 事件为准");
             }
             (cw, ch)
         } else {
@@ -711,7 +1057,7 @@ impl ApplicationHandler for AppHandler {
         self.cell_h = cell_h;
         self.scale_factor = scale;
         self.window = Some(window);
-        self.surface = Some(surface);
+        self.surface = surface;
         self.vt = Some(vt);
         self.pty = Some(pty);
         self.renderer = Some(renderer);
@@ -729,6 +1075,29 @@ impl ApplicationHandler for AppHandler {
             && !t.is_empty()
         {
             self.test_preedit = Some(t);
+            // 配套测试钩子（debug 专有）：设置 APP_TEST_PREEDIT_CLEAR_MS 后，
+            // 从注入时刻起经过该毫秒数即清除预编辑，用于验证"清除后不留残影"
+            // （阶段 4B-fix1 任务 C 的 e2e 场景）。
+            if let Ok(ms) = std::env::var("APP_TEST_PREEDIT_CLEAR_MS")
+                && let Ok(ms) = ms.parse::<u64>()
+            {
+                self.test_preedit_clear_at =
+                    Some(std::time::Instant::now() + std::time::Duration::from_millis(ms));
+                eprintln!("[perf] test_preedit_clear_scheduled ms={ms}");
+            }
+        }
+        // 测试钩子（debug 专有）：延迟触发一次同步粘贴，用于验证"粘贴后主动排帧"。
+        #[cfg(debug_assertions)]
+        if let Ok(t) = std::env::var("APP_TEST_PASTE")
+            && !t.is_empty()
+        {
+            let at_ms = std::env::var("APP_TEST_PASTE_AT_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(2000);
+            self.test_paste_text = Some(t);
+            self.test_paste_at =
+                Some(std::time::Instant::now() + std::time::Duration::from_millis(at_ms));
         }
         self.clipboard = match ArboardClipboard::new() {
             Ok(c) => Some(c),
@@ -750,6 +1119,23 @@ impl ApplicationHandler for AppHandler {
         event: WindowEvent,
     ) {
         match event {
+            // winit 0.30 把 X11 的 Expose（以及遮挡恢复、窗口首次映射）都映射为
+            // RedrawRequested；本 app 的自驱动重绘走 about_to_wait 的节流逻辑，
+            // 因此本分支只可能是"系统要求重绘"。必须整帧重绘 + 整窗提交，
+            // 否则静止画面在遮挡/恢复后会留下残影（阶段 4B-fix1 任务 C）。
+            WindowEvent::RedrawRequested => {
+                // debug 钩子：记录 OS 触发的重绘次数（e2e 断言"整帧重绘路径被走到"，
+                // 因为 Xvfb/openbox 有 backing store 时截图可能恒等，截图不足以证伪）。
+                #[cfg(debug_assertions)]
+                {
+                    self.os_redraw_count += 1;
+                    if self.os_redraw_count <= 3 {
+                        eprintln!("[perf] os_redraw #{}", self.os_redraw_count);
+                    }
+                }
+                self.os_redraw_pending = true;
+                self.urgent_render = true;
+            }
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -864,6 +1250,11 @@ impl ApplicationHandler for AppHandler {
                     eprintln!("pty resize: {}", e);
                 }
                 self.last_size = Some((physical_size.width, physical_size.height));
+                if let Some(r) = self.renderer.as_mut()
+                    && r.is_gpu()
+                {
+                    r.resize_surface(physical_size.width, physical_size.height);
+                }
                 if let Some(surface) = self.surface.as_mut()
                     && let (Some(w), Some(h)) = (
                         std::num::NonZeroU32::new(physical_size.width),
@@ -878,7 +1269,39 @@ impl ApplicationHandler for AppHandler {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // 测试钩子（debug 专有）：预编辑到期清除。必须放在渲染节流之前——静止画面
+        // 时 will_render 可能为 false，若把清除逻辑放在渲染路径里就永远不会执行。
+        #[cfg(debug_assertions)]
+        if let Some(t) = self.test_paste_at {
+            if std::time::Instant::now() >= t {
+                self.test_paste_at = None;
+                if let Some(text) = self.test_paste_text.take() {
+                    eprintln!("[perf] test_paste_fired");
+                    self.paste_text(&text);
+                    self.test_paste_fired = Some(std::time::Instant::now());
+                }
+            } else {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+            }
+        }
+        #[cfg(debug_assertions)]
+        if let Some(t) = self.test_preedit_clear_at {
+            if std::time::Instant::now() >= t {
+                self.test_preedit = None;
+                self.test_preedit_clear_at = None;
+                eprintln!("[perf] test_preedit_cleared");
+                self.urgent_render = true;
+                if let Some(w) = self.window.as_ref() {
+                    w.request_redraw();
+                }
+            } else {
+                // 静止画面时渲染路径不会再设 WaitUntil（due 分支直接返回），
+                // 事件循环会永久 Wait，导致到期清除永远不执行（实测）。这里显式
+                // 安排一次唤醒；渲染路径若设置了更早的时刻会覆盖本值（无害）。
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+            }
+        }
         // 大段粘贴排空（任务 2D.2 修复）：每轮按预算写出有限字节，剩余数据
         // 通过 request_redraw 在下一帧继续驱动。
         // 原缺陷：每轮只写一块且写完不自驱动，事件循环进入 Wait 后不再运行，
@@ -915,6 +1338,8 @@ impl ApplicationHandler for AppHandler {
                 && let Some(w) = self.window.as_ref()
             {
                 // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
+                // 同时置 urgent：排空期间内容在变，下一帧应尽快到来（4B-fix3）。
+                self.urgent_render = true;
                 w.request_redraw();
             }
         }
@@ -993,11 +1418,11 @@ impl ApplicationHandler for AppHandler {
         // 6. 子进程退出 → 关闭窗口
         if let Some(pty) = self.pty.as_mut() {
             match pty.try_wait() {
-                Ok(Some(_status)) => _event_loop.exit(),
+                Ok(Some(_status)) => event_loop.exit(),
                 Ok(None) => {}
                 Err(e) => {
                     eprintln!("try_wait: {}", e);
-                    _event_loop.exit();
+                    event_loop.exit();
                 }
             }
         }
@@ -1040,19 +1465,25 @@ impl ApplicationHandler for AppHandler {
                 } else {
                     t + self.frame_interval
                 };
-                _event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
             }
             return;
         }
         let prev_render = self.last_render;
         self.last_render = Some(now);
+        #[cfg(debug_assertions)]
+        let was_urgent = self.urgent_render;
         self.urgent_render = false;
         let t_render_start = Instant::now();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
-        if let (Some(vt), Some(renderer), Some(surface)) =
-            (self.vt.as_ref(), self.renderer.as_mut(), self.surface.as_mut())
-        {
+        if let (Some(vt), Some(renderer)) = (self.vt.as_ref(), self.renderer.as_mut()) {
+            // GPU 后端直接渲染到窗口 surface（无 softbuffer），CPU 后端必须已有 surface。
+            let is_gpu = renderer.is_gpu();
+            let mut surface_guard = if is_gpu { None } else { self.surface.as_mut() };
+            if !is_gpu && surface_guard.is_none() {
+                return;
+            }
             match vt.snapshot_incremental() {
                 Ok(mut snap) => {
                     // 叠加层脏合并（阶段 3A 任务 3）：libghostty 只上报行内容脏，
@@ -1061,6 +1492,12 @@ impl ApplicationHandler for AppHandler {
                     if self.offset_from_top != self.last_render_offset {
                         snap.full_redraw = true;
                         self.last_render_offset = self.offset_from_top;
+                    }
+                    // OS 发起的重绘（Expose/遮挡恢复）：整帧重绘（full_redraw 会让
+                    // 所有行进 damage，CPU 侧等价整窗提交；GPU 本就整帧 present）。
+                    if self.os_redraw_pending {
+                        self.os_redraw_pending = false;
+                        snap.full_redraw = true;
                     }
                     // 选区变化：旧区域与新区域的所有行标脏。
                     let vis_region = self.selection.and_then(|s| {
@@ -1110,7 +1547,7 @@ impl ApplicationHandler for AppHandler {
                     };
                     renderer.set_preedit(overlay);
                     #[cfg(debug_assertions)]
-                    dump_snapshot_if_requested(&snap, Some(&*renderer));
+                    dump_snapshot_if_requested(&snap, renderer.as_cpu());
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
@@ -1121,11 +1558,36 @@ impl ApplicationHandler for AppHandler {
                         pf.render_us
                             .push((render_ms * 1000.0) as u128);
                     }
+                    // GPU 后端：render() 已把这一帧直接 present 到窗口 surface，
+                    // 没有脏区拷贝步骤（surface 纹理内容不保留，每帧整帧重绘）。
+                    if is_gpu {
+                        if let Some(pf) = self.perf_frames.as_mut() {
+                            // GPU present 已在 render_ms 内，这里只维护帧计数与间隔。
+                            pf.present_us.push(0);
+                            pf.interval_ms = prev_render
+                                .map(|t| now.duration_since(t).as_millis() as u64)
+                                .unwrap_or(0);
+                            if pf.present_us.len() >= PerfFrames::N {
+                                pf.report();
+                            }
+                        }
+                        if !self.first_frame_logged {
+                            self.first_frame_logged = true;
+                            if let Some(t0) = crate::start_time() {
+                                eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                            }
+                        }
+                        self.update_ime_cursor_area();
+                        return;
+                    }
                     // 本帧脏区（阶段 3A 任务 3）：只拷贝并提交脏区；
                     // 无脏区则跳过 present（静止画面零提交）。
                     let damage: Vec<(u32, u32, u32, u32)> = renderer.damage().to_vec();
                     let fb = renderer.framebuffer();
                     let fb_w = pw;
+                    let Some(surface) = surface_guard.as_mut() else {
+                        return;
+                    };
                     // APP_PRESENT_FULL=1 时强制整缓冲提交（诊断用，release 亦可用）。
                     let force_full_present = self.present_full;
                     if !force_full_present && damage.is_empty() {
@@ -1214,12 +1676,23 @@ impl ApplicationHandler for AppHandler {
                                 eprintln!("surface present: {}", e);
                             }
                             #[cfg(debug_assertions)]
-                            dump_frame_hash_if_requested(renderer);
+                            if let Some(cpu) = renderer.as_cpu() {
+                                dump_frame_hash_if_requested(cpu);
+                            }
                             if !self.first_frame_logged {
                                 self.first_frame_logged = true;
                                 if let Some(t0) = crate::start_time() {
                                     eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                                 }
+                            }
+                            // 测试钩子：粘贴后的首帧延迟与是否走 urgent 路径
+                            #[cfg(debug_assertions)]
+                            if let Some(fired) = self.test_paste_fired.take() {
+                                eprintln!(
+                                    "[perf] test_paste_first_frame latency_ms={} urgent={}",
+                                    fired.elapsed().as_millis(),
+                                    was_urgent
+                                );
                             }
                         }
                         Err(e) => eprintln!("buffer_mut: {}", e),
@@ -1283,7 +1756,8 @@ impl AppHandler {
     fn hit_scrollbar(&self, position: Option<winit::dpi::PhysicalPosition<f64>>) -> bool {
         let Some(pos) = position else { return false; };
         let Some((w, _h)) = self.last_size else { return false; };
-        pos.x >= w.saturating_sub(4) as f64 && w > 4
+        pos.x >= w.saturating_sub(render::SCROLLBAR_WIDTH) as f64
+            && w > render::SCROLLBAR_WIDTH
     }
 
     /// 物理像素坐标 → 网格坐标（含 padding；cell_w/h 已含 scale，越界返 None）。
@@ -1794,8 +2268,24 @@ impl AppHandler {
             for chunk in paste_chunks(&norm) {
                 self.pending_paste.push_back(chunk.into_bytes());
             }
-        } else if let Some(pty) = self.pty.as_mut() {
-            write_pty(pty, norm.as_bytes());
+        } else {
+            self.paste_text(&norm);
+        }
+    }
+
+    /// 同步粘贴路径：写入 PTY 后**主动排一帧**。
+    ///
+    /// 阶段 4B-fix3：这条路径不产生应用侧状态变化，若不置 urgent，画面刷新只能
+    /// 等 PTY 回显字节到达后由帧间隔驱动；回显缺失/延迟时（shell 关闭 echo、
+    /// readline 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次
+    /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
+    fn paste_text(&mut self, text: &str) {
+        if let Some(pty) = self.pty.as_mut() {
+            write_pty(pty, text.as_bytes());
+        }
+        self.urgent_render = true;
+        if let Some(w) = self.window.as_ref() {
+            w.request_redraw();
         }
     }
 }

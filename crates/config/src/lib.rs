@@ -216,6 +216,24 @@ pub enum Subpixel {
     Bgr,
 }
 
+/// 渲染后端选择（renderer.backend）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Backend {
+    /// 自动：优先 GPU，失败回落 CPU（默认）。
+    Auto,
+    /// 强制 CPU。
+    Cpu,
+    /// 强制 GPU：不可用时启动失败。
+    Gpu,
+}
+
+/// 渲染配置（`[renderer]`）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RendererConfig {
+    /// 后端选择（renderer.backend）。
+    pub backend: Backend,
+}
+
 /// 字体配置。
 #[derive(Debug, Clone)]
 pub struct FontSettings {
@@ -309,6 +327,7 @@ pub struct Config {
     pub colors: Colors,
     pub mouse: MouseConfig,
     pub keyboard: KeyboardConfig,
+    pub renderer: RendererConfig,
 }
 
 impl Default for Config {
@@ -425,6 +444,9 @@ impl Default for Config {
             mouse: MouseConfig {
                 bindings: Vec::new(),
             },
+            renderer: RendererConfig {
+                backend: Backend::Auto,
+            },
             keyboard: KeyboardConfig {
                 bindings: Vec::new(),
             },
@@ -529,6 +551,8 @@ const KNOWN: &[&str] = &[
     "font.subpixel",
     "font.hinting",
     "font.text_gamma",
+    "renderer",
+    "renderer.backend",
     "selection",
     "selection.save_to_clipboard",
     "selection.semantic_escape_chars",
@@ -887,6 +911,20 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
                 w.push("font.text_gamma: expected float >0..=10, ignored".to_string());
             }
         }
+    }
+
+    if let Some(t) = table(root, "renderer", "root", w)
+        && let Some(s) = string_field(t, "backend", "renderer", w)
+    {
+        c.renderer.backend = match s.as_str() {
+            "auto" => Backend::Auto,
+            "cpu" => Backend::Cpu,
+            "gpu" => Backend::Gpu,
+            _ => {
+                w.push("renderer.backend: expected auto|cpu|gpu, ignored".to_string());
+                Backend::Auto
+            }
+        };
     }
 
     if let Some(t) = table(root, "selection", "root", w) {
