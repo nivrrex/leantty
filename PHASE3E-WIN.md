@@ -115,6 +115,17 @@
 - 日志/截图：`vt-verify-win/logs/{3e-clippy-dev,3e-clippy-rel,3e-test,3e-tree,3e-perf}.log`；`vt-verify-win/logs/phase2b-win/{t3-*,t4-*,paste-*,tp2-*}.{png,err,dump}`。
 - 未入库：`vt-verify-win/perfdata/`（含 130 MB 测试文件）、任何 conpty.dll/OpenConsole.exe。
 
+## 10.5 推送与打 tag 核对（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `fb86374ab7847fe0b4cde5f3336c954170785b32` |
+| `refs/tags/phase3e-win-done`（**tag 对象**） | `d5ed02059d38796fa20b996fc28b673e44be4527` |
+| `refs/tags/phase3e-win-done^{}`（解引用 commit） | `fb86374ab7847fe0b4cde5f3336c954170785b32` |
+| `refs/tags/phase4c-done`（本次合并的 tag，轻量） | `8e7abfe4ecc38c7b41ac6ebde170ec8a6ce61a84`（无 `^{}` 行） |
+
+- `git push origin win`：`4a2d83d..fb86374  win -> win`；tag 为新建后 push（`* [new tag] phase3e-win-done`），未使用 `--force`。
+
 ## 11. 手动清单（≤3）
 
 1. 在装有 Windows Terminal 的机器上重复 §6 的"终端自身 2M 行 type"对照（本机只有 WezTerm 可作外部参照）。
