@@ -18,6 +18,8 @@
 //!   glyph，不 panic）。
 
 pub mod preedit;
+#[cfg(target_os = "linux")]
+pub mod gpu;
 
 /// 进程启动锚点（阶段 3A 任务 2：启动分段耗时日志；app 在 main 首行调用）。
 static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -276,6 +278,61 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
     fonts
 }
 
+/// 构建四组字体链（CPU 与 GPU 后端共用）：每组 = [主字体, 后台 fallback..., 系统兜底]。
+///
+/// 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底由 app 层后台加载后
+/// 经 `add_background_fonts` 并入。返回顺序固定为 [normal, bold, italic, bold_italic]。
+pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>>, Error> {
+    let mut db = Database::new();
+    let t_db = std::time::Instant::now();
+    db.load_system_fonts();
+    eprintln!(
+        "[perf] fontdb_ms={:.1} since_start={:.1}",
+        t_db.elapsed().as_secs_f64() * 1000.0,
+        since_start_ms()
+    );
+    let specs = [
+        &settings.normal,
+        &settings.bold,
+        &settings.italic,
+        &settings.bold_italic,
+    ];
+    let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
+    // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
+    let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
+        std::collections::HashMap::new();
+    for (gi, spec) in specs.iter().enumerate() {
+        let t_font = std::time::Instant::now();
+        let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache)
+        {
+            Ok((f, cached, used_style)) => {
+                eprintln!(
+                    "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
+                    gi,
+                    spec.family,
+                    spec.style,
+                    used_style,
+                    cached,
+                    t_font.elapsed().as_secs_f64() * 1000.0,
+                    since_start_ms()
+                );
+                f
+            }
+            Err(e) => {
+                if gi == GROUP_NORMAL {
+                    return Err(e);
+                }
+                eprintln!(
+                    "font group {} ('{}' '{}') load failed: {}; using normal font",
+                    gi, spec.family, spec.style, e
+                );
+                groups[GROUP_NORMAL][0].clone()
+            }
+        };
+        groups.push(vec![main]);
+    }
+    Ok(groups)
+}
 pub struct CpuRenderer {
     /// 四组字体 [normal, bold, italic, bold_italic]，每组 = [主字体, fallback..., 系统兜底]。
     groups: Vec<Vec<Font>>,
@@ -324,57 +381,7 @@ impl CpuRenderer {
         options: RenderOptions,
         palette: Palette,
     ) -> Result<Self, Error> {
-        let mut db = Database::new();
-        let t_db = std::time::Instant::now();
-        db.load_system_fonts();
-        // 启动分段计时（阶段 3A 任务 2）：相对进程启动锚点，沿用 [perf] 日志机制。
-        eprintln!(
-            "[perf] fontdb_ms={:.1} since_start={:.1}",
-            t_db.elapsed().as_secs_f64() * 1000.0,
-            since_start_ms()
-        );
-        let specs = [
-            &settings.normal,
-            &settings.bold,
-            &settings.italic,
-            &settings.bold_italic,
-        ];
-        // 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底字体后台懒加载
-        // （任务 2B.1：from_bytes 对 19MB CJK 字体实测 806.8ms，同步加载将阻塞首帧）。
-        // 到位前码点画 U+25A1 占位方块；到位经 add_background_fonts 并入并重绘。
-        let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
-        // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
-        let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
-            std::collections::HashMap::new();
-        for (gi, spec) in specs.iter().enumerate() {
-            let t_font = std::time::Instant::now();
-            let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache) {
-                Ok((f, cached, used_style)) => {
-                    eprintln!(
-                        "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
-                        gi,
-                        spec.family,
-                        spec.style,
-                        used_style,
-                        cached,
-                        t_font.elapsed().as_secs_f64() * 1000.0,
-                        since_start_ms()
-                    );
-                    f
-                }
-                Err(e) => {
-                    if gi == GROUP_NORMAL {
-                        return Err(e);
-                    }
-                    eprintln!(
-                        "font group {} ('{}' '{}') load failed: {}; using normal font",
-                        gi, spec.family, spec.style, e
-                    );
-                    groups[GROUP_NORMAL][0].clone()
-                }
-            };
-            groups.push(vec![main]);
-        }
+        let groups = build_font_groups(settings)?;
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
@@ -402,6 +409,10 @@ impl CpuRenderer {
             damage: Vec::new(),
         })
     }
+
+
+
+
 
     /// 缩放因子变化：更新 scale 并整体清空字形位图缓存（位图尺寸随 scale 变；
     /// 码点→字体归属缓存与 scale 无关，不清）。

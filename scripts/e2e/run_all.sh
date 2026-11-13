@@ -48,6 +48,25 @@ for tool in Xvfb xdotool openbox import python3 strings; do
 done
 [ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：APP_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
 PASS=0; FAIL=0
+
+# GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
+# 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
+GPU_LOG="$OUT/gpu-parity.log"
+if cargo test -p render --test gpu_parity --release -- --nocapture >"$GPU_LOG" 2>&1; then
+    GPU_SKIP=$(grep -c "SKIP:" "$GPU_LOG" || true)
+    GPU_CASES=$(grep -cE "^test result:" "$GPU_LOG" || true)
+    GPU_PASSED=$(grep -oE "test result: ok\. [0-9]+ passed" "$GPU_LOG" | grep -oE "[0-9]+" | head -1)
+    GPU_SKIP=${GPU_SKIP:-0}
+    echo "PASS gpu-parity (passed=${GPU_PASSED:-0} skip=$GPU_SKIP)"
+    PASS=$((PASS+1))
+    if [ "$GPU_SKIP" -gt 0 ]; then
+        echo "NOTE gpu-parity: $GPU_SKIP 个用例因无真实 GPU 适配器而 SKIP（见 $GPU_LOG）"
+    fi
+else
+    echo "FAIL gpu-parity (见 $GPU_LOG)"
+    FAIL=$((FAIL+1))
+fi
+
 # release 构建检查：APP_DUMP_SNAPSHOT 钩子仅 debug（#[cfg(debug_assertions)] 门控整个
 # 函数与钩子字符串）——release 二进制中该字符串不应存在。
 if strings "$ROOT/target/release/app" 2>/dev/null | grep -q APP_DUMP_SNAPSHOT; then
@@ -1190,5 +1209,5 @@ if start_app "$D28" "$L28"; then
     stop_app
 fi
 
-echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL ====="
+echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL GPU_SKIP=${GPU_SKIP:-0} ====="
 [ "$FAIL" -eq 0 ]
