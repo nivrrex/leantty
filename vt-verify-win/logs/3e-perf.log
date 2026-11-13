@@ -1,0 +1,10 @@
+default run1 config_ms=23 window_ms=91 surface_ms=6 pty_spawn_ms=11.3 renderer_ready_ms=669 first_pty_byte_ms=861 pre_first_submit_ms=740 first_frame_ms=764 bg_fonts_ms=903 fontdb=67.7 fontsum=147.3
+default run2 config_ms=30.3 window_ms=62.7 surface_ms=4.3 pty_spawn_ms=10.3 renderer_ready_ms=585 first_pty_byte_ms=684 pre_first_submit_ms=651 first_frame_ms=672 bg_fonts_ms=798 fontdb=49.4 fontsum=133.7
+default run3 config_ms=28.3 window_ms=86.1 surface_ms=1.6 pty_spawn_ms=14.4 renderer_ready_ms=677 first_pty_byte_ms=784 pre_first_submit_ms=748 first_frame_ms=772 bg_fonts_ms=909 fontdb=46.2 fontsum=136.8
+default run4 config_ms=26.1 window_ms=49.2 surface_ms=9.4 pty_spawn_ms=9 renderer_ready_ms=606 first_pty_byte_ms=759 pre_first_submit_ms=704 first_frame_ms=719 bg_fonts_ms=826 fontdb=45.5 fontsum=138.5
+default run5 config_ms=25.8 window_ms=98.3 surface_ms=0.9 pty_spawn_ms=9.6 renderer_ready_ms=690 first_pty_byte_ms=808 pre_first_submit_ms=760 first_frame_ms=794 bg_fonts_ms=917 fontdb=45.7 fontsum=142.7
+windowstoml run1 config_ms=1.9 window_ms=69 surface_ms=0.8 pty_spawn_ms=104.6 renderer_ready_ms=641 first_pty_byte_ms=1329 pre_first_submit_ms=811 first_frame_ms=846 bg_fonts_ms=1450 fontdb=47.1 fontsum=134.8
+windowstoml run2 config_ms=0.9 window_ms=76.8 surface_ms=0.8 pty_spawn_ms=30 renderer_ready_ms=664 first_pty_byte_ms=803 pre_first_submit_ms=770 first_frame_ms=792 bg_fonts_ms=1385 fontdb=53.3 fontsum=160.4
+windowstoml run3 config_ms=1.1 window_ms=94.7 surface_ms=25.6 pty_spawn_ms=107 renderer_ready_ms=1704 first_pty_byte_ms=2306 pre_first_submit_ms=2256 first_frame_ms=2291 bg_fonts_ms=2905 fontdb=62.7 fontsum=159
+windowstoml run4 config_ms=0.8 window_ms=119.9 surface_ms=1.1 pty_spawn_ms=108.7 renderer_ready_ms=606 first_pty_byte_ms=881 pre_first_submit_ms=835 first_frame_ms=862 bg_fonts_ms=1493 fontdb=38 fontsum=121.1
+windowstoml run5 config_ms=1.1 window_ms=50.6 surface_ms=21.3 pty_spawn_ms=96.1 renderer_ready_ms=527 first_pty_byte_ms=732 pre_first_submit_ms=702 first_frame_ms=720 bg_fonts_ms=1319 fontdb=40.5 fontsum=136.4
