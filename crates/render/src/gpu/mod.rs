@@ -324,6 +324,17 @@ impl GpuRenderer {
         self.preedit = overlay;
     }
 
+    /// 整窗清屏色 = 调色板主背景色。
+    fn clear_color(&self) -> wgpu::Color {
+        let c = self.palette.primary_bg;
+        wgpu::Color {
+            r: f64::from(c.r) / 255.0,
+            g: f64::from(c.g) / 255.0,
+            b: f64::from(c.b) / 255.0,
+            a: 1.0,
+        }
+    }
+
     /// 当前渲染尺寸（像素）。
     pub fn pixel_size(&self) -> (u32, u32) {
         self.pixel
@@ -829,12 +840,14 @@ impl GpuRenderer {
                         inst.quads.len(),
                         inst.glyphs.len().max(1),
                     );
+                    let clear = self.clear_color();
                     self.pipelines.submit(
                         &self.gpu.device,
                         &self.gpu.queue,
                         &self.atlas,
                         &view,
                         &inst,
+                        clear,
                     )?;
                     self.gpu.queue.present(tex);
                     return Ok(());
@@ -895,12 +908,14 @@ impl GpuRenderer {
         self.pipelines
             .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
         self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
+        let clear = self.clear_color();
         self.pipelines.submit(
             &self.gpu.device,
             &self.gpu.queue,
             &self.atlas,
             &target.view,
             &inst,
+            clear,
         )?;
         self.rgba = target.read_back(&self.gpu.device, &self.gpu.queue)?;
         Ok(())
@@ -1305,6 +1320,7 @@ impl Pipelines {
         atlas: &GlyphAtlas,
         view: &wgpu::TextureView,
         inst: &FrameInstances,
+        clear: wgpu::Color,
     ) -> Result<(), Error> {
         if inst.quads.len() as u32 > self.bg_cap || inst.glyphs.len() as u32 > self.glyph_cap {
             return Err(Error::Backend("实例数超过缓冲容量".to_string()));
@@ -1324,7 +1340,8 @@ impl Pipelines {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        // 整窗先铺背景色（同 CPU）：网格不能整除窗口时余数区也是背景。
+                        load: wgpu::LoadOp::Clear(clear),
                         store: wgpu::StoreOp::Store,
                     },
                 })],

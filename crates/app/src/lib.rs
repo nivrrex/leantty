@@ -1013,7 +1013,11 @@ impl ApplicationHandler for AppHandler {
                 ))
                 .is_none()
             {
-                eprintln!("request_inner_size: 窗口未接受 HiDPI 修正尺寸");
+                // winit 0.30：request_inner_size 返回 None 表示"请求已异步提交，
+                // 结果稍后经 WindowEvent::Resized 返回"，不是被窗口管理器拒绝
+                // （阶段 4B-fix1 任务 B 取证）。实际尺寸以 Resized 为准，
+                // Resized 分支会按窗口真实像素反算 cols/rows 并 resize vt/pty。
+                eprintln!("request_inner_size: 尺寸请求异步提交，实际尺寸以 Resized 事件为准");
             }
             (cw, ch)
         } else {

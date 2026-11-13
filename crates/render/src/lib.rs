@@ -644,7 +644,10 @@ impl CpuRenderer {
     ) {
         self.fb_width = pixel_width;
         self.fb_height = pixel_height;
-        self.framebuffer = vec![0; (pixel_width * pixel_height) as usize];
+        // 整屏先铺背景色：网格像素尺寸通常不能整除窗口尺寸（cols*cell_w ≤ pw），
+        // 右侧/底部余数区必须也是背景色，否则窗口大于字符网格时那里会显示
+        // 未初始化像素（0x00000000）或旧内容（阶段 4B-fix1 任务 B）。
+        self.framebuffer = vec![ctx.bg_default; (pixel_width * pixel_height) as usize];
         for y in 0..frame.cells.len() {
             self.draw_row(frame, y, ctx);
         }

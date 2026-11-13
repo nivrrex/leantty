@@ -1229,6 +1229,54 @@ if start_app "$D28" "$L28"; then
     stop_app
 fi
 
+# 用例 29（4B-fix1 任务 B）：窗口被强制设为非整格尺寸时，网格外余数区必须是背景色。
+#   cols*cell_w 与 cols*cell_h 通常不能整除窗口像素尺寸，右侧/底部余数区若未铺背景，
+#   会显示未初始化像素（窗口大于字符网格时的"空白带"）。
+CFG29="$OUT/case29-nonintegral.toml"
+D29="$OUT/case29-nonintegral.dump"
+L29="$OUT/case29-nonintegral.log"
+S29="$OUT/case29-nonintegral.png"
+cat >"$CFG29" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 100, lines = 30 }
+[colors.primary]
+background = "#008040"
+TOML
+APP_CONFIG="$CFG29" APP_DUMP_SNAPSHOT="$D29" SHELL=/bin/sh "$APP_BIN" >"$L29" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    # 强制一个"非整格"窗口尺寸：在网格尺寸上各加 7/5 像素。
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null)
+    WW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2)
+    WH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    if [ -n "$WW" ] && [ -n "$WH" ]; then
+        x11 xdotool windowsize "$WID" $((WW + 7)) $((WH + 5))
+        sleep 1.2
+        x11 import -window "$WID" "$S29" 2>/dev/null
+        if [ -s "$S29" ]; then
+            # 右下角 3x3 区域应为背景色 #008040（允许 ±8 通道误差）。
+            BAD=$(convert "$S29" -gravity southeast -crop 3x3+0+0 +repage txt:- 2>/dev/null \
+                | grep -cE "#[0-9A-Fa-f]{6}" | head -1)
+            NEAR=$(convert "$S29" -gravity southeast -crop 3x3+0+0 +repage txt:- 2>/dev/null \
+                | grep -cE "#00[0-9A-Fa-f]{2}4[0-9A-Fa-f]" || true)
+            if [ "$NEAR" -ge 6 ]; then
+                echo "PASS case29-nonintegral-bg-fill (右下角 $NEAR/9 像素为背景色)"; PASS=$((PASS+1))
+            else
+                echo "FAIL case29-nonintegral-bg-fill (右下角仅 $NEAR/9 像素接近背景色，见 $S29)"; FAIL=$((FAIL+1))
+            fi
+        else
+            echo "FAIL case29-nonintegral-bg-fill (截图缺失)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case29-nonintegral-bg-fill (取不到窗口尺寸)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case29-nonintegral-bg-fill (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
