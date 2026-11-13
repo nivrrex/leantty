@@ -388,10 +388,17 @@ impl CpuRenderer {
         options: RenderOptions,
         palette: Palette,
     ) -> Result<Self, Error> {
+        let t_ctor = std::time::Instant::now();
         let groups = build_font_groups(settings)?;
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
+        // 阶段 4E t2：字体加载完成 → 字形缓存/帧缓冲等结构就绪的打点
+        eprintln!(
+            "[perf] cpu_renderer_ready_ms={:.1} since_start={:.1}",
+            t_ctor.elapsed().as_secs_f64() * 1000.0,
+            since_start_ms()
+        );
         Ok(Self {
             groups,
             font_size: settings.size,

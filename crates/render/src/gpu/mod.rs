@@ -634,7 +634,13 @@ impl GpuRenderer {
     ) -> Result<Self, Error> {
         let gpu = Gpu::new()?;
         let groups = crate::build_font_groups(settings)?;
+        let t_atlas = std::time::Instant::now();
         let atlas = GlyphAtlas::new(&gpu.device, &gpu.queue, gpu.max_texture, atlas::INITIAL_SIZE);
+        eprintln!(
+            "[perf] gpu_atlas_ms={:.1} since_start={:.1}",
+            t_atlas.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms()
+        );
         let instance = gpu.instance.clone();
         let surface = unsafe {
             instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
@@ -667,7 +673,19 @@ impl GpuRenderer {
             color_space: wgpu::SurfaceColorSpace::Auto,
         };
         surface.configure(&gpu.device, &config);
+        eprintln!(
+            "[perf] gpu_surface_ms={:.1} since_start={:.1} fmt={:?}",
+            t_atlas.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms(),
+            config.format
+        );
+        let t_pipe = std::time::Instant::now();
         let pipelines = Pipelines::new(&gpu.device, &atlas, config.format);
+        eprintln!(
+            "[perf] gpu_pipeline_ms={:.1} since_start={:.1}",
+            t_pipe.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms()
+        );
         Ok(Self {
             gpu,
             pipelines,
@@ -934,6 +952,7 @@ fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
 impl Gpu {
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
     fn new() -> Result<Self, Error> {
+        let t_instance = std::time::Instant::now();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             flags: wgpu::InstanceFlags::empty(),
@@ -942,6 +961,12 @@ impl Gpu {
             display: None,
         });
         let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN));
+        eprintln!(
+            "[perf] gpu_instance_ms={:.1} since_start={:.1} count={}",
+            t_instance.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms(),
+            adapters.len()
+        );
         if adapters.is_empty() {
             return Err(Error::Backend(
                 "Vulkan 适配器枚举为空（无可用 ICD 或驱动）".to_string(),
@@ -962,6 +987,12 @@ impl Gpu {
         })?;
         let info = adapter.get_info();
         let limits = adapter.limits();
+        eprintln!(
+            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}'",
+            t_instance.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms(),
+            info.name
+        );
         // 不要直接拿 adapter.limits() 当 required_limits：部分驱动会把
         // max_buffer_size/max_memory_allocation_size 报得极大，request_device
         // 会以 "Not enough memory left" 失败（实测）。按需收敛到本项目实际用量。
@@ -981,6 +1012,11 @@ impl Gpu {
                 trace: wgpu::Trace::Off,
             }))
             .map_err(|e| Error::Backend(format!("request_device: {e}")))?;
+        eprintln!(
+            "[perf] gpu_device_ms={:.1} since_start={:.1}",
+            t_instance.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms()
+        );
         Ok(Self {
             instance,
             adapter,
