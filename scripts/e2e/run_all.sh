@@ -1565,7 +1565,9 @@ red = "#d32f2f"
 TOML
 # 统计图片中接近指定颜色的像素数（-fuzz 2% ≈ 每通道 ≤5 的容差）
 count_color() { # $1=img $2=#rrggbb
-    convert "$1" -fuzz 2% -fill white -opaque "$2" -fill black +opaque white \
+    # 顺序很关键：先把"非目标色"变黑（+opaque），再把目标色变白（-opaque），
+    # 否则目标色若与图中其它白色元素同值时会被一并计入（首版曾因此把白字当光标色）。
+    convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
 }
 APP_CONFIG="$CFG36" SHELL=/bin/sh "$APP_BIN" >"$L36" 2>&1 &
@@ -1595,6 +1597,76 @@ if wait_window; then
     stop_app
 else
     echo "FAIL case36-palette-reaches-vt-cpu (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 37（4G-t1）：视口上滚后光标不应再被画出。
+#   光标配置为醒目品红 #ff00ff（与默认前景白/背景黑都不同）；统计整窗该色像素。
+#   上滚后多次截图（间隔 0.5s，覆盖可能的闪烁周期）应全为 0；回底后 >0。
+CFG37="$OUT/case37-cursor-viewport.toml"
+L37="$OUT/case37-cursor-viewport.log"
+cat >"$CFG37" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+[colors.cursor]
+cursor = "#ff00ff"
+[colors.primary]
+background = "#000000"
+foreground = "#ffffff"
+TOML
+count_cursor() { # $1=img → 品红像素数（-fuzz 2%；先黑化非目标色避免把白字算进来）
+    convert "$1" -fuzz 2% -fill black +opaque "#ff00ff" -fill white -opaque "#ff00ff" \
+        -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
+}
+APP_CONFIG="$CFG37" SHELL=/bin/sh "$APP_BIN" >"$L37" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    # 输出超过一屏的内容
+    x11 xdotool type --window "$WID" "seq 1 200"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$OUT/case37-bottom.png" 2>/dev/null
+    CB=$(count_cursor "$OUT/case37-bottom.png")
+    # 鼠标移到窗口中央后滚轮上滚（只操作自身窗口）
+    GEO37=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO37" | grep '^X=' | cut -d= -f2)
+    GY=$(echo "$GEO37" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO37" | grep '^WIDTH=' | cut -d= -f2)
+    GH=$(echo "$GEO37" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-200} / 2 )) $(( ${GY:-0} + ${GH:-200} / 2 ))
+    sleep 0.2
+    # 滚轮上滚 8 格（button 4）
+    i=0
+    while [ $i -lt 8 ]; do x11 xdotool click 4; i=$((i+1)); done
+    sleep 1.5
+    ZERO=0
+    TOTAL=0
+    for k in 1 2 3; do
+        x11 import -window "$WID" "$OUT/case37-scrolled-$k.png" 2>/dev/null
+        N=$(count_cursor "$OUT/case37-scrolled-$k.png")
+        [ "${N:-0}" -eq 0 ] && ZERO=$((ZERO+1))
+        TOTAL=$((TOTAL+1))
+        sleep 0.5
+    done
+    # 滚回底部后应恢复
+    i=0
+    while [ $i -lt 12 ]; do x11 xdotool click 5; i=$((i+1)); done
+    sleep 1.0
+    x11 import -window "$WID" "$OUT/case37-restored.png" 2>/dev/null
+    CR=$(count_cursor "$OUT/case37-restored.png")
+    echo "  回底=$CB 上滚后(3 次采样)=$ZERO/$TOTAL 次为 0 回底后=$CR"
+    if [ "${CB:-0}" -gt 0 ] && [ "$ZERO" -eq "$TOTAL" ] && [ "${CR:-0}" -gt 0 ]; then
+        echo "PASS case37-cursor-hidden-on-scroll-cpu (bottom=$CB scrolled=0 restored=$CR)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case37-cursor-hidden-on-scroll-cpu (bottom=$CB scrolledAllZero=$ZERO/$TOTAL restored=$CR)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case37-cursor-hidden-on-scroll-cpu (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
