@@ -1,0 +1,137 @@
+#!/bin/sh
+# GPU 后端 e2e 轮（阶段 4B t5）：backend=gpu / auto 的窗口冒烟、截图阈值对拍、
+# 无 ICD 回落与强制失败两条边界用例。
+#
+# 为什么不是"把 run_all 的全部用例跑第二遍"：绝大多数用例的断言依赖
+# `APP_DUMP_SNAPSHOT`（仅 CPU 后端可写）与脏行增量语义（GPU 每帧整帧重绘），
+# 在 GPU 后端下不具备等价物。GPU 与 CPU 的逐像素等价性由
+# `cargo test -p render --test gpu_parity`（8 个用例，含 1 LSB 门禁）覆盖。
+#
+# 安全护栏同 run_all：所有 X11 操作经 guard.sh 的 x11()，强制 DISPLAY=:99。
+
+set -u
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+OUT="$ROOT/scripts/e2e/out"
+mkdir -p "$OUT"
+E2E_GUARD_DIR="$ROOT/scripts/e2e"
+. "$ROOT/scripts/e2e/guard.sh"
+APP_BIN="$ROOT/target/debug/app"
+PASS=0
+FAIL=0
+SKIP=0
+
+for p in $(e2e_stale_pids); do kill_own "$p"; done
+sleep 0.3
+e2e_start_xvfb "$OUT/gpu-round-xvfb.log" || exit 1
+trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
+e2e_start_wm "$OUT/gpu-round-wm.log"
+
+CFG_GPU="$OUT/gpu-round-gpu.toml"
+CFG_AUTO="$OUT/gpu-round-auto.toml"
+CFG_CPU="$OUT/gpu-round-cpu.toml"
+cat >"$CFG_GPU" <<'TOML'
+[window]
+dimensions = { columns = 80, lines = 24 }
+[renderer]
+backend = "gpu"
+TOML
+sed 's/^backend = "gpu"/backend = "auto"/' "$CFG_GPU" >"$CFG_AUTO"
+sed 's/^backend = "gpu"/backend = "cpu"/' "$CFG_GPU" >"$CFG_CPU"
+
+# 起 app 并等待窗口；输出 APP_PID/WID
+start_gpu_app() { # $1=config $2=log $3=extra-env
+    env $3 APP_CONFIG="$1" SHELL=/bin/sh APP_PERF_FRAMES=1 "$APP_BIN" >"$2" 2>&1 &
+    APP_PID=$!
+    i=0
+    WID=""
+    while [ $i -lt 80 ]; do
+        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        [ -n "$WID" ] && break
+        sleep 0.2
+        i=$((i+1))
+    done
+    [ -n "$WID" ]
+}
+
+stop_app() {
+    [ -n "${APP_PID:-}" ] || return 0
+    kill -TERM "$APP_PID" 2>/dev/null
+    wait "$APP_PID" 2>/dev/null
+    APP_PID=""
+}
+
+echo "--- GPU 轮：backend=gpu 冒烟（窗口 + 首帧 + present）"
+L="$OUT/gpu-round-smoke.log"
+if start_gpu_app "$CFG_GPU" "$L" ""; then
+    # debug 构建下 GPU 每帧渲染很慢，2s 内可能凑不满 50 帧的 perf 汇总行，
+    # 因此断言只要求"真的用了 GPU + 出了首帧"；frames 行出现则额外打印。
+    sleep 3
+    if grep -q "gpu_init_ms" "$L" && grep -q "backend=gpu" "$L" && grep -q "first_frame_ms" "$L"; then
+        grep -q "\[perf\] frames n=" "$L" && echo "  （perf frames 行已出现）"
+        echo "PASS gpu-round-smoke"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-smoke (缺少 gpu_init_ms/backend=gpu/first_frame_ms)"; FAIL=$((FAIL+1))
+    fi
+    x11 xdotool type --window "$WID" "echo GPU_ROUND_OK"
+    x11 xdotool key --window "$WID" Return
+    sleep 1
+    x11 import -window "$WID" "$OUT/gpu-round-gpu.png" 2>/dev/null
+    stop_app
+else
+    echo "FAIL gpu-round-smoke (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：backend=cpu 同场景截图（阈值对拍参照）"
+L="$OUT/gpu-round-cpu.log"
+if start_gpu_app "$CFG_CPU" "$L" ""; then
+    sleep 2
+    x11 xdotool type --window "$WID" "echo GPU_ROUND_OK"
+    x11 xdotool key --window "$WID" Return
+    sleep 1
+    x11 import -window "$WID" "$OUT/gpu-round-cpu.png" 2>/dev/null
+    stop_app
+else
+    echo "FAIL gpu-round-cpu-ref (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：GPU 与 CPU 截图差异（≤1 LSB 允许，结构性差异判失败）"
+if [ -s "$OUT/gpu-round-gpu.png" ] && [ -s "$OUT/gpu-round-cpu.png" ]; then
+    # 用 ImageMagick 统计"通道差 > 8"的像素数（阈值远大于 1 LSB 舍入，但远小于
+    # 整行缺失这类结构性差异），见 DECISIONS 登记的理由。
+    BIG=$(compare -metric AE -fuzz 3% "$OUT/gpu-round-gpu.png" "$OUT/gpu-round-cpu.png" null: 2>&1 | head -1)
+    TOTAL=$(identify -format "%[fx:w*h]" "$OUT/gpu-round-gpu.png" 2>/dev/null)
+    echo "  gpu vs cpu 截图：超过 3% fuzz 的像素 $BIG / 总像素 $TOTAL"
+    if [ -n "$BIG" ] && [ "$BIG" -lt 2000 ]; then
+        echo "PASS gpu-round-screenshot-threshold ($BIG px)"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-screenshot-threshold ($BIG px，疑似结构性差异)"; FAIL=$((FAIL+1))
+    fi
+else
+    echo "FAIL gpu-round-screenshot-threshold (截图缺失)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
+L="$OUT/gpu-round-auto-noicd.log"
+if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then
+    sleep 1.5
+    if grep -qE "gpu 不可用，回落 cpu" "$L" && grep -q "first_frame_ms" "$L"; then
+        echo "PASS gpu-round-auto-fallback-cpu"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-auto-fallback-cpu (未出现回落日志或未出首帧)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-auto-fallback-cpu (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：gpu + 无 ICD → 非零退出"
+APP_CONFIG="$CFG_GPU" VK_ICD_FILENAMES=/nonexistent/icd.json timeout 20 "$APP_BIN" >"$OUT/gpu-round-gpu-noicd.log" 2>&1
+RC=$?
+if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then
+    echo "PASS gpu-round-gpu-noicd-exit ($RC)"; PASS=$((PASS+1))
+else
+    echo "FAIL gpu-round-gpu-noicd-exit (exit=$RC，期望非零且非超时)"; FAIL=$((FAIL+1))
+fi
+
+echo "===== GPU 轮汇总: PASS=$PASS FAIL=$FAIL SKIP=$SKIP (dump 依赖用例在 GPU 轮不适用) ====="
+[ "$FAIL" -eq 0 ]

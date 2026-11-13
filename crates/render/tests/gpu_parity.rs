@@ -371,3 +371,34 @@ fn gpu_parity_minimal_inverse_char() {
     eprintln!("  minimal inverse: bg_diff={} glyph_diff={} glyph_max={}", d.bg_diff, d.glyph_diff, d.glyph_max);
     assert!(d.all_max <= 1, "最小复现差异 {}", d.all_max);
 }
+
+/// Preedit 叠加层（含组合光标反色与下划线）与 CPU 视觉等价。
+#[test]
+fn gpu_parity_preedit_overlay() {
+    let _guard = serial();
+    let (Some(mut cpu), Some(mut gpu)) = (make_cpu(1.0), make_gpu(1.0)) else {
+        return;
+    };
+    let (cw, ch) = cpu.cell_metrics(1.0);
+    let (pw, ph) = (40 * cw, 6 * ch);
+    let snap = frame(40, 6, "preedit 预编辑\r\nsecond");
+    for (text, range) in [
+        ("nihao", None),
+        ("你好世界", None),
+        ("ab日本語", Some((0usize, 2usize))),
+    ] {
+        let overlay = render::PreeditOverlay::new(text.to_string(), range);
+        cpu.set_preedit(Some(overlay.clone()));
+        gpu.set_preedit(Some(overlay));
+        cpu.render(&snap, pw, ph).expect("cpu");
+        gpu.render(&snap, pw, ph).expect("gpu");
+        let d = compare(cpu.framebuffer(), gpu.framebuffer_rgba(), pw, ph);
+        eprintln!(
+            "  preedit {text:?}: bg_diff={} glyph_diff={} all_max={}",
+            d.bg_diff, d.glyph_diff, d.all_max
+        );
+        assert!(d.all_max <= 1, "preedit {text:?} 差异 {}", d.all_max);
+        cpu.set_preedit(None);
+        gpu.set_preedit(None);
+    }
+}

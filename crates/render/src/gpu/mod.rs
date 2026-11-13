@@ -589,6 +589,97 @@ impl GpuRenderer {
             });
         }
 
+        // IME 预编辑叠加层：复刻 CpuRenderer::draw_preedit 的视觉规则
+        // （每格先盖底色遮住原内容、组合光标格反色、字形按 2 格内缩放、格底 2px 下划线）。
+        if let Some(overlay) = self.preedit.clone() {
+            let cells = preedit_layout(&overlay, frame);
+            if let Some((layout, cursor_cell_idx)) = cells {
+                let bg = rgb_to_u32(self.palette.primary_bg);
+                let fg = rgb_to_u32(self.palette.primary_fg);
+                let mut x_cells = u32::from(layout.col);
+                let y = u32::from(layout.row) * cell_h;
+                for (idx, pc) in layout.cells.iter().enumerate() {
+                    let px0 = x_cells * cell_w;
+                    let span = u32::from(pc.width).max(1);
+                    let area_w = cell_w * span;
+                    if px0 + area_w > pixel_w {
+                        break;
+                    }
+                    let is_cursor = cursor_cell_idx == Some(idx);
+                    let (cell_bg, cell_fg) = if is_cursor { (fg, bg) } else { (bg, fg) };
+                    quads.push(BgInstance {
+                        rect: [px0 as f32, y as f32, area_w as f32, cell_h as f32],
+                        color: unpack3(cell_bg),
+                        _pad: 0.0,
+                    });
+                    // 字形：与终端宽字符相同的缩放规则。
+                    let group = 0u8;
+                    let font_idx = self.font_index_for(group, pc.ch);
+                    let (m, bitmap) = self.rasterize(group, font_idx, pc.ch, px);
+                    let bw = m.width.max(1) as f32;
+                    let bh = m.height.max(1) as f32;
+                    let sc = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+                    let (gx, gy, gw, gh, data) = if (sc - 1.0).abs() < f32::EPSILON {
+                        (m.xmin, m.ymin, m.width as u32, m.height as u32, bitmap)
+                    } else {
+                        let sw = (bw * sc).ceil() as usize;
+                        let sh = (bh * sc).ceil() as usize;
+                        let scaled = crate::scale_bitmap(&bitmap, m.width, m.height, sw, sh);
+                        let ox = (area_w as i32 - sw as i32) / 2;
+                        (
+                            (m.xmin as f32 * sc).ceil() as i32 + ox,
+                            (m.ymin as f32 * sc).ceil() as i32,
+                            sw as u32,
+                            sh as u32,
+                            scaled,
+                        )
+                    };
+                    if gw > 0 && gh > 0 {
+                        let key = AtlasKey {
+                            group,
+                            ch: pc.ch,
+                            px: px.ceil() as u32,
+                            scale_bits: self.scale.to_bits(),
+                        };
+                        if let Some(uv) = self.atlas.get_or_insert(
+                            &self.gpu.device,
+                            &self.gpu.queue,
+                            key,
+                            gw,
+                            gh,
+                            &data,
+                        ) {
+                            glyphs.push(GlyphInstance {
+                                rect: [
+                                    (px0 as i32 + gx) as f32,
+                                    (y as i32 + gy) as f32,
+                                    gw as f32,
+                                    gh as f32,
+                                ],
+                                cell: [px0 as f32, y as f32, area_w as f32, cell_h as f32],
+                                uv,
+                                color: unpack3(cell_fg),
+                                backdrop: unpack3(cell_bg),
+                                _pad: 0.0,
+                            });
+                        }
+                    }
+                    // 下划线：格底 2px。
+                    quads.push(BgInstance {
+                        rect: [
+                            px0 as f32,
+                            (y + cell_h.saturating_sub(2)) as f32,
+                            area_w as f32,
+                            2.0,
+                        ],
+                        color: unpack3(cell_fg),
+                        _pad: 0.0,
+                    });
+                    x_cells += span;
+                }
+            }
+        }
+
         Ok(FrameInstances {
             quads,
             glyphs,
@@ -813,6 +904,30 @@ impl Renderer for GpuRenderer {
     fn set_preedit(&mut self, overlay: Option<PreeditOverlay>) {
         self.preedit = overlay;
     }
+}
+
+/// 预编辑布局与组合光标单元下标（与 `CpuRenderer::draw_preedit` 同规则）。
+fn preedit_layout(
+    overlay: &PreeditOverlay,
+    frame: &FrameSnapshot,
+) -> Option<(crate::preedit::PreeditLayout, Option<usize>)> {
+    let cols = u32::from(frame.cols).max(1);
+    let rows = u32::from(frame.rows).max(1);
+    let layout = crate::preedit::layout_preedit(
+        &overlay.text,
+        frame.cursor.x,
+        frame.cursor.y,
+        cols as u16,
+        rows as u16,
+    )?;
+    let cursor_cell_idx = overlay.cursor_range.map(|(begin, _)| {
+        overlay
+            .text
+            .char_indices()
+            .position(|(i, _)| i >= begin)
+            .unwrap_or(0)
+    });
+    Some((layout, cursor_cell_idx))
 }
 
 /// u32 颜色（0x00RRGGBB）→ 归一化 RGB。

@@ -1229,5 +1229,20 @@ if start_app "$D28" "$L28"; then
     stop_app
 fi
 
-echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL GPU_SKIP=${GPU_SKIP:-0} ====="
+# GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
+# 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
+GPU_ROUND_LOG="$OUT/gpu-round.log"
+if sh "$ROOT/scripts/e2e/run_gpu_round.sh" >"$GPU_ROUND_LOG" 2>&1; then
+    GPU_ROUND_RC=0
+else
+    GPU_ROUND_RC=1
+fi
+grep -E "^(PASS|FAIL) gpu-round" "$GPU_ROUND_LOG" | sed 's/^/  /'
+GPU_ROUND_SUM=$(grep -oE "GPU 轮汇总: PASS=[0-9]+ FAIL=[0-9]+ SKIP=[0-9]+" "$GPU_ROUND_LOG" | head -1)
+if [ "$GPU_ROUND_RC" -eq 0 ]; then
+    PASS=$((PASS+1))
+else
+    FAIL=$((FAIL+1))
+fi
+echo "===== e2e 汇总: PASS=$PASS FAIL=$FAIL GPU_SKIP=${GPU_SKIP:-0} [$GPU_ROUND_SUM] ====="
 [ "$FAIL" -eq 0 ]
