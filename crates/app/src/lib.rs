@@ -1030,7 +1030,11 @@ impl ApplicationHandler for AppHandler {
                 t0.elapsed().as_secs_f64() * 1000.0
             );
         }
-        let mut vt = match VtTerminal::new(config.cols, config.rows) {
+        let mut vt = match VtTerminal::new_with_palette(
+            config.cols,
+            config.rows,
+            &vt_palette(&config.config.colors),
+        ) {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("VtTerminal::new: {}", e);
@@ -2761,6 +2765,36 @@ fn render_options(config: &config::Config) -> render::RenderOptions {
 }
 
 /// config colors → render::Palette（config::Rgb 与 vt::Rgb 字段同名转换）。
+/// 配置 `[colors]` → VT 层调色板（阶段 4F t2：让 ANSI 索引色/默认反色解析出配置色）。
+fn vt_palette(colors: &config::Colors) -> vt::VtPalette {
+    let c = |c: config::Rgb| vt::Rgb { r: c.r, g: c.g, b: c.b };
+    vt::VtPalette {
+        foreground: c(colors.primary.foreground),
+        background: c(colors.primary.background),
+        cursor: c(colors.cursor.cursor),
+        normal: [
+            c(colors.normal.black),
+            c(colors.normal.red),
+            c(colors.normal.green),
+            c(colors.normal.yellow),
+            c(colors.normal.blue),
+            c(colors.normal.magenta),
+            c(colors.normal.cyan),
+            c(colors.normal.white),
+        ],
+        bright: [
+            c(colors.bright.black),
+            c(colors.bright.red),
+            c(colors.bright.green),
+            c(colors.bright.yellow),
+            c(colors.bright.blue),
+            c(colors.bright.magenta),
+            c(colors.bright.cyan),
+            c(colors.bright.white),
+        ],
+    }
+}
+
 fn render_palette(colors: &config::Colors) -> render::Palette {
     let c = |c: config::Rgb| vt::Rgb { r: c.r, g: c.g, b: c.b };
     render::Palette {

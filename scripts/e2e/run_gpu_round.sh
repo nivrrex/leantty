@@ -174,6 +174,44 @@ else
     echo "FAIL gpu-round-paste-inverse-visible (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：配置调色板到达 VT 层（ESC[31m / ESC[7m）"
+CFG36="$OUT/gpu-round-palette.toml"
+cat >"$CFG36" <<'TOML'
+[renderer]
+backend = "gpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+[colors.primary]
+background = "#101010"
+foreground = "#e0e0e0"
+[colors.normal]
+red = "#d32f2f"
+TOML
+L="$OUT/gpu-round-palette.log"
+S="$OUT/gpu-round-palette.png"
+if start_gpu_app "$CFG36" "$L" ""; then
+    sleep 1.5
+    x11 xdotool type --window "$WID" "printf '\\033[31mREDTEXT\\033[0m\\n\\033[7m          \\033[0m\\n\\033[7m\\033[31m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$S" 2>/dev/null
+    if [ -s "$S" ]; then
+        R=$(convert "$S" -fuzz 2% -fill white -opaque "#d32f2f" -fill black +opaque white \
+            -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
+        echo "  配置红(#d32f2f) 像素=$R（阈值 ≥500）"
+        if [ "${R:-0}" -ge 500 ]; then
+            echo "PASS gpu-round-palette-reaches-vt ($R)"; PASS=$((PASS+1))
+        else
+            echo "FAIL gpu-round-palette-reaches-vt (配置红像素 $R < 500)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL gpu-round-palette-reaches-vt (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-palette-reaches-vt (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then

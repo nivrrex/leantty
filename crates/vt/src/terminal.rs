@@ -5,6 +5,32 @@
 //! 所有方法必须在同一线程调用。PTY 读取在独立线程进行，
 //! 经 channel 将字节交回主线程后由本类型消费。
 
+/// 配置的终端调色板（阶段 4F t2）：默认前景/背景/光标 + 16 个 ANSI 索引色。
+///
+/// 由调用方（app）从 `[colors]` 配置转换而来；VT 层用它初始化 libghostty 的
+/// **默认**颜色与 ANSI 索引调色板，使 `ESC[31m` 等序列解析出配置色而不是
+/// libghostty 内置默认色。程序通过 OSC 4/10/11 的动态改色仍由 VT 自身处理
+///（OSC 覆盖优先于这里的默认值，OSC 104/110/111 重置后回到这里的配置色）。
+/// 本仓库 `Rgb` → libghostty `ColorRgb`。
+pub(crate) fn to_raw(c: crate::Rgb) -> libghostty_vt::style::RgbColor {
+    libghostty_vt::style::RgbColor {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VtPalette {
+    pub foreground: crate::Rgb,
+    pub background: crate::Rgb,
+    pub cursor: crate::Rgb,
+    /// ANSI 0..7
+    pub normal: [crate::Rgb; 8],
+    /// ANSI 8..15
+    pub bright: [crate::Rgb; 8],
+}
+
 use libghostty_vt::render::{CellIterator, RowIterator, RenderState};
 use libghostty_vt::screen::{CellWide as VtCellWide, Screen};
 use libghostty_vt::style::RgbColor;
@@ -28,6 +54,33 @@ impl VtTerminal {
     pub fn new(cols: u16, rows: u16) -> Result<Self, Error> {
         Ok(Self {
             inner: Terminal::new(cols, rows)?,
+            render_state: std::cell::RefCell::new(None),
+        })
+    }
+
+    /// 用配置调色板初始化终端（阶段 4F t2）。
+    pub fn new_with_palette(
+        cols: u16,
+        rows: u16,
+        palette: &VtPalette,
+    ) -> Result<Self, Error> {
+        let mut term = Terminal::new(cols, rows)?;
+        // 1) 16 个 ANSI 索引色：覆盖 libghostty 内置调色板的前 16 项，
+        //    16..255（xterm 立方/灰阶）保持内置值（t2 要求不受配置影响）。
+        let mut p = libghostty_vt::style::Palette::default();
+        for i in 0..8 {
+            p.0[i] = to_raw(palette.normal[i]);
+            p.0[8 + i] = to_raw(palette.bright[i]);
+        }
+        term.set_default_color_palette(Some(p))?;
+        // 2) 默认前景/背景/光标：libghostty 据此解析 ESC[7m 的默认色反色，
+        //    以及未指定颜色时的 cell 颜色。OSC 10/11/12 的覆盖优先于这里的默认值，
+        //    OSC 110/111/112 重置后回到这里（而非内置默认色）。
+        term.set_default_fg_color(Some(to_raw(palette.foreground)))?;
+        term.set_default_bg_color(Some(to_raw(palette.background)))?;
+        term.set_default_cursor_color(Some(to_raw(palette.cursor)))?;
+        Ok(Self {
+            inner: term,
             render_state: std::cell::RefCell::new(None),
         })
     }

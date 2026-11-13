@@ -1542,6 +1542,61 @@ else
     echo "FAIL case35-paste-inverse-visible-cpu (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 36（4F-t2）：配置调色板必须到达 VT 层。
+#   取样两项：① 配置红 #d32f2f（ESC[31m 字形 + ESC[7m+ESC[31m 反色块底色）；
+#   ② 配置前景 #e0e0e0（ESC[7m 默认反色块底色）。
+#   **证伪能力**：① 可证伪（回退 VT 接线后实测 2734 → 0，因为 libghostty 内置红
+#   #CC6666）；② **不可证伪**——render 层的 palette.primary_fg 在 4F 之前就已生效，
+#   两版本都约 2751，仅作回归保护，不作为本修复的门禁依据。
+#   取样用整窗像素计数（-fuzz 2 容差，理由见 DECISIONS），阈值按"10 格应占像素"的 60%。
+CFG36="$OUT/case36-palette.toml"
+L36="$OUT/case36-palette.log"
+S36="$OUT/case36-palette.png"
+cat >"$CFG36" <<'TOML'
+[renderer]
+backend = "cpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+[colors.primary]
+background = "#101010"
+foreground = "#e0e0e0"
+[colors.normal]
+red = "#d32f2f"
+TOML
+# 统计图片中接近指定颜色的像素数（-fuzz 2% ≈ 每通道 ≤5 的容差）
+count_color() { # $1=img $2=#rrggbb
+    convert "$1" -fuzz 2% -fill white -opaque "$2" -fill black +opaque white \
+        -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
+}
+APP_CONFIG="$CFG36" SHELL=/bin/sh "$APP_BIN" >"$L36" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    # 1) 索引红字（配置 #d32f2f）；2) 默认色反色块（底色=配置前景 #e0e0e0）；
+    # 3) 彩色反色块（底色=配置红 #d32f2f）
+    x11 xdotool type --window "$WID" "printf '\\033[31mREDTEXT\\033[0m\\n\\033[7m          \\033[0m\\n\\033[7m\\033[31m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$S36" 2>/dev/null
+    if [ -s "$S36" ]; then
+        RED=$(count_color "$S36" "#d32f2f")
+        FG=$(count_color "$S36" "#e0e0e0")
+        echo "  配置红(#d32f2f) 像素=$RED  配置前景(#e0e0e0) 像素=$FG（阈值 ≥500）"
+        if [ "${RED:-0}" -ge 500 ] && [ "${FG:-0}" -ge 500 ]; then
+            echo "PASS case36-palette-reaches-vt-cpu (red=$RED fg=$FG)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case36-palette-reaches-vt-cpu (red=$RED fg=$FG，疑似用了内置默认色)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case36-palette-reaches-vt-cpu (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case36-palette-reaches-vt-cpu (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
