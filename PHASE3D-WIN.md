@@ -177,6 +177,12 @@ cargo tree --target x86_64-pc-windows-gnu -e normal --workspace --prefix none
 - 日志/截图：`vt-verify-win/logs/{3d-clippy-dev,3d-clippy-rel,3d-test,3d-tree*,3d-baseline-*,3d-glyphclip-*,3d-perf}.log`、`vt-verify-win/logs/phase2b-win/{t4b-padding,t4d-*,t4df-*,backend-*}.{png,err,dump}`。
 - 未入库：`vt-verify-win/perfdata/`（含 130 MB 测试文件）、`vt-verify-win/probe_render_win/target/`、任何 conpty.dll/OpenConsole.exe。
 
+## 9.5 推送与打 tag
+
+- `git push origin win`：`b8cb0b8..dfa882a  win -> win`；`git rev-parse win` = `dfa882ac5d93c2d0d48b2c9ed31c33020c9b11d3`，`git ls-remote origin refs/heads/win` 同值。
+- 提交序列：a579c36（shared: 非 Linux 目标忽略未用参数）→ dfa882a（本轮主体：合并、脚本、测试 clippy 修复、文档）。
+- tag：`phase3d-win-done`（annotated，指向 dfa882a，tag 对象 `1f8c6eebd3514c89abfc0dc2e2881a1e8e5d8ec6`），已 push 并在 ls-remote 可见。
+
 ## 10. 手动清单（≤3）
 
 1. 用真实输入法在 Consolas + Microsoft YaHei 回退下输入中文，确认顶部与下行笔画无裁切（本机只做了字形级与像素级统计）。
