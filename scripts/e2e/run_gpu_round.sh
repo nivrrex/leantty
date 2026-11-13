@@ -136,6 +136,44 @@ else
     echo "FAIL gpu-round-inverse-visible (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：交互 bash 括号粘贴反色可见性（像素门禁）"
+CFG35="$OUT/gpu-round-bash.toml"
+printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG35"
+printf 'PASTED35XX' > "$OUT/gpu-round-clip.txt"
+L="$OUT/gpu-round-paste-inverse.log"
+S="$OUT/gpu-round-paste-inverse.png"
+if start_gpu_app "$CFG35" "$L" ""; then
+    sleep 2.5
+    x11 xclip -selection clipboard -i "$OUT/gpu-round-clip.txt" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO" | grep '^X=' | cut -d= -f2); GY=$(echo "$GEO" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2); GH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-200} / 2 )) $(( ${GY:-0} + ${GH:-200} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 1.2
+    x11 import -window "$WID" "$S" 2>/dev/null
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    if [ -s "$S" ]; then
+        W=$(convert "$S" -format "%c" histogram:info:- 2>/dev/null \
+            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        echo "  括号粘贴反色块白像素=$W（阈值 ≥768）"
+        if [ "$W" -ge 768 ]; then
+            echo "PASS gpu-round-paste-inverse-visible ($W 白像素)"; PASS=$((PASS+1))
+        else
+            echo "FAIL gpu-round-paste-inverse-visible (白像素 $W < 768)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL gpu-round-paste-inverse-visible (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-paste-inverse-visible (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then

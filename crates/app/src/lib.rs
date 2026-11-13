@@ -1353,7 +1353,7 @@ impl ApplicationHandler for AppHandler {
                 self.test_paste_at = None;
                 if let Some(text) = self.test_paste_text.take() {
                     eprintln!("[perf] test_paste_fired");
-                    self.paste_text(&text);
+                    self.paste_from_text(&text);
                     self.test_paste_fired = Some(std::time::Instant::now());
                 }
             } else {
@@ -2362,12 +2362,20 @@ impl AppHandler {
         if text.is_empty() {
             return;
         }
+        self.paste_from_text(&text);
+    }
+
+    /// 完整粘贴路径：按当前括号粘贴模式规范化后写入 PTY 并主动排一帧。
+    ///
+    /// `do_paste`（剪贴板）与 debug 测试钩子 `APP_TEST_PASTE` 都走这里，
+    /// 保证门禁验证的是生产路径（含 `ESC[200~ … ESC[201~` 包裹）。
+    fn paste_from_text(&mut self, text: &str) {
         let bracketed = self
             .vt
             .as_ref()
             .map(|v| v.is_bracketed_paste().unwrap_or(false))
             .unwrap_or(false);
-        let norm = normalize_paste(&text, bracketed);
+        let norm = normalize_paste(text, bracketed);
         if norm.len() >= 1024 * 1024 {
             for chunk in paste_chunks(&norm) {
                 self.pending_paste.push_back(chunk.into_bytes());

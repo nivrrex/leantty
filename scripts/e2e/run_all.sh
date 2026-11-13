@@ -1491,6 +1491,57 @@ else
     echo "FAIL case34-inverse-visible-cpu (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 35（4D）：交互 bash 的括号粘贴反色可见性（像素门禁，非 dump）。
+#   取证：bash 5.2.15 + readline bracketed paste 开启时，收到 ESC[200~…ESC[201~
+#   会把文本以 readline active region 高亮回显 —— 实际序列
+#   `ESC[7m PASTED35XX ESC[27m`。若反色被画成黑底黑字（4C 之前），粘贴内容
+#   在画面上不可见（用户报的"粘贴后不刷新，直到回车"）。本用例断言反色块为
+#   "亮底"，阈值 768 与 case34 相同（10 格 × 8×16 × 0.6）。
+CFG35="$OUT/case35-paste-inverse.toml"
+L35="$OUT/case35-paste-inverse.log"
+S35="$OUT/case35-paste-inverse.png"
+CLIP35="$OUT/case35-clip.txt"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG35"
+printf 'PASTED35XX' > "$CLIP35"
+APP_CONFIG="$CFG35" SHELL=/bin/bash "$APP_BIN" >"$L35" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    # 等 bash 就绪并发出 ?2004h（括号粘贴开启）
+    sleep 2.5
+    x11 xclip -selection clipboard -i "$CLIP35" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO35=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO35" | grep '^X=' | cut -d= -f2)
+    GY=$(echo "$GEO35" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO35" | grep '^WIDTH=' | cut -d= -f2)
+    GH=$(echo "$GEO35" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-200} / 2 )) $(( ${GY:-0} + ${GH:-200} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 1.2
+    x11 import -window "$WID" "$S35" 2>/dev/null
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    if [ -s "$S35" ]; then
+        W35=$(convert "$S35" -format "%c" histogram:info:- 2>/dev/null \
+            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        echo "  括号粘贴反色块白像素=$W35（阈值 ≥768）"
+        if [ "$W35" -ge 768 ]; then
+            echo "PASS case35-paste-inverse-visible-cpu ($W35 白像素)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case35-paste-inverse-visible-cpu (白像素 $W35 < 768，粘贴文本反色不可见)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case35-paste-inverse-visible-cpu (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case35-paste-inverse-visible-cpu (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
