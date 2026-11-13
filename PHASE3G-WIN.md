@@ -98,6 +98,16 @@
 - 证据：`vt-verify-win/logs/{3g-clippy-dev,3g-clippy-rel,3g-test,3g-tree}.log`；`vt-verify-win/logs/conpty-seq/{system,wezterm}-s{1..5}-{pwsh,bash}.txt`（原始十六进制）；`vt-verify-win/logs/phase2b-win/t3-*.png`。
 - 未入库：`probe_inv/target/`、`perfdata/`、任何 conpty.dll/OpenConsole.exe。
 
+## 7.5 推送与打 tag（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `32fb9ee2712269dfbae762abac3c8cf77a0b323f` |
+| `refs/tags/phase3g-win-done`（tag 对象） | `52dad280fa3f885498869b25284ffe17be13dcdd` |
+| `refs/tags/phase3g-win-done^{}`（解引用 commit） | `32fb9ee2712269dfbae762abac3c8cf77a0b323f` |
+
+- `git push origin win`：`62a8d5a..32fb9ee  win -> win`；tag 为新建后 push（`* [new tag] phase3g-win-done`）。全程未使用任何 force，未移动任何已有 tag。
+
 ## 8. 手动清单（≤3）
 
 1. 在 Linux 上用同一份 `cursor-magenta.toml` 复核"上滚隐藏光标"，确认跨平台一致。
