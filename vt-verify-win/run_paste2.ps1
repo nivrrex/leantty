@@ -13,6 +13,7 @@ Add-Type -AssemblyName System.Windows.Forms
 $pout = Join-Path $ROOT "vt-verify-win\logs\phase2b-win\paste-$Tag-$Mb.txt"
 Remove-Item $pout -ErrorAction SilentlyContinue
 $env:PROBE_OUT = $pout
+$env:APP_PERF_FRAMES = '1'
 $a = Start-App2 ("paste-$Tag-$Mb") (Join-Path $CFG 'clip-win.toml')
 if ($a.hwnd -eq [IntPtr]::Zero) { Write-Host "PASTE no-window"; exit }
 $null = Focus-App2 $a.hwnd

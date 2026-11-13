@@ -1,14 +1,16 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
-[perf] config_ms=1.0 since_start=9.7
-[perf] fontdb_ms=48.6 since_start=90.3
-[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=32.4 since_start=148.2
-[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=29.7 since_start=226.6
-[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=42.5 since_start=325.5
-[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=31.5 since_start=416.8
+[perf] config_ms=1.9 since_start=10.9
+[perf] fontdb_ms=47.1 since_start=96.3
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=41.0 since_start=163.5
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=30.5 since_start=246.8
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=33.3 since_start=349.7
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=30.0 since_start=453.2
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=63.3 since_start=653.6
-[perf] surface_ms=1.0 since_start=690.0
-[perf] pty_spawn_ms=78.4 since_start=789.8
-[perf] first_frame_ms=819
-[perf] first_pty_byte_ms=831 since_start=831
-[perf] bg_fonts_ms=1438 count=3
+[perf] window_ms=69.0 since_start=613.7
+[perf] renderer_ready_ms=641 since_start=641
+[perf] surface_ms=0.8 since_start=654.7
+[perf] pty_spawn_ms=104.6 since_start=780.6
+[perf] pre_first_submit_ms=811 since_start=811
+[perf] first_frame_ms=846
+[perf] first_pty_byte_ms=1329 since_start=1329
+[perf] bg_fonts_ms=1450 count=3

@@ -1,0 +1,17 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=8.6
+[perf] fontdb_ms=50.5 since_start=98.4
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=614.6 since_start=742.2
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=140.2 since_start=946.2
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=158.5 since_start=1161.6
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=137.5 since_start=1357.3
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=71.4 since_start=1530.7
+[perf] renderer_ready_ms=1585 since_start=1585
+[perf] surface_ms=6.4 since_start=1605.3
+[perf] pty_spawn_ms=11.0 since_start=1641.1
+[perf] pre_first_submit_ms=1667 since_start=1667
+[perf] first_frame_ms=1688
+[perf] first_pty_byte_ms=1700 since_start=1700
+[perf] bg_fonts_ms=2344 count=3
+paste get: clipboard error: get clipboard: The clipboard contents were not available in the requested format or the clipboard is empty.

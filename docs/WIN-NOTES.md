@@ -57,6 +57,11 @@
 - 事实更正（3D，已验证）：3C 记录的“1 MB 级输出推进极慢而渲染空闲”在 release 下**不成立**——20 000 行 5.47 s、2 000 000 行 330 s（中位）均正常完成，渲染 render 4 ms / present 1 ms。3C 当时用的是 debug 构建 + 每帧写 dump，属测量方法污染；该项降级为测量问题，不是缺陷。
 - 事实（3D，已验证）：release 2M 行 120×30 三次 323.6/333.7/330.1 s；200×60 单次 325.0 s（render 中位 11 ms）；WezTerm conpty 120×30 单次 229.0 s（比系统 conhost 快约 1.44×）。
 - 请求 15（3D，观测增强）：启动剩余约 420 ms 无打点（默认配置 config 27 + window 62 + surface 1 + spawn 10 + fontdb 44 + 字体组 136 = 280 ms vs first_frame 701 ms）；外部实测窗口可见时刻距 first_frame 仅 7–116 ms，说明缺口在进程启动到窗口可见之间（winit 事件循环 + 首帧合成）。建议补 renderer/字形缓存初始化完成、首帧提交前两个打点。
+- 请求 16（3E，观测增强，已验证事实）：`create_renderer` 内部仍有约 359 ms 无打点（Windows release，5 次中位：config 26 + window 86 + surface 4 + spawn 10 + fontdb 46 + 字体组 138 = 310 ms，而 renderer_ready 669 ms）；后面的尾部已由 4C 新点拆开（renderer_ready 669 → pre_first_submit 740 → first_frame 764）。建议在字体加载完成后、字形缓存/图集构建后各加一个 `[perf]` 点。
+- 事实（3E，已验证）：最小化/恢复守卫有效——3 次最小化期间 dump 头均保持 120×30（3D 曾为 1×1 并丢内容），恢复后逐像素 diff=0（基线噪声 0）；最大化→还原也 diff=0（最大化期间 240×63 属正常）。
+- 事实（3E，已验证）：反色同 case34 阈值（≥768）：默认反色高亮像素 2768、彩色反色红像素 1280、选区 diff 2176；但本机 CPU 渲染下“白色”实为 (197,200,198)、红块 (204,102,102)（约 0.77 倍），纯 #FFFFFF 计数仅 87——原因未核实（待验证）。
+- 事实变更（3E，已验证 + 待验证）：3D 记录的“WezTerm conpty 下 1MB 粘贴停在 ~450KB”本轮**未复现**（2/2 都在 15 s 内完成 1 048 576 字节）；系统 conhost 7.77 s。停滞时的条件差异未定位，3D 与 3E 之间无代码变更（仅合入 4C）。
+- 事实（3E，已验证）：ConPTY 输出路径外部参照——WezTerm 终端自身 `type` 同一 2M 行文件 >900 s 未完成，而本 app 在同机器为 330 s（系统 conhost）/229–467 s（WezTerm conpty）；app 侧 feed_bytes_per_s: 442–470 KB/s（系统）/371–387 KB/s（WezTerm），chan_depth_max 均为 1，render 3–4 ms。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 
