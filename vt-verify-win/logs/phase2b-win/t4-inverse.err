@@ -1,17 +1,16 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
-[perf] config_ms=2.8 since_start=61.3
-[perf] fontdb_ms=119.9 since_start=235.0
-[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3287.7 since_start=3547.5
-[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=190.1 since_start=3811.9
-[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=178.5 since_start=4041.0
-[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=169.9 since_start=4270.5
+[perf] config_ms=1.0 since_start=7.2
+[perf] fontdb_ms=48.2 since_start=112.6
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=653.3 since_start=786.8
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=144.6 since_start=2262.1
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=148.5 since_start=2468.3
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=139.7 since_start=2670.6
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=87.7 since_start=4464.9
-[perf] renderer_ready_ms=4562 since_start=4562
-[perf] surface_ms=13.7 since_start=4615.2
-[perf] pty_spawn_ms=11.1 since_start=4654.2
-[perf] first_pty_byte_ms=4710 since_start=4710
-[perf] pre_first_submit_ms=4743 since_start=4743
-[perf] first_frame_ms=4782
-[perf] bg_fonts_ms=8304 count=3
-copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+[perf] window_ms=101.7 since_start=3272.7
+[perf] renderer_ready_ms=3484 since_start=3484
+[perf] surface_ms=7.1 since_start=3502.5
+[perf] pty_spawn_ms=11.5 since_start=3653.8
+[perf] first_pty_byte_ms=4058 since_start=4058
+[perf] pre_first_submit_ms=4070 since_start=4070
+[perf] first_frame_ms=4170
+[perf] bg_fonts_ms=4652 count=3
