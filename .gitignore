@@ -8,3 +8,4 @@ target/
 scripts/e2e/out/
 /vt-verify-win/conpty-test/
 /vt-verify-win/perfdata/
+/vt-verify-win/probe_render_win/target/

@@ -1,0 +1,12 @@
+[package]
+name = "probe_render_win"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+render = { path = "../../crates/render" }
+vt = { path = "../../crates/vt" }
+fontdb = "0.21"
+fontdue = "0.9"

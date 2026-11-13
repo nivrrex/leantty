@@ -52,6 +52,11 @@
 - 请求 11（3C，观测增强）：启动分段仍缺两个打点——renderer/字形缓存初始化完成、首帧提交前。本机实测（release，5 次中位）：config 25 / window 107 / surface 12 / pty_spawn 9 / fontdb 53 / 字体组 158 / first_frame 823，覆盖约 364 ms，还剩约 460 ms 无打点（且 first_pty_byte 1061 晚于 first_frame 823，说明不是等 shell）。不改变行为。状态=已验证事实 + 待拆分。
 - 请求 12（3C，待验证）：大段输出在 app 内推进极慢——debug 二进制下 app 内 cmd 执行 `type` 20 000 行（1.28 MB）180 s 内未到结束标记，dump 停在 L000050；100 行 60 s 内未完成；同时段 APP_PERF_FRAMES 显示 render_ms 中位 1–3 ms（release）/16–18 ms（debug）、present 1–2 ms、coalesced≈130，渲染侧空闲。建议在读线程→channel→vt.feed 路径统计每秒喂入字节数，确认是否存在节流。未定位，仅现象记录。
 - 事实变更（3C，已验证）：上一轮把 `ctrl_c_probe_powershell_ping` 的 0xC000013A 归给 clear_console_ctrl_ignore **是错的**。A/B 对照（启用/禁用测试内 reignore）均 5/5 通过；真因是 `t4_e8_ffi_ctrl_c_to_ping` 在 AttachConsole 失败后调 `GenerateConsoleCtrlEvent(0, 0)`，进程组 0 广播到调用者自身控制台组，把 harness 杀掉。已在该测试内修（仅测试进程重新忽略 Ctrl-C），windows.rs 未改。
+- 请求 13（3D，P1 数据丢失，已验证事实）：`crates/app/src/lib.rs:1233` 的 `WindowEvent::Resized` 未过滤最小化/零尺寸——最小化时窗口收到 1×1，行列被 `min(1)` 钳位后 `vt.resize(1,1)` 把终端内容裁掉；Windows 实测最小化期间 dump 头为 `# cols=1 rows=1`，恢复后文本丢失（暗像素 4465→2104，逐像素 diff 5413，基线噪声 0；`APP_FORCE_FULL_REDRAW=1` 同样不救）。建议 cols/rows 为 0（或 physical_size 任一维为 0）时跳过 vt/pty resize，或记住最小化前尺寸。未改共用代码。
+- 请求 14（3D，输入侧现象，待验证）：WezTerm conpty（20240203）下向原始读端粘贴 >450 KB 停在约 450 000 字节不再前进（三次：450554 / 456442 / 459002），系统 conhost 正常完成 1 MB（5.7 s）与 10 MB（60.7 s）；release 构建。是否为 ConPTY 输入流控或探针（`ReadFile` 原始读）在新 ConPTY 下的读取差异未区分。建议在共享读线程→channel→vt.feed 路径加“每秒喂入字节数”观测。
+- 事实更正（3D，已验证）：3C 记录的“1 MB 级输出推进极慢而渲染空闲”在 release 下**不成立**——20 000 行 5.47 s、2 000 000 行 330 s（中位）均正常完成，渲染 render 4 ms / present 1 ms。3C 当时用的是 debug 构建 + 每帧写 dump，属测量方法污染；该项降级为测量问题，不是缺陷。
+- 事实（3D，已验证）：release 2M 行 120×30 三次 323.6/333.7/330.1 s；200×60 单次 325.0 s（render 中位 11 ms）；WezTerm conpty 120×30 单次 229.0 s（比系统 conhost 快约 1.44×）。
+- 请求 15（3D，观测增强）：启动剩余约 420 ms 无打点（默认配置 config 27 + window 62 + surface 1 + spawn 10 + fontdb 44 + 字体组 136 = 280 ms vs first_frame 701 ms）；外部实测窗口可见时刻距 first_frame 仅 7–116 ms，说明缺口在进程启动到窗口可见之间（winit 事件循环 + 首帧合成）。建议补 renderer/字形缓存初始化完成、首帧提交前两个打点。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

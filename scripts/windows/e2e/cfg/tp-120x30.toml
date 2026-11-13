@@ -1,0 +1,93 @@
+﻿# ==============================================================================
+# Alacritty Windows 閰嶇疆
+# 鏋佽嚧椴滆壋 + 楂樺姣斿害娴呰壊鏂规
+# ==============================================================================
+
+[window]
+position = { x = 50, y = 40 }
+dimensions = { columns = 120, lines = 30 }
+padding = { x = 0, y = 0 }
+dynamic_title = true
+opacity = 1.0
+
+[scrolling]
+history = 10000
+multiplier = 10
+
+# ==============================================================================
+# PowerShell 7锛堜笉纭紪鐮佺粷瀵硅矾寰勶級
+# ==============================================================================
+[terminal]
+shell = { program = "cmd.exe", args = [] }
+
+[font]
+size = 13.0
+# Windows 涓嬩娇鐢ㄥ井杞泤榛戠瓑瀹藉瓧浣?normal = { family = "Microsoft YaHei Mono", style = "Regular" }
+bold = { family = "Microsoft YaHei Mono", style = "Bold" }
+italic = { family = "Microsoft YaHei Mono", style = "Italic" }
+bold_italic = { family = "Microsoft YaHei Mono", style = "Bold Italic" }
+fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
+
+[selection]
+save_to_clipboard = true
+semantic_escape_chars = ",鈹俙|:\"' ()[]{}<>"
+
+# ==============================================================================
+# 棰滆壊璁剧疆锛氶珮楗卞拰搴﹀疂鐭宠壊鏂规
+# ==============================================================================
+[colors]
+# 绮椾綋鏂囧瓧浣跨敤 bright ANSI 棰滆壊
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#fcfcfc"
+foreground = "#000000"
+
+[colors.cursor]
+text = "#fcfcfc"
+cursor = "#0000ff"
+
+[colors.normal]
+black   = "#000000"
+red     = "#d32f2f"
+green   = "#008800"
+yellow  = "#af8700"
+blue    = "#0033cc"
+magenta = "#c2185b"
+cyan    = "#0097a7"
+white   = "#757575"
+
+[colors.bright]
+black   = "#424242"
+red     = "#ff0000"
+green   = "#00aa00"
+yellow  = "#fbc02d"
+blue    = "#0000ff"
+magenta = "#ff00ff"
+cyan    = "#00e5ff"
+white   = "#212121"
+
+# ==============================================================================
+# 榧犳爣
+# ==============================================================================
+[[mouse.bindings]]
+mouse = "Middle"
+action = "Copy"
+
+[[mouse.bindings]]
+mouse = "Right"
+action = "Paste"
+
+# ==============================================================================
+# 閿洏
+# ==============================================================================
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Control"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Shift"
+action = "Paste"
+

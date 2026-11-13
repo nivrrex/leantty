@@ -67,14 +67,11 @@ fn wait_for(rx: &mpsc::Receiver<Vec<u8>>, needle: &[u8], timeout: Duration) -> (
     let t0 = Instant::now();
     let mut out: Vec<u8> = Vec::new();
     while t0.elapsed() < timeout {
-        match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(d) => {
-                out.extend_from_slice(&d);
-                if needle.is_empty() || out.windows(needle.len()).any(|w| w == needle) {
-                    return (out, true);
-                }
+        if let Ok(d) = rx.recv_timeout(Duration::from_millis(100)) {
+            out.extend_from_slice(&d);
+            if needle.is_empty() || out.windows(needle.len()).any(|w| w == needle) {
+                return (out, true);
             }
-            Err(_) => {}
         }
     }
     (out, false)
