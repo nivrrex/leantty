@@ -26,6 +26,10 @@ for f in "$DIR"/*.sh; do
     # guard.sh 是包装/清理的唯一实现处；lint 自身包含禁止模式字符串（用于检测）。
     [ "$base" = "guard.sh" ] && continue
     [ "$base" = "lint_scripts.sh" ] && continue
+    # gpu_smoke_display0.sh 是任务书显式授权的"一次性 :0 真机冒烟"：允许继承用户
+    # DISPLAY（非 :99）与只读的 xwininfo/xwd 调用；仍受下面的 pkill/killall 检查约束。
+    DISPLAY0_SMOKE=no
+    [ "$base" = "gpu_smoke_display0.sh" ] && DISPLAY0_SMOKE=yes
 
     # 1) pkill / killall
     if grep -nE '(^|[^[:alnum:]_])(pkill|killall)([^[:alnum:]_]|$)' "$f" >/tmp/lint_hits 2>/dev/null; then
@@ -38,7 +42,7 @@ for f in "$DIR"/*.sh; do
     fi
 
     # 2) 裸 X11 客户端调用（排除 command -v 探测、注释、x11 包装）
-    if grep -nE '(^|[;&|(`]|[[:space:]])[[:space:]]*(xdotool|xclip|xsel|wmctrl|import|xwd|xrandr|xset)[[:space:]]' "$f" >/tmp/lint_hits2 2>/dev/null; then
+    if [ "$DISPLAY0_SMOKE" = "no" ] && grep -nE '(^|[;&|(`]|[[:space:]])[[:space:]]*(xdotool|xclip|xsel|wmctrl|import|xwd|xrandr|xset)[[:space:]]' "$f" >/tmp/lint_hits2 2>/dev/null; then
         while IFS= read -r hit; do
             case "$hit" in
                 *'#'*) continue ;;
@@ -51,7 +55,7 @@ for f in "$DIR"/*.sh; do
     fi
 
     # 3) 非 :99 的 DISPLAY 赋值
-    if grep -nE 'export[[:space:]]+DISPLAY=|DISPLAY=' "$f" >/tmp/lint_hits3 2>/dev/null; then
+    if [ "$DISPLAY0_SMOKE" = "no" ] && grep -nE 'export[[:space:]]+DISPLAY=|DISPLAY=' "$f" >/tmp/lint_hits3 2>/dev/null; then
         while IFS= read -r hit; do
             case "$hit" in
                 *'#'*) continue ;;
