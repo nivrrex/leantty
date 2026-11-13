@@ -56,10 +56,10 @@ pub enum Error {
     Backend(String),
 }
 
-/// 滚动条宽度（像素，右缘竖直条带）：阶段 4B-fix2 由 4 放宽到 8——
-/// 4px 在 HiDPI 与 4K 屏上难以命中，用户反馈"鼠标不容易点中"。
-/// CPU/GPU 绘制与 app 的命中测试共用该常量，避免三处各写一个魔数。
-pub const SCROLLBAR_WIDTH: u32 = 8;
+/// 滚动条宽度（像素，右缘竖直条带）：4（阶段 3A）→ 8（4B-fix2）→ **12**（4B-fix3）。
+/// 用户两次反馈"太窄、鼠标不容易点中"；12px 在 1x/2x 下都更易命中。
+/// CPU 绘制、GPU 绘制、条带备份、app 命中测试共用该常量（唯一来源）。
+pub const SCROLLBAR_WIDTH: u32 = 12;
 
 /// Linux 默认等宽字体 family。
 #[cfg(target_os = "linux")]

@@ -1296,6 +1296,8 @@ impl ApplicationHandler for AppHandler {
                 && let Some(w) = self.window.as_ref()
             {
                 // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
+                // 同时置 urgent：排空期间内容在变，下一帧应尽快到来（4B-fix3）。
+                self.urgent_render = true;
                 w.request_redraw();
             }
         }
@@ -2215,6 +2217,14 @@ impl AppHandler {
             }
         } else if let Some(pty) = self.pty.as_mut() {
             write_pty(pty, norm.as_bytes());
+            // 阶段 4B-fix3：粘贴后必须主动排一帧。此路径不产生应用侧状态变化，
+            // 若不置 urgent，画面刷新只能等 PTY 回显字节到达后由帧间隔驱动；
+            // 回显缺失/延迟时（例如 shell 关闭 echo、readline 尚未处理）会出现
+            // "内容已送入 shell 但画面不刷新，直到回车或再次键入"。
+            self.urgent_render = true;
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
+            }
         }
     }
 }
