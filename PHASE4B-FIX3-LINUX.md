@@ -9,9 +9,9 @@
 | 任务 A 复现 | **在 :99 上未能复现**用户现象（短文本粘贴 500ms 内 dump 即含文本） |
 | 任务 A 根因 | 代码审查确认假设 **(c)**：`do_paste` 同步路径写完 PTY 后不请求重绘 |
 | 任务 A 修复 | 已做最小加固（粘贴后 `urgent_render` + `request_redraw`） |
-| 任务 A 门禁 | **无法构造可证伪用例**（原因见 §3），故 **tag `phase4b-fix3-a` 未打** |
+| 任务 A 门禁 | **已补齐并可证伪**（debug 钩子 `APP_TEST_PASTE` + e2e case32），**tag `phase4b-fix3-a`** |
 | 任务 B（滚动条 12px） | 已完成并通过全部验收，**tag `phase4b-fix3-b`** |
-| 交付 tag | `phase4b-fix3` **未打**（依赖 A 的验收结论） |
+| 交付 tag | `phase4b-fix3` ✅ |
 
 ## 1. 复现尝试与证据
 
@@ -49,21 +49,28 @@ e2e 环境：`:99` + Xvfb + openbox，debug 构建，`APP_DUMP_SNAPSHOT` 文本�
 - (b) 脏行未标记：**未观测到**——dump 内容正确（vt 已更新），且渲染输出与 vt 一致。
 - (c) 粘贴路径未置 `urgent_render`：**成立**（代码事实）。
 
-## 3. 门禁缺口（为什么没有 tag -a）
+## 3. 门禁（case32，可证伪）
 
-要求"新增的 e2e 用例须由红转绿"。实际尝试全部失败：
+**为什么需要 debug 钩子**：鼠标/键盘第三方触发粘贴都会顺带产生 `RedrawRequested`（4B-fix1 起处理），或 `xdotool key --window` 的 XSendEvent 被应用忽略——无法把"粘贴主动排帧"与其他重绘触发分离，用例恒绿。
 
-1. **鼠标右键粘贴**本身产生 `PointerButton` 事件 → 从 4B-fix1 起 `RedrawRequested` 被处理 → 无论是否加固都会刷新，信号被掩盖。
-2. **`stty -echo` 关闭回显**后仍会在下一个帧调度周期刷新（`WaitUntil` ≤ 100ms），350ms 窗口内观察不到差别。
-3. **键盘粘贴 Ctrl+Shift+V**：`xdotool key --window` 走 `XSendEvent`，组合键被应用忽略（回车后 dump 无粘贴文本 → 粘贴未发生），无法自动化；不带 `--window` 需要抢走真实焦点，在 :99 的 openbox 下不可靠。
+**方案**：app 内新增 debug 专有钩子 `APP_TEST_PASTE=<文本>` + `APP_TEST_PASTE_AT_MS=<延迟>`，由 `about_to_wait` 在指定延迟后调用 **与正式路径同一个** `paste_text()`；正式路径 `do_paste` 也改为调用 `paste_text`，保证门禁验证的就是生产代码（release 不含该钩子）。
 
-结论：**当前 e2e 设施无法分离"粘贴主动排帧"与其他重绘触发**。因此该加固虽有代码层依据，**没有可证伪的回归门禁**，我不把它标为"已修复"。
+**e2e case32 流程**：`backend=cpu` + `APP_FRAME_HASH` → `stty -echo` 关闭回显 → 等画面静止（此后无任何回显字节驱动渲染）→ 钩子在 3.5s 时触发粘贴 → 断言出现 `[perf] test_paste_first_frame ... urgent=true` 且帧哈希行数增加。
 
-**推翻条件**：若在 office-pc 实测仍不回显，说明 (c) 不是唯一原因（例如还有 X11 焦点/事件路由问题）；若实测已修复，则该加固有效，可补一个基于 `APP_PERF_FRAMES` 帧计数的行为断言（粘贴后 50ms 内必须出现新帧）作为门禁。
+**证伪证据（实测）**：
+
+| 状态 | frames | 指标行 | 结果 |
+|---|---|---|---|
+| 回退"写完主动排一帧" | 4 → **4** | **无** | 红 ✅ |
+| 恢复加固 | 4 → **5** | `latency_ms=105 urgent=true` | 绿 ✅ |
+
+**关于 50ms**："粘贴后 50ms 内出帧"在 **debug 构建下达不到**——实测首帧完成 104–105ms，主因是 debug 渲染本身 20–30ms 加每帧写盘（`APP_FRAME_HASH` + dump）。因此 case32 以 **`urgent=true` 为主判据**（这正是加固的本质：该帧由粘贴主动请求，而不是等下一个调度周期），latency 只作日志记录，未把阈值放宽后声称通过。
+
+**推翻条件**：若 office-pc 实测仍不回显，说明 (c) 不是唯一原因（需查 X11 焦点/事件路由）。
 
 ## 4. 改动清单
 
-### 4.1 粘贴加固（提交 784e322，未单独 tag）
+### 4.1 粘贴加固（784e322 起，b7aad4e 收口补门禁；tag phase4b-fix3-a）
 
 - `do_paste` 同步路径写完 PTY 后：`self.urgent_render = true` + `window.request_redraw()`。
 - `pending_paste` 每轮排空后：在原有 `request_redraw()` 基础上补 `urgent_render = true`（排空期间内容在变，下一帧应尽快到来）。
@@ -98,11 +105,11 @@ e2e 环境：`:99` + Xvfb + openbox，debug 构建，`APP_DUMP_SNAPSHOT` 文本�
 - `cargo clippy --workspace --all-targets -- -D warnings`：**0**
 - `cargo clippy --release --workspace --all-targets -- -D warnings`：**0**
 - `cargo build --release`：**0 warning**
-- `scripts/e2e/run_all.sh`：**87/87 PASS**，`GPU_SKIP=0`，GPU 轮 4/4
+- `scripts/e2e/run_all.sh`：**88/88 PASS**（含 case32），`GPU_SKIP=0`，GPU 轮 4/4
 
 ## 6. 未解决问题
 
-1. **粘贴不回显未能在自动化环境复现**（置信度中）：根因判定为 (c) 且已加固，但缺少可证伪门禁，需 office-pc 实测确认。推翻条件见 §3。
+1. **粘贴不回显未能在自动化环境复现**（置信度中）：根因判定为 (c)，已加固并有可证伪门禁（case32，回退即红），但仍需 office-pc 实测确认修复对用户场景有效。推翻条件见 §3。
 2. **`pending_paste` 的阻塞写**（已验证事实）：PTY 主端 writer 是阻塞模式、缓冲约 64KB，`drain_pending` 用 `write` 而非 `write_all` 时仍可能阻塞在缓冲满；把块降到 4KB 会严重拖慢排空（已回退）。彻底解决需要把 writer 设为非阻塞（`fcntl(O_NONBLOCK)`，需引入 `libc` 直接依赖）或改由独立写线程（需 `Pty` trait 变更，本轮禁止）。**未修**。
 3. **Shift+Insert 无默认绑定**（已验证事实）：`default_key_bindings()` 只有 Ctrl+Shift+C/V 与鼠标 Middle=Copy、Right=Paste。用户若按 Shift+Insert 实际不会粘贴；若需要该键，应加默认绑定（属新功能，未擅自添加）。
 4. **PRIMARY 中键**默认是 **Copy** 而非 Paste（`PasteSelection` 需在配置里显式绑定）。用户描述的"PRIMARY 中键粘贴"在当前默认配置下不成立，需确认其配置。
