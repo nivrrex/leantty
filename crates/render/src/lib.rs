@@ -414,6 +414,26 @@ impl CpuRenderer {
 
 
 
+    /// 基线相对格顶的偏移（像素）。
+    ///
+    /// 取 `cell_h - ceil(-descent) - ceil(line_gap)`：既保证下行字形（g/p/y）落在
+    /// 格内不被裁剪，又保证字形上缘不越界。等价于"ascent 向上取整后再为 descent
+    /// 与 line_gap 让出空间"，与 `cell_metrics` 的
+    /// `cell_h = ceil(ascent - descent + line_gap)` 配套。
+    fn baseline_px(&self, px: f32, cell_h: u32) -> i32 {
+        self.groups
+            .first()
+            .and_then(|g| g.first())
+            .and_then(|f| f.horizontal_line_metrics(px))
+            .map(|lm| {
+                let descent_px = (-lm.descent).ceil().max(0.0);
+                let gap_px = lm.line_gap.ceil().max(0.0);
+                (cell_h as f32 - descent_px - gap_px)
+                    .clamp(0.0, cell_h as f32) as i32
+            })
+            .unwrap_or(0)
+    }
+
     /// 缩放因子变化：更新 scale 并整体清空字形位图缓存（位图尺寸随 scale 变；
     /// 码点→字体归属缓存与 scale 无关，不清）。
     pub fn set_scale_factor(&mut self, scale: f64) {
@@ -559,6 +579,11 @@ struct RowDrawCtx {
     bg_default: u32,
     gamma: f32,
     sub: Subpixel,
+    /// 基线相对格顶的偏移（像素）。字形落点 = cell_y + baseline + gy + ymin。
+    ///
+    /// 阶段 4B-fix1 任务 A：此前公式直接用 `cell_y + gy + ymin`（把 baseline 当成
+    /// 格顶），导致整块字形上移 ascent 像素、'.' 等小字形落在行上部、g/p/y 不下行。
+    baseline: i32,
 }
 
 /// 光标状态键（位置/可见性/样式），用于叠加层脏判定。
@@ -805,6 +830,7 @@ impl CpuRenderer {
         let bg_default = ctx.bg_default;
         let gamma = ctx.gamma;
         let sub = ctx.sub;
+        let baseline = ctx.baseline;
         for (x, cell) in row.iter().enumerate() {
             let px0 = x as u32 * cell_w;
             let py0 = y as u32 * cell_h;
@@ -874,7 +900,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
-                        (px0, py0, area_w, cell_h),
+                        (px0, py0, area_w, cell_h, baseline),
                         &m,
                         &bitmap,
                         (fg, bg),
@@ -897,7 +923,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
-                        (px0, py0, area_w, cell_h),
+                        (px0, py0, area_w, cell_h, baseline),
                         &sm,
                         &scaled,
                         (fg, bg),
@@ -926,7 +952,7 @@ impl CpuRenderer {
                 blit_subpixel(
                     &mut self.framebuffer,
                     pixel_width,
-                    (px0, py0, area_w, cell_h),
+                    (px0, py0, area_w, cell_h, baseline),
                     &sm,
                     &scaled,
                     fg,
@@ -937,7 +963,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     pixel_width,
-                    (px0, py0, area_w, cell_h),
+                    (px0, py0, area_w, cell_h, baseline),
                     &m,
                     &bitmap,
                     (fg, bg),
@@ -968,13 +994,17 @@ impl Renderer for CpuRenderer {
         let px = (self.font_size * self.scale as f32).max(0.1);
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
+        let cell_h = (pixel_height / rows).max(1);
         let ctx = RowDrawCtx {
             cell_w: (pixel_width / cols).max(1),
-            cell_h: (pixel_height / rows).max(1),
+            cell_h,
             px,
             bg_default: rgb_to_u32(self.palette.primary_bg),
             gamma: self.options.text_gamma,
             sub: self.options.subpixel,
+            // 基线 = ascent（向上取整），限制在格内；与 cell_metrics 的
+            // cell_h = ceil(ascent - descent + line_gap) 配套。
+            baseline: self.baseline_px(px, cell_h),
         };
         self.damage.clear();
         if self.should_full_redraw(frame, pixel_width, pixel_height) {
@@ -1001,6 +1031,7 @@ impl CpuRenderer {
         let cy = u32::from(cur.y) * cell_h;
         let width = self.fb_width;
         let color = rgb_to_u32(self.palette.cursor);
+        let baseline = self.baseline_px(px, cell_h);
         match cur.style {
             CursorStyle::Block => {
                 fill_rect(&mut self.framebuffer, width, cx, cy, cell_w, cell_h, color);
@@ -1016,7 +1047,7 @@ impl CpuRenderer {
                     blit(
                         &mut self.framebuffer,
                         width,
-                        (cx, cy, cell_w, cell_h),
+                        (cx, cy, cell_w, cell_h, baseline),
                         &m,
                         &bitmap,
                         (rgb_to_u32(self.palette.cursor_text), color),
@@ -1103,6 +1134,7 @@ impl CpuRenderer {
         let mut x_cells = u32::from(layout.col);
         let y = u32::from(layout.row) * cell_h;
         let gamma = self.options.text_gamma;
+        let baseline = self.baseline_px(px, cell_h);
         for (idx, pc) in layout.cells.iter().enumerate() {
             let px0 = x_cells * cell_w;
             let span = u32::from(pc.width).max(1);
@@ -1125,7 +1157,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     self.fb_width,
-                    (px0, y, area_w, cell_h),
+                    (px0, y, area_w, cell_h, baseline),
                     &m,
                     &bitmap,
                     (cell_fg, cell_bg),
@@ -1148,7 +1180,7 @@ impl CpuRenderer {
                 blit(
                     &mut self.framebuffer,
                     self.fb_width,
-                    (px0, y, area_w, cell_h),
+                    (px0, y, area_w, cell_h, baseline),
                     &sm,
                     &scaled,
                     (cell_fg, cell_bg),
@@ -1239,7 +1271,7 @@ fn fill_rect(fb: &mut [u32], width: u32, x: u32, y: u32, w: u32, h: u32, color: 
 fn blit(
     fb: &mut [u32],
     width: u32,
-    cell: (u32, u32, u32, u32),
+    cell: (u32, u32, u32, u32, i32),
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
     colors: (u32, u32),
@@ -1247,7 +1279,7 @@ fn blit(
 ) {
     let (fg, bg) = colors;
     let (antialiasing, gamma) = aa_gamma;
-    let (cell_x, cell_y, cell_w, cell_h) = cell;
+    let (cell_x, cell_y, cell_w, cell_h, baseline) = cell;
     let bw = metrics.width as i32;
     let bh = metrics.height as i32;
     for gy in 0..bh {
@@ -1257,7 +1289,9 @@ fn blit(
                 continue;
             }
             let px = cell_x as i32 + gx + metrics.xmin;
-            let py = cell_y as i32 + gy + metrics.ymin;
+            // 字形顶边 = 基线 - ymin - height（fontdue 的 ymin 是位图**底边**相对
+            // 基线的偏移，向上为负）。等价：底边 = 基线 - ymin。
+            let py = cell_y as i32 + baseline - metrics.ymin - bh + gy;
             // 裁剪：只绘制落在当前单元格矩形 [cell_x, cell_x+cell_w) x [cell_y, cell_y+cell_h) 内的像素；
             // 负 xmin/ymin 或超宽超高位图不得侵入邻格。
             if px < cell_x as i32
@@ -1294,14 +1328,14 @@ fn blit(
 fn blit_subpixel(
     fb: &mut [u32],
     width: u32,
-    cell: (u32, u32, u32, u32),
+    cell: (u32, u32, u32, u32, i32),
     metrics: &fontdue::Metrics,
     bitmap: &[u8],
     fg: u32,
     sp: (Subpixel, f32),
 ) {
     let (order, gamma) = sp;
-    let (cell_x, cell_y, cell_w, cell_h) = cell;
+    let (cell_x, cell_y, cell_w, cell_h, baseline) = cell;
     let bw3 = metrics.width as i32;
     let bh3 = metrics.height as i32;
     let stride3 = metrics.width;
@@ -1317,7 +1351,8 @@ fn blit_subpixel(
             let sx = gx3 / 3;
             let sub = gx3 % 3; // 0=R,1=G,2=B（位图列序）
             let px = cell_x as i32 + sx + metrics.xmin / 3;
-            let py = cell_y as i32 + gy3 / 3 + metrics.ymin / 3;
+            // 同灰度路径：顶边 = 基线 - ymin - height（3x 采样下全部除以 3）。
+            let py = cell_y as i32 + baseline - metrics.ymin / 3 - bh3 / 3 + gy3 / 3;
             if px < cell_x as i32
                 || px >= (cell_x + cell_w) as i32
                 || py < cell_y as i32
@@ -1579,7 +1614,7 @@ mod blit_tests {
         blit(
             &mut fb,
             width,
-            (0, 0, 8, 4),
+            (0, 0, 8, 4, 2),
             &m,
             &bitmap,
             (FG, BG),
@@ -1606,7 +1641,7 @@ mod blit_tests {
         blit(
             &mut fb,
             width,
-            (0, 0, 8, 4),
+            (0, 0, 8, 4, 2),
             &m,
             &bitmap,
             (FG, BG),

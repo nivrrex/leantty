@@ -334,6 +334,20 @@ impl GpuRenderer {
         &self.rgba
     }
 
+    /// 基线相对格顶的偏移（像素），与 `CpuRenderer::baseline_px` 同公式。
+    fn baseline_px(&self, px: f32, cell_h: u32) -> i32 {
+        self.groups
+            .first()
+            .and_then(|g| g.first())
+            .and_then(|f| f.horizontal_line_metrics(px))
+            .map(|lm| {
+                let descent_px = (-lm.descent).ceil().max(0.0);
+                let gap_px = lm.line_gap.ceil().max(0.0);
+                (cell_h as f32 - descent_px - gap_px).clamp(0.0, cell_h as f32) as i32
+            })
+            .unwrap_or(0)
+    }
+
     /// 组内字体索引（第一个含该码点的字体；全无则 None → 用组首字体画 U+25A1）。
     fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
         if let Some(&i) = self.char_font.get(&(group, ch)) {
@@ -369,6 +383,7 @@ impl GpuRenderer {
         let px = (self.font_size * self.scale as f32).max(0.1);
         let bg_default = rgb_to_u32(self.palette.primary_bg);
         let fg_default = rgb_to_u32(self.palette.primary_fg);
+        let baseline = self.baseline_px(px, cell_h);
         let n_cells: usize = frame.cells.iter().map(Vec::len).sum();
         let mut quads = Vec::with_capacity(n_cells * 2);
         // 样式线单独收集：它们是"字形之上"的层，必须排在 bg_n 之后提交，
@@ -457,9 +472,10 @@ impl GpuRenderer {
                     continue;
                 };
                 glyphs.push(GlyphInstance {
+                    // 顶边 = 格顶 + 基线 - ymin - height（与 CPU 的 blit 同公式）。
                     rect: [
                         (px0 as i32 + gx) as f32,
-                        (py0 as i32 + gy) as f32,
+                        (py0 as i32 + baseline - gy - gh as i32) as f32,
                         gw as f32,
                         gh as f32,
                     ],
@@ -532,7 +548,8 @@ impl GpuRenderer {
                                 glyphs.push(GlyphInstance {
                                     rect: [
                                         (cx as i32 + m.xmin) as f32,
-                                        (cy as i32 + m.ymin) as f32,
+                                        (cy as i32 + baseline - m.ymin
+                                            - m.height as i32) as f32,
                                         gw as f32,
                                         gh as f32,
                                     ],
@@ -652,7 +669,7 @@ impl GpuRenderer {
                             glyphs.push(GlyphInstance {
                                 rect: [
                                     (px0 as i32 + gx) as f32,
-                                    (y as i32 + gy) as f32,
+                                    (y as i32 + baseline - gy - gh as i32) as f32,
                                     gw as f32,
                                     gh as f32,
                                 ],
