@@ -136,3 +136,50 @@ fn waker_wakes_on_every_data_arrival() {
     );
     assert_eq!(rx.iter().count(), 5, "channel 应收到全部 5 次数据");
 }
+
+// ---- 阶段 4C t2：最小化/零尺寸 resize 守卫 ----
+
+/// 边界：0 尺寸与"小于一个字符格"的尺寸返回 None（不得 resize），正常尺寸反算行列。
+///
+/// 取证依据（(1,1) 为何也判为无效）：格子像素尺寸由字体度量决定，典型 8×16
+/// （DejaVu 13px）或 10×16；窗口宽或高小于一格时 `w / cell_w == 0`。旧实现的
+/// `.max(1)` 会把这种情况钳成 1×1 网格并 resize vt/pty，内容被裁掉且恢复后不可
+/// 还原（Windows 最小化实测发 1×1 / 0×0）。因此判据取"能否容纳至少一个完整格"，
+/// 而不是"尺寸是否为 0"。
+#[test]
+fn resize_target_rejects_zero_and_sub_cell_sizes() {
+    let (cw, ch) = (8u32, 16u32);
+    // 零尺寸
+    assert_eq!(app::resize_target(0, 0, cw, ch, 0, 0), None);
+    assert_eq!(app::resize_target(0, 480, cw, ch, 0, 0), None);
+    assert_eq!(app::resize_target(800, 0, cw, ch, 0, 0), None);
+    // 小于一格（Windows 最小化的 1x1 落在这里）
+    assert_eq!(app::resize_target(1, 1, cw, ch, 0, 0), None);
+    assert_eq!(app::resize_target(7, 480, cw, ch, 0, 0), None);
+    assert_eq!(app::resize_target(800, 15, cw, ch, 0, 0), None);
+    // 恰好一格：可用（真实最小网格）
+    assert_eq!(app::resize_target(8, 16, cw, ch, 0, 0), Some((1, 1)));
+    // 正常尺寸
+    assert_eq!(app::resize_target(800, 480, cw, ch, 0, 0), Some((100, 30)));
+    // padding 参与反算：padding 吃掉可用宽度后同样可能落到 None
+    assert_eq!(app::resize_target(800, 480, cw, ch, 4, 4), Some((99, 29)));
+    assert_eq!(app::resize_target(20, 40, cw, ch, 8, 8), None);
+    // 超大尺寸钳到 u16::MAX 而不是溢出
+    assert_eq!(
+        app::resize_target(u32::MAX, u32::MAX, 1, 1, 0, 0),
+        Some((u16::MAX, u16::MAX))
+    );
+}
+
+/// 幂等性的输入侧保证：恢复尺寸与最小化前相同时，反算结果必须完全一致
+/// （调用方据此跳过 vt/pty resize）。
+#[test]
+fn resize_target_is_stable_for_restored_size() {
+    let (cw, ch) = (8u32, 16u32);
+    let before = app::resize_target(800, 480, cw, ch, 0, 0);
+    // 中途最小化：被守卫拒绝
+    assert_eq!(app::resize_target(1, 1, cw, ch, 0, 0), None);
+    // 恢复：与最小化前一致
+    let after = app::resize_target(800, 480, cw, ch, 0, 0);
+    assert_eq!(before, after);
+}

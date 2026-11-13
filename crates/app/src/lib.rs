@@ -1232,26 +1232,41 @@ impl ApplicationHandler for AppHandler {
             }
             WindowEvent::Resized(physical_size) => {
                 self.urgent_render = true;
-                // 窗口物理尺寸 = 行列*格子(物理) + 2*padding(逻辑*scale)；反算行列，min(1) 兜底。
                 let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
                 let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
-                let cw = self.cell_w.max(1);
-                let ch = self.cell_h.max(1);
-                let cols = (physical_size.width.saturating_sub(2 * pad_x) / cw)
-                    .max(1)
-                    .min(u16::MAX as u32) as u16;
-                let rows = (physical_size.height.saturating_sub(2 * pad_y) / ch)
-                    .max(1)
-                    .min(u16::MAX as u32) as u16;
-                if let Some(vt) = self.vt.as_mut()
-                    && let Err(e) = vt.resize(cols, rows)
-                {
-                    eprintln!("vt resize: {}", e);
-                }
-                if let Some(pty) = self.pty.as_mut()
-                    && let Err(e) = pty.resize(cols, rows)
-                {
-                    eprintln!("pty resize: {}", e);
+                // 零尺寸/小于一格（Windows 最小化会发 1×1 或 0×0）：保持原网格、
+                // 原渲染尺寸与 surface 配置不变，只请求一次重绘（恢复时的 Resized
+                // 会走正常路径）。若在此处 resize，内容会被裁成 1×1 且不可恢复。
+                let Some((cols, rows)) = resize_target(
+                    physical_size.width,
+                    physical_size.height,
+                    self.cell_w,
+                    self.cell_h,
+                    pad_x,
+                    pad_y,
+                ) else {
+                    #[cfg(debug_assertions)]
+                    eprintln!(
+                        "[perf] resize_ignored {}x{}（小于一个字符格）",
+                        physical_size.width, physical_size.height
+                    );
+                    return;
+                };
+                // 幂等：网格未变时不重复 resize（恢复尺寸与最小化前相同时必须无副作用）。
+                let unchanged = (cols, rows) == (self.cols, self.rows);
+                if !unchanged {
+                    if let Some(vt) = self.vt.as_mut()
+                        && let Err(e) = vt.resize(cols, rows)
+                    {
+                        eprintln!("vt resize: {}", e);
+                    }
+                    if let Some(pty) = self.pty.as_mut()
+                        && let Err(e) = pty.resize(cols, rows)
+                    {
+                        eprintln!("pty resize: {}", e);
+                    }
+                    self.cols = cols;
+                    self.rows = rows;
                 }
                 self.last_size = Some((physical_size.width, physical_size.height));
                 if let Some(r) = self.renderer.as_mut()
@@ -2292,6 +2307,35 @@ impl AppHandler {
             w.request_redraw();
         }
     }
+}
+
+/// 由窗口物理像素尺寸反算网格行列（纯函数，便于单测）。
+///
+/// 返回 `None` 表示该尺寸**无法容纳任何完整字符格**，调用方必须保持原网格不变：
+/// 不 resize vt/pty、不重配 surface、不更新渲染尺寸。判断依据是实测的格子像素
+/// 尺寸（`cell_w × cell_h`）——窗口宽或高小于一格时，`w / cell_w == 0`（或
+/// `h / cell_h == 0`），此时任何 `max(1)` 钳位都会把网格缩成 1×1 并把内容裁掉
+/// 且不可恢复（Windows 最小化实测发 1×1、有时 0×0）。
+///
+/// 旧实现用 `.max(1)` 兜底，正是 P1 数据丢失的直接原因。
+pub fn resize_target(
+    physical_width: u32,
+    physical_height: u32,
+    cell_w: u32,
+    cell_h: u32,
+    pad_x: u32,
+    pad_y: u32,
+) -> Option<(u16, u16)> {
+    let cw = cell_w.max(1);
+    let ch = cell_h.max(1);
+    let w = physical_width.saturating_sub(2 * pad_x);
+    let h = physical_height.saturating_sub(2 * pad_y);
+    let cols = w / cw;
+    let rows = h / ch;
+    if cols == 0 || rows == 0 {
+        return None;
+    }
+    Some((cols.min(u16::MAX as u32) as u16, rows.min(u16::MAX as u32) as u16))
 }
 
 /// IME 事件对预编辑状态的更新（纯函数，便于单测）：

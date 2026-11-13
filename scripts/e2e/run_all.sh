@@ -1414,6 +1414,46 @@ else
     echo "FAIL case32-paste-urgent-frame (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 33（4C-t2）：最小化 → 恢复后网格与内容不变。
+#   ⚠ 该用例**不能证伪** resize 守卫：实测 X11（Xvfb + openbox）的
+#   xdotool windowminimize/windowmap 不产生 WindowEvent::Resized（日志无
+#   resize_ignored / vt resize），因此守卫是否生效在本用例里不可见。
+#   守卫的正确性由单元测试 resize_target_*（crates/app/tests/keyboard.rs）承担，
+#   其中"回退守卫 → 单测变红"已验证。本用例只作回归保护：将来若 X11 行为变化
+#   导致最小化产生 Resized，这里会先暴露网格被裁的问题。
+CFG33="$OUT/case33-minimize.toml"
+D33="$OUT/case33-minimize.dump"
+L33="$OUT/case33-minimize.log"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG33"
+rm -f "$D33"
+APP_CONFIG="$CFG33" APP_DUMP_SNAPSHOT="$D33" SHELL=/bin/sh "$APP_BIN" >"$L33" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    x11 xdotool type --window "$WID" "echo MINIMIZE_KEEP"
+    x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    B33=$(head -1 "$D33" 2>/dev/null)
+    x11 xdotool windowminimize "$WID"
+    sleep 1.0
+    x11 xdotool windowmap "$WID"
+    sleep 1.0
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    sleep 0.4
+    A33=$(head -1 "$D33" 2>/dev/null)
+    K33=$(grep -c "MINIMIZE_KEEP" "$D33" 2>/dev/null || echo 0)
+    if [ "$B33" = "$A33" ] && [ "$K33" -ge 1 ]; then
+        echo "PASS case33-minimize-keeps-grid ($A33, 内容行数=$K33)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case33-minimize-keeps-grid (前=$B33 后=$A33 内容=$K33)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case33-minimize-keeps-grid (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
