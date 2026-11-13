@@ -1,4 +1,3 @@
-#![cfg(unix)]
 //! 字形顶部裁剪取证（阶段 4B-fix2）。
 //!
 //! 对 ASCII 可打印字符与一批常用汉字，按**渲染时相同的公式**计算未裁剪的
@@ -8,11 +7,14 @@
 //! 与 `baseline_alignment.rs` 的分工：那个测基线**相对关系**（'.' 是否坐在基线、
 //! g/p/y 是否下行），本测**绝对适配**（字形是否完整落在格内，尤其 CJK 回退字体）。
 
-use render::{Font, FontSettings, FontSpec, Palette, RenderOptions, cell_metrics};
+use render::{Font, cell_metrics};
+#[cfg(target_os = "linux")]
+use render::{FontSettings, FontSpec, Palette, RenderOptions};
 
 /// 常用汉字取样（覆盖不同部首与笔画密度，≥200 个）。
 const HANZI: &str = "的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感";
 
+#[cfg(target_os = "linux")]
 fn settings(family: &str, size: f32) -> FontSettings {
     let spec = |style: &str| FontSpec {
         family: family.to_string(),

@@ -1,4 +1,3 @@
-#![cfg(unix)]
 //! 绝对基线（垂直对齐）集成测试（阶段 4B-fix1 任务 A）。
 //!
 //! 与"CPU/GPU 相对对拍"不同，本测试不比较两个渲染器，而是检查**字形相对基线
@@ -248,7 +247,7 @@ fn baseline_alignment_font_matrix() {
         }
     } else {
         eprintln!(
-            "提示：设置 TEST_FONT_FILE=/usr/share/fonts/chinese/consola.ttf 可把 Consolas 纳入矩阵"
+            "提示：设置 TEST_FONT_FILE=<本地 Consolas 字体文件路径> 可把 Consolas 纳入矩阵"
         );
     }
 

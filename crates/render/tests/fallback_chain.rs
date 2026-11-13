@@ -1,4 +1,3 @@
-#![cfg(unix)]
 //! render：字体回退链与宽字符对齐（系统 DejaVu Sans Mono + CJK 字体，缺则跳过）。
 
 use render::{CpuRenderer, FontSettings, FontSpec, Palette, RenderOptions, Renderer};
