@@ -4,6 +4,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod atlas;
+pub mod instances;
+
 use std::time::Duration;
 
 /// 固定测试内容：中英文、样式（粗体/斜体/下划线/反色/暗淡）、光标、选区。
@@ -151,13 +154,13 @@ fn load_cjk_fonts_uncached() -> Result<Vec<render::Font>, String> {
                 (p, data.as_ref().as_ref().to_vec())
             }
         };
-        if let Ok(f) = render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default()) {
-            if f.has_glyph('中') {
-                visited.push(path_key);
-                out.push(f);
-                // 只取一个 CJK 兜底字体（更多候选对渲染无益，且显著增加内存）。
-                break;
-            }
+        if let Ok(f) = render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
+            && f.has_glyph('中')
+        {
+            visited.push(path_key);
+            out.push(f);
+            // 只取一个 CJK 兜底字体（更多候选对渲染无益，且显著增加内存）。
+            break;
         }
     }
     if out.is_empty() {
@@ -273,6 +276,29 @@ pub fn compare(cpu: &[u32], gpu_rgba: &[u8], w: u32, h: u32) -> DiffReport {
         }
     }
     rep
+}
+
+/// 把 CPU 与 GPU 的同一单元格打成 ASCII 灰度图（差异定位用）。
+pub fn dump_cell(cpu: &[u32], gpu: &[u8], w: u32, cell: (u32, u32), cx: u32, cy: u32) {
+    let (cw, ch) = cell;
+    let ramp = b" .:-=+*#%@";
+    let mut a = String::new();
+    let mut b = String::new();
+    for y in 0..ch {
+        for x in 0..cw {
+            let px = cx * cw + x;
+            let py = cy * ch + y;
+            let i = (py * w + px) as usize;
+            let c = cpu[i];
+            let cg = ((c >> 16) & 0xFF) as usize;
+            let gg = usize::from(gpu[i * 4]);
+            a.push(ramp[(cg * 9 / 255).min(9)] as char);
+            b.push(ramp[(gg * 9 / 255).min(9)] as char);
+        }
+        a.push('\n');
+        b.push('\n');
+    }
+    eprintln!("[dump] cell ({cx},{cy}) CPU:\n{a}[dump] GPU:\n{b}");
 }
 
 /// 差异定位：按 cell 归因，返回前 `top` 个差异最多的 cell。

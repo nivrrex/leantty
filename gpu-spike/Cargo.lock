@@ -1077,10 +1077,10 @@ dependencies = [
 name = "spike-gl"
 version = "0.0.0"
 dependencies = [
- "fontdue",
  "glow",
  "khronos-egl",
  "spike-common",
+ "vt",
 ]
 
 [[package]]
@@ -1090,10 +1090,12 @@ dependencies = [
  "fontdb 0.23.0",
  "fontdue",
  "pollster",
+ "raw-window-handle",
  "render",
  "spike-common",
  "vt",
  "wgpu",
+ "x11-dl",
 ]
 
 [[package]]
@@ -1709,6 +1711,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3b93199df0ab874cdf0c6a94f0a0dc3423fe41f1cafb62b8bd7b1deb277aef"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "x11-dl"
+version = "2.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38735924fedd5314a6e548792904ed8c6de6636285cb9fec04d5b1db85c1516f"
+dependencies = [
+ "libc",
+ "once_cell",
+ "pkg-config",
 ]
 
 [[package]]

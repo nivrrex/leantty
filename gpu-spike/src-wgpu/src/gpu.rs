@@ -3,29 +3,10 @@
 use std::error::Error;
 use std::sync::mpsc;
 
-use crate::atlas::Atlas;
+use spike_common::atlas::Atlas;
 use crate::shaders;
 
-/// 纯色矩形实例（背景/样式线/光标；布局须与 shader 的 BgInstance 一致）。
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub struct BgInstance {
-    pub rect: [f32; 4],
-    pub color: [f32; 3],
-    pub _pad: f32,
-}
-
-/// 字形实例（布局必须与 shader 的 GlyphInstance 一致）。
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub struct GlyphInstance {
-    pub rect: [f32; 4],
-    pub cell: [f32; 4],
-    pub uv: [f32; 4],
-    pub color: [f32; 3],
-    pub backdrop: [f32; 3],
-    pub _pad: f32,
-}
+pub use spike_common::instances::{BgInstance, GlyphInstance};
 
 /// 把实例数组展开为上传字节（安全实现：逐 f32 to_le_bytes，不用 unsafe）。
 fn bytes_of_bg(v: &[BgInstance]) -> Vec<u8> {
@@ -399,7 +380,7 @@ impl Renderer {
     /// 光标字符最后）。
     pub fn submit_render(
         &mut self,
-        instances: &crate::Instances,
+        instances: &spike_common::instances::Instances,
     ) -> Result<(), Box<dyn Error>> {
         let bgs = &instances.quads;
         let glyphs = &instances.glyphs;

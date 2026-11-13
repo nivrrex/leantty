@@ -9,6 +9,8 @@ publish.workspace = true
 spike-common = { path = "../common" }
 wgpu = { version = "30.0.2", default-features = false, features = ["vulkan", "wgsl"] }
 pollster = "0.4"
+x11-dl = "2"
+raw-window-handle = "0.6"
 fontdue = "0.9"
 fontdb = "0.23"
 render = { path = "../../crates/render" }

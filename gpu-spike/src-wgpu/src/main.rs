@@ -4,25 +4,16 @@
 //! 不创建任何窗口/surface（:99 的 surface 测试由 `--surface` 单独入口覆盖）。
 
 use std::error::Error;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-mod atlas;
 mod gpu;
 mod report;
 mod shaders;
+mod surface;
 
-use atlas::Atlas;
-use gpu::{BgInstance, GlyphInstance, Gpu};
-
-/// 一帧的实例数据（分区边界见 `gpu::Renderer::submit_render`）。
-pub struct Instances {
-    pub quads: Vec<BgInstance>,
-    pub glyphs: Vec<GlyphInstance>,
-    /// quads 中前 `bg_n` 个是单元格背景（其后为样式线与光标填充）。
-    pub bg_n: u32,
-    /// glyphs 中前 `glyph_n` 个是普通字形（其后为光标格字符）。
-    pub glyph_n: u32,
-}
+use spike_common::atlas::Atlas;
+use spike_common::instances::build_instances;
+use gpu::Gpu;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -53,6 +44,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             "--gpu-name" => {
                 cfg.gpu_name = Some(args.get(i + 1).ok_or("--gpu-name 需要值")?.clone());
                 i += 2;
+            }
+            "--surface" => {
+                cfg.surface = true;
+                i += 1;
             }
             "--probe-only" => {
                 cfg.probe_only = true;
@@ -87,6 +82,7 @@ struct Config {
     gpu_index: Option<usize>,
     gpu_name: Option<String>,
     probe_only: bool,
+    surface: bool,
     json: bool,
     diag: bool,
     dump_cell: Option<(u32, u32)>,
@@ -102,6 +98,7 @@ impl Default for Config {
             gpu_index: None,
             gpu_name: None,
             probe_only: false,
+            surface: false,
             json: false,
             diag: false,
             dump_cell: None,
@@ -110,6 +107,10 @@ impl Default for Config {
 }
 
 fn run(cfg: &Config) -> Result<(), Box<dyn Error>> {
+    if cfg.surface {
+        // T4b：:99 下的 X11 surface present（默认 10 帧，沿用 --frames）。
+        return surface::run_surface(cfg.frames.min(10));
+    }
     // 1) 适配器枚举（无真实设备时必须返回 Err 而非 panic —— T4a 的验收点）。
     let t = Instant::now();
     let gpu = Gpu::new(cfg.gpu_index, cfg.gpu_name.as_deref())?;
@@ -201,7 +202,7 @@ fn run(cfg: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     if let Some((dcx, dcy)) = cfg.dump_cell {
-        dump_cell(&cpu_fb, &last_rgba, pixel_w, (cw, ch), dcx, dcy);
+        spike_common::dump_cell(&cpu_fb, &last_rgba, pixel_w, (cw, ch), dcx, dcy);
         dump_row_wide(&snap, dcy as usize);
     }
 
@@ -241,29 +242,6 @@ fn run(cfg: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// 把 CPU 与 GPU 的同一单元格打成 ASCII 灰度图（差异定位用）。
-fn dump_cell(cpu: &[u32], gpu: &[u8], w: u32, cell: (u32, u32), cx: u32, cy: u32) {
-    let (cw, ch) = cell;
-    let ramp = b" .:-=+*#%@";
-    let mut a = String::new();
-    let mut b = String::new();
-    for y in 0..ch {
-        for x in 0..cw {
-            let px = cx * cw + x;
-            let py = cy * ch + y;
-            let i = (py * w + px) as usize;
-            let c = cpu[i];
-            let cg = ((c >> 16) & 0xFF) as usize;
-            let gg = usize::from(gpu[i * 4]);
-            a.push(ramp[(cg * 9 / 255).min(9)] as char);
-            b.push(ramp[(gg * 9 / 255).min(9)] as char);
-        }
-        a.push('\n');
-        b.push('\n');
-    }
-    eprintln!("[dump] cell ({cx},{cy}) CPU:\n{a}[dump] GPU:\n{b}");
-}
-
 /// 打印指定行的 wide/字符标记（诊断 wide 判定是否与 CPU 一致）。
 fn dump_row_wide(snap: &vt::FrameSnapshot, y: usize) {
     if let Some(row) = snap.cells.get(y) {
@@ -275,240 +253,4 @@ fn dump_row_wide(snap: &vt::FrameSnapshot, y: usize) {
             .collect();
         eprintln!("[dump] row {y}: {}", items.join(" "));
     }
-}
-
-/// 与 `render::group_for` 一致：按 bold/italic 选字体组。
-fn group_for(cell: &vt::Cell) -> u8 {
-    match (cell.bold, cell.italic) {
-        (true, true) => 3,
-        (true, false) => 1,
-        (false, true) => 2,
-        (false, false) => 0,
-    }
-}
-
-fn rgb3(c: vt::Rgb) -> [f32; 3] {
-    [
-        f32::from(c.r) / 255.0,
-        f32::from(c.g) / 255.0,
-        f32::from(c.b) / 255.0,
-    ]
-}
-
-fn dim(fg: vt::Rgb, bg: vt::Rgb) -> vt::Rgb {
-    vt::Rgb {
-        r: fg.r / 2 + bg.r / 2,
-        g: fg.g / 2 + bg.g / 2,
-        b: fg.b / 2 + bg.b / 2,
-    }
-}
-
-/// CPU 侧构建实例数据：完整复刻 `CpuRenderer::draw_row` + `draw_style_lines` + `draw_cursor`
-/// 的绘制顺序与颜色决策，使像素对比只反映"光栅化/混合实现的差异"，不含语义差异。
-fn build_instances(
-    snap: &vt::FrameSnapshot,
-    atlas: &Atlas,
-    cw: u32,
-    ch: u32,
-) -> Result<Instances, Box<dyn Error>> {
-    let bg_default = atlas.default_bg();
-    let fg_default = atlas.default_fg();
-    let palette = render::Palette::default();
-    let sel = spike_common::SELECTION;
-    let n_cells: usize = snap.cells.iter().map(Vec::len).sum();
-    let mut quads = Vec::with_capacity(n_cells * 2);
-    let mut glyphs = Vec::with_capacity(n_cells);
-
-    // --- 逐 cell：背景 → 字形 → 样式线 ---
-    for (y, row) in snap.cells.iter().enumerate() {
-        for (x, cell) in row.iter().enumerate() {
-            let px0 = x as u32 * cw;
-            let py0 = y as u32 * ch;
-            let is_tail = matches!(
-                cell.wide,
-                vt::CellWide::SpacerTail | vt::CellWide::SpacerHead
-            );
-            let span = if cell.wide == vt::CellWide::Wide && x + 1 < row.len() {
-                2
-            } else {
-                1
-            };
-            let area_w = cw * span;
-            let in_sel = (x as u16) >= sel.0
-                && (x as u16) <= sel.2
-                && (y as u16) >= sel.1
-                && (y as u16) <= sel.3;
-            let sel_here = in_sel && !is_tail;
-
-            let orig_bg = cell.bg.unwrap_or(bg_default);
-            let orig_fg = cell.fg.unwrap_or(fg_default);
-            let bg_fill = if sel_here { orig_fg } else { orig_bg };
-            quads.push(BgInstance {
-                rect: [px0 as f32, py0 as f32, area_w as f32, ch as f32],
-                color: rgb3(bg_fill),
-                _pad: 0.0,
-            });
-
-            if is_tail || cell.chars.is_empty() || cell.invisible {
-                continue;
-            }
-
-            let mut fg = orig_fg;
-            let mut bgc = bg_fill;
-            if cell.inverse {
-                std::mem::swap(&mut fg, &mut bgc);
-            }
-            if cell.faint {
-                fg = dim(fg, bgc);
-            }
-            if sel_here {
-                fg = orig_bg;
-                bgc = orig_fg;
-            }
-
-            let ch0 = cell.chars.chars().next().ok_or("空字符意外")?;
-            if let Some(g) = atlas
-                .get(ch0, span as u8, group_for(cell))
-                .filter(|g| g.w > 0 && g.h > 0)
-            {
-                glyphs.push(GlyphInstance {
-                    rect: [
-                        (px0 as i32 + g.xmin) as f32,
-                        (py0 as i32 + g.ymin) as f32,
-                        g.w as f32,
-                        g.h as f32,
-                    ],
-                    // 裁剪到**起始格**而不是宽字符的 2 格宽度：CPU 侧 blit 的实际
-                    // 可见范围就是单格（实测把裁剪放宽到 2 格会让续格多出 5-10 列，
-                    // 与 CPU 输出不一致）。这是对齐参照实现的选择，不是物理正确性。
-                    cell: [px0 as f32, py0 as f32, cw as f32, ch as f32],
-                    uv: [g.u0, g.v0, g.u1, g.v1],
-                    color: rgb3(fg),
-                    backdrop: rgb3(bgc),
-                    _pad: 0.0,
-                });
-            }
-
-            // 样式线：颜色 = inverse ? bgc : fg（与 CPU 一致）
-            let line = if cell.inverse { bgc } else { fg };
-            push_style_lines(&mut quads, cell, px0, py0, area_w, ch, line);
-        }
-    }
-    let bg_n = quads.len() as u32;
-    let glyph_n = glyphs.len() as u32;
-
-    // --- 光标（覆盖在全部内容之上）---
-    let cur = &snap.cursor;
-    if cur.visible {
-        let cx = u32::from(cur.x) * cw;
-        let cy = u32::from(cur.y) * ch;
-        let color = rgb3(palette.cursor);
-        let push = |quads: &mut Vec<BgInstance>, x: u32, y: u32, w: u32, h: u32, c: [f32; 3]| {
-            quads.push(BgInstance {
-                rect: [x as f32, y as f32, w as f32, h as f32],
-                color: c,
-                _pad: 0.0,
-            });
-        };
-        match cur.style {
-            vt::CursorStyle::Block => {
-                push(&mut quads, cx, cy, cw, ch, color);
-                // 光标格字符以 cursor_text 色重画（底=cursor 色）
-                if let Some(cell) = snap
-                    .cells
-                    .get(cur.y as usize)
-                    .and_then(|r| r.get(cur.x as usize))
-                    && !cell.chars.is_empty()
-                {
-                    let ch0 = cell.chars.chars().next().ok_or("空字符意外")?;
-                    if let Some(g) = atlas.get(ch0, 1, 0).filter(|g| g.w > 0 && g.h > 0) {
-                        glyphs.push(GlyphInstance {
-                            rect: [
-                                (cx as i32 + g.xmin) as f32,
-                                (cy as i32 + g.ymin) as f32,
-                                g.w as f32,
-                                g.h as f32,
-                            ],
-                            cell: [cx as f32, cy as f32, cw as f32, ch as f32],
-                            uv: [g.u0, g.v0, g.u1, g.v1],
-                            color: rgb3(palette.cursor_text),
-                            backdrop: color,
-                            _pad: 0.0,
-                        });
-                    }
-                }
-            }
-            vt::CursorStyle::HollowBlock => {
-                push(&mut quads, cx, cy, cw, 1, color);
-                push(&mut quads, cx, cy + ch - 1, cw, 1, color);
-                push(&mut quads, cx, cy, 1, ch, color);
-                push(&mut quads, cx + cw - 1, cy, 1, ch, color);
-            }
-            vt::CursorStyle::Underline => {
-                push(&mut quads, cx, cy + ch - 1, cw, 1, color);
-                push(&mut quads, cx, cy + ch - 2, cw, 1, color);
-            }
-            vt::CursorStyle::Bar => {
-                push(&mut quads, cx, cy, 1, ch, color);
-                push(&mut quads, cx + 1, cy, 1, ch, color);
-            }
-        }
-    }
-
-    Ok(Instances {
-        quads,
-        glyphs,
-        bg_n,
-        glyph_n,
-    })
-}
-
-/// 复刻 `render::draw_style_lines`：下划线（Single/Double/Dotted/Dashed/Curly→Single）、
-/// 删除线（h/2）、上划线（y=1）。虚线按下标取模（i % gap == 0）逐像素点。
-fn push_style_lines(
-    quads: &mut Vec<BgInstance>,
-    cell: &vt::Cell,
-    px0: u32,
-    py0: u32,
-    w: u32,
-    h: u32,
-    color: vt::Rgb,
-) {
-    let c = rgb3(color);
-    let hline = |quads: &mut Vec<BgInstance>, y: i32, gap: u32| {
-        if y < 0 || y >= h as i32 {
-            return;
-        }
-        let mut i = 0u32;
-        while i < w {
-            quads.push(BgInstance {
-                rect: [(px0 + i) as f32, (py0 + y as u32) as f32, 1.0, 1.0],
-                color: c,
-                _pad: 0.0,
-            });
-            i += gap;
-        }
-    };
-    match cell.underline {
-        vt::Underline::None => {}
-        vt::Underline::Single => hline(quads, h as i32 - 2, 1),
-        vt::Underline::Double => {
-            hline(quads, h as i32 - 2, 1);
-            hline(quads, h as i32 - 4, 1);
-        }
-        vt::Underline::Dotted => hline(quads, h as i32 - 2, 2),
-        vt::Underline::Dashed => hline(quads, h as i32 - 2, 4),
-        vt::Underline::Curly => hline(quads, h as i32 - 2, 1),
-    }
-    if cell.strikethrough {
-        hline(quads, h as i32 / 2, 1);
-    }
-    if cell.overline {
-        hline(quads, 1, 1);
-    }
-}
-
-#[allow(dead_code)]
-fn secs(d: Duration) -> f64 {
-    d.as_secs_f64() * 1000.0
 }

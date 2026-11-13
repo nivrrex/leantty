@@ -284,7 +284,7 @@ fn load_font_groups() -> Result<Vec<Vec<render::Font>>, Box<dyn Error>> {
         (Weight::BOLD, DbStyle::Italic),
     ];
     // CJK 兜底只加载一次，再 clone 给四组（Font: Clone）。
-    let cjk = spike_common::cjk_fonts().unwrap_or_default();
+    let cjk = crate::cjk_fonts().unwrap_or_default();
     let mut groups = Vec::with_capacity(4);
     for (w, st) in styles {
         let mut chain = Vec::new();
@@ -297,7 +297,7 @@ fn load_font_groups() -> Result<Vec<Vec<render::Font>>, Box<dyn Error>> {
         if let Some(id) = db.query(&q) {
             chain.push(read_face(&db, id)?);
         }
-        // CJK 兜底与 CPU 参考侧同源（spike_common::cjk_fonts），保证两侧字体一致。
+        // CJK 兜底与 CPU 参考侧同源（crate::cjk_fonts），保证两侧字体一致。
         chain.extend(cjk.iter().cloned());
         if chain.is_empty() {
             return Err("字体组为空".into());
@@ -308,7 +308,7 @@ fn load_font_groups() -> Result<Vec<Vec<render::Font>>, Box<dyn Error>> {
 }
 
 /// 与 `render::group_for` 一致：按 bold/italic 选组。
-fn group_for(cell: &vt::Cell) -> u8 {
+pub fn group_for(cell: &vt::Cell) -> u8 {
     match (cell.bold, cell.italic) {
         (true, true) => 3,
         (true, false) => 1,
@@ -323,12 +323,14 @@ mod tests {
 
     #[test]
     fn atlas_contains_cjk_and_ascii() {
-        let snap = spike_common::build_frame(120, 30).expect("frame");
+        let snap = crate::build_frame(120, 30).expect("frame");
         let atlas = Atlas::build(&snap, 1.0).expect("atlas");
         assert!(atlas.glyph_count() > 20, "字形数应覆盖测试内容");
-        assert!(atlas.get('A', 1, 0).is_some());
+        // 'H' 出现在普通段（normal 组），'B' 出现在 BOLD 段（bold 组）。
+        assert!(atlas.get('H', 1, 0).is_some(), "普通组窄字符应入图集");
+        assert!(atlas.get('B', 1, 1).is_some(), "粗体组应按组区分入图集");
         assert!(atlas.get('中', 2, 0).is_some(), "中文字形应以 span=2 入图集");
-        let cpu = spike_common::cpu_reference(&snap, 120 * 8, 30 * 16, 1.0).expect("cpu");
+        let cpu = crate::cpu_reference(&snap, 120 * 8, 30 * 16, 1.0).expect("cpu");
         assert_eq!(atlas.cell, (cpu.3, cpu.4), "cell 尺寸应与 CpuRenderer 一致");
     }
 }

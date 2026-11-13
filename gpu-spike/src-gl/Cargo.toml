@@ -9,4 +9,4 @@ publish.workspace = true
 spike-common = { path = "../common" }
 glow = "0.18"
 khronos-egl = { version = "6.0", features = ["dynamic"] }
-fontdue = "0.9"
+vt = { path = "../../crates/vt" }
