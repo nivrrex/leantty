@@ -819,7 +819,13 @@ impl CpuRenderer {
                 .map(rgb_to_u32)
                 .unwrap_or(rgb_to_u32(self.palette.primary_fg));
             let bg = if sel { orig_fg } else { orig_bg };
-            fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+            // 宽字符续格（SpacerTail/SpacerHead）不重复填充背景：起始格的区域已按
+            // area_w = 2 格铺满，若这里再按自己的单格填一遍，会把宽字形已经画到
+            // 续格上的右半部分擦成背景色（阶段 4B t1 实测：'回' 位图非零 alpha
+            // 列 1..14，但渲染墨迹只到列 9）。
+            if !is_tail {
+                fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+            }
             if is_tail || cell.chars.is_empty() || cell.invisible {
                 continue;
             }
