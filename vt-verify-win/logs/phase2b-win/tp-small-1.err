@@ -1,0 +1,74 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=1.0 since_start=6.9
+[perf] fontdb_ms=77.3 since_start=139.4
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=860.1 since_start=1029.4
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=190.0 since_start=1277.7
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=173.3 since_start=1508.8
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=180.0 since_start=1750.9
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=95.8 since_start=1922.5
+[perf] surface_ms=26.8 since_start=1984.4
+[perf] pty_spawn_ms=8.3 since_start=2011.1
+[perf] first_frame_ms=2044
+[perf] first_pty_byte_ms=2209 since_start=2209
+[perf] bg_fonts_ms=2636 count=3
+[perf] frames n=50 render_ms(med=0 p95=1) present_ms(med=0 p95=1) coalesced=2846 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=0 p95=4) present_ms(med=1 p95=2) coalesced=268 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=1 p95=2) coalesced=119 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=127 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=126 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=140 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=145 interval_ms=10 ~100fps
+[perf] frames n=50 render_ms(med=1 p95=5) present_ms(med=1 p95=2) coalesced=121 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=1 p95=2) coalesced=131 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=133 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=6) present_ms(med=2 p95=2) coalesced=139 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=155 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=2 p95=3) coalesced=99 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=1 p95=2) coalesced=130 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=5) present_ms(med=1 p95=2) coalesced=120 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=144 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=147 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=134 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=139 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=133 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=148 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=5) present_ms(med=2 p95=2) coalesced=140 interval_ms=10 ~100fps
+[perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=1 p95=2) coalesced=109 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=6) present_ms(med=1 p95=2) coalesced=139 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=144 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=141 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=133 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=161 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=152 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=148 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=153 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=147 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=166 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=1 p95=2) coalesced=129 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=169 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=137 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=133 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=126 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=112 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=144 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=152 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=1 p95=2) coalesced=123 interval_ms=11 ~90fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=141 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=145 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=134 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=1 p95=2) coalesced=129 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=143 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=155 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=1 p95=5) present_ms(med=2 p95=2) coalesced=140 interval_ms=11 ~90fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=145 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=126 interval_ms=12 ~83fps
+[perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=125 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=2 p95=5) present_ms(med=1 p95=2) coalesced=127 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=2 p95=3) coalesced=101 interval_ms=13 ~76fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=2 p95=2) coalesced=130 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=117 interval_ms=10 ~100fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=142 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=2 p95=2) coalesced=131 interval_ms=9 ~111fps
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=124 interval_ms=8 ~125fps
+[perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=1 p95=2) coalesced=128 interval_ms=9 ~111fps

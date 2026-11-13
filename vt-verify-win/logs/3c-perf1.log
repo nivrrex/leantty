@@ -1,0 +1,14 @@
+Measure-Object : 找不到接受实际参数“$null”的位置形式参数。
+所在位置 C:\dev\tty\vt-verify-win\run_perf3c.ps1:28 字符: 1
++ Measure 'default' $null 5
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Measure-Object]，ParameterBindingException
+    + FullyQualifiedErrorId : PositionalParameterNotFound,Microsoft.PowerShell.Commands.MeasureObjectCommand
+ 
+Measure-Object : 找不到接受实际参数“C:\dev\tty\examples\windows.toml”的位置形式参数。
+所在位置 C:\dev\tty\vt-verify-win\run_perf3c.ps1:29 字符: 1
++ Measure 'windowstoml' (Join-Path $ROOT 'examples\windows.toml') 5
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Measure-Object]，ParameterBindingException
+    + FullyQualifiedErrorId : PositionalParameterNotFound,Microsoft.PowerShell.Commands.MeasureObjectCommand
+ 

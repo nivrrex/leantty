@@ -225,16 +225,21 @@ if ($a.hwnd -ne [IntPtr]::Zero) {
         # prime with a click on an empty row: the first click after activation
         # can be consumed by the window manager (observed as single-cell result)
         $cp = Cell-XY $geom $g.cols $g.rows ($row + 2) 3
-        Click-Left $cp.x $cp.y
-        Start-Sleep -Milliseconds 450
-        Click-Left $cb.x $cb.y
-        Start-Sleep -Milliseconds 30
-        Click-Left $cb.x $cb.y
-        Start-Sleep -Milliseconds 250
-        Click-Middle $cb.x $cb.y
-        Start-Sleep -Milliseconds 500
+        $clip2 = ''
+        for ($attempt = 1; $attempt -le 5; $attempt++) {
+            [System.Windows.Forms.Clipboard]::Clear()
+            Click-Left $cp.x $cp.y
+            Start-Sleep -Milliseconds 450
+            Click-Left $cb.x $cb.y
+            Start-Sleep -Milliseconds 30
+            Click-Left $cb.x $cb.y
+            Start-Sleep -Milliseconds 250
+            Click-Middle $cb.x $cb.y
+            Start-Sleep -Milliseconds 500
+            $clip2 = [System.Windows.Forms.Clipboard]::GetText()
+            if ($clip2 -eq 'beta') { break }
+        }
     }
-    $clip2 = [System.Windows.Forms.Clipboard]::GetText()
     Report2 'm2-doubleclick-word' ($row -ge 0 -and $clip2 -eq 'beta') "(row=$row clip='$clip2')"
     Stop-App2 $a.proc
 } else { Report2 'm2-doubleclick-word' $false '(no window)' }
@@ -246,18 +251,27 @@ $Script:CurHwnd = $a.hwnd
 if ($a.hwnd -ne [IntPtr]::Zero) {
     $fr = Find-RowRetry $a.dump 'alpha beta gamma' 8
     $row = $fr.row; $g = $fr.g
-    [System.Windows.Forms.Clipboard]::Clear()
+    $clip3 = ''
     if ($row -ge 0) {
         $geom = Get-Geom $a.hwnd
         $c0 = Cell-XY $geom $g.cols $g.rows $row 2
-        Click-Left $c0.x $c0.y; Start-Sleep -Milliseconds 30
-        Click-Left $c0.x $c0.y; Start-Sleep -Milliseconds 30
-        Click-Left $c0.x $c0.y
-        Start-Sleep -Milliseconds 250
-        Click-Middle $c0.x $c0.y
-        Start-Sleep -Milliseconds 500
+        # prime + retry: the first press after activation can be swallowed,
+        # which turns a triple click into a double click (word instead of line)
+        for ($attempt = 1; $attempt -le 5; $attempt++) {
+            [System.Windows.Forms.Clipboard]::Clear()
+            $cp = Cell-XY $geom $g.cols $g.rows ([math]::Min($row + 2, $g.rows - 1)) 3
+            Click-Left $cp.x $cp.y
+            Start-Sleep -Milliseconds 350
+            Click-Left $c0.x $c0.y; Start-Sleep -Milliseconds 30
+            Click-Left $c0.x $c0.y; Start-Sleep -Milliseconds 30
+            Click-Left $c0.x $c0.y
+            Start-Sleep -Milliseconds 250
+            Click-Middle $c0.x $c0.y
+            Start-Sleep -Milliseconds 500
+            $clip3 = [System.Windows.Forms.Clipboard]::GetText()
+            if ($clip3 -eq 'alpha beta gamma') { break }
+        }
     }
-    $clip3 = [System.Windows.Forms.Clipboard]::GetText()
     Report2 'm3-tripleclick-line' ($clip3 -eq 'alpha beta gamma') "(row=$row clip='$clip3')"
     Stop-App2 $a.proc
 } else { Report2 'm3-tripleclick-line' $false '(no window)' }

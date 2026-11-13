@@ -1,0 +1,33 @@
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:24 字符: 5
++     $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:66 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+PASS t3-cmd-host-ctrlc (host=cmd before=5708 died= survived=5708 hostAlive=True hwnd=264026)
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:24 字符: 5
++     $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:66 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+PASS t3-powershell-host-ctrlc (host=powershell before=10688 died=10688 survived= hostAlive=True hwnd=2098586)
+==== ctrl-host summary: PASS=2 FAIL=0 ====

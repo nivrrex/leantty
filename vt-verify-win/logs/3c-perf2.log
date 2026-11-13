@@ -1,0 +1,10 @@
+default run1 main_ms=-1 config_ms=32 window_ms=83.7 surface_ms=18.3 pty_spawn_ms=8.4 first_pty_byte_ms=908 first_frame_ms=770 bg_fonts_ms=955
+default run2 main_ms=-1 config_ms=21.4 window_ms=91.8 surface_ms=1 pty_spawn_ms=8.2 first_pty_byte_ms=1103 first_frame_ms=993 bg_fonts_ms=1151
+default run3 main_ms=-1 config_ms=23.2 window_ms=69.8 surface_ms=6.8 pty_spawn_ms=8.2 first_pty_byte_ms=997 first_frame_ms=702 bg_fonts_ms=855
+default run4 main_ms=-1 config_ms=22.4 window_ms=99.6 surface_ms=6.1 pty_spawn_ms=8.9 first_pty_byte_ms=1485 first_frame_ms=1512 bg_fonts_ms=1616
+default run5 main_ms=-1 config_ms=29.7 window_ms=107.8 surface_ms=3.6 pty_spawn_ms=8.6 first_pty_byte_ms=828 first_frame_ms=707 bg_fonts_ms=854
+windowstoml run1 main_ms=-1 config_ms=1.1 window_ms=93 surface_ms=20 pty_spawn_ms=31.2 first_pty_byte_ms=1643 first_frame_ms=1128 bg_fonts_ms=1775
+windowstoml run2 main_ms=-1 config_ms=1.1 window_ms=120 surface_ms=32.5 pty_spawn_ms=81.1 first_pty_byte_ms=895 first_frame_ms=854 bg_fonts_ms=1560
+windowstoml run3 main_ms=-1 config_ms=1 window_ms=73.4 surface_ms=23.7 pty_spawn_ms=43.3 first_pty_byte_ms=789 first_frame_ms=748 bg_fonts_ms=1411
+windowstoml run4 main_ms=-1 config_ms=0.8 window_ms=107.3 surface_ms=30.9 pty_spawn_ms=78.5 first_pty_byte_ms=960 first_frame_ms=886 bg_fonts_ms=1579
+windowstoml run5 main_ms=-1 config_ms=0.8 window_ms=112.4 surface_ms=24.4 pty_spawn_ms=83.1 first_pty_byte_ms=945 first_frame_ms=912 bg_fonts_ms=1615

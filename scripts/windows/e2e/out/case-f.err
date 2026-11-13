@@ -1,10 +1,15 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
 config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
-[perf] fontdb_ms=92.2 since_start=161.1
-[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=201.7 since_start=388.2
-[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=155.4 since_start=595.2
-[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=168.2 since_start=814.3
-[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=171.1 since_start=1066.8
+[perf] config_ms=29.3 since_start=35.5
+[perf] fontdb_ms=154.7 since_start=240.9
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=247.4 since_start=517.1
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=208.0 since_start=961.3
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=231.3 since_start=1266.3
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=262.9 since_start=1588.0
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=91.3 since_start=1309.5
-[perf] surface_ms=14.7 since_start=1360.2
-[perf] first_frame_ms=1492
+[perf] window_ms=124.8 since_start=1794.5
+[perf] surface_ms=28.4 since_start=1879.1
+[perf] pty_spawn_ms=121.6 since_start=2024.9
+[perf] first_frame_ms=2116
+[perf] first_pty_byte_ms=2128 since_start=2128
+[perf] bg_fonts_ms=2656 count=2

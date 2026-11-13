@@ -1,0 +1,144 @@
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:32 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:32 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:32 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+CMD-HOST run1 before=11412 died= survived=11412 exit=[EXIT=0]
+CMD-HOST run2 before=10636,11412 died=10636 survived=11412 exit=[EXIT=0]
+CMD-HOST run3 before=5232,11412 died=5232 survived=11412 exit=[EXIT=0]
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:36 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:36 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:36 字符: 9
++         $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdL ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:59 字符: 50
++     foreach ($a in $appAfter) { Stop-Process -Id $a.Id -Force -ErrorA ...
++                                                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+Stop-Process : 无法将参数绑定到参数“Id”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host2.ps1:60 字符: 50
++     if (-not $host.HasExited) { Stop-Process -Id $host.Id -Force -Err ...
++                                                  ~~~~~~~~
+    + CategoryInfo          : InvalidData: (:) [Stop-Process]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.StopProcess 
+   Command
+ 
+PS-HOST  run1 before=11412 died= survived=11412 exit=[n/a]
+PS-HOST  run2 before=11412 died= survived=11412 exit=[n/a]
+PS-HOST  run3 before=11412 died= survived=11412 exit=[n/a]

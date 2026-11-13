@@ -1,0 +1,12 @@
+PASS n1-drag-copy-cjk (row=3 clip='ÄãºÃ')
+PASS n2-paste-cjk (PASTECJK=True cjkGrid=True)
+PASS n3-paste-newline (NLINE1=True NLINE2=True)
+PASS n4a-paste-1mb-idle (bytes=1048576 of 1048576, no extra input events)
+PASS n4b-paste-1mb-busy (bytes=1048576 of 1048576, with mouse motion)
+PASS n5-bracketed-conpty (ready=True bytes=6 first='42-52-4B-54-58-54')
+PASS n5b-bracketed-cmd-negative (ready=True hex=True noWrap=True)
+PASS n6-pastesel-primary-noop (leaked=False alive=True)
+PASS m2-doubleclick-word (row=3 clip='beta')
+FAIL m3-tripleclick-line (row=3 clip='p')
+PASS m4-shiftclick-extend (row=3 clip='alpha beta gamma')
+==== 2B clip/selection summary: PASS=10 FAIL=1 ====

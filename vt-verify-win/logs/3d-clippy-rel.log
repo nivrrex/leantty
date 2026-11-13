@@ -1,0 +1,4 @@
+    Checking render v0.1.0 (C:\dev\tty\crates\render)
+    Checking pty v0.1.0 (C:\dev\tty\crates\pty)
+    Checking app v0.1.0 (C:\dev\tty\crates\app)
+    Finished `release` profile [optimized] target(s) in 3.16s

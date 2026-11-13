@@ -1,0 +1,45 @@
+warning: unused imports: `Palette` and `RenderOptions`
+  --> tests\glyph_clip.rs:10:44
+   |
+10 | use render::{Font, FontSettings, FontSpec, Palette, RenderOptions, cell_metrics};
+   |                                            ^^^^^^^  ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `settings` is never used
+  --> tests\glyph_clip.rs:15:4
+   |
+15 | fn settings(family: &str, size: f32) -> FontSettings {
+   |    ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `probe_render_win` (test "glyph_clip") generated 2 warnings (run `cargo fix --test "glyph_clip" -p probe_render_win` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 0.29s
+     Running tests\glyph_clip.rs (target\release\deps\glyph_clip-050925657fa84e33.exe)
+
+running 1 test
+[clip] DejaVu Sans Mono#0 primary: ascent=12.07 descent=-3.07 line_gap=0.00 cell_h=16 baseline=12 | min_top=1 (char '`') max_bottom=16 (char '_')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] DejaVu Sans Mono#1 fallback: ascent=15.08 descent=-3.74 line_gap=0.00 cell_h=16 baseline=12 | min_top=0 (char '然') max_bottom=14 (char '是')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] Liberation Mono#0 primary: ascent=10.82 descent=-3.90 line_gap=0.00 cell_h=15 baseline=11 | min_top=1 (char '"') max_bottom=14 (char '(')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] Liberation Mono#1 fallback: ascent=15.08 descent=-3.74 line_gap=0.00 cell_h=15 baseline=11 | min_top=0 (char '的') max_bottom=14 (char '然')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] Noto Sans Mono#0 primary: ascent=10.82 descent=-3.90 line_gap=0.00 cell_h=15 baseline=11 | min_top=2 (char '!') max_bottom=15 (char '_')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] Noto Sans Mono#1 fallback: ascent=15.08 descent=-3.74 line_gap=0.00 cell_h=15 baseline=11 | min_top=0 (char '的') max_bottom=14 (char '然')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] FreeMono#0 primary: ascent=10.82 descent=-3.90 line_gap=0.00 cell_h=15 baseline=11 | min_top=2 (char '!') max_bottom=15 (char '_')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] FreeMono#1 fallback: ascent=15.08 descent=-3.74 line_gap=0.00 cell_h=15 baseline=11 | min_top=0 (char '的') max_bottom=14 (char '然')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] external#0 primary: ascent=9.65 descent=-3.35 line_gap=2.22 cell_h=16 baseline=11 | min_top=0 (char '|') max_bottom=14 (char '(')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+[clip] external#1 fallback: ascent=15.08 descent=-3.74 line_gap=0.00 cell_h=16 baseline=12 | min_top=0 (char '然') max_bottom=14 (char '是')
+[clip]   越界字符数=0 被裁墨迹行数(合计)=0（其中顶部被裁=0，字形高于格=0）
+test glyph_fits_in_cell_font_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.64s
+

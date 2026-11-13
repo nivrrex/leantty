@@ -1,0 +1,1 @@
+TP small run1 done=False ms=63113 | [perf] frames n=50 render_ms(med=3 p95=6) present_ms(med=1 p95=2) coalesced=128 interval_ms=9 ~111fps

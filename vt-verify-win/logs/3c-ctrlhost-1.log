@@ -1,0 +1,895 @@
+. : 无法将“C:\dev\tty\vt-verify-win\..\e2e\wb2_lib.ps1”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写
+，如果包括路径，请确保路径正确，然后再试一次。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:7 字符: 3
++ . (Join-Path $PSScriptRoot '..\e2e\wb2_lib.ps1') -AppBin $AppBin
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\dev\tty\vt-v...e2e\wb2_lib.ps1:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+Join-Path : 无法将参数绑定到参数“Path”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:8 字符: 18
++ $OUT = Join-Path $ROOT 'vt-verify-win\logs\ctrl-host'
++                  ~~~~~
+    + CategoryInfo          : InvalidData: (:) [Join-Path]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.JoinPathCom 
+   mand
+ 
+New-Item : 无法将参数绑定到参数“Path”，因为该参数是空值。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:9 字符: 43
++ New-Item -ItemType Directory -Force -Path $OUT | Out-Null
++                                           ~~~~
+    + CategoryInfo          : InvalidData: (:) [New-Item]，ParameterBindingValidationException
+    + FullyQualifiedErrorId : ParameterArgumentValidationErrorNullNotAllowed,Microsoft.PowerShell.Commands.NewItemComm 
+   and
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:23 字符: 5
++     $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+Report2 : 无法将“Report2”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确
+，然后再试一次。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:62 字符: 1
++ Report2 't3-cmd-host-ctrlc' $r1.ok ("(host=cmd " + $r1.detail + ")")
++ ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Report2:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+无法覆盖变量 Host，因为该变量为只读变量或常量。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:23 字符: 5
++     $host = Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : WriteError: (Host:String) [], SessionStateUnauthorizedAccessException
+    + FullyQualifiedErrorId : VariableNotWritable
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+找不到类型 [WB2]。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:33 字符: 23
++                 [void][WB2]::GetWindowText($h, $sb, 512)
++                       ~~~~~
+    + CategoryInfo          : InvalidOperation: (WB2:TypeName) []，RuntimeException
+    + FullyQualifiedErrorId : TypeNotFound
+ 
+Report2 : 无法将“Report2”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确
+，然后再试一次。
+所在位置 C:\dev\tty\vt-verify-win\run_ctrl_host.ps1:66 字符: 1
++ Report2 't3-powershell-host-ctrlc' $r2.ok ("(host=powershell " + $r2. ...
++ ~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (Report2:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+==== ctrl-host summary: PASS= FAIL= ====

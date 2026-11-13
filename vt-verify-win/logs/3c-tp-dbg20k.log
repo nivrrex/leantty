@@ -1,0 +1,2 @@
+TP dbg20k run1 done=False ms=183583 | [perf] frames n=50 render_ms(med=18 p95=37) present_ms(med=0 p95=26) coalesced=70 interval_ms=34 ~29fps
+TP dbg20k run2 done=False ms=183185 | [perf] frames n=50 render_ms(med=16 p95=36) present_ms(med=0 p95=26) coalesced=72 interval_ms=44 ~22fps

@@ -1,9 +1,13 @@
-[perf] fontdb_ms=142.0 since_start=160.9
-[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3787.5 since_start=3983.4
-[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=205.6 since_start=4256.6
-[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=154.2 since_start=4467.8
-[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=186.1 since_start=4730.1
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=2.6 since_start=8.9
+[perf] fontdb_ms=147.0 since_start=227.3
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=4001.4 since_start=4259.0
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=239.8 since_start=4571.9
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=249.1 since_start=4880.8
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=237.7 since_start=5171.6
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=91.0 since_start=4948.6
-[perf] surface_ms=1.1 since_start=4981.7
-[perf] first_frame_ms=5130
+[perf] window_ms=101.7 since_start=5386.9
+[perf] surface_ms=31.4 since_start=5443.3
+[perf] pty_spawn_ms=43.5 since_start=5507.6
+[perf] first_pty_byte_ms=5580 since_start=5580
+[perf] first_frame_ms=5662

@@ -1,0 +1,168 @@
+    Finished `release` profile [optimized] target(s) in 0.24s
+     Running tests\baseline_alignment.rs (target\release\deps\baseline_alignment-f7aa8f5aca73104e.exe)
+
+running 1 test
+外部字体文件：C:\Windows\Fonts\msyh.ttc
+[perf] fontdb_ms=64.8 since_start=0.0
+[perf] font_ms=0 family='DejaVu Sans Mono' style='Regular' used_style='Regular' cached=false ms=35.1 since_start=0.0
+[perf] font_ms=1 family='DejaVu Sans Mono' style='Bold' used_style='Bold' cached=false ms=34.6 since_start=0.0
+[perf] font_ms=2 family='DejaVu Sans Mono' style='Italic' used_style='Italic' cached=false ms=29.7 since_start=0.0
+[perf] font_ms=3 family='DejaVu Sans Mono' style='Bold Italic' used_style='Bold Italic' cached=false ms=36.3 since_start=0.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+  [DejaVu Sans Mono] 'x' cell#0 墨迹 y = Some((4, 11))
+  [DejaVu Sans Mono] 'H' cell#1 墨迹 y = Some((2, 11))
+  [DejaVu Sans Mono] '.' cell#2 墨迹 y = Some((10, 11))
+  [DejaVu Sans Mono] ',' cell#3 墨迹 y = Some((10, 13))
+  [DejaVu Sans Mono] '-' cell#4 墨迹 y = Some((7, 8))
+  [DejaVu Sans Mono] '_' cell#5 墨迹 y = Some((14, 15))
+  [DejaVu Sans Mono] ''' cell#6 墨迹 y = Some((2, 6))
+  [DejaVu Sans Mono] '|' cell#7 墨迹 y = Some((2, 15))
+  [DejaVu Sans Mono] 'g' cell#8 墨迹 y = Some((4, 14))
+  [DejaVu Sans Mono] 'p' cell#9 墨迹 y = Some((4, 14))
+  [DejaVu Sans Mono] 'y' cell#10 墨迹 y = Some((4, 14))
+  [DejaVu Sans Mono] 'Q' cell#11 墨迹 y = Some((2, 13))
+  [DejaVu Sans Mono] '[' cell#12 墨迹 y = Some((2, 13))
+  [DejaVu Sans Mono] ']' cell#13 墨迹 y = Some((2, 13))
+  [DejaVu Sans Mono] '{' cell#14 墨迹 y = Some((2, 14))
+  [DejaVu Sans Mono] '}' cell#15 墨迹 y = Some((2, 14))
+[perf-baseline] family='DejaVu Sans Mono' size=13 cell=8x16 post_script='DejaVuSansMono' families=["DejaVu Sans Mono"]
+[perf-baseline] 度量: ascent=12.07 descent=-3.07 line_gap=0.00 new_line_size=15.13 → baseline=12 (old formula baseline=0)
+    'x': w=8 h=8 ymin=0 ymax_rel=8
+    '.': w=2 h=2 ymin=0 ymax_rel=2
+    'g': w=7 h=11 ymin=-3 ymax_rel=8
+    'H': w=7 h=10 ymin=0 ymax_rel=10
+  [DejaVu Sans Mono] '.' 底边 11 vs 'x' 底边 11 → 差 0px
+  [DejaVu Sans Mono] ',' 底边 13 vs 'x' 底边 11 → 偏移 2px（允许 0..=5）
+  [DejaVu Sans Mono] 'g' 底边 14 vs 'x' 底边 11
+  [DejaVu Sans Mono] 'p' 底边 14 vs 'x' 底边 11
+  [DejaVu Sans Mono] 'y' 底边 14 vs 'x' 底边 11
+  [DejaVu Sans Mono] 'H' 顶边 2 vs 'x' 顶边 4
+[perf] fontdb_ms=69.3 since_start=0.0
+[perf] font_ms=0 family='Liberation Mono' style='Regular' used_style='Regular' cached=false ms=24.9 since_start=0.0
+[perf] font_ms=1 family='Liberation Mono' style='Bold' used_style='Bold' cached=false ms=23.1 since_start=0.0
+[perf] font_ms=2 family='Liberation Mono' style='Italic' used_style='Italic' cached=false ms=25.6 since_start=0.0
+[perf] font_ms=3 family='Liberation Mono' style='Bold Italic' used_style='Bold Italic' cached=false ms=41.5 since_start=0.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+  [Liberation Mono] 'x' cell#0 墨迹 y = Some((4, 10))
+  [Liberation Mono] 'H' cell#1 墨迹 y = Some((2, 10))
+  [Liberation Mono] '.' cell#2 墨迹 y = Some((9, 10))
+  [Liberation Mono] ',' cell#3 墨迹 y = Some((9, 13))
+  [Liberation Mono] '-' cell#4 墨迹 y = Some((7, 8))
+  [Liberation Mono] '_' cell#5 墨迹 y = Some((11, 12))
+  [Liberation Mono] ''' cell#6 墨迹 y = Some((1, 5))
+  [Liberation Mono] '|' cell#7 墨迹 y = Some((1, 13))
+  [Liberation Mono] 'g' cell#8 墨迹 y = Some((4, 13))
+  [Liberation Mono] 'p' cell#9 墨迹 y = Some((4, 13))
+  [Liberation Mono] 'y' cell#10 墨迹 y = Some((4, 13))
+  [Liberation Mono] 'Q' cell#11 墨迹 y = Some((2, 13))
+  [Liberation Mono] '[' cell#12 墨迹 y = Some((1, 13))
+  [Liberation Mono] ']' cell#13 墨迹 y = Some((1, 13))
+  [Liberation Mono] '{' cell#14 墨迹 y = Some((1, 13))
+  [Liberation Mono] '}' cell#15 墨迹 y = Some((1, 13))
+[perf-baseline] family='Liberation Mono' size=13 cell=8x15 post_script='LiberationMono' families=["Liberation Mono"]
+[perf-baseline] 度量: ascent=10.82 descent=-3.90 line_gap=0.00 new_line_size=14.73 → baseline=11 (old formula baseline=0)
+    'x': w=8 h=7 ymin=0 ymax_rel=7
+    '.': w=2 h=2 ymin=0 ymax_rel=2
+    'g': w=7 h=10 ymin=-3 ymax_rel=7
+    'H': w=6 h=9 ymin=0 ymax_rel=9
+  [Liberation Mono] '.' 底边 10 vs 'x' 底边 10 → 差 0px
+  [Liberation Mono] ',' 底边 13 vs 'x' 底边 10 → 偏移 3px（允许 0..=5）
+  [Liberation Mono] 'g' 底边 13 vs 'x' 底边 10
+  [Liberation Mono] 'p' 底边 13 vs 'x' 底边 10
+  [Liberation Mono] 'y' 底边 13 vs 'x' 底边 10
+  [Liberation Mono] 'H' 顶边 2 vs 'x' 顶边 4
+[perf] fontdb_ms=56.8 since_start=0.0
+[perf] font_ms=0 family='Noto Sans Mono' style='Regular' used_style='Regular' cached=false ms=67.6 since_start=0.0
+[perf] font_ms=1 family='Noto Sans Mono' style='Bold' used_style='Bold' cached=false ms=80.6 since_start=0.0
+[perf] font_ms=2 family='Noto Sans Mono' style='Italic' used_style='Italic' cached=false ms=61.1 since_start=0.0
+[perf] font_ms=3 family='Noto Sans Mono' style='Bold Italic' used_style='Bold Italic' cached=false ms=39.9 since_start=0.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+  [Noto Sans Mono] 'x' cell#0 墨迹 y = Some((5, 10))
+  [Noto Sans Mono] 'H' cell#1 墨迹 y = Some((3, 10))
+  [Noto Sans Mono] '.' cell#2 墨迹 y = Some((9, 11))
+  [Noto Sans Mono] ',' cell#3 墨迹 y = Some((9, 12))
+  [Noto Sans Mono] '-' cell#4 墨迹 y = Some((6, 7))
+  [Noto Sans Mono] '_' cell#5 墨迹 y = Some((14, 14))
+  [Noto Sans Mono] ''' cell#6 墨迹 y = Some((3, 6))
+  [Noto Sans Mono] '|' cell#7 墨迹 y = Some((3, 12))
+  [Noto Sans Mono] 'g' cell#8 墨迹 y = Some((5, 13))
+  [Noto Sans Mono] 'p' cell#9 墨迹 y = Some((5, 13))
+  [Noto Sans Mono] 'y' cell#10 墨迹 y = Some((5, 13))
+  [Noto Sans Mono] 'Q' cell#11 墨迹 y = Some((3, 12))
+  [Noto Sans Mono] '[' cell#12 墨迹 y = Some((3, 12))
+  [Noto Sans Mono] ']' cell#13 墨迹 y = Some((3, 12))
+  [Noto Sans Mono] '{' cell#14 墨迹 y = Some((3, 12))
+  [Noto Sans Mono] '}' cell#15 墨迹 y = Some((3, 12))
+[perf-baseline] family='Noto Sans Mono' size=13 cell=8x15 post_script='CourierNewPSMT' families=["Courier New", "Courier New"]
+[perf-baseline] 度量: ascent=10.82 descent=-3.90 line_gap=0.00 new_line_size=14.73 → baseline=11 (old formula baseline=0)
+    'x': w=8 h=6 ymin=0 ymax_rel=6
+    '.': w=3 h=3 ymin=-1 ymax_rel=2
+    'g': w=8 h=9 ymin=-3 ymax_rel=6
+    'H': w=8 h=8 ymin=0 ymax_rel=8
+  [Noto Sans Mono] '.' 底边 11 vs 'x' 底边 10 → 差 1px
+  [Noto Sans Mono] ',' 底边 12 vs 'x' 底边 10 → 偏移 2px（允许 0..=5）
+  [Noto Sans Mono] 'g' 底边 13 vs 'x' 底边 10
+  [Noto Sans Mono] 'p' 底边 13 vs 'x' 底边 10
+  [Noto Sans Mono] 'y' 底边 13 vs 'x' 底边 10
+  [Noto Sans Mono] 'H' 顶边 3 vs 'x' 顶边 5
+[perf] fontdb_ms=54.3 since_start=0.0
+[perf] font_ms=0 family='FreeMono' style='Regular' used_style='Regular' cached=false ms=80.0 since_start=0.0
+[perf] font_ms=1 family='FreeMono' style='Bold' used_style='Bold' cached=false ms=72.5 since_start=0.0
+[perf] font_ms=2 family='FreeMono' style='Italic' used_style='Italic' cached=false ms=44.7 since_start=0.0
+[perf] font_ms=3 family='FreeMono' style='Bold Italic' used_style='Bold Italic' cached=false ms=39.5 since_start=0.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+  [FreeMono] 'x' cell#0 墨迹 y = Some((5, 10))
+  [FreeMono] 'H' cell#1 墨迹 y = Some((3, 10))
+  [FreeMono] '.' cell#2 墨迹 y = Some((9, 11))
+  [FreeMono] ',' cell#3 墨迹 y = Some((9, 12))
+  [FreeMono] '-' cell#4 墨迹 y = Some((6, 7))
+  [FreeMono] '_' cell#5 墨迹 y = Some((14, 14))
+  [FreeMono] ''' cell#6 墨迹 y = Some((3, 6))
+  [FreeMono] '|' cell#7 墨迹 y = Some((3, 12))
+  [FreeMono] 'g' cell#8 墨迹 y = Some((5, 13))
+  [FreeMono] 'p' cell#9 墨迹 y = Some((5, 13))
+  [FreeMono] 'y' cell#10 墨迹 y = Some((5, 13))
+  [FreeMono] 'Q' cell#11 墨迹 y = Some((3, 12))
+  [FreeMono] '[' cell#12 墨迹 y = Some((3, 12))
+  [FreeMono] ']' cell#13 墨迹 y = Some((3, 12))
+  [FreeMono] '{' cell#14 墨迹 y = Some((3, 12))
+  [FreeMono] '}' cell#15 墨迹 y = Some((3, 12))
+[perf-baseline] family='FreeMono' size=13 cell=8x15 post_script='CourierNewPSMT' families=["Courier New", "Courier New"]
+[perf-baseline] 度量: ascent=10.82 descent=-3.90 line_gap=0.00 new_line_size=14.73 → baseline=11 (old formula baseline=0)
+    'x': w=8 h=6 ymin=0 ymax_rel=6
+    '.': w=3 h=3 ymin=-1 ymax_rel=2
+    'g': w=8 h=9 ymin=-3 ymax_rel=6
+    'H': w=8 h=8 ymin=0 ymax_rel=8
+  [FreeMono] '.' 底边 11 vs 'x' 底边 10 → 差 1px
+  [FreeMono] ',' 底边 12 vs 'x' 底边 10 → 偏移 2px（允许 0..=5）
+  [FreeMono] 'g' 底边 13 vs 'x' 底边 10
+  [FreeMono] 'p' 底边 13 vs 'x' 底边 10
+  [FreeMono] 'y' 底边 13 vs 'x' 底边 10
+  [FreeMono] 'H' 顶边 3 vs 'x' 顶边 5
+[perf-baseline] external 'C:\Windows\Fonts\msyh.ttc' cell=8x18 px=13
+  [external] ascent=13.76 descent=-3.40 line_gap=0.00 cell_h=18 → baseline=14
+  [external] 'x' metrics w=7 h=8 xmin=0 ymin=0 → 墨迹 y 6..13
+  [external] 'H' metrics w=8 h=10 xmin=1 ymin=0 → 墨迹 y 4..13
+  [external] '.' metrics w=3 h=3 xmin=0 ymin=-1 → 墨迹 y 12..14
+  [external] ',' metrics w=3 h=4 xmin=0 ymin=-2 → 墨迹 y 12..15
+  [external] '-' metrics w=5 h=2 xmin=0 ymin=3 → 墨迹 y 9..10
+  [external] '_' metrics w=6 h=2 xmin=0 ymin=-4 → 墨迹 y 16..17
+  [external] ''' metrics w=2 h=4 xmin=1 ymin=6 → 墨迹 y 4..7
+  [external] '|' metrics w=2 h=15 xmin=1 ymin=-4 → 墨迹 y 3..17
+  [external] 'g' metrics w=8 h=12 xmin=0 ymin=-4 → 墨迹 y 6..17
+  [external] 'p' metrics w=7 h=12 xmin=1 ymin=-4 → 墨迹 y 6..17
+  [external] 'y' metrics w=7 h=12 xmin=0 ymin=-4 → 墨迹 y 6..17
+  [external] 'Q' metrics w=11 h=12 xmin=0 ymin=-2 → 墨迹 y 4..15
+  [external] '[' metrics w=3 h=13 xmin=1 ymin=-3 → 墨迹 y 4..16
+  [external] ']' metrics w=3 h=13 xmin=0 ymin=-3 → 墨迹 y 4..16
+  [external] '{' metrics w=4 h=13 xmin=0 ymin=-3 → 墨迹 y 4..16
+  [external] '}' metrics w=4 h=13 xmin=0 ymin=-3 → 墨迹 y 4..16
+  [external] '.' 底边 14 vs 'x' 13 → 差 1px
+  [external] ',' 底边 15 vs 'x' 13 → 偏移 2px
+  [external] 'g' 底边 17 vs 'x' 13
+  [external] 'p' 底边 17 vs 'x' 13
+  [external] 'y' 底边 17 vs 'x' 13
+test baseline_alignment_font_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.03s
+

@@ -568,6 +568,10 @@ impl RendererBackend {
 
     /// 窗口尺寸变化（GPU 后端需 reconfigure surface）。
     pub fn resize_surface(&mut self, width: u32, height: u32) {
+        // 非 Linux 目标没有 GPU 分支，这两个参数不会被消费（Windows 上
+        // release 构建会报 unused variable）。仅在此目标上显式忽略。
+        #[cfg(not(target_os = "linux"))]
+        let _ = (width, height);
         match self {
             Self::Cpu(_) => {}
             #[cfg(target_os = "linux")]

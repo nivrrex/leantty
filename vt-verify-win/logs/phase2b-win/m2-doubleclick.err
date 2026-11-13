@@ -1,14 +1,17 @@
-[perf] fontdb_ms=155.0 since_start=165.9
-[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3808.7 since_start=4000.7
-[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=167.8 since_start=4292.2
-[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=183.0 since_start=4537.6
-[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=189.4 since_start=4864.3
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=3.3 since_start=8.9
+[perf] fontdb_ms=132.3 since_start=205.1
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=4174.2 since_start=4402.8
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=204.7 since_start=4662.7
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=241.6 since_start=4971.4
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=191.8 since_start=5244.0
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=96.4 since_start=5052.6
-[perf] surface_ms=8.8 since_start=5090.3
-[perf] first_frame_ms=5243
+[perf] window_ms=108.6 since_start=5467.6
+[perf] surface_ms=8.0 since_start=5504.5
+[perf] pty_spawn_ms=31.4 since_start=5561.2
+[perf] first_frame_ms=5677
+[perf] first_pty_byte_ms=5692 since_start=5692
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
-[perf] bg_fonts_ms=8826 count=3
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
-copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+[perf] bg_fonts_ms=9312 count=3
