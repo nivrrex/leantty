@@ -69,8 +69,8 @@ pub struct GpuRenderer {
     gpu: Gpu,
     pipelines: Pipelines,
     atlas: GlyphAtlas,
-    /// 四组字体链（与 CPU 后端同源）。
-    groups: Vec<Vec<Font>>,
+    /// 四组字体链（与 CPU 后端同源，`Arc` 共享以避免重复加载）。
+    groups: std::sync::Arc<Vec<Vec<Font>>>,
     font_size: f32,
     scale: f64,
     options: RenderOptions,
@@ -130,6 +130,14 @@ struct Pipelines {
 
 const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+/// 窗口 surface 的初始化参数（打包以控制函数参数个数）。
+pub struct SurfaceInit {
+    pub raw_window: raw_window_handle::RawWindowHandle,
+    pub raw_display: raw_window_handle::RawDisplayHandle,
+    pub width: u32,
+    pub height: u32,
+}
+
 impl GpuRenderer {
     /// 创建离屏 GPU 渲染器；无可用真实适配器时返回 `Error::Backend`（不 panic）。
     pub fn new_offscreen(
@@ -138,7 +146,7 @@ impl GpuRenderer {
         palette: Palette,
     ) -> Result<Self, Error> {
         let gpu = Gpu::new()?;
-        let groups = crate::build_font_groups(settings)?;
+        let groups = std::sync::Arc::new(crate::build_font_groups(settings)?);
         let atlas = GlyphAtlas::new(
             &gpu.device,
             &gpu.queue,
@@ -196,7 +204,7 @@ impl GpuRenderer {
 
     /// 并入后台字体（CJK fallback）。
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
-        for g in &mut self.groups {
+        for g in std::sync::Arc::make_mut(&mut self.groups) {
             g.extend(fonts.iter().cloned());
         }
         self.char_font.clear();
@@ -627,13 +635,34 @@ impl GpuRenderer {
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
-        raw_window: raw_window_handle::RawWindowHandle,
-        raw_display: raw_window_handle::RawDisplayHandle,
-        width: u32,
-        height: u32,
+        surface: SurfaceInit,
     ) -> Result<Self, Error> {
+        Self::new_surface_with_groups(settings, options, palette, None, surface)
+    }
+
+    /// 同 `new_surface`，但可复用**已构建的**字体组（`Arc` 共享，零拷贝）。
+    ///
+    /// stage 4E t3：auto/gpu 模式下窗口前已为估算格子尺寸建过 CPU 渲染器，
+    /// 其字体链与 GPU 渲染器完全相同；复用可省掉一次 fontdb 扫描 + 四组字体解析
+    /// （实测约 155ms）。
+    pub fn new_surface_with_groups(
+        settings: &FontSettings,
+        options: RenderOptions,
+        palette: Palette,
+        reuse_groups: Option<std::sync::Arc<Vec<Vec<Font>>>>,
+        surface: SurfaceInit,
+    ) -> Result<Self, Error> {
+        let SurfaceInit {
+            raw_window,
+            raw_display,
+            width,
+            height,
+        } = surface;
         let gpu = Gpu::new()?;
-        let groups = crate::build_font_groups(settings)?;
+        let groups = match reuse_groups {
+            Some(g) => g,
+            None => std::sync::Arc::new(crate::build_font_groups(settings)?),
+        };
         let t_atlas = std::time::Instant::now();
         let atlas = GlyphAtlas::new(&gpu.device, &gpu.queue, gpu.max_texture, atlas::INITIAL_SIZE);
         eprintln!(

@@ -651,7 +651,11 @@ pub fn create_renderer(
             #[cfg(target_os = "linux")]
             {
                 let t = std::time::Instant::now();
-                match build_gpu(font_settings, options, palette, window, scale) {
+                let reuse = existing.as_ref().and_then(|r| match r {
+                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    _ => None,
+                });
+                match build_gpu(font_settings, options, palette, window, scale, reuse) {
                     Ok((gpu, adapter)) => {
                         eprintln!(
                             "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
@@ -675,7 +679,11 @@ pub fn create_renderer(
             #[cfg(target_os = "linux")]
             {
                 let t = std::time::Instant::now();
-                let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale)?;
+                let reuse = existing.as_ref().and_then(|r| match r {
+                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    _ => None,
+                });
+                let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale, reuse)?;
                 eprintln!(
                     "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
                     t.elapsed().as_secs_f64() * 1000.0,
@@ -700,6 +708,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
+    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<render::Font>>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
@@ -711,14 +720,19 @@ fn build_gpu(
         .map_err(|e| Error::App(format!("display_handle: {e}")))?
         .as_raw();
     let size = window.inner_size();
-    let mut gpu = render::gpu::GpuRenderer::new_surface(
+    // 复用窗口前 CPU 渲染器已构建的字体链（stage 4E t3：省掉一次 fontdb + 字体解析）
+    let reuse = existing_cpu_groups;
+    let mut gpu = render::gpu::GpuRenderer::new_surface_with_groups(
         font_settings,
         options,
         palette,
-        wh,
-        dh,
-        size.width.max(1),
-        size.height.max(1),
+        reuse,
+        render::gpu::SurfaceInit {
+            raw_window: wh,
+            raw_display: dh,
+            width: size.width.max(1),
+            height: size.height.max(1),
+        },
     )?;
     gpu.set_scale_factor(scale);
     let name = gpu.adapter_name().to_string();

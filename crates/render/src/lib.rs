@@ -342,7 +342,11 @@ pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>
 }
 pub struct CpuRenderer {
     /// 四组字体 [normal, bold, italic, bold_italic]，每组 = [主字体, fallback..., 系统兜底]。
-    groups: Vec<Vec<Font>>,
+    ///
+    /// 用 `Arc` 共享：auto/gpu 模式下窗口前先建 CPU 渲染器、窗口后再建 GPU 渲染器，
+    /// 两者复用同一份字体链，避免重复 fontdb 扫描 + 字体解析（阶段 4E t3 实测
+    /// 该重复约占 GPU 首帧的 155ms）。
+    groups: std::sync::Arc<Vec<Vec<Font>>>,
     font_size: f32,
     options: RenderOptions,
     palette: Palette,
@@ -389,7 +393,7 @@ impl CpuRenderer {
         palette: Palette,
     ) -> Result<Self, Error> {
         let t_ctor = std::time::Instant::now();
-        let groups = build_font_groups(settings)?;
+        let groups = std::sync::Arc::new(build_font_groups(settings)?);
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
@@ -535,8 +539,13 @@ impl CpuRenderer {
     }
 
     /// 后台字体到位：并入各组并清空码点归属与字形缓存（归属与位图可能变化）。
+    /// 四组字体链的共享句柄（供 GPU 渲染器复用，避免重复加载；阶段 4E t3）。
+    pub fn font_groups(&self) -> std::sync::Arc<Vec<Vec<Font>>> {
+        self.groups.clone()
+    }
+
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
-        for g in &mut self.groups {
+        for g in std::sync::Arc::make_mut(&mut self.groups) {
             g.extend(fonts.iter().cloned());
         }
         self.char_font.clear();
