@@ -142,6 +142,18 @@ pub fn reader_body<R: std::io::Read>(
     waker: &dyn Wake,
     report: &mut dyn FnMut(&str),
 ) {
+    reader_body_with_depth(reader, tx, waker, report, None)
+}
+
+/// 同 `reader_body`，但可选地把"已入队未取走"的条数记到共享计数器
+/// （阶段 4C t3 的 `chan_depth_max` 观测；`mpsc::Receiver` 不暴露 len）。
+pub fn reader_body_with_depth<R: std::io::Read>(
+    reader: &mut R,
+    tx: &mpsc::SyncSender<Vec<u8>>,
+    waker: &dyn Wake,
+    report: &mut dyn FnMut(&str),
+    depth: Option<&std::sync::atomic::AtomicUsize>,
+) {
     let mut buf = [0u8; 4096];
     loop {
         match reader.read(&mut buf) {
@@ -153,6 +165,9 @@ pub fn reader_body<R: std::io::Read>(
                 break;
             }
             Ok(n) => {
+                if let Some(d) = depth {
+                    d.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
                 // 入队（阶段 3B 任务 2：有界通道 + 背压，无忙等、无死锁）。
                 //
                 // 死锁场景：通道满时读线程若先阻塞 send 再 wake，则主线程排空后回到
@@ -222,6 +237,12 @@ struct PerfFrames {
     coalesced: u64,
     /// 最近一次采用的帧间隔（ms）。
     interval_ms: u64,
+    /// 本统计窗口内喂入 vt 的字节数（阶段 4C t3）。
+    feed_bytes: u128,
+    /// 本窗口起点（用于算窗口时长 → feed 速率）。
+    window_start: Option<std::time::Instant>,
+    /// 本窗口内有界 channel 的积压峰值（阶段 4C t3）。
+    chan_depth_max: usize,
 }
 
 impl PerfFrames {
@@ -241,11 +262,24 @@ impl PerfFrames {
         let (r_med, r_p95) = stats(&mut self.render_us);
         let (p_med, p_p95) = stats(&mut self.present_us);
         let fps = 1000u64.checked_div(self.interval_ms).unwrap_or(0);
+        // feed 速率 = 本窗口喂入字节 / 窗口时长（阶段 4C t3；用于核对
+        // "总字节数 ≈ 速率 × 时长" 的自洽性）。
+        let elapsed_s = self
+            .window_start
+            .map(|t| t.elapsed().as_secs_f64())
+            .filter(|s| *s > 0.0);
+        let feed_rate = elapsed_s
+            .map(|s| self.feed_bytes as f64 / s)
+            .unwrap_or(0.0);
         eprintln!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps",
-            Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={}",
+            Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
+            feed_rate, self.chan_depth_max
         );
         self.coalesced = 0;
+        self.feed_bytes = 0;
+        self.chan_depth_max = 0;
+        self.window_start = Some(std::time::Instant::now());
     }
 }
 
@@ -366,6 +400,8 @@ impl App {
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
+            pre_first_submit_logged: false,
+            chan_depth: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             os_redraw_pending: false,
             #[cfg(debug_assertions)]
             os_redraw_count: 0,
@@ -714,6 +750,11 @@ struct AppHandler {
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
     first_pty_byte_logged: bool,
+    /// 首帧提交前一刻是否已打印（阶段 4C t3 启动打点）。
+    pre_first_submit_logged: bool,
+    /// 有界 channel 的"已入队未取走"计数（reader 加、主线程减），用于
+    /// `chan_depth_max` 观测（阶段 4C t3）。
+    chan_depth: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     /// OS 发起的重绘（X11 Expose / 遮挡后恢复等）待处理：必须整帧重绘 + 整窗提交，
     /// 不能按脏行增量（窗口内容可能已被系统丢弃）。应用自驱动的重绘不受影响。
     os_redraw_pending: bool,
@@ -924,6 +965,14 @@ impl ApplicationHandler for AppHandler {
             }
         };
         let gpu_backend = renderer.is_gpu();
+        // 阶段 4C t3 启动打点：渲染器与其字形缓存初始化完成。
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] renderer_ready_ms={} since_start={}",
+                t0.elapsed().as_millis(),
+                t0.elapsed().as_millis()
+            );
+        }
         let t_surface = Instant::now();
         // GPU 后端直接渲染到 winit 窗口 surface，**不创建** softbuffer context/surface
         // （同一窗口不允许同时挂两套 surface）。
@@ -1022,8 +1071,15 @@ impl ApplicationHandler for AppHandler {
         // 有界通道（背压）：主线程忙时读线程阻塞在 send，进而 PTY 缓冲满、
         // 子进程写阻塞，而不是无限积压内存（DECISIONS 登记）。
         let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(256);
+        let depth_for_reader = self.chan_depth.clone();
         let reader_thread = std::thread::spawn(move || {
-            reader_body(&mut reader, &tx, waker.as_ref(), &mut |m| eprintln!("{}", m));
+            reader_body_with_depth(
+                &mut reader,
+                &tx,
+                waker.as_ref(),
+                &mut |m| eprintln!("{}", m),
+                Some(depth_for_reader.as_ref()),
+            );
         });
         self.reader_thread = Some(reader_thread);
         // 5. on_pty_write → channel → 主线程写 PTY
@@ -1394,8 +1450,26 @@ impl ApplicationHandler for AppHandler {
                         );
                     }
                 }
+                #[cfg_attr(not(debug_assertions), allow(unused_variables))]
+                let n = bytes.len();
                 vt.feed(&bytes);
                 n_drained += 1;
+                // 阶段 4C t3 观测：累计喂入字节（release 亦可用，仅一次 Option 判空）
+                self.chan_depth
+                    .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+                if let Some(pf) = self.perf_frames.as_mut() {
+                    pf.feed_bytes += n as u128;
+                    if pf.window_start.is_none() {
+                        pf.window_start = Some(std::time::Instant::now());
+                    }
+                }
+            }
+            // channel 积压峰值（有界通道：reader 侧入队 +1、这里取走 -1）
+            let depth = self.chan_depth.load(std::sync::atomic::Ordering::Relaxed);
+            if let Some(pf) = self.perf_frames.as_mut()
+                && depth > pf.chan_depth_max
+            {
+                pf.chan_depth_max = depth;
             }
             // 供后续步骤复用：本轮是否收到新数据（避免每帧多次全量 snapshot）。
             self.drained_any = n_drained > 0;
@@ -1567,6 +1641,17 @@ impl ApplicationHandler for AppHandler {
                     renderer.set_preedit(overlay);
                     #[cfg(debug_assertions)]
                     dump_snapshot_if_requested(&snap, renderer.as_cpu());
+                    // 阶段 4C t3 启动打点：首帧提交前一刻（仅首次）
+                    if !self.pre_first_submit_logged
+                        && let Some(t0) = crate::start_time()
+                    {
+                        self.pre_first_submit_logged = true;
+                        eprintln!(
+                            "[perf] pre_first_submit_ms={} since_start={}",
+                            t0.elapsed().as_millis(),
+                            t0.elapsed().as_millis()
+                        );
+                    }
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
