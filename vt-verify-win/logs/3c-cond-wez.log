@@ -1,0 +1,15 @@
+[wezterm] run_all: rc=1 PASS=13 FAIL=1
+    FAIL d-backspace-arrows (dump has acd)
+[wezterm] 2b_clip: rc=1 PASS=10 FAIL=1
+    FAIL m2-doubleclick-word (row=3 clip='e')
+[wezterm] 2b_mouse: rc=0 PASS=6 FAIL=0
+[wezterm] 2c: rc=0 PASS=8 FAIL=0
+Remove-Item : 无法删除项 C:\dev\tty\target\debug\OpenConsole.exe: 对路径“C:\dev\tty\target\debug\OpenConsole.exe”的访问
+被拒绝。
+所在位置 C:\dev\tty\scripts\windows\e2e\run_conpty_condition.ps1:58 字符: 25
++     if (Test-Path $p) { Remove-Item $p -Force }
++                         ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : PermissionDenied: (C:\dev\tty\target\debug\OpenConsole.exe:FileInfo) [Remove-Item], Unau 
+   thorizedAccessException
+    + FullyQualifiedErrorId : RemoveFileSystemItemUnAuthorizedAccess,Microsoft.PowerShell.Commands.RemoveItemCommand
+CONDITION-DONE wezterm

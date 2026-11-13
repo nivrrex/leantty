@@ -61,6 +61,45 @@ fn drain_quiet(rx: &mpsc::Receiver<Vec<u8>>, quiet: Duration, cap: Duration) -> 
     out
 }
 
+
+/// 等待输出中出现 needle（总超时 timeout）；返回（累计输出, 是否命中）。
+fn wait_for(rx: &mpsc::Receiver<Vec<u8>>, needle: &[u8], timeout: Duration) -> (Vec<u8>, bool) {
+    let t0 = Instant::now();
+    let mut out: Vec<u8> = Vec::new();
+    while t0.elapsed() < timeout {
+        match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(d) => {
+                out.extend_from_slice(&d);
+                if needle.is_empty() || out.windows(needle.len()).any(|w| w == needle) {
+                    return (out, true);
+                }
+            }
+            Err(_) => {}
+        }
+    }
+    (out, false)
+}
+
+/// 测试进程级的 Ctrl-C 处理隔离。
+///
+/// pty 的 Windows spawn 会调用 SetConsoleCtrlHandler(NULL, FALSE) 清除“忽略
+/// Ctrl-C”标志（继承标志修复），该调用作用于**本进程**；写入 \x03 后若 Ctrl-C
+/// 事件广播到本控制台进程组，测试进程自己就会被终止（0xC000013A）。
+/// 这里在 spawn 之后把标志重新置回，只影响测试进程，不改 spawn 语义。
+/// 环境变量 TTY_PTY_NO_REIGNORE=1 用于对照组（保留原行为）。
+fn reignore_ctrl_c_in_test() {
+    unsafe extern "system" {
+        fn SetConsoleCtrlHandler(handler: *mut core::ffi::c_void, add: i32) -> i32;
+    }
+    if std::env::var_os("TTY_PTY_NO_REIGNORE").is_some() {
+        return;
+    }
+    // SAFETY: NULL handler + add=1 是 Win32 文档化用法（忽略 Ctrl-C）。
+    unsafe {
+        SetConsoleCtrlHandler(std::ptr::null_mut(), 1);
+    }
+}
+
 fn assert_wide_you(collected: &[u8]) {
     let mut term = VtTerminal::new(80, 24).expect("VtTerminal::new");
     term.feed(collected);
@@ -83,9 +122,9 @@ fn pty_cmd_echo_cn_resize_close() {
         w.write_all("echo 你好\r".as_bytes()).expect("write echo");
         w.flush().expect("flush");
     }
-    let out = drain_quiet(&rx, Duration::from_millis(700), Duration::from_secs(6));
+    let (out, got_cn) = wait_for(&rx, "你好".as_bytes(), Duration::from_secs(20));
     assert!(
-        out.windows(6).any(|w| w == "你好".as_bytes()),
+        got_cn && out.windows(6).any(|w| w == "你好".as_bytes()),
         "PTY 输出应含 你好，实际 {:?}",
         String::from_utf8_lossy(&out)
     );
@@ -121,9 +160,11 @@ fn pty_powershell_echo_cn() {
     }
     // 实测：ConPTY 下 powershell 冷启动在标题与提示符之间存在 >700ms 静默间隙，
     // 静窗 700ms 会在此处误判结束（已验证事实，t2 轮曾快于该阈值通过）。
-    let out = drain_quiet(&rx, Duration::from_millis(3000), Duration::from_secs(20));
+    // 不用静默阈值：并发跑整套测试时 powershell 冷启动会超过任何固定静窗，
+    // 改为等目标字节出现（总超时 20 s）。
+    let (out, got) = wait_for(&rx, "你好".as_bytes(), Duration::from_secs(20));
     assert!(
-        out.windows(6).any(|w| w == "你好".as_bytes()),
+        got,
         "powershell PTY 输出应含 你好，实际 {:?}",
         String::from_utf8_lossy(&out)
     );
@@ -141,9 +182,9 @@ fn pty_default_shell_is_cmd() {
         w.write_all(b"echo default-ok\r").expect("write");
         w.flush().expect("flush");
     }
-    let out = drain_quiet(&rx, Duration::from_millis(700), Duration::from_secs(6));
+    let (out, got) = wait_for(&rx, b"default-ok", Duration::from_secs(20));
     assert!(
-        out.windows(10).any(|w| w == b"default-ok"),
+        got && out.windows(10).any(|w| w == b"default-ok"),
         "默认 cmd.exe 应回显 default-ok，实际 {:?}",
         String::from_utf8_lossy(&out)
     );
@@ -192,31 +233,46 @@ fn key_encoder_ctrl_c_maps_to_0x03() {
     assert_eq!(bytes, b"\x03", "Ctrl+C 应映射为 \\x03");
 }
 
-/// T4 步骤 1：powershell 下 ping -t + 单次 \x03（记录实测，不断言成功）。
+/// T4 步骤 1：powershell 下 ping -t → 首个 TTL → 单次 \x03 → 断言 TTL 停止。
+///
+/// 等待条件不用“静默 N ms”：powershell 冷启动约 1.2 s、ping 的 TTL 间隔约 1 s，
+/// 都比旧的 800 ms 静默阈值长，旧写法会在拿到 TTL 之前就返回。
 #[test]
 fn ctrl_c_probe_powershell_ping() {
     let (mut pty, rx, handle) = spawn_collect("powershell.exe");
+    reignore_ctrl_c_in_test();
     {
         let w = pty.writer().expect("writer");
         w.write_all(b"ping.exe -t 127.0.0.1\r").expect("write ping");
         w.flush().expect("flush");
     }
-    let pre = drain_quiet(&rx, Duration::from_millis(800), Duration::from_secs(6));
+    let (pre, got_ttl) = wait_for(&rx, b"TTL=", Duration::from_secs(15));
     assert!(
-        pre.windows(4).any(|w| w == b"TTL="),
-        "powershell ping -t 应有 TTL 输出，实际 {:?}",
+        got_ttl,
+        "powershell ping -t 应在 15 s 内出现 TTL，实际 {:?}",
         String::from_utf8_lossy(&pre)
     );
     let w = pty.writer().expect("writer");
     w.write_all(b"\x03").expect("write ctrl-c");
     w.flush().expect("flush after ctrl-c");
-    let post = drain_quiet(&rx, Duration::from_millis(1200), Duration::from_secs(5));
-    let post_text = String::from_utf8_lossy(&post).to_string();
+    // 给中断一点时间落地：收集到出现提示符或 6 s 为止
+    let (post, _) = wait_for(&rx, b"PS ", Duration::from_secs(6));
+    // 断言中断生效：提示符之后不得再有 TTL 输出
+    let text = String::from_utf8_lossy(&post).to_string();
+    let after_prompt = match text.rfind("PS ") {
+        Some(i) => &text[i..],
+        None => text.as_str(),
+    };
     println!(
-        "[powershell ping] post-ctrl-c {} bytes: {:?} | TTL still: {}",
+        "[powershell ping] post-ctrl-c {} bytes, prompt_seen={} | tail: {:?}",
         post.len(),
-        post_text,
-        post.windows(4).any(|w| w == b"TTL=")
+        text.contains("PS "),
+        after_prompt.chars().take(120).collect::<String>()
+    );
+    assert!(
+        !after_prompt.contains("TTL="),
+        "Ctrl-C 之后不应再有 TTL 输出，实际 {:?}",
+        after_prompt
     );
     pty.close().expect("close");
     join_thread_timeout(handle, Duration::from_secs(5)).expect("reader join within timeout");
@@ -266,9 +322,9 @@ fn ctrl_c_probe_cmd_ping_twice() {
         w.write_all(b"ping -t 127.0.0.1\r").expect("write ping");
         w.flush().expect("flush");
     }
-    let pre = drain_quiet(&rx, Duration::from_millis(800), Duration::from_secs(6));
+    let (pre, got_ttl) = wait_for(&rx, b"TTL=", Duration::from_secs(15));
     assert!(
-        pre.windows(4).any(|w| w == b"TTL="),
+        got_ttl && pre.windows(4).any(|w| w == b"TTL="),
         "cmd ping -t 应有 TTL 输出，实际 {:?}",
         String::from_utf8_lossy(&pre)
     );
@@ -454,6 +510,10 @@ fn t4_e8_ffi_ctrl_c_to_ping() {
     assert!(pre.windows(4).any(|w| w == b"TTL="), "ping 应有 TTL 输出");
     let pid = pty.child_pid().expect("child pid");
     probe_note("E8-ffi", &format!("ping pid={}", pid));
+    // AttachConsole 会失败（ConPTY 控制台拒绝外部附加），随后
+    // GenerateConsoleCtrlEvent(0, 0) 就广播到**本测试进程的控制台组**，
+    // 会把测试 harness 自己打死（0xC000013A）。先在本进程重新忽略 Ctrl-C。
+    reignore_ctrl_c_in_test();
     let attach = unsafe { AttachConsole(pid) };
     let gen_ret = unsafe { GenerateConsoleCtrlEvent(0, 0) };
     let free = unsafe { FreeConsole() };

@@ -1,0 +1,15 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
+[perf] config_ms=72.7 since_start=112.6
+[perf] fontdb_ms=100.4 since_start=250.3
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=46.2 since_start=324.8
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=36.9 since_start=415.2
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=43.4 since_start=512.0
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=31.8 since_start=596.3
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] window_ms=88.0 since_start=741.9
+[perf] surface_ms=7.1 since_start=774.8
+[perf] pty_spawn_ms=9.1 since_start=804.3
+[perf] first_frame_ms=827
+[perf] bg_fonts_ms=951 count=2
+[perf] first_pty_byte_ms=1061 since_start=1061

@@ -1,0 +1,164 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.89s
+     Running unittests src\lib.rs (target\debug\deps\app-a43355bd423f5960.exe)
+
+running 44 tests
+test binding_tests::default_bindings_shape ... ok
+test binding_tests::key_string_named_and_character ... ok
+test clipboard::tests::inject_get_set_roundtrip ... ok
+test framepace::tests::interval_from_ema_sequence ... ok
+test binding_tests::find_binding_later_overrides_and_mods_matter ... ok
+test framepace::tests::interval_clamped_to_bounds ... ok
+test binding_tests::find_key_binding_matches_key_and_mods ... ok
+test framepace::tests::ema_converges_and_reacts ... ok
+test ime::tests::normalize_ime_commit_newlines ... ok
+test ime::tests::preedit_display_empty_and_clamp ... ok
+test ime_cursor_tests::no_preedit_follows_terminal_cursor ... ok
+test ime_cursor_tests::preedit_cleared_keeps_cursor ... ok
+test ime_event_tests::commit_clears_preedit ... ok
+test ime_event_tests::disabled_clears_preedit ... ok
+test paste::drain_tests::budget_limits_work_and_reports_more_needed ... ok
+test paste::drain_tests::drains_all_in_order ... ok
+test paste::drain_tests::partial_write_keeps_remainder ... ok
+test paste::drain_tests::would_block_stops_without_spinning_and_keeps_data ... ok
+test ime::tests::preedit_display_none_cursor ... ok
+test ime_cursor_tests::preedit_end_position ... ok
+test ime_cursor_tests::preedit_wraps_at_right_edge ... ok
+test ime_event_tests::enabled_keeps_state ... ok
+test ime_event_tests::preedit_sets_text_and_cursor ... ok
+test paste::drain_tests::empty_queue_is_noop ... ok
+test paste::drain_tests::fatal_error_drops_and_marks_failed ... ok
+test paste::tests::normalize_paste_newlines_and_bracketed ... ok
+test scrollbar::tests::geometry_thumb_proportional ... ok
+test scrollbar::tests::geometry_none_when_no_scrollback ... ok
+test scrollbar::tests::geometry_offset_clamped ... ok
+test scrollbar::tests::track_y_to_offset_inverse ... ok
+test selection::offset_tests::selection_region_clamps_to_viewport ... ok
+test selection::auto_scroll_tests::auto_scroll_step_direction_and_clamp ... ok
+test selection::offset_tests::viewport_abs_roundtrip ... ok
+test selection::tests::color_fields_compile ... ok
+test selection::tests::extract_text_empty_line_preserved ... ok
+test selection::tests::extract_text_hard_wrap_inserts_newline ... ok
+test paste::tests::paste_chunks_splits_at_boundary ... ok
+test selection::tests::extract_text_mixed_soft_and_hard_wrap ... ok
+test selection::tests::extract_text_skips_spacer_tail_and_trims ... ok
+test selection::tests::extract_text_soft_wrap_joins_without_separator ... ok
+test selection::tests::extract_text_trailing_whitespace_trimmed ... ok
+test selection::tests::extract_text_wide_char_across_wrap_boundary ... ok
+test selection::tests::region_normalizes_and_contains ... ok
+test selection::tests::word_region_respects_escape_chars ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src\main.rs (target\debug\deps\app-ab5331b640ee792a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\keyboard.rs (target\debug\deps\keyboard-2c0b53bc2d22f2ed.exe)
+
+running 3 tests
+test route_key_text_priority_and_modifier_fallback ... ok
+test encoded_key_bytes ... ok
+test waker_wakes_on_every_data_arrival ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\reader.rs (target\debug\deps\reader-6a0a68bb797a3f4c.exe)
+
+running 4 tests
+test eof_wakes_event_loop_before_exit ... ok
+test other_error_reported_and_reader_exits ... ok
+test loop_closed_no_report_and_reader_exits ... ok
+test full_channel_retries_and_delivers_all_without_deadlock ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+     Running unittests src\lib.rs (target\debug\deps\config-7c931bd8b228fa28.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\config.rs (target\debug\deps\config-339e4af65e7b090f.exe)
+
+running 10 tests
+test bindings_parsed_with_mods ... ok
+test bad_color_falls_back_with_warning ... ok
+test invalid_binding_skipped_with_warning ... ok
+test out_of_range_and_type_errors_fall_back ... ok
+test rgb_rejects_bad_formats ... ok
+test action_and_mouse_parsing ... ok
+test unknown_fields_warn_with_path ... ok
+test defaults_are_sane ... ok
+test path_priority_cli_env_default ... ok
+test examples_load_without_warnings ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src\lib.rs (target\debug\deps\pty-478373632fc62474.exe)
+
+running 2 tests
+test windows::tests::ctrl_handler_zero_maps_to_error ... ok
+test windows::tests::clear_console_ctrl_ignore_returns_ok ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\pty_unix.rs (target\debug\deps\pty_unix-0e4b7ee1f5c935b6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-61f09314beb151c6.exe)
+
+running 21 tests
+test key_encoder_ctrl_c_maps_to_0x03 ... ok
+test pty_on_pty_write_dsr_response ... ok
+test pty_cmd_echo_cn_resize_close ... FAILED
+test pty_default_shell_is_cmd ... FAILED
+test ctrl_c_probe_cmd_ping_twice ... FAILED
+test t4_e11_powershell_testconnection_ctrl_c ... ok
+test ctrl_c_probe_cmd_sort ... ok
+test t4_e12_cmd_sort_full_data ... ok
+test t4_e1_cmd_prompt_ctrl_c ... ok
+test t4_e2_cmd_ping_ctrl_c ... ok
+test t4_e4_cmd_ping_ctrl_c_cr ... ok
+test pty_powershell_echo_cn ... ok
+test t4_e5_powershell_ping_ctrl_c ... ok
+test t6_resolve_program_windows ... ok
+test ctrl_c_probe_powershell_ping ... ok
+test t6_probe_spawn_from_devtty_cwd ... ok
+test t4_e7_cmd_ping_ctrl_c_spaced ... ok
+test t4_e9_cmd_timeout_ctrl_c ... ok
+test t4_e3_cmd_ping_finite_ctrl_c ... ok
+test t4_e6_cmd_ping_ctrl_break ... ok
+test t4_e8_ffi_ctrl_c_to_ping ... ok
+
+failures:
+
+---- pty_cmd_echo_cn_resize_close stdout ----
+
+thread 'pty_cmd_echo_cn_resize_close' (11276) panicked at crates\pty\tests\pty_windows.rs:126:5:
+PTY 输出应含 你好，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;C:\\Windows\\system32\\cmd.exe - chcp  65001\u{7}\u{1b}[?25h"
+
+---- pty_default_shell_is_cmd stdout ----
+
+thread 'pty_default_shell_is_cmd' (11500) panicked at crates\pty\tests\pty_windows.rs:186:5:
+默认 cmd.exe 应回显 default-ok，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;C:\\Windows\\system32\\cmd.exe - chcp  65001\u{7}\u{1b}[?25h"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ctrl_c_probe_cmd_ping_twice stdout ----
+
+thread 'ctrl_c_probe_cmd_ping_twice' (10820) panicked at crates\pty\tests\pty_windows.rs:326:5:
+cmd ping -t 应有 TTL 输出，实际 "\u{1b}[2J\u{1b}[m\u{1b}[H\u{1b}]0;C:\\Windows\\system32\\cmd.exe - chcp  65001\u{7}\u{1b}[?25h"
+
+
+failures:
+    ctrl_c_probe_cmd_ping_twice
+    pty_cmd_echo_cn_resize_close
+    pty_default_shell_is_cmd
+
+test result: FAILED. 18 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.67s
+
+error: test failed, to rerun pass `-p pty --test pty_windows`

@@ -1,0 +1,2 @@
+TP system run1 done=False ms=304016 | [perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=1 p95=2) coalesced=149 interval_ms=9 ~111fps
+TP system run2 done=False ms=304110 | [perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=1 p95=2) coalesced=139 interval_ms=8 ~125fps

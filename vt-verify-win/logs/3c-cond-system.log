@@ -1,0 +1,17 @@
+[system] run_all: rc=1 PASS=13 FAIL=1
+    FAIL l-sort-ctrl-c-interrupt (sort-blocked=True prompt-lines=1)
+[system] 2b_clip: rc=1 PASS=4 FAIL=7
+    FAIL n4a-paste-1mb-idle (bytes=-1 of 1048576, no extra input events)
+    FAIL n4b-paste-1mb-busy (bytes=-1 of 1048576, with mouse motion)
+    FAIL n5-bracketed-conpty (ready=False bytes= first='')
+    FAIL n5b-bracketed-cmd-negative (ready=False hex=False noWrap=True)
+    FAIL m2-doubleclick-word (row=-1 clip='')
+    FAIL m3-tripleclick-line (row=-1 clip='')
+    FAIL m4-shiftclick-extend (row=-1 clip='')
+[system] 2b_mouse: rc=1 PASS=2 FAIL=4
+    FAIL k1-ctrl-insert-copy (row=-1 clip='')
+    FAIL k2-shift-insert-paste (pasted=False executed=False)
+    FAIL w1-wheel-autofollow (bottom=-1 scrolled=-1 afterOut=-1)
+    FAIL w2-scrollbar-drag (bottom=-1 afterDrag=-1)
+[system] 2c: rc=0 PASS=8 FAIL=0
+CONDITION-DONE system

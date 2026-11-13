@@ -1,0 +1,6 @@
+[system] run_all: rc=0 PASS=14 FAIL=0
+[system] 2b_clip: rc=1 PASS=10 FAIL=1
+    FAIL m2-doubleclick-word (row=3 clip='e')
+[system] 2b_mouse: rc=0 PASS=6 FAIL=0
+[system] 2c: rc=0 PASS=8 FAIL=0
+CONDITION-DONE system

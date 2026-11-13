@@ -1,0 +1,2 @@
+TP sys20k run1 done=False ms=123339 | [perf] frames n=50 render_ms(med=1 p95=4) present_ms(med=2 p95=2) coalesced=127 interval_ms=8 ~125fps
+TP sys20k run2 done=False ms=123329 | [perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=2 p95=2) coalesced=128 interval_ms=9 ~111fps
