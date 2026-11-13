@@ -150,7 +150,9 @@
 
 ## 9. 推送核对
 
-- 提交见文末记录；`git push origin win` 后以 `git ls-remote origin refs/heads/win` 核对。
+- 提交：**7c6d2ab**（`3C-win: merge phase3c-done, fix Windows pty tests, ConPTY full regression`），130 文件，+4918/-550。
+- `git push origin win`：`4bd466c..7c6d2ab  win -> win`。
+- `git rev-parse win` = 7c6d2ab6ade7ca4e6472b8dade3ae50313ddfc69；`git ls-remote origin refs/heads/win` = 7c6d2ab6ade7ca4e6472b8dade3ae50313ddfc69（一致）。
 
 ## 10. 手动清单（≤3）
 
