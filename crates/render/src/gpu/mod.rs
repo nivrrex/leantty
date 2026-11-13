@@ -658,6 +658,12 @@ impl GpuRenderer {
             width,
             height,
         } = surface;
+        // 阶段 4H t2：GPU 侧入口点（内部实例/适配器/设备三段已有打点，不重复）。
+        eprintln!(
+            "[perf] gpu_begin_ms=0.0 since_start={:.1} reuse_groups={}",
+            crate::since_start_ms(),
+            reuse_groups.is_some()
+        );
         let gpu = Gpu::new()?;
         let groups = match reuse_groups {
             Some(g) => g,
@@ -715,7 +721,8 @@ impl GpuRenderer {
             t_pipe.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms()
         );
-        Ok(Self {
+        let t_state = std::time::Instant::now();
+        let me = Ok(Self {
             gpu,
             pipelines,
             atlas,
@@ -738,7 +745,13 @@ impl GpuRenderer {
             rgba: Vec::new(),
             char_font: HashMap::new(),
             pixel: (width.max(1), height.max(1)),
-        })
+        });
+        eprintln!(
+            "[perf] gpu_state_ms={:.2} since_start={:.1}",
+            t_state.elapsed().as_secs_f64() * 1000.0,
+            crate::since_start_ms()
+        );
+        me
     }
 
     /// 窗口尺寸变化（含 HiDPI）：标记需要 reconfigure，下一帧生效。

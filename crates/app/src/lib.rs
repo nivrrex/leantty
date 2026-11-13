@@ -339,8 +339,17 @@ impl App {
 
     /// 运行事件循环（含上述六条接线）。
     pub fn run(self) -> Result<(), Error> {
+        let t_loop = Instant::now();
         let event_loop = EventLoop::new()
             .map_err(|e| Error::App(format!("EventLoop::new: {}", e)))?;
+        // 阶段 4H t2：EventLoop::new（X11/socket 连接、平台后端初始化）此前无打点。
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] event_loop_ms={:.1} since_start={:.1}",
+                t_loop.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         let mut handler = AppHandler {
             config: Some(self),
             selection: None,
@@ -875,6 +884,7 @@ struct AppHandler {
 
 impl ApplicationHandler for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let t_resumed = Instant::now();
         let config = self
             .config
             .take()
@@ -931,6 +941,13 @@ impl ApplicationHandler for AppHandler {
             f64::from(config.cols) * f64::from(init_cw) + 2.0 * f64::from(config.pad_x),
             f64::from(config.rows) * f64::from(init_ch) + 2.0 * f64::from(config.pad_y),
         )));
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] pre_window_ms={:.1} since_start={:.1}",
+                t_resumed.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         // 启动失败路径：记录原因并退出事件循环，不 panic（外部输入/系统调用须覆盖失败路径）。
         let t_window = Instant::now();
         let window = Rc::new(match event_loop.create_window(attrs) {
@@ -959,7 +976,17 @@ impl ApplicationHandler for AppHandler {
         }
         // IME：窗口创建后无条件开启（任务 5）；Xvfb 无 IME 总线时事件不产生，
         // 开启调用本身无害（winit 内部按平台降级）。
+        let t_ime = Instant::now();
         window.set_ime_allowed(true);
+        // 阶段 4H t2：窗口创建完成到 renderer_ready 之间的逐段打点。
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] ime_ms={:.2} since_start={:.1}",
+                t_ime.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
+        }
+        let t_renderer = Instant::now();
         // 后端决定点：窗口已存在，auto/gpu 在此尝试创建 GPU 渲染器。
         // cpu 后端保持上面的 CPU 渲染器；GPU 失败时 auto 回落到它。
         let renderer = match create_renderer(
@@ -988,12 +1015,20 @@ impl ApplicationHandler for AppHandler {
             }
         };
         let gpu_backend = renderer.is_gpu();
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] renderer_build_ms={:.1} since_start={:.1} backend={}",
+                t_renderer.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0,
+                renderer.name()
+            );
+        }
         // 阶段 4C t3 启动打点：渲染器与其字形缓存初始化完成。
         if let Some(t0) = crate::start_time() {
             eprintln!(
-                "[perf] renderer_ready_ms={} since_start={}",
-                t0.elapsed().as_millis(),
-                t0.elapsed().as_millis()
+                "[perf] renderer_ready_ms={:.1} since_start={:.1}",
+                t0.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
             );
         }
         let t_surface = Instant::now();
@@ -1039,6 +1074,7 @@ impl ApplicationHandler for AppHandler {
                 t0.elapsed().as_secs_f64() * 1000.0
             );
         }
+        let t_vt = Instant::now();
         let mut vt = match VtTerminal::new_with_palette(
             config.cols,
             config.rows,
@@ -1050,6 +1086,13 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] vt_new_ms={:.2} since_start={:.1}",
+                t_vt.elapsed().as_secs_f64() * 1000.0,
+                t0.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         let t_spawn = Instant::now();
         let mut pty = NativePty::new();
         if let Err(e) = pty.spawn(&config.shell, config.cols, config.rows) {

@@ -393,7 +393,20 @@ impl CpuRenderer {
         palette: Palette,
     ) -> Result<Self, Error> {
         let t_ctor = std::time::Instant::now();
+        // 阶段 4H t2：CpuRenderer 内部逐段打点（Windows 首帧 781ms 中这段此前无观测）。
+        // 入口先报一次 since_start，便于判断"进入 new 之前"是否已耗时。
+        eprintln!(
+            "[perf] cpu_new_begin_ms={:.1} since_start={:.1}",
+            0.0,
+            since_start_ms()
+        );
+        let t_groups = std::time::Instant::now();
         let groups = std::sync::Arc::new(build_font_groups(settings)?);
+        eprintln!(
+            "[perf] cpu_groups_ms={:.1} since_start={:.1}",
+            t_groups.elapsed().as_secs_f64() * 1000.0,
+            since_start_ms()
+        );
         if options.hinting {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
@@ -403,7 +416,8 @@ impl CpuRenderer {
             t_ctor.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
         );
-        Ok(Self {
+        let t_state = std::time::Instant::now();
+        let me = Ok(Self {
             groups,
             font_size: settings.size,
             options,
@@ -425,7 +439,13 @@ impl CpuRenderer {
             last_preedit: None,
             band_backup: None,
             damage: Vec::new(),
-        })
+        });
+        eprintln!(
+            "[perf] cpu_state_ms={:.2} since_start={:.1}",
+            t_state.elapsed().as_secs_f64() * 1000.0,
+            since_start_ms()
+        );
+        me
     }
 
 
@@ -1537,24 +1557,56 @@ fn load_font_styled_cached(
         style: s,
         ..Default::default()
     };
+    // 阶段 4H t2：查找入口（此前从上一段到这里约有 20ms 无标注，实测为 fontdb face 查询）。
+    eprintln!(
+        "[perf] font_lookup_begin_ms family='{}' style='{}' since_start={:.1}",
+        family,
+        style,
+        since_start_ms()
+    );
+    let t_query = std::time::Instant::now();
     let id = db
         .query(&query)
         .ok_or_else(|| Error::Font(format!("family '{}' style '{}' not found", family, style)))?;
+    let query_us = t_query.elapsed().as_micros();
     if let Some(f) = cache.get(&id) {
         return Ok((f.clone(), true));
     }
     let face = db
         .face(id)
         .ok_or_else(|| Error::Font("face not found".to_string()))?;
+    let t_read = std::time::Instant::now();
     let bytes: Vec<u8> = match &face.source {
         Source::File(path) => std::fs::read(path)
             .map_err(|e| Error::Font(format!("read font file: {}", e)))?,
         Source::Binary(data) => data.as_ref().as_ref().to_vec(),
         Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
     };
+    let read_ms = t_read.elapsed().as_secs_f64() * 1000.0;
+    let t_parse = std::time::Instant::now();
     let font = Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
+    // 阶段 4H t2：字体解析三段（face 查询 / 文件读取 / fontdue 解析）。
+    // 只在缓存未命中（真正解析）时打印，命中路径不产生输出。
+    eprintln!(
+        "[perf] font_seg_ms family='{}' style='{}' bytes={} query_us={} read_ms={:.2} parse_ms={:.2} since_start={:.1}",
+        family,
+        style,
+        bytes.len(),
+        query_us,
+        read_ms,
+        t_parse.elapsed().as_secs_f64() * 1000.0,
+        since_start_ms()
+    );
+    let t_cache = std::time::Instant::now();
     cache.insert(id, font.clone());
+    eprintln!(
+        "[perf] font_cache_ms={:.2} since_start={:.1} family='{}' style='{}'",
+        t_cache.elapsed().as_secs_f64() * 1000.0,
+        since_start_ms(),
+        family,
+        style
+    );
     Ok((font, false))
 }
 
