@@ -110,6 +110,32 @@ else
     echo "FAIL gpu-round-screenshot-threshold (截图缺失)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：inverse（ESC[7m）反色可见性（绝对像素，非 CPU 对比）"
+L="$OUT/gpu-round-inverse.log"
+S="$OUT/gpu-round-inverse.png"
+if start_gpu_app "$CFG_GPU" "$L" ""; then
+    sleep 1.5
+    x11 xdotool type --window "$WID" "printf '\033[7m          \033[0m'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$S" 2>/dev/null
+    if [ -s "$S" ]; then
+        WHITE=$(convert "$S" -format "%c" histogram:info:- 2>/dev/null \
+            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        echo "  反色块白色像素=$WHITE（阈值 ≥768）"
+        if [ "$WHITE" -ge 768 ]; then
+            echo "PASS gpu-round-inverse-visible ($WHITE 白像素)"; PASS=$((PASS+1))
+        else
+            echo "FAIL gpu-round-inverse-visible (白像素 $WHITE < 768)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL gpu-round-inverse-visible (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-inverse-visible (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then

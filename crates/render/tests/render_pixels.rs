@@ -272,17 +272,29 @@ fn render_selection_inverts_selected_cell() {
     let b_bg_red = (w..2 * w).any(|x| {
         (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red)
     });
+    if !b_bg_red {
+        let mut sample = std::collections::HashMap::new();
+        for x in w..2 * w {
+            for y in 0..24u32 {
+                *sample.entry(fb[(y * 48 + x) as usize]).or_insert(0usize) += 1;
+            }
+        }
+        eprintln!("B 格像素分布: {sample:x?}");
+    }
     assert!(b_bg_red, "选区格背景应为字色红");
     let b_glyph_black = (w..2 * w).any(|x| {
         (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black)
     });
     assert!(b_glyph_black, "选区格字形应为原背景黑");
 
-    // A 格（未选、反显）：背景仍为原背景蓝（0xFF0000EE）。
-    let a_bg_blue = (0..w).any(|x| {
+    // A 格（未选、反显）：阶段 4C t4 起，反显格的**底色也用原前景色**（红），
+    // 字形用原背景色（蓝）——此前是"黑底红字 + 底色不变"，属于 P1 反色缺陷。
+    let a_bg_red = (0..w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red));
+    assert!(a_bg_red, "反显格底色应为原前景色（红）");
+    let a_glyph_blue = (0..w).any(|x| {
         (0..24u32).any(|y| fb[(y * 48 + x) as usize] == 0xFF00_00EE)
     });
-    assert!(a_bg_blue, "未选反显格背景不受选区影响");
+    assert!(a_glyph_blue, "反显格字形应为原背景色（蓝）");
 
     // 清除选区后恢复原背景（B 格 bg=默认黑；字形本身是红色，断言背景黑像素
     // 存在而非"全格无红"，避免把字形红像素误判为选区残留）。

@@ -17,6 +17,7 @@
 //!   取首个含该码点字形的字体；全无则用组首字体光栅化（fontdue 对缺字形返 default
 //!   glyph，不 panic）。
 
+pub mod decide;
 pub mod preedit;
 #[cfg(target_os = "linux")]
 pub mod gpu;
@@ -37,6 +38,7 @@ fn since_start_ms() -> f64 {
         .unwrap_or(0.0)
 }
 
+pub use decide::{decide, CellDecision, DecideCtx};
 pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
 
 use std::collections::HashMap;
@@ -901,16 +903,22 @@ impl CpuRenderer {
             };
             let area_w = cell_w * span;
             // 选区高亮（反色）：背景取字色、宽字符续格与 Spacer 尾格不高亮。
-            let in_sel = self.selection.is_some_and(|(c0, r0, c1, r1)| {
-                (x as u16) >= c0 && (x as u16) <= c1 && (y as u16) >= r0 && (y as u16) <= r1
-            });
-            let sel = in_sel && !is_tail;
-            let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
-            let orig_fg = cell
-                .fg
-                .map(rgb_to_u32)
-                .unwrap_or(rgb_to_u32(self.palette.primary_fg));
-            let bg = if sel { orig_fg } else { orig_bg };
+            // 颜色决策与 GPU 共用 `decide()`（阶段 4C t4：唯一来源，不再各自分叉）
+            let d = crate::decide::decide(
+                cell,
+                &crate::decide::DecideCtx {
+                    x,
+                    y,
+                    row_len: row.len(),
+                    bg_default,
+                    fg_default: rgb_to_u32(self.palette.primary_fg),
+                    selection: self.selection,
+                    palette: &self.palette,
+                    draw_bold_with_bright: self.options.draw_bold_with_bright,
+                },
+            );
+            let bg = d.bg;
+            let _ = (is_tail, span);
             // 宽字符续格（SpacerTail/SpacerHead）不重复填充背景：起始格的区域已按
             // area_w = 2 格铺满，若这里再按自己的单格填一遍，会把宽字形已经画到
             // 续格上的右半部分擦成背景色（阶段 4B t1 实测：'回' 位图非零 alpha
@@ -922,24 +930,7 @@ impl CpuRenderer {
                 continue;
             }
 
-            // 颜色：默认前景/反显交换/粗体亮色/faint 降不透明度。
-            let mut fg = cell
-                .fg
-                .map(rgb_to_u32)
-                .unwrap_or(rgb_to_u32(self.palette.primary_fg));
-            let mut bgc = bg;
-            if cell.inverse {
-                std::mem::swap(&mut fg, &mut bgc);
-            }
-            if cell.bold && self.options.draw_bold_with_bright {
-                fg = map_to_bright(fg, &self.palette);
-            }
-            if cell.faint {
-                fg = dim(fg, bgc);
-            }
-            // 选区字色=原背景色（反色）；样式线同步用反色字色。
-            let fg = if sel { orig_bg } else { fg };
-            let bgc = if sel { orig_fg } else { bgc };
+            let fg = d.fg;
 
             let ch = cell.chars.chars().next().expect("非空 chars");
             let group = group_for(cell);
@@ -958,7 +949,7 @@ impl CpuRenderer {
                         (px0, py0, area_w, cell_h, baseline),
                         &m,
                         &bitmap,
-                        (fg, bg),
+                        (fg, d.blend_bg),
                         (self.options.antialiasing, gamma),
                     );
                 } else {
@@ -981,7 +972,7 @@ impl CpuRenderer {
                         (px0, py0, area_w, cell_h, baseline),
                         &sm,
                         &scaled,
-                        (fg, bg),
+                        (fg, d.blend_bg),
                         (self.options.antialiasing, gamma),
                     );
                 }
@@ -1021,13 +1012,13 @@ impl CpuRenderer {
                     (px0, py0, area_w, cell_h, baseline),
                     &m,
                     &bitmap,
-                    (fg, bg),
+                    (fg, d.blend_bg),
                     (self.options.antialiasing, gamma),
                 );
             }
 
             // 样式线：下划线（Single/Double/Dotted/Dashed；Curly 近似 Single）、删除线、上划线。
-            let line_color = if cell.inverse { bgc } else { fg };
+            let line_color = d.line;
             draw_style_lines(
                 &mut self.framebuffer,
                 pixel_width,
@@ -1460,23 +1451,6 @@ fn blend_channel(pixel: u32, fg: u32, alpha: u8, channel: u32, gamma: f32) -> u3
     (pixel & !(0xFF << shift)) | (c << shift)
 }
 
-/// faint：前景与背景 50% 混合。
-fn dim(fg: u32, bg: u32) -> u32 {
-    let r = ((fg >> 16) & 0xFF) / 2 + ((bg >> 16) & 0xFF) / 2;
-    let g = ((fg >> 8) & 0xFF) / 2 + ((bg >> 8) & 0xFF) / 2;
-    let b = (fg & 0xFF) / 2 + (bg & 0xFF) / 2;
-    0xFF00_0000 | (r << 16) | (g << 8) | b
-}
-
-/// 粗体亮色映射：fg 若等于 normal[i] 则替换为 bright[i]，否则不变。
-fn map_to_bright(fg: u32, palette: &Palette) -> u32 {
-    for i in 0..8 {
-        if fg == rgb_to_u32(palette.normal[i]) {
-            return rgb_to_u32(palette.bright[i]);
-        }
-    }
-    fg
-}
 
 /// 位图最近邻缩放（宽字符缩放到 2 格宽高内）。
 fn scale_bitmap(bitmap: &[u8], w: usize, h: usize, tw: usize, th: usize) -> Vec<u8> {

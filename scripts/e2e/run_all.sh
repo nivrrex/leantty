@@ -1454,6 +1454,43 @@ else
     echo "FAIL case33-minimize-keeps-grid (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 34（4C-t4）：inverse（ESC[7m）反色必须可见——输出 10 个反色空格（纯底色块），
+#   断言截图中白色像素数达到"该块应占像素"的下限。修复前 CPU/GPU 均为黑底黑字，
+#   白像素为 0；阈值取理论值的 60%（10 格 × 8×16 × 0.6 = 768），理由写入 DECISIONS。
+CFG34="$OUT/case34-inverse.toml"
+D34="$OUT/case34-inverse.dump"
+L34="$OUT/case34-inverse.log"
+S34="$OUT/case34-inverse.png"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG34"
+rm -f "$D34"
+APP_CONFIG="$CFG34" APP_DUMP_SNAPSHOT="$D34" SHELL=/bin/sh "$APP_BIN" >"$L34" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.6
+    # 10 个反色空格：整块底色 = 原前景色（默认白）
+    x11 xdotool type --window "$WID" "printf '\\033[7m          \\033[0m'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.0
+    x11 import -window "$WID" "$S34" 2>/dev/null
+    if [ -s "$S34" ]; then
+        WHITE=$(convert "$S34" -format "%c" histogram:info:- 2>/dev/null \
+            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        echo "  反色块白色像素=$WHITE（阈值 ≥768）"
+        if [ "$WHITE" -ge 768 ]; then
+            echo "PASS case34-inverse-visible-cpu ($WHITE 白像素)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case34-inverse-visible-cpu (白像素 $WHITE < 768，疑似黑底黑字)"; FAIL=$((FAIL+1))
+        fi
+    else
+        echo "FAIL case34-inverse-visible-cpu (截图缺失)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case34-inverse-visible-cpu (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

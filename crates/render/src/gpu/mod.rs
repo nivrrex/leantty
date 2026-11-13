@@ -13,7 +13,7 @@
 
 use std::collections::HashMap;
 
-use vt::{Cell, CellWide, FrameSnapshot, Underline};
+use vt::{Cell, FrameSnapshot, Underline};
 
 use crate::{Error, Font, FontSettings, Palette, PreeditOverlay, RenderOptions, Renderer};
 
@@ -37,120 +37,10 @@ pub struct FrameInstances {
     pub tail_n: u32,
 }
 
-/// 单元格的绘制决策（CPU/GPU 共用的纯逻辑结果）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CellDecision {
-    /// 背景填充色（0x00RRGGBB）。
-    pub bg: u32,
-    /// 字形前景色。
-    pub fg: u32,
-    /// 字形混合底（**与 CPU 一致**：用单元格填充背景色 `bg`，而非 inverse 交换后
-    /// 的 `bgc`；CPU 的 blit 就是这么传的，见 DECISIONS 记录的 CPU 反色缺陷）。
-    pub blend_bg: u32,
-    /// 样式线颜色。
-    pub line: u32,
-    /// 占格数（1 或 2）。
-    pub span: u32,
-    /// 是否为宽字符续格（不画字形）。
-    pub is_tail: bool,
-}
+pub use crate::decide::{decide, CellDecision, DecideCtx};
+pub(crate) use crate::decide::rgb_to_u32;
 
-/// `decide` 的输入上下文（打包参数，避免超长参数列表）。
-#[derive(Clone, Copy)]
-pub struct DecideCtx<'a> {
-    pub x: &'a usize,
-    pub y: &'a usize,
-    pub row_len: &'a usize,
-    pub bg_default: &'a u32,
-    pub fg_default: &'a u32,
-    pub selection: &'a Option<(u16, u16, u16, u16)>,
-    pub palette: &'a Palette,
-    pub draw_bold_with_bright: &'a bool,
-}
 
-/// 计算一个单元格的绘制决策（纯函数，CPU 与 GPU 必须给出相同结果）。
-///
-/// 参数：单元格、默认背景/前景、选区矩形（内容坐标，含端点）、当前行号/列号、
-/// 调色板、是否"粗体用亮色"。
-pub fn decide(cell: &Cell, ctx: &DecideCtx) -> CellDecision {
-    let DecideCtx {
-        x,
-        y,
-        row_len,
-        bg_default,
-        fg_default,
-        selection,
-        palette,
-        draw_bold_with_bright,
-    } = *ctx;
-    let x = *x;
-    let y = *y;
-    let row_len = *row_len;
-    let bg_default = *bg_default;
-    let fg_default = *fg_default;
-    let selection = *selection;
-    let palette = *palette;
-    let draw_bold_with_bright = *draw_bold_with_bright;
-    let is_tail = matches!(cell.wide, CellWide::SpacerTail | CellWide::SpacerHead);
-    let span = if cell.wide == CellWide::Wide && x + 1 < row_len {
-        2
-    } else {
-        1
-    };
-    let in_sel = selection.is_some_and(|(c0, r0, c1, r1)| {
-        (x as u16) >= c0 && (x as u16) <= c1 && (y as u16) >= r0 && (y as u16) <= r1
-    });
-    let sel = in_sel && !is_tail;
-    let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(bg_default);
-    let orig_fg = cell.fg.map(rgb_to_u32).unwrap_or(fg_default);
-    let bg = if sel { orig_fg } else { orig_bg };
-    let mut fg = orig_fg;
-    let mut blend_bg = bg;
-    if cell.inverse {
-        std::mem::swap(&mut fg, &mut blend_bg);
-    }
-    if cell.bold && draw_bold_with_bright {
-        fg = map_to_bright(fg, &palette);
-    }
-    if cell.faint {
-        fg = dim(fg, blend_bg);
-    }
-    let fg = if sel { orig_bg } else { fg };
-    // CPU 的 `draw_style_lines` 用的 line_color = if inverse { bgc } else { fg }，
-    // 其中 bgc 在 sel 时被替换成 orig_fg。
-    let line_bgc = if sel { orig_fg } else { blend_bg };
-    let line = if cell.inverse { line_bgc } else { fg };
-    // 字形混合底取填充背景色（复刻 CPU blit 的 (fg, bg) 传参，保证逐像素一致）。
-    let blend_bg = bg;
-    CellDecision {
-        bg,
-        fg,
-        blend_bg,
-        line,
-        span,
-        is_tail,
-    }
-}
-
-pub(crate) fn rgb_to_u32(c: vt::Rgb) -> u32 {
-    (u32::from(c.r) << 16) | (u32::from(c.g) << 8) | u32::from(c.b)
-}
-
-pub(crate) fn dim(fg: u32, bg: u32) -> u32 {
-    let r = ((fg >> 16) & 0xFF) / 2 + ((bg >> 16) & 0xFF) / 2;
-    let g = ((fg >> 8) & 0xFF) / 2 + ((bg >> 8) & 0xFF) / 2;
-    let b = (fg & 0xFF) / 2 + (bg & 0xFF) / 2;
-    (r << 16) | (g << 8) | b
-}
-
-fn map_to_bright(fg: u32, palette: &Palette) -> u32 {
-    for i in 0..8 {
-        if fg == rgb_to_u32(palette.normal[i]) {
-            return rgb_to_u32(palette.bright[i]);
-        }
-    }
-    fg
-}
 
 /// 字体组选择（与 `crate::group_for` 一致）。
 pub(crate) fn group_for(cell: &Cell) -> u8 {
@@ -408,14 +298,14 @@ impl GpuRenderer {
                 let d = decide(
                     cell,
                     &DecideCtx {
-                        x: &x,
-                        y: &y,
-                        row_len: &row.len(),
-                        bg_default: &bg_default,
-                        fg_default: &fg_default,
-                        selection: &self.selection,
+                        x,
+                        y,
+                        row_len: row.len(),
+                        bg_default,
+                        fg_default,
+                        selection: self.selection,
                         palette: &self.palette,
-                        draw_bold_with_bright: &self.options.draw_bold_with_bright,
+                        draw_bold_with_bright: self.options.draw_bold_with_bright,
                     },
                 );
                 // 背景：宽字符起始格按 2 格宽铺满；续格**不画**（CPU 修复后同样
