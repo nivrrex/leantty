@@ -62,6 +62,10 @@
 - 事实（3E，已验证）：反色同 case34 阈值（≥768）：默认反色高亮像素 2768、彩色反色红像素 1280、选区 diff 2176；但本机 CPU 渲染下“白色”实为 (197,200,198)、红块 (204,102,102)（约 0.77 倍），纯 #FFFFFF 计数仅 87——原因未核实（待验证）。
 - 事实变更（3E，已验证 + 待验证）：3D 记录的“WezTerm conpty 下 1MB 粘贴停在 ~450KB”本轮**未复现**（2/2 都在 15 s 内完成 1 048 576 字节）；系统 conhost 7.77 s。停滞时的条件差异未定位，3D 与 3E 之间无代码变更（仅合入 4C）。
 - 事实（3E，已验证）：ConPTY 输出路径外部参照——WezTerm 终端自身 `type` 同一 2M 行文件 >900 s 未完成，而本 app 在同机器为 330 s（系统 conhost）/229–467 s（WezTerm conpty）；app 侧 feed_bytes_per_s: 442–470 KB/s（系统）/371–387 KB/s（WezTerm），chan_depth_max 均为 1，render 3–4 ms。
+- 事实更正（3F-a，已验证）：3E 的 t4 反色"失败"是**判据问题，不是渲染问题**。反色块实测为整块纯色 1280 px（默认色，颜色 #C5C8C6）与 1295 px（彩色，颜色 #CC6666），同 case34 的 ≥768 口径都通过；3E 用“严格 #FFFFFF 计数”才得到 87/0。
+- 事实（3F-a，已验证）：`--config` 的 `[colors.primary]` **生效**（#000000/#ffffff 与对照 #003300/#ffff00 均精确命中），但 `[colors.normal]`/`[colors.bright]` **不生效**：两份配置下 `ESC[31m` 都是 #CC6666。机制：`crates/vt/src/terminal.rs:28` 的 `VtTerminal::new(cols, rows)` 不接受 palette、`crates/vt` 无 palette 概念，VT 层用内置默认调色板把 ANSI 色解析成显式 RGB，renderer 的 `cell.fg.unwrap_or(fg_default)` 只会对“VT 未给色”的格子用配置 palette（`crates/render/src/decide.rs`）。反色格底色同样取自 VT 层（#C5C8C6），不是配置前景色。
+- 请求 17（3F-a，P2 跨平台）：配置调色板未到达 VT 层——建议把 palette 传入 VT（`Terminal::new`/`set_palette`），或在 renderer 侧对“VT 给出显式 RGB 的 ANSI 索引格”做 palette 覆盖。属共用代码，未修。状态=已验证事实（Windows release 实测）。
+- 事实（3F-a，未核实）：#C5C8C6 / #CC6666 在仓库源码中检索不到，判定为编译进 libghostty-vt-sys 的默认调色板取值；具体出处未逐行核实。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 
