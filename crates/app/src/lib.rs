@@ -369,6 +369,12 @@ impl App {
             os_redraw_pending: false,
             #[cfg(debug_assertions)]
             os_redraw_count: 0,
+            #[cfg(debug_assertions)]
+            test_paste_at: None,
+            #[cfg(debug_assertions)]
+            test_paste_text: None,
+            #[cfg(debug_assertions)]
+            test_paste_fired: None,
             fatal: None,
         };
         event_loop
@@ -710,6 +716,16 @@ struct AppHandler {
     /// debug 专有：OS 触发重绘次数（e2e 行为级断言）。
     #[cfg(debug_assertions)]
     os_redraw_count: u32,
+    /// debug 测试钩子：延迟触发一次同步粘贴（APP_TEST_PASTE / APP_TEST_PASTE_AT_MS）。
+    /// 由事件循环内部调用 `paste_text`，不产生鼠标/键盘事件，因此不会顺带触发
+    /// `RedrawRequested`，可以把"粘贴主动排帧"与其他重绘触发分离开来。
+    #[cfg(debug_assertions)]
+    test_paste_at: Option<std::time::Instant>,
+    #[cfg(debug_assertions)]
+    test_paste_text: Option<String>,
+    /// 已触发、等待第一帧渲染以打印延迟（debug 钩子）。
+    #[cfg(debug_assertions)]
+    test_paste_fired: Option<std::time::Instant>,
     /// 致命错误（如强制 GPU 后端不可用）：置位后退出事件循环，run() 据此返回 Err
     /// 使进程以非零码退出（不得 panic、不得中途回退 CPU）。
     fatal: Option<Error>,
@@ -1070,6 +1086,19 @@ impl ApplicationHandler for AppHandler {
                 eprintln!("[perf] test_preedit_clear_scheduled ms={ms}");
             }
         }
+        // 测试钩子（debug 专有）：延迟触发一次同步粘贴，用于验证"粘贴后主动排帧"。
+        #[cfg(debug_assertions)]
+        if let Ok(t) = std::env::var("APP_TEST_PASTE")
+            && !t.is_empty()
+        {
+            let at_ms = std::env::var("APP_TEST_PASTE_AT_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(2000);
+            self.test_paste_text = Some(t);
+            self.test_paste_at =
+                Some(std::time::Instant::now() + std::time::Duration::from_millis(at_ms));
+        }
         self.clipboard = match ArboardClipboard::new() {
             Ok(c) => Some(c),
             Err(e) => {
@@ -1243,6 +1272,19 @@ impl ApplicationHandler for AppHandler {
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         // 测试钩子（debug 专有）：预编辑到期清除。必须放在渲染节流之前——静止画面
         // 时 will_render 可能为 false，若把清除逻辑放在渲染路径里就永远不会执行。
+        #[cfg(debug_assertions)]
+        if let Some(t) = self.test_paste_at {
+            if std::time::Instant::now() >= t {
+                self.test_paste_at = None;
+                if let Some(text) = self.test_paste_text.take() {
+                    eprintln!("[perf] test_paste_fired");
+                    self.paste_text(&text);
+                    self.test_paste_fired = Some(std::time::Instant::now());
+                }
+            } else {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+            }
+        }
         #[cfg(debug_assertions)]
         if let Some(t) = self.test_preedit_clear_at {
             if std::time::Instant::now() >= t {
@@ -1429,6 +1471,8 @@ impl ApplicationHandler for AppHandler {
         }
         let prev_render = self.last_render;
         self.last_render = Some(now);
+        #[cfg(debug_assertions)]
+        let was_urgent = self.urgent_render;
         self.urgent_render = false;
         let t_render_start = Instant::now();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
@@ -1640,6 +1684,15 @@ impl ApplicationHandler for AppHandler {
                                 if let Some(t0) = crate::start_time() {
                                     eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                                 }
+                            }
+                            // 测试钩子：粘贴后的首帧延迟与是否走 urgent 路径
+                            #[cfg(debug_assertions)]
+                            if let Some(fired) = self.test_paste_fired.take() {
+                                eprintln!(
+                                    "[perf] test_paste_first_frame latency_ms={} urgent={}",
+                                    fired.elapsed().as_millis(),
+                                    was_urgent
+                                );
                             }
                         }
                         Err(e) => eprintln!("buffer_mut: {}", e),
@@ -2215,16 +2268,24 @@ impl AppHandler {
             for chunk in paste_chunks(&norm) {
                 self.pending_paste.push_back(chunk.into_bytes());
             }
-        } else if let Some(pty) = self.pty.as_mut() {
-            write_pty(pty, norm.as_bytes());
-            // 阶段 4B-fix3：粘贴后必须主动排一帧。此路径不产生应用侧状态变化，
-            // 若不置 urgent，画面刷新只能等 PTY 回显字节到达后由帧间隔驱动；
-            // 回显缺失/延迟时（例如 shell 关闭 echo、readline 尚未处理）会出现
-            // "内容已送入 shell 但画面不刷新，直到回车或再次键入"。
-            self.urgent_render = true;
-            if let Some(w) = self.window.as_ref() {
-                w.request_redraw();
-            }
+        } else {
+            self.paste_text(&norm);
+        }
+    }
+
+    /// 同步粘贴路径：写入 PTY 后**主动排一帧**。
+    ///
+    /// 阶段 4B-fix3：这条路径不产生应用侧状态变化，若不置 urgent，画面刷新只能
+    /// 等 PTY 回显字节到达后由帧间隔驱动；回显缺失/延迟时（shell 关闭 echo、
+    /// readline 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次
+    /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
+    fn paste_text(&mut self, text: &str) {
+        if let Some(pty) = self.pty.as_mut() {
+            write_pty(pty, text.as_bytes());
+        }
+        self.urgent_render = true;
+        if let Some(w) = self.window.as_ref() {
+            w.request_redraw();
         }
     }
 }

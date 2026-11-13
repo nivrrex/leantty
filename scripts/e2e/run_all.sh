@@ -1368,6 +1368,52 @@ else
     echo "FAIL case31-expose-full-redraw (截图缺失)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 32（4B-fix3）：粘贴写入 PTY 后必须**由粘贴本身**主动排一帧。
+#   构造：`stty -echo` 关闭回显（此后无回显字节可驱动渲染），由 debug 钩子
+#   APP_TEST_PASTE 在事件循环内部触发同步粘贴（不产生鼠标/键盘事件，因此不会
+#   顺带触发 RedrawRequested）。断言：粘贴后出现首帧，且该帧由 urgent 路径驱动
+#   （urgent=true）——回退"写完主动排一帧"的加固后，将没有任何新帧、也没有该行。
+CFG32="$OUT/case32-paste-frame.toml"
+H32="$OUT/case32-frames.hash"
+L32="$OUT/case32-paste-frame.log"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG32"
+rm -f "$H32"
+APP_CONFIG="$CFG32" APP_FRAME_HASH="$H32" APP_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
+  APP_TEST_PASTE="SILENT_PASTE" APP_TEST_PASTE_AT_MS=3500 \
+  SHELL=/bin/sh "$APP_BIN" >"$L32" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    # 关闭回显并让画面静止：此后没有回显字节可以驱动渲染
+    x11 xdotool type --window "$WID" "stty -echo"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    N0=$(wc -l < "$H32" 2>/dev/null || echo 0)
+    i=0
+    while [ $i -lt 12 ]; do
+        grep -q "test_paste_first_frame" "$L32" 2>/dev/null && break
+        sleep 0.3
+        i=$((i+1))
+    done
+    N1=$(wc -l < "$H32" 2>/dev/null || echo 0)
+    LINE=$(grep "test_paste_first_frame" "$L32" | tail -1)
+    if [ -n "$LINE" ] && [ "$N1" -gt "$N0" ]; then
+        case "$LINE" in
+            *urgent=true*)
+                echo "PASS case32-paste-urgent-frame ($LINE, frames $N0→$N1)"; PASS=$((PASS+1)) ;;
+            *)
+                echo "FAIL case32-paste-urgent-frame (首帧未经 urgent 路径: $LINE)"; FAIL=$((FAIL+1)) ;;
+        esac
+    else
+        echo "FAIL case32-paste-urgent-frame (粘贴后无新帧: frames $N0→$N1, 指标='${LINE:-<无>}')"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case32-paste-urgent-frame (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
