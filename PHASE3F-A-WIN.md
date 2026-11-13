@@ -71,6 +71,16 @@
 - 配置：`scripts/windows/e2e/cfg/inverse-dark.toml`（3E 原文件，未改动）、`control-green.toml`（对照组 #003300/#ffff00，新增）。
 - 证据：`vt-verify-win/logs/phase2b-win/3fa-{dark,green,inv-dark,inv-red,sel}.{err,png}`。
 
+## 8.5 推送与打 tag（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `39e4026a5c3b62771cd7f2ab5833e9bdd36d6990` |
+| `refs/tags/phase3f-a-win-done`（tag 对象） | `e3bbbdd92829b9d8d3509deab10260aef70f3b15` |
+| `refs/tags/phase3f-a-win-done^{}`（解引用 commit） | `39e4026a5c3b62771cd7f2ab5833e9bdd36d6990` |
+
+- `git push origin win`：`14dd0cf..39e4026  win -> win`；tag 为新建后 push（`* [new tag] phase3f-a-win-done`），未使用 `--force`，未移动任何已有 tag。
+
 ## 9. 手动清单（≤3）
 
 1. 若关心配色能否自定义：在 Linux 侧先用同一份 `inverse-dark.toml` 跑一次 `ESC[31m`，确认是否同样渲染成 #CC6666（若是，则问题跨平台，与本任务判断一致）。
