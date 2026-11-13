@@ -202,11 +202,28 @@ impl VtTerminal {
             cols: self.inner.cols()?,
             rows: self.inner.rows()?,
             cells,
-            cursor: Cursor {
-                x: self.inner.cursor_x()?,
-                y: self.inner.cursor_y()?,
-                visible: snap.cursor_visible()?,
-                style: map_cursor_style(snap.cursor_visual_style()?),
+            // 光标必须用**视口内**位置：`cursor_viewport()` 在光标滚出视口时返回
+            // None（libghostty `render.rs:970`）。此前用活动区坐标 `cursor_x/y` +
+            // 仅模式可见性，导致视口上滚到 scrollback 后光标仍被画在原屏幕位置
+            //（阶段 4G t1 实测：上滚 5 行后 visible=true、位置 (8,9)）。
+            cursor: {
+                let style = map_cursor_style(snap.cursor_visual_style()?);
+                match (snap.cursor_visible()?, snap.cursor_viewport()?) {
+                    (true, Some(v)) => Cursor {
+                        x: v.x,
+                        y: v.y,
+                        visible: true,
+                        style,
+                    },
+                    _ => Cursor {
+                        // 不可见时坐标无意义（渲染层只看 visible）；保留活动区坐标
+                        // 便于诊断输出。
+                        x: self.inner.cursor_x()?,
+                        y: self.inner.cursor_y()?,
+                        visible: false,
+                        style,
+                    },
+                }
             },
             scrollback_rows: self.inner.scrollback_rows()?,
             alternate_screen: self.inner.active_screen()? == Screen::Alternate,

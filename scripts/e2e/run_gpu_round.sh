@@ -120,8 +120,8 @@ if start_gpu_app "$CFG_GPU" "$L" ""; then
     sleep 1.2
     x11 import -window "$WID" "$S" 2>/dev/null
     if [ -s "$S" ]; then
-        WHITE=$(convert "$S" -format "%c" histogram:info:- 2>/dev/null \
-            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        WHITE=$(convert "$S" -fuzz 2% -fill black +opaque "#ffffff" -fill white -opaque "#ffffff" \
+            -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
         echo "  反色块白色像素=$WHITE（阈值 ≥768）"
         if [ "$WHITE" -ge 768 ]; then
             echo "PASS gpu-round-inverse-visible ($WHITE 白像素)"; PASS=$((PASS+1))
@@ -158,8 +158,8 @@ if start_gpu_app "$CFG35" "$L" ""; then
     kill -TERM "${CLIP_PID:-}" 2>/dev/null
     CLIP_PID=""
     if [ -s "$S" ]; then
-        W=$(convert "$S" -format "%c" histogram:info:- 2>/dev/null \
-            | awk '/#FFFFFF/ {gsub(":", "", $1); s+=$1} END {print s+0}')
+        W=$(convert "$S" -fuzz 2% -fill black +opaque "#ffffff" -fill white -opaque "#ffffff" \
+            -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
         echo "  括号粘贴反色块白像素=$W（阈值 ≥768）"
         if [ "$W" -ge 768 ]; then
             echo "PASS gpu-round-paste-inverse-visible ($W 白像素)"; PASS=$((PASS+1))
@@ -196,7 +196,7 @@ if start_gpu_app "$CFG36" "$L" ""; then
     sleep 1.2
     x11 import -window "$WID" "$S" 2>/dev/null
     if [ -s "$S" ]; then
-        R=$(convert "$S" -fuzz 2% -fill white -opaque "#d32f2f" -fill black +opaque white \
+        R=$(convert "$S" -fuzz 2% -fill black +opaque "#d32f2f" -fill white -opaque "#d32f2f" \
             -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
         echo "  配置红(#d32f2f) 像素=$R（阈值 ≥500）"
         if [ "${R:-0}" -ge 500 ]; then
@@ -210,6 +210,55 @@ if start_gpu_app "$CFG36" "$L" ""; then
     stop_app
 else
     echo "FAIL gpu-round-palette-reaches-vt (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：视口上滚后光标隐藏"
+CFG37="$OUT/gpu-round-cursor.toml"
+cat >"$CFG37" <<'TOML'
+[renderer]
+backend = "gpu"
+[window]
+dimensions = { columns = 80, lines = 24 }
+[colors.cursor]
+cursor = "#ff00ff"
+[colors.primary]
+background = "#000000"
+foreground = "#ffffff"
+TOML
+L="$OUT/gpu-round-cursor.log"
+if start_gpu_app "$CFG37" "$L" ""; then
+    sleep 1.5
+    x11 xdotool type --window "$WID" "seq 1 200"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/gpu-round-cursor-bottom.png" 2>/dev/null
+    CB=$(convert "$OUT/gpu-round-cursor-bottom.png" -fuzz 2% -fill black +opaque "#ff00ff" \
+        -fill white -opaque "#ff00ff" -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO" | grep '^X=' | cut -d= -f2); GY=$(echo "$GEO" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2); GH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-200} / 2 )) $(( ${GY:-0} + ${GH:-200} / 2 ))
+    sleep 0.2
+    i=0; while [ $i -lt 8 ]; do x11 xdotool click 4; i=$((i+1)); done
+    sleep 1.5
+    Z=0; T=0
+    for k in 1 2 3; do
+        x11 import -window "$WID" "$OUT/gpu-round-cursor-s$k.png" 2>/dev/null
+        N=$(convert "$OUT/gpu-round-cursor-s$k.png" -fuzz 2% -fill black +opaque "#ff00ff" \
+            -fill white -opaque "#ff00ff" -format "%[fx:int(mean*w*h)]" info: 2>/dev/null)
+        [ "${N:-0}" -eq 0 ] && Z=$((Z+1))
+        T=$((T+1))
+        sleep 0.5
+    done
+    echo "  回底=$CB 上滚后全零=$Z/$T"
+    if [ "${CB:-0}" -gt 0 ] && [ "$Z" -eq "$T" ]; then
+        echo "PASS gpu-round-cursor-hidden-on-scroll"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-cursor-hidden-on-scroll (bottom=$CB zero=$Z/$T)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-cursor-hidden-on-scroll (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
