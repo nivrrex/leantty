@@ -7,6 +7,7 @@ rust-version.workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
 wgpu = { version = "30.0.2", default-features = false, features = ["vulkan", "wgsl"] }
 pollster = "0.4"
+raw-window-handle = "0.6"
 
 [dependencies]
 vt = { path = "../vt" }

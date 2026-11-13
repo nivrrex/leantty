@@ -49,6 +49,16 @@ done
 [ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：APP_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
 PASS=0; FAIL=0
 
+# e2e 默认后端：阶段 4B 起默认配置是 renderer.backend=auto（会优先 GPU），
+# 而本轮的断言（增量渲染/脏区/damage 等）针对 CPU 后端语义，故显式指定 cpu。
+# t5 会在此基础上增加 backend=gpu 的整轮。
+E2E_CFG="$OUT/e2e-default.toml"
+cat >"$E2E_CFG" <<'TOML'
+[renderer]
+backend = "cpu"
+TOML
+export APP_CONFIG="$E2E_CFG"
+
 # GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
 # 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
 GPU_LOG="$OUT/gpu-parity.log"
@@ -377,7 +387,11 @@ fi
 # 本环境不可用；case2 同结论，DECISIONS 登记）。
 D="$OUT/case10-cjk-config.dump"
 L="$OUT/case10-cjk-config.log"
-APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$ROOT/examples/linux.toml" >>"$L" 2>&1 &
+# examples/linux.toml 的 renderer.backend 是 auto（会优先 GPU）；本用例断言的是
+# CPU 后端的 dump 钩子（# font 行），故派生一份把 backend 固定为 cpu 的副本。
+CFG10="$OUT/case10-cfg.toml"
+sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/examples/linux.toml" >"$CFG10"
+APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$CFG10" >>"$L" 2>&1 &
 APP_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -906,12 +920,16 @@ L="$OUT/case23-title.log"
 CFG_ON="$OUT/case23-on.toml"
 CFG_OFF="$OUT/case23-off.toml"
 cat >"$CFG_ON" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 position = { x = 60, y = 50 }
 dimensions = { columns = 80, lines = 24 }
 dynamic_title = true
 TOML
 cat >"$CFG_OFF" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 dimensions = { columns = 80, lines = 24 }
 dynamic_title = false
@@ -967,7 +985,7 @@ if start_app "$D" "$L"; then
     assert_app_exits "case23-static-exits"
     assert_no_wake "case23-static-no-wake" "$L"
 fi
-unset APP_CONFIG
+export APP_CONFIG="$E2E_CFG"
 
 
 # 用例 24：大段粘贴静止排空（任务 2D.2，P1）——1MB 已知模式粘贴后不产生任何
@@ -1120,6 +1138,8 @@ A27="$OUT/case27-incr.png"
 B27="$OUT/case27-full.png"
 CFG27="$OUT/case27.toml"
 cat >"$CFG27" <<'TOML'
+[renderer]
+backend = "cpu"
 [window]
 dimensions = { columns = 120, lines = 30 }
 [[keyboard.bindings]]
@@ -1174,9 +1194,9 @@ if start_app "$D27" "$L27"; then
     else
         echo "FAIL case27-scroll-incremental-equals-full (截图缺失)"; FAIL=$((FAIL+1))
     fi
-    unset APP_CONFIG
+    export APP_CONFIG="$E2E_CFG"
 fi
-unset APP_CONFIG
+export APP_CONFIG="$E2E_CFG"
 
 
 # 用例 28：自适应帧间隔的尾沿渲染（阶段 3C 任务 4）——大量输出后立即打印结束标记，

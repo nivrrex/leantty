@@ -161,6 +161,9 @@ pub(crate) fn group_for(cell: &Cell) -> u8 {
 
 /// wgpu 设备/队列与静态资源。
 struct Gpu {
+    /// 保留 instance：surface 需要用它创建（Lost 时重建）。
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
     adapter_name: String,
@@ -182,14 +185,33 @@ pub struct GpuRenderer {
     selection: Option<(u16, u16, u16, u16)>,
     scrollbar: Option<(u32, u32)>,
     preedit: Option<PreeditOverlay>,
-    /// 离屏目标（t3：渲染后回读；t4 改为 surface 纹理）。
-    target: OffscreenTarget,
+    /// 渲染目标：离屏（对拍/测试）或窗口 surface（正式路径）。
+    target: Target,
     /// 上一帧回读的 RGBA 数据（t3 对拍用）。
     rgba: Vec<u8>,
     /// 字形 → 组内字体索引缓存（与 CPU 同规则）。
     char_font: HashMap<(u8, char), Option<usize>>,
     /// 上次渲染尺寸（尺寸变化时重建离屏目标）。
     pixel: (u32, u32),
+}
+
+enum Target {
+    /// 离屏纹理 + 回读缓冲（对拍门禁与无窗口场景）。
+    Offscreen(OffscreenTarget),
+    /// 窗口 surface（正式路径，不回读）。
+    Surface(SurfaceTarget),
+}
+
+struct SurfaceTarget {
+    surface: wgpu::Surface<'static>,
+    /// 原始窗口/显示句柄（Lost 时重建 surface 用；由调用方保证存活）。
+    raw_window: raw_window_handle::RawWindowHandle,
+    raw_display: raw_window_handle::RawDisplayHandle,
+    config: wgpu::SurfaceConfiguration,
+    /// device lost 后已重建的次数（最多一次，再失败即报错）。
+    rebuilt: u8,
+    /// 窗口尺寸变化等需要 reconfigure 的标记。
+    needs_configure: bool,
 }
 
 struct OffscreenTarget {
@@ -230,8 +252,8 @@ impl GpuRenderer {
             gpu.max_texture,
             atlas::INITIAL_SIZE,
         );
-        let pipelines = Pipelines::new(&gpu.device, &atlas);
-        let target = OffscreenTarget::new(&gpu.device, 1, 1);
+        let pipelines = Pipelines::new(&gpu.device, &atlas, TARGET_FORMAT);
+        let target = Target::Offscreen(OffscreenTarget::new(&gpu.device, 1, 1));
         Ok(Self {
             gpu,
             pipelines,
@@ -300,6 +322,11 @@ impl GpuRenderer {
     /// IME 预编辑叠加层。
     pub fn set_preedit(&mut self, overlay: Option<PreeditOverlay>) {
         self.preedit = overlay;
+    }
+
+    /// 当前渲染尺寸（像素）。
+    pub fn pixel_size(&self) -> (u32, u32) {
+        self.pixel
     }
 
     /// 最近一帧回读的 RGBA8 数据（左上原点，紧凑排布）。
@@ -570,6 +597,172 @@ impl GpuRenderer {
         })
     }
 
+    /// 创建面朝窗口的 GPU 渲染器（正式路径）。
+    ///
+    /// `raw_window`/`raw_display` 来自 winit 的 `HasWindowHandle`/`HasDisplayHandle`；
+    /// 调用方保证句柄在渲染器存活期间有效（窗口由事件循环持有）。
+    pub fn new_surface(
+        settings: &FontSettings,
+        options: RenderOptions,
+        palette: Palette,
+        raw_window: raw_window_handle::RawWindowHandle,
+        raw_display: raw_window_handle::RawDisplayHandle,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, Error> {
+        let gpu = Gpu::new()?;
+        let groups = crate::build_font_groups(settings)?;
+        let atlas = GlyphAtlas::new(&gpu.device, &gpu.queue, gpu.max_texture, atlas::INITIAL_SIZE);
+        let instance = gpu.instance.clone();
+        let surface = unsafe {
+            instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle: Some(raw_display),
+                raw_window_handle: raw_window,
+            })
+        }
+        .map_err(|e| Error::Backend(format!("create_surface: {e}")))?;
+        let caps = surface.get_capabilities(&gpu.adapter);
+        let format = caps
+            .formats
+            .iter()
+            .copied()
+            .find(|f| !f.is_srgb())
+            .or_else(|| caps.formats.first().copied())
+            .ok_or_else(|| Error::Backend("surface 无可用格式".to_string()))?;
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format,
+            width: width.max(1),
+            height: height.max(1),
+            present_mode: wgpu::PresentMode::Fifo,
+            desired_maximum_frame_latency: 2,
+            alpha_mode: caps
+                .alpha_modes
+                .first()
+                .copied()
+                .unwrap_or(wgpu::CompositeAlphaMode::Auto),
+            view_formats: vec![],
+            color_space: wgpu::SurfaceColorSpace::Auto,
+        };
+        surface.configure(&gpu.device, &config);
+        let pipelines = Pipelines::new(&gpu.device, &atlas, config.format);
+        Ok(Self {
+            gpu,
+            pipelines,
+            atlas,
+            groups,
+            font_size: settings.size,
+            scale: 1.0,
+            options,
+            palette,
+            selection: None,
+            scrollbar: None,
+            preedit: None,
+            target: Target::Surface(SurfaceTarget {
+                surface,
+                raw_window,
+                raw_display,
+                config,
+                rebuilt: 0,
+                needs_configure: false,
+            }),
+            rgba: Vec::new(),
+            char_font: HashMap::new(),
+            pixel: (width.max(1), height.max(1)),
+        })
+    }
+
+    /// 窗口尺寸变化（含 HiDPI）：标记需要 reconfigure，下一帧生效。
+    pub fn resize_surface(&mut self, width: u32, height: u32) {
+        let (w, h) = (width.max(1), height.max(1));
+        if self.pixel == (w, h) {
+            return;
+        }
+        self.pixel = (w, h);
+        if let Target::Surface(t) = &mut self.target {
+            t.config.width = w;
+            t.config.height = h;
+            t.needs_configure = true;
+        }
+    }
+
+    /// 渲染一帧到 surface 并 present（整帧重绘，不回读）。
+    ///
+    /// surface Lost/Outdated：reconfigure 后重试本帧；device lost：重建一次；
+    /// 仍失败则返回 Err（app 据此非零退出），不做中途回退。
+    pub fn render_surface(
+        &mut self,
+        frame: &FrameSnapshot,
+        pixel_w: u32,
+        pixel_h: u32,
+    ) -> Result<(), Error> {
+        self.resize_surface(pixel_w, pixel_h);
+        let inst = self.build_instances(frame, pixel_w, pixel_h)?;
+        let Target::Surface(t) = &mut self.target else {
+            return Err(Error::Backend(
+                "render_surface 只能用于 surface 目标".to_string(),
+            ));
+        };
+        if t.needs_configure {
+            t.surface.configure(&self.gpu.device, &t.config);
+            t.needs_configure = false;
+        }
+        for attempt in 0..2u8 {
+            let acquired = t.surface.get_current_texture();
+            match acquired {
+                wgpu::CurrentSurfaceTexture::Success(tex)
+                | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                    let view = tex
+                        .texture
+                        .create_view(&wgpu::TextureViewDescriptor::default());
+                    self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
+                    self.pipelines.ensure_capacity(
+                        &self.gpu.device,
+                        inst.quads.len(),
+                        inst.glyphs.len().max(1),
+                    );
+                    self.pipelines.submit(
+                        &self.gpu.device,
+                        &self.gpu.queue,
+                        &self.atlas,
+                        &view,
+                        &inst,
+                    )?;
+                    self.gpu.queue.present(tex);
+                    return Ok(());
+                }
+                wgpu::CurrentSurfaceTexture::Outdated if attempt == 0 => {
+                    // 旧交换链/尺寸过期：reconfigure 后重试一次本帧。
+                    t.surface.configure(&self.gpu.device, &t.config);
+                    continue;
+                }
+                wgpu::CurrentSurfaceTexture::Lost if attempt == 0 => {
+                    // 重建 surface（保留 device）后重试一次本帧。
+                    let surface = unsafe {
+                        self.gpu.instance.create_surface_unsafe(
+                            wgpu::SurfaceTargetUnsafe::RawHandle {
+                                raw_display_handle: Some(t.raw_display),
+                                raw_window_handle: t.raw_window,
+                            },
+                        )
+                    }
+                    .map_err(|e| Error::Backend(format!("重建 surface: {e}")))?;
+                    surface.configure(&self.gpu.device, &t.config);
+                    t.surface = surface;
+                    t.rebuilt += 1;
+                    continue;
+                }
+                other => {
+                    return Err(Error::Backend(format!(
+                        "get_current_texture: {}",
+                        surface_status_desc(&other)
+                    )));
+                }
+            }
+        }
+        Err(Error::Backend("surface 获取纹理失败（重试耗尽）".to_string()))
+    }
+
     /// 渲染一帧到离屏纹理并回读（t3；t4 改为 surface present）。
     pub fn render_offscreen(
         &mut self,
@@ -578,27 +771,33 @@ impl GpuRenderer {
         pixel_h: u32,
     ) -> Result<(), Error> {
         if self.pixel != (pixel_w, pixel_h) {
-            self.target = OffscreenTarget::new(&self.gpu.device, pixel_w, pixel_h);
+            self.target = Target::Offscreen(OffscreenTarget::new(
+                &self.gpu.device,
+                pixel_w,
+                pixel_h,
+            ));
             self.pixel = (pixel_w, pixel_h);
         }
-        self.pipelines
-            .ensure_capacity(&self.gpu.device, self.quads_len_estimate(frame), frame.cells.iter().map(Vec::len).sum());
-        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
         let inst = self.build_instances(frame, pixel_w, pixel_h)?;
+        let Target::Offscreen(target) = &self.target else {
+            return Err(Error::Backend(
+                "render_offscreen 只能用于离屏目标（当前为 surface）".to_string(),
+            ));
+        };
+        self.pipelines
+            .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
+        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
         self.pipelines.submit(
             &self.gpu.device,
             &self.gpu.queue,
             &self.atlas,
-            &self.target.view,
+            &target.view,
             &inst,
         )?;
-        self.rgba = self.target.read_back(&self.gpu.device, &self.gpu.queue)?;
+        self.rgba = target.read_back(&self.gpu.device, &self.gpu.queue)?;
         Ok(())
     }
 
-    fn quads_len_estimate(&self, frame: &FrameSnapshot) -> usize {
-        frame.cells.iter().map(Vec::len).sum::<usize>() * 2 + 64
-    }
 }
 
 impl Renderer for GpuRenderer {
@@ -669,6 +868,19 @@ fn push_style_lines(
     }
 }
 
+/// surface 获取失败的状态描述（CurrentSurfaceTexture 未实现 Display）。
+fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
+    match s {
+        wgpu::CurrentSurfaceTexture::Success(_) => "Success",
+        wgpu::CurrentSurfaceTexture::Suboptimal(_) => "Suboptimal",
+        wgpu::CurrentSurfaceTexture::Timeout => "Timeout",
+        wgpu::CurrentSurfaceTexture::Occluded => "Occluded",
+        wgpu::CurrentSurfaceTexture::Outdated => "Outdated",
+        wgpu::CurrentSurfaceTexture::Lost => "Lost",
+        wgpu::CurrentSurfaceTexture::Validation => "Validation",
+    }
+}
+
 impl Gpu {
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
     fn new() -> Result<Self, Error> {
@@ -720,6 +932,8 @@ impl Gpu {
             }))
             .map_err(|e| Error::Backend(format!("request_device: {e}")))?;
         Ok(Self {
+            instance,
+            adapter,
             device,
             queue,
             adapter_name: info.name,
@@ -820,7 +1034,7 @@ impl OffscreenTarget {
 }
 
 impl Pipelines {
-    fn new(device: &wgpu::Device, atlas: &GlyphAtlas) -> Self {
+    fn new(device: &wgpu::Device, atlas: &GlyphAtlas, format: wgpu::TextureFormat) -> Self {
         let screen = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("screen"),
             size: 16,
@@ -885,6 +1099,7 @@ impl Pipelines {
             shaders::BG_WGSL,
             false,
             std::mem::size_of::<BgInstance>() as u64,
+            format,
         );
         let glyph = build_pipeline(
             device,
@@ -892,6 +1107,7 @@ impl Pipelines {
             shaders::GLYPH_WGSL,
             true,
             std::mem::size_of::<GlyphInstance>() as u64,
+            format,
         );
         const CAP: u32 = 1 << 16;
         let bg_inst = device.create_buffer(&wgpu::BufferDescriptor {
@@ -1041,6 +1257,7 @@ fn build_pipeline(
     wgsl: &str,
     is_glyph: bool,
     stride: u64,
+    format: wgpu::TextureFormat,
 ) -> wgpu::RenderPipeline {
     let sm = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(if is_glyph { "glyph" } else { "bg" }),
@@ -1079,7 +1296,7 @@ fn build_pipeline(
             entry_point: Some("fs_main"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: TARGET_FORMAT,
+                format,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
