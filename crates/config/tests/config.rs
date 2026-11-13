@@ -183,3 +183,33 @@ fn path_priority_cli_env_default() {
     }
     assert!(!config::app_name().is_empty());
 }
+
+#[test]
+fn renderer_backend_defaults_to_auto() {
+    let (c, w) = config::parse("").expect("parse");
+    assert!(w.is_empty());
+    assert_eq!(c.renderer.backend, config::Backend::Auto);
+}
+
+#[test]
+fn renderer_backend_accepts_all_values() {
+    for (text, expect) in [
+        ("[renderer]\nbackend = \"auto\"", config::Backend::Auto),
+        ("[renderer]\nbackend = \"cpu\"", config::Backend::Cpu),
+        ("[renderer]\nbackend = \"gpu\"", config::Backend::Gpu),
+    ] {
+        let (c, w) = config::parse(text).unwrap_or_else(|e| panic!("{text}: {e}"));
+        assert!(w.is_empty(), "{text}: {w:?}");
+        assert_eq!(c.renderer.backend, expect, "{text}");
+    }
+}
+
+#[test]
+fn renderer_backend_invalid_value_warns_and_falls_back() {
+    let (c, w) = config::parse("[renderer]\nbackend = \"vulkan\"").expect("parse");
+    assert_eq!(c.renderer.backend, config::Backend::Auto);
+    assert!(
+        w.iter().any(|m| m.contains("renderer.backend")),
+        "应带路径警告: {w:?}"
+    );
+}

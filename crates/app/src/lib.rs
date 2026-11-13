@@ -406,13 +406,161 @@ pub enum Error {
     /// 渲染错误。
     #[error("render error: {0}")]
     Render(#[from] render::Error),
+    /// 请求的渲染后端在当前平台/构建不可用。
+    #[error("renderer backend unsupported: {0}")]
+    BackendUnsupported(String),
+}
+
+/// 渲染后端（阶段 4B t2）：由配置 `renderer.backend` 决定，**必须在首个
+/// present 之前**创建，运行期不切换（避免增量渲染状态与 surface 语义冲突）。
+///
+/// 之所以用枚举而不是给 `Renderer` trait 加方法：trait 只保留 `render` 与
+/// 默认空的 `set_preedit`（既有契约），CPU 专有方法（选区/滚动条/damage 等）
+/// 由 app 层按后端分发。
+pub enum RendererBackend {
+    /// CPU 光栅化（softbuffer 提交）。
+    Cpu(CpuRenderer),
+}
+
+impl RendererBackend {
+    /// 后端名字（日志/诊断用）。
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Cpu(_) => "cpu",
+        }
+    }
+
+    /// 是否 GPU 后端（app 层据此决定叠加层/脏区分发）。
+    pub fn is_gpu(&self) -> bool {
+        match self {
+            Self::Cpu(_) => false,
+        }
+    }
+
+    /// 当前字体的格子尺寸（物理像素）。
+    pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
+        match self {
+            Self::Cpu(r) => r.cell_metrics(scale),
+        }
+    }
+
+    /// 更新缩放因子（字形缓存失效 + 整屏重绘）。
+    pub fn set_scale_factor(&mut self, scale: f64) {
+        match self {
+            Self::Cpu(r) => r.set_scale_factor(scale),
+        }
+    }
+
+    /// 加载后台字体（CJK 回退）。
+    pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
+        match self {
+            Self::Cpu(r) => r.add_background_fonts(fonts),
+        }
+    }
+
+    /// 选区块（内容绝对坐标，含端点）。
+    pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
+        match self {
+            Self::Cpu(r) => r.set_selection(region),
+        }
+    }
+
+    /// 滚动条拇指几何 (thumb_y, thumb_h)。
+    pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
+        match self {
+            Self::Cpu(r) => r.set_scrollbar(geom),
+        }
+    }
+
+    /// IME 预编辑叠加层。
+    pub fn set_preedit(&mut self, overlay: Option<render::PreeditOverlay>) {
+        match self {
+            Self::Cpu(r) => r.set_preedit(overlay),
+        }
+    }
+
+    /// 渲染一帧（CPU：写入内部帧缓冲，随后由 softbuffer 提交）。
+    pub fn render(
+        &mut self,
+        frame: &vt::FrameSnapshot,
+        pixel_width: u32,
+        pixel_height: u32,
+    ) -> Result<(), render::Error> {
+        match self {
+            Self::Cpu(r) => r.render(frame, pixel_width, pixel_height),
+        }
+    }
+
+    /// 本帧脏区（CPU 专有；GPU 走后端自己的整帧提交）。
+    pub fn damage(&self) -> &[(u32, u32, u32, u32)] {
+        match self {
+            Self::Cpu(r) => r.damage(),
+        }
+    }
+
+    /// 帧缓冲（softbuffer 提交与诊断用）。
+    pub fn framebuffer(&self) -> &[u32] {
+        match self {
+            Self::Cpu(r) => r.framebuffer(),
+        }
+    }
+
+    /// 帧缓冲尺寸。
+    pub fn framebuffer_size(&self) -> (u32, u32) {
+        match self {
+            Self::Cpu(r) => r.framebuffer_size(),
+        }
+    }
+
+    /// 取 CPU 渲染器引用（诊断钩子/帧哈希用；GPU 后端返回 None）。
+    pub fn as_cpu(&self) -> Option<&CpuRenderer> {
+        match self {
+            Self::Cpu(r) => Some(r),
+        }
+    }
+}
+
+/// 按配置创建渲染器（阶段 4B t2：仅接通 CPU；GPU 分支在 t3/t4 接入）。
+///
+/// 依次尝试只发生在 `auto`；`gpu` 失败会直接返回错误（调用方非零退出），
+/// 不做静默降级。Windows 目标一律 CPU，`gpu` 给一行警告。
+pub fn create_renderer(
+    cfg: &config::Config,
+    font_settings: &render::FontSettings,
+    options: render::RenderOptions,
+    palette: render::Palette,
+) -> Result<RendererBackend, Error> {
+    let requested = cfg.renderer.backend;
+    let build_cpu = || -> Result<RendererBackend, Error> {
+        let mut r = CpuRenderer::new(font_settings, options, palette)?;
+        r.set_scale_factor(1.0);
+        Ok(RendererBackend::Cpu(r))
+    };
+    match requested {
+        config::Backend::Cpu => build_cpu(),
+        config::Backend::Auto => build_cpu(),
+        config::Backend::Gpu => {
+            #[cfg(target_os = "linux")]
+            {
+                // t3/t4 接入真实实现前，先明确报不支持（不得静默降级）。
+                Err(Error::BackendUnsupported(
+                    "gpu backend 尚未接入（阶段 4B t3/t4）".to_string(),
+                ))
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                eprintln!("[renderer] backend=gpu 在当前平台不可用，回退 cpu");
+                build_cpu()
+            }
+        }
+    }
 }
 
 struct AppHandler {
     config: Option<App>,
     vt: Option<VtTerminal>,
     pty: Option<NativePty>,
-    renderer: Option<CpuRenderer>,
+    renderer: Option<RendererBackend>,
     window: Option<Rc<Window>>,
     surface: Option<SoftSurface>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -513,13 +661,15 @@ impl ApplicationHandler for AppHandler {
             .take()
             .expect("resumed 只能调用一次");
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
-        let renderer = match CpuRenderer::new(&config.font_settings, config.options, config.palette) {
-            Ok(mut r) => {
-                r.set_scale_factor(1.0);
-                r
-            }
+        let renderer = match create_renderer(
+            &config.config,
+            &config.font_settings,
+            config.options,
+            config.palette,
+        ) {
+            Ok(r) => r,
             Err(e) => {
-                eprintln!("CpuRenderer::new: {}", e);
+                eprintln!("create_renderer: {e}");
                 return;
             }
         };
@@ -1110,7 +1260,7 @@ impl ApplicationHandler for AppHandler {
                     };
                     renderer.set_preedit(overlay);
                     #[cfg(debug_assertions)]
-                    dump_snapshot_if_requested(&snap, Some(&*renderer));
+                    dump_snapshot_if_requested(&snap, renderer.as_cpu());
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
@@ -1214,7 +1364,9 @@ impl ApplicationHandler for AppHandler {
                                 eprintln!("surface present: {}", e);
                             }
                             #[cfg(debug_assertions)]
-                            dump_frame_hash_if_requested(renderer);
+                            if let Some(cpu) = renderer.as_cpu() {
+                                dump_frame_hash_if_requested(cpu);
+                            }
                             if !self.first_frame_logged {
                                 self.first_frame_logged = true;
                                 if let Some(t0) = crate::start_time() {
