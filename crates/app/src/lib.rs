@@ -243,6 +243,8 @@ struct PerfFrames {
     window_start: Option<std::time::Instant>,
     /// 本窗口内有界 channel 的积压峰值（阶段 4C t3）。
     chan_depth_max: usize,
+    /// 本窗口内"两次事件循环迭代"的最大间隔（阶段 4G t2a，用于量化主线程停顿）。
+    loop_gap_max_us: u128,
 }
 
 impl PerfFrames {
@@ -272,11 +274,12 @@ impl PerfFrames {
             .map(|s| self.feed_bytes as f64 / s)
             .unwrap_or(0.0);
         eprintln!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={}",
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={}",
             Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
-            feed_rate, self.chan_depth_max
+            feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000
         );
         self.coalesced = 0;
+        self.loop_gap_max_us = 0;
         self.feed_bytes = 0;
         self.chan_depth_max = 0;
         self.window_start = Some(std::time::Instant::now());
@@ -401,6 +404,8 @@ impl App {
             first_frame_logged: false,
             first_pty_byte_logged: false,
             pre_first_submit_logged: false,
+            last_loop_at: None,
+            loop_report_at: None,
             chan_depth: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             os_redraw_pending: false,
             #[cfg(debug_assertions)]
@@ -764,6 +769,10 @@ struct AppHandler {
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
     first_pty_byte_logged: bool,
+    /// 上次事件循环迭代时刻（阶段 4G t2a 的 loop gap 观测）。
+    last_loop_at: Option<std::time::Instant>,
+    /// 下次独立打印 loop gap 的时刻（每 5 秒）。
+    loop_report_at: Option<std::time::Instant>,
     /// 首帧提交前一刻是否已打印（阶段 4C t3 启动打点）。
     pre_first_submit_logged: bool,
     /// 有界 channel 的"已入队未取走"计数（reader 加、主线程减），用于
@@ -1173,6 +1182,12 @@ impl ApplicationHandler for AppHandler {
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(2000);
+            // `@<path>` 形式从文件读取（环境变量单值上限 MAX_ARG_STRLEN≈128KB，
+            // 无法传 1MB 量级的粘贴素材；仅 debug 钩子，release 不含）。
+            let t = match t.strip_prefix('@') {
+                Some(path) => std::fs::read_to_string(path).unwrap_or_default(),
+                None => t,
+            };
             self.test_paste_text = Some(t);
             self.test_paste_at =
                 Some(std::time::Instant::now() + std::time::Duration::from_millis(at_ms));
@@ -1363,6 +1378,33 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // 阶段 4G t2a 观测：两次事件循环迭代的最大间隔（主线程停顿的直接度量）。
+        // 仅在 APP_PERF_FRAMES 开启时统计（默认关闭，代价一次 Option 判空）。
+        if self.perf_frames.is_some() {
+            let now = std::time::Instant::now();
+            if let Some(prev) = self.last_loop_at {
+                let gap = now.duration_since(prev);
+                if let Some(pf) = self.perf_frames.as_mut()
+                    && gap.as_micros() > pf.loop_gap_max_us
+                {
+                    pf.loop_gap_max_us = gap.as_micros();
+                }
+            }
+            self.last_loop_at = Some(now);
+            // 每 5 秒独立输出一次（不依赖 50 帧窗口；画面静止时也能观测到停顿）。
+            if self.loop_report_at.is_none_or(|t| now >= t) {
+                let ms = self
+                    .perf_frames
+                    .as_ref()
+                    .map(|p| p.loop_gap_max_us / 1000)
+                    .unwrap_or(0);
+                eprintln!("[perf] loop_gap_ms={ms}");
+                if let Some(pf) = self.perf_frames.as_mut() {
+                    pf.loop_gap_max_us = 0;
+                }
+                self.loop_report_at = Some(now + std::time::Duration::from_secs(5));
+            }
+        }
         // 测试钩子（debug 专有）：预编辑到期清除。必须放在渲染节流之前——静止画面
         // 时 will_render 可能为 false，若把清除逻辑放在渲染路径里就永远不会执行。
         #[cfg(debug_assertions)]
