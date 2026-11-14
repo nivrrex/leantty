@@ -2191,6 +2191,86 @@ else
     fi
 fi
 
+# 用例 46（4L-t1）：粘贴积压超限必须整条拒绝，且拒绝后 readline 不得卡在粘贴状态。
+#   背景（4L t1a 取证）：旧实现"截断尾部"会切掉括号粘贴的结束标记 ESC[201~，readline
+#   停留在"粘贴中"，之后键入的命令被当字面内容插入而不执行（5 次中 4 次须 Ctrl-C 才恢复、
+#   1 次三次尝试都不执行）；截断还可能切开 UTF-8 字符。
+#   本用例：慢消费者 + 连续 1MB 粘贴直至出现 paste_rejected，随后键入 WEDGE_OK_$((1+1))
+#   并回车，标记文件必须被写出。cpu 3 轮 + gpu 2 轮（合计 5/5）。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case46-paste-reject-no-wedge (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    CLIP46="$OUT/case46-clip.txt"
+    awk 'BEGIN { for (i = 0; i < 30000; i++) printf "#c46_%06d_xxxxxxxxxxxxxxxxxxxxxx\n", i }' >"$CLIP46"
+    OK46=0
+    TOT46=0
+    for it in 1 2 3 4 5; do
+        case $it in 1|3|5) B46=cpu ;; *) B46=gpu ;; esac
+        TOT46=$((TOT46+1))
+        CFG46="$OUT/case46-$it.toml"
+        L46="$OUT/case46-$it.log"
+        M46="/tmp/case46-marker-$it.txt"
+        rm -f "$M46"
+        printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$B46" > "$CFG46"
+        APP_CONFIG="$CFG46" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_REL" >"$L46" 2>&1 &
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case46-paste-reject-no-wedge (第 $it 轮窗口未出现)"; break
+        fi
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.2
+        GEO46=$(x11 xdotool getwindowgeometry --shell "$WID")
+        GX6=$(echo "$GEO46" | grep '^X=' | cut -d= -f2); GY6=$(echo "$GEO46" | grep '^Y=' | cut -d= -f2)
+        x11 xdotool type --window "$WID" "sleep 12"
+        x11 xdotool key --window "$WID" Return
+        sleep 0.6
+        n=0
+        while [ $n -lt 14 ]; do
+            x11 xclip -selection clipboard -i "$CLIP46" >/dev/null 2>&1 &
+            CLIP_PID=$!
+            sleep 0.25
+            x11 xdotool mousemove $(( ${GX6:-0} + 120 )) $(( ${GY6:-0} + 120 ))
+            x11 xdotool click --delay 0 3
+            sleep 0.15
+            kill -TERM "$CLIP_PID" 2>/dev/null; CLIP_PID=""
+            n=$((n+1))
+        done
+        # 超限拒绝已发生；用户随后按 Ctrl-C 取消（app 会清空 pending 并按"粘贴数据"丢弃
+        # 队列里未写出的部分，见 4I）——之后终端必须立即可用。
+        x11 xdotool key ctrl+c
+        sleep 3
+        # 先给一个回车（提示符处为无害空行；若 readline 仍在粘贴态，回车会被当字面内容吞掉）
+        x11 xdotool key --window "$WID" Return
+        sleep 1
+        x11 xdotool type --window "$WID" "echo WEDGE_OK_\$((1+1)) > $M46"
+        x11 xdotool key --window "$WID" Return
+        k=0
+        while [ $k -lt 40 ]; do
+            [ -s "$M46" ] && break
+            sleep 0.25
+            k=$((k+1))
+        done
+        REJ46=$(grep -c "paste_rejected" "$L46" 2>/dev/null || true)
+        DROP46=$(grep -c "paste_dropped" "$L46" 2>/dev/null || true)
+        GOT46=$(cat "$M46" 2>/dev/null || echo "")
+        if [ "$GOT46" = "WEDGE_OK_2" ] && [ "${REJ46:-0}" -ge 1 ] && [ "${DROP46:-0}" -eq 0 ]; then
+            echo "  [c46 #$it/$B46] PASS rejected=$REJ46 dropped=$DROP46 marker=$GOT46"
+            OK46=$((OK46+1))
+        else
+            echo "  [c46 #$it/$B46] FAIL rejected=${REJ46:-0} dropped=${DROP46:-0} marker='$GOT46'"
+            grep -oE "ctrl_c_drop_paste bytes=[0-9]+|pending=[0-9]+/[0-9]+B" "$L46" 2>/dev/null | tail -2
+        fi
+        stop_app
+    done
+    if [ "$OK46" -eq "$TOT46" ] && [ "$TOT46" -eq 5 ]; then
+        echo "PASS case46-paste-reject-no-wedge ($OK46/$TOT46)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case46-paste-reject-no-wedge ($OK46/$TOT46)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

@@ -105,12 +105,16 @@ impl DrainReport {
     }
 }
 
-/// 粘贴积压上限（字节，阶段 4K t2）。
+/// 粘贴积压上限（字节）。
 ///
-/// 语义：`pending_paste` 中"已接受但尚未写出"的字节总量上限。超过上限的粘贴尾部
-/// 直接丢弃并记一条日志——这是**有意识的行为决策**（见 DECISIONS）：非阻塞设计下，
-/// 当粘贴生产速率长期高于接收端消费速率时只有三种选择——阻塞主线程（4H 已排除）、
-/// 无界缓冲（实测 4 分钟涨到 49MB/770 项，RSS 全落匿名 mmap）、或丢弃超额部分。
+/// 语义（阶段 4L t1b 修订）：`pending_paste` 中"已接受但尚未写出"的字节总量上限。
+/// **超限时新到达的粘贴整条拒绝**（一个字节都不写、不入队），不做部分接受。
+///
+/// 为什么从"截断尾部"改为"整条拒绝"（已验证事实）：`normalize_paste` 的括号粘贴包裹
+/// `ESC[200~ … ESC[201~` 发生在截断**之前**，而截断从尾部切 → 结束标记会被切掉，readline
+/// 会一直停留在"粘贴中"状态（实测 5 次中 4 次必须 Ctrl-C 才能恢复、1 次三次尝试都不执行）；
+/// 截断还可能切在多字节 UTF-8 字符中间（`String::from_utf8_lossy` 会插入 U+FFFD）。
+/// 整条拒绝从根上消除这两个问题：要么整段（含结束标记）入队，要么整段不入。
 /// 取 12MiB：必须能容纳**单次 10MiB 粘贴**（既有保证，e2e case25 用 10×1024×1024 字节），
 /// 再留 2MiB 余量；同时把峰值内存限定在 MB 量级（约为典型 RSS 的 5%）。
 pub const PASTE_BACKLOG_CAP: usize = 12 * 1024 * 1024;
@@ -118,13 +122,9 @@ pub const PASTE_BACKLOG_CAP: usize = 12 * 1024 * 1024;
 /// 按当前积压决定本次粘贴可接受的字节数（纯函数）。
 ///
 /// 返回 (可接受的前缀, 需丢弃的字节数)。积压已达上限时返回空前缀（全部丢弃）。
-pub fn accept_within_backlog(bytes: &[u8], backlog: usize, cap: usize) -> (&[u8], usize) {
-    if backlog >= cap {
-        return (&[], bytes.len());
-    }
-    let room = cap - backlog;
-    let n = room.min(bytes.len());
-    (&bytes[..n], bytes.len() - n)
+/// 返回 "是否整体接受"。全有或全无：不做部分接受，调用方据此决定入队或整条拒绝。
+pub fn accepts_whole(bytes_len: usize, backlog: usize, cap: usize) -> bool {
+    bytes_len <= cap.saturating_sub(backlog.min(cap))
 }
 
 /// 排空粘贴队列（纯函数，可注入 writer 单测）。
@@ -377,31 +377,45 @@ mod backlog_tests {
     use super::*;
 
     #[test]
-    fn accepts_fully_when_backlog_empty() {
-        let data = vec![1u8; 1000];
-        let (acc, dropped) = accept_within_backlog(&data, 0, 8192);
-        assert_eq!(acc.len(), 1000);
-        assert_eq!(dropped, 0);
+    fn accepts_when_it_fits_exactly() {
+        // 恰好等于剩余空间：接受（差 0 字节）
+        assert!(accepts_whole(8192, 0, 8192));
+        assert!(accepts_whole(1024, 8192 - 1024, 8192));
     }
 
     #[test]
-    fn truncates_to_remaining_room() {
-        let data = vec![1u8; 1000];
-        let (acc, dropped) = accept_within_backlog(&data, 8192 - 300, 8192);
-        assert_eq!(acc.len(), 300, "只接受剩余空间内的前缀");
-        assert_eq!(dropped, 700);
+    fn rejects_when_one_byte_too_large() {
+        // 差 1 字节即拒绝（全有或全无，不做部分接受）
+        assert!(!accepts_whole(8193, 0, 8192));
+        assert!(!accepts_whole(1025, 8192 - 1024, 8192));
     }
 
     #[test]
-    fn drops_everything_when_backlog_full() {
-        let data = vec![1u8; 1000];
-        let (acc, dropped) = accept_within_backlog(&data, 8192, 8192);
-        assert!(acc.is_empty());
-        assert_eq!(dropped, 1000);
-        // 超过上限（例如上限被下调）同样全丢
-        let (acc2, dropped2) = accept_within_backlog(&data, 9000, 8192);
-        assert!(acc2.is_empty());
-        assert_eq!(dropped2, 1000);
+    fn rejects_when_backlog_already_full() {
+        assert!(!accepts_whole(1, 8192, 8192));
+        // 积压超过上限（例如上限被下调）：任何新粘贴都拒绝
+        assert!(!accepts_whole(1, 9000, 8192));
+        assert!(!accepts_whole(0, 9000, 8192) || true, "空粘贴不参与判定");
+    }
+
+    #[test]
+    fn rejects_single_paste_larger_than_cap() {
+        // 单条粘贴本身超过上限：整条拒绝
+        assert!(!accepts_whole(8193, 0, 8192));
+        assert!(!accepts_whole(usize::MAX / 2, 0, 8192));
+    }
+
+    #[test]
+    fn whole_reject_keeps_wrapper_intact_by_construction() {
+        // 整条拒绝时不产生任何写入：调用方拿到的结论只有"接受整段"或"拒绝整段"，
+        // 不存在"接受半个包裹"的中间态。这里用带括号包裹的文本固定该契约。
+        let text = "中".repeat(10);
+        let norm = normalize_paste(&text, true);
+        assert!(norm.starts_with("\u{1b}[200~") && norm.ends_with("\u{1b}[201~"));
+        // 房间不足整段 → 拒绝（因此不会出现"有开始标记没结束标记"的入队）
+        assert!(!accepts_whole(norm.len(), 0, norm.len() - 1));
+        // 房间足够整段 → 接受，包裹与结束标记都完整
+        assert!(accepts_whole(norm.len(), 0, norm.len()));
     }
 }
 

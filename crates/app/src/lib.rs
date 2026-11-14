@@ -820,7 +820,7 @@ struct AppHandler {
     #[cfg(debug_assertions)]
     os_redraw_count: u32,
     /// debug 测试钩子：延迟触发一次同步粘贴（APP_TEST_PASTE / APP_TEST_PASTE_AT_MS）。
-    /// 由事件循环内部调用 `paste_text`，不产生鼠标/键盘事件，因此不会顺带触发
+    /// 由事件循环内部调用 `paste_from_text`，不产生鼠标/键盘事件，因此不会顺带触发
     /// `RedrawRequested`，可以把"粘贴主动排帧"与其他重绘触发分离开来。
     #[cfg(debug_assertions)]
     test_paste_at: Option<std::time::Instant>,
@@ -2569,7 +2569,6 @@ impl AppHandler {
         }
     }
 
-    /// 当前 scrollback 行数（snapshot 查询；失败回落 0）。
     /// 内存相关观测摘要（阶段 4K t2）：随 5 秒帧日志输出，用于把 RSS 增长归到具体结构。
     ///
     /// 全部为只读取数、无分配以外副作用；release 可用。
@@ -2578,6 +2577,8 @@ impl AppHandler {
         let (glyphs, fb_bytes) = match self.renderer.as_ref() {
             Some(RendererBackend::Cpu(c)) => c.cache_stats(),
             // GPU 后端不回读帧缓冲：字形缓存复用同一份 Font 链，缓存规模不可直接取。
+            // （Gpu 变体仅 Linux 存在，此处按平台门控，保证 Windows 目标可编译。）
+            #[cfg(target_os = "linux")]
             Some(RendererBackend::Gpu(_)) => (0, 0),
             None => (0, 0),
         };
@@ -2661,23 +2662,15 @@ impl AppHandler {
             .as_ref()
             .map(|v| v.is_bracketed_paste().unwrap_or(false))
             .unwrap_or(false);
+        // 顺序很重要（阶段 4L t1）：先**包裹**（normalize_paste 加 ESC[200~/ESC[201~），
+        // 再按积压上限做**整条接受/拒绝**判定，最后才入队。绝不截断——截断会切掉结束
+        // 标记（readline 卡在粘贴状态）并可能切开 UTF-8 字符。
         let norm = normalize_paste(text, bracketed);
+        if !self.accept_paste_or_reject(norm.len()) {
+            return;
+        }
         if norm.len() >= 1024 * 1024 {
-            // 大块粘贴：同样受积压上限约束（超出部分丢弃并记日志），避免无界缓冲。
-            let backlog: usize = self.pending_paste.iter().map(|c| c.len()).sum();
-            let (accepted, dropped) = crate::paste::accept_within_backlog(
-                norm.as_bytes(),
-                backlog,
-                crate::paste::PASTE_BACKLOG_CAP,
-            );
-            if dropped > 0 {
-                eprintln!(
-                    "[perf] paste_dropped bytes={dropped} backlog={backlog} cap={}",
-                    crate::paste::PASTE_BACKLOG_CAP
-                );
-            }
-            let accepted = String::from_utf8_lossy(accepted).to_string();
-            for chunk in paste_chunks(&accepted) {
+            for chunk in paste_chunks(&norm) {
                 self.pending_paste.push_back(chunk.into_bytes());
             }
             self.follow_viewport_before_input(follow::InputEvent::Paste);
@@ -2686,8 +2679,26 @@ impl AppHandler {
                 w.request_redraw();
             }
         } else {
-            self.paste_text(&norm);
+            self.paste_text_accepted(&norm);
         }
+    }
+
+    /// 粘贴的积压判定（唯一入口）：整条接受返回 true；超限整条拒绝并记日志。
+    ///
+    /// 全有或全无——不做部分接受，从而保证"要么整段（含括号粘贴结束标记）入队，
+    /// 要么一个字节都不写"。这条判定被 <1MB 与 ≥1MB 两条路径共用。
+    fn accept_paste_or_reject(&mut self, bytes_len: usize) -> bool {
+        let backlog: usize = self.pending_paste.iter().map(|c| c.len()).sum();
+        if crate::paste::accepts_whole(bytes_len, backlog, crate::paste::PASTE_BACKLOG_CAP) {
+            return true;
+        }
+        // 单条粘贴本身超过上限与"积压已满"分开标出，便于排查
+        let oversized = bytes_len > crate::paste::PASTE_BACKLOG_CAP;
+        eprintln!(
+            "[perf] paste_rejected bytes={bytes_len} backlog={backlog} cap={} oversized={oversized}",
+            crate::paste::PASTE_BACKLOG_CAP
+        );
+        false
     }
 
     /// 同步粘贴路径：写入 PTY 后**主动排一帧**。
@@ -2696,30 +2707,10 @@ impl AppHandler {
     /// 等 PTY 回显字节到达后由帧间隔驱动；回显缺失/延迟时（shell 关闭 echo、
     /// readline 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次
     /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
-    fn paste_text(&mut self, text: &str) {
-        self.follow_viewport_before_input(follow::InputEvent::Paste);
+    /// 已通过积压判定的粘贴字节：有界入队（剩余转 pending_paste）。
+    fn paste_text_accepted(&mut self, text: &str) {
         let bytes = text.as_bytes();
-        // 阶段 4K t2 修复：粘贴必须走**有界**的粘贴入队，而不是"键入"路径。
-        // 缺陷（4H 引入）：<1MB 的粘贴经 paste_text → enqueue_typed，而键入为"不丢"
-        // 设计不设上限；当接收端读得慢（例如把粘贴文本当命令逐条执行）时队列无界
-        // 增长（实测 4 分钟 49MB / 770 项，RSS 全落在匿名 mmap）。
-        // 现在：先按上限入队，剩余转 pending_paste，由既有的预算化排空 + request_redraw
-        // 自驱动；Ctrl-C 也能按"粘贴数据"整批丢弃。
         let mut rest = None;
-        // 先按积压上限截断（阶段 4K t2）：非阻塞设计下若无上限，粘贴生产速率长期高于
-        // 接收端消费速率时 pending 会无界增长（实测 49MB+）。超限尾部丢弃并记一条日志。
-        let backlog: usize = self.pending_paste.iter().map(|c| c.len()).sum();
-        let (bytes, dropped) = crate::paste::accept_within_backlog(
-            bytes,
-            backlog,
-            crate::paste::PASTE_BACKLOG_CAP,
-        );
-        if dropped > 0 {
-            eprintln!(
-                "[perf] paste_dropped bytes={dropped} backlog={backlog} cap={}",
-                crate::paste::PASTE_BACKLOG_CAP
-            );
-        }
         match self.writer.as_ref() {
             Some(w) => {
                 let n = w.try_enqueue_paste(bytes);
