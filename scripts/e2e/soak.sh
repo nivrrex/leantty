@@ -45,10 +45,10 @@ run_backend() { # $1 = cpu|gpu
     CFG="$OUT/soak-$BACKEND.toml"
     CSV="$OUT/soak-$BACKEND.csv"
     LOG="$OUT/soak-$BACKEND.log"
-    printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 120, lines = 30 }\n' "$BACKEND" >"$CFG"
+    printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 120, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$BACKEND" >"$CFG"
     : >"$CSV"
     echo "t_s,rss_kb,fd,threads" >>"$CSV"
-    APP_RANDOM_SEED=20260201 APP_PERF_FRAMES=1 APP_CONFIG="$CFG" SHELL=/bin/sh \
+    APP_RANDOM_SEED=20260201 APP_PERF_FRAMES=1 APP_CONFIG="$CFG" SHELL=/bin/bash \
         "$APP_BIN" >"$LOG" 2>&1 &
     APP_PID=$!
     i=0
@@ -136,6 +136,9 @@ run_backend() { # $1 = cpu|gpu
             7)
                 # 阶段 4J t6：粘贴进行中发 Ctrl-C 取消（写线程丢弃未写数据 + 补发
                 # ESC[201~ 的路径），每 10 轮至少一次（本分支每 8 轮一次）
+                # `set -m` 打开作业控制：让 sleep 拿到独立进程组，Ctrl-C 只杀 sleep
+                # 而不连带打死 shell（非交互 sh 里两者同组；4K t3 首跑时 app 因此
+                # 在 t=423s 随 shell 退出而提前结束）。
                 x11 xdotool type --window "$WID" "sleep 20"
                 x11 xdotool key --window "$WID" Return
                 sleep 0.8
