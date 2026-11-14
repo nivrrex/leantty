@@ -259,6 +259,11 @@ impl VtTerminal {
         Ok(self.inner.is_mouse_tracking()?)
     }
 
+    /// 当前 scrollback 行数（阶段 4K t2 观测）。
+    pub fn scrollback_rows(&self) -> Result<usize, Error> {
+        Ok(self.inner.scrollback_rows()?)
+    }
+
     /// 当前是否在备用屏（阶段 4K t1b：输入回底决策用，避免为一次按键构造整帧快照）。
     pub fn is_alternate_screen(&self) -> Result<bool, Error> {
         Ok(self.inner.active_screen()? == Screen::Alternate)

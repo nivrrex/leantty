@@ -192,6 +192,16 @@ impl PtyWriter {
         self.shared.lock().queued
     }
 
+    /// 队列当前的元素个数（观测用：阶段 4K t2 判断容量保留）。
+    pub fn queued_len(&self) -> usize {
+        self.shared.lock().items.len()
+    }
+
+    /// 队列容器的容量（观测用：VecDeque 的 capacity 是否随时间增长）。
+    pub fn capacity(&self) -> usize {
+        self.shared.lock().items.capacity()
+    }
+
     /// 关闭：让线程写空队列后退出并释放写端；join 超时则分离并记录日志。
     pub fn close(&mut self) {
         {

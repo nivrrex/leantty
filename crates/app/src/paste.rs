@@ -105,6 +105,28 @@ impl DrainReport {
     }
 }
 
+/// 粘贴积压上限（字节，阶段 4K t2）。
+///
+/// 语义：`pending_paste` 中"已接受但尚未写出"的字节总量上限。超过上限的粘贴尾部
+/// 直接丢弃并记一条日志——这是**有意识的行为决策**（见 DECISIONS）：非阻塞设计下，
+/// 当粘贴生产速率长期高于接收端消费速率时只有三种选择——阻塞主线程（4H 已排除）、
+/// 无界缓冲（实测 4 分钟涨到 49MB/770 项，RSS 全落匿名 mmap）、或丢弃超额部分。
+/// 取 12MiB：必须能容纳**单次 10MiB 粘贴**（既有保证，e2e case25 用 10×1024×1024 字节），
+/// 再留 2MiB 余量；同时把峰值内存限定在 MB 量级（约为典型 RSS 的 5%）。
+pub const PASTE_BACKLOG_CAP: usize = 12 * 1024 * 1024;
+
+/// 按当前积压决定本次粘贴可接受的字节数（纯函数）。
+///
+/// 返回 (可接受的前缀, 需丢弃的字节数)。积压已达上限时返回空前缀（全部丢弃）。
+pub fn accept_within_backlog(bytes: &[u8], backlog: usize, cap: usize) -> (&[u8], usize) {
+    if backlog >= cap {
+        return (&[], bytes.len());
+    }
+    let room = cap - backlog;
+    let n = room.min(bytes.len());
+    (&bytes[..n], bytes.len() - n)
+}
+
 /// 排空粘贴队列（纯函数，可注入 writer 单测）。
 ///
 /// 语义：
@@ -347,6 +369,39 @@ mod drain_tests {
         let r = drain_pending(&mut queue, &mut w, DrainBudget::default());
         assert_eq!(r, DrainReport::default());
         assert!(w.got.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod backlog_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_fully_when_backlog_empty() {
+        let data = vec![1u8; 1000];
+        let (acc, dropped) = accept_within_backlog(&data, 0, 8192);
+        assert_eq!(acc.len(), 1000);
+        assert_eq!(dropped, 0);
+    }
+
+    #[test]
+    fn truncates_to_remaining_room() {
+        let data = vec![1u8; 1000];
+        let (acc, dropped) = accept_within_backlog(&data, 8192 - 300, 8192);
+        assert_eq!(acc.len(), 300, "只接受剩余空间内的前缀");
+        assert_eq!(dropped, 700);
+    }
+
+    #[test]
+    fn drops_everything_when_backlog_full() {
+        let data = vec![1u8; 1000];
+        let (acc, dropped) = accept_within_backlog(&data, 8192, 8192);
+        assert!(acc.is_empty());
+        assert_eq!(dropped, 1000);
+        // 超过上限（例如上限被下调）同样全丢
+        let (acc2, dropped2) = accept_within_backlog(&data, 9000, 8192);
+        assert!(acc2.is_empty());
+        assert_eq!(dropped2, 1000);
     }
 }
 

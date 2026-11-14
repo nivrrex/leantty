@@ -2136,6 +2136,61 @@ for c44 in cpu gpu; do
     stop_app
 done
 
+# 用例 45（4K-t2）：粘贴积压必须有界（release，cpu）。
+#   背景：4J t6 的 RSS 增长根因是"粘贴生产速率高于接收端消费速率 + 粘贴走了无上限的
+#   键入入队"，实测 4 分钟待写数据涨到 49MB/770 项（全在匿名 mmap）。
+#   本用例把 1MB 粘贴连续灌入"逐行执行命令"的慢消费者，断言：
+#     写线程队列 ≤ 1MiB（WRITER_QUEUE_CAP）+ 一块余量；pending_paste ≤ 8MiB（PASTE_BACKLOG_CAP）。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case45-paste-backlog-bounded (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    CFG45="$OUT/case45.toml"
+    L45="$OUT/case45.log"
+    CLIP45="$OUT/case45-clip.txt"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 120, lines = 30 }\n' > "$CFG45"
+    awk 'BEGIN { for (i = 0; i < 20000; i++) printf "case45_paste_line_%06d_xxxx\n", i }' > "$CLIP45"
+    APP_CONFIG="$CFG45" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L45" 2>&1 &
+    APP_PID=$!
+    if wait_window; then
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 0.8
+        GEO45=$(x11 xdotool getwindowgeometry --shell "$WID")
+        GX5=$(echo "$GEO45" | grep '^X=' | cut -d= -f2); GY5=$(echo "$GEO45" | grep '^Y=' | cut -d= -f2)
+        n=0
+        while [ $n -lt 14 ]; do   # 约 42s，每 3s 一次"seq 800 + 1MB 粘贴"（4J t6 的最小复现组合）
+            x11 xdotool type --window "$WID" "seq 1 800"
+            x11 xdotool key --window "$WID" Return
+            x11 xclip -selection clipboard -i "$CLIP45" >/dev/null 2>&1 &
+            CLIP_PID=$!
+            sleep 0.3
+            x11 xdotool mousemove $(( ${GX5:-0} + 120 )) $(( ${GY5:-0} + 120 ))
+            x11 xdotool click --delay 0 3
+            sleep 2.7
+            kill -TERM "${CLIP_PID:-}" 2>/dev/null; CLIP_PID=""
+            n=$((n+1))
+        done
+        WQ=$(grep -oE 'wq_bytes=[0-9]+' "$L45" | cut -d= -f2 | sort -n | tail -1)
+        PD=$(grep -oE 'pending=[0-9]+/[0-9]+B' "$L45" | sed 's|pending=||; s|/.*||' | sort -n | tail -1)
+        PDCAP=$(grep -oE 'pending=[0-9]+/[0-9]+B' "$L45" | sed 's|.*/||; s|B||' | sort -n | tail -1)
+        # 判据：队列 ≤ 1MiB + 一块 64KiB 余量；pending ≤ 8MiB
+        LIM_WQ=$(( 1048576 + 65536 ))
+        echo "  写队列峰值=${WQ:-0}B（限 $LIM_WQ）pending 峰值=${PD:-0}B / 上限=${PDCAP:-0}B"
+        # 必须真的观测到积压，否则本条门禁等于空过（0 字节不能证明有界）
+        if [ "${WQ:-0}" -le 0 ] && [ "${PD:-0}" -le 0 ]; then
+            echo "FAIL case45-paste-backlog-bounded (无积压证据：wq=0 pending=0，负载未产生积压)"; FAIL=$((FAIL+1))
+        elif [ "${WQ:-99999999}" -le "$LIM_WQ" ] && [ "${PD:-99999999}" -le 8388608 ]; then
+            echo "PASS case45-paste-backlog-bounded (wq=$WQ pending=$PD)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case45-paste-backlog-bounded (wq=${WQ:-NA} pending=${PD:-NA} cap=${PDCAP:-NA})"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    else
+        echo "FAIL case45-paste-backlog-bounded (窗口未出现)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

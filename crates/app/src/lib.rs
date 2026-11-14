@@ -257,7 +257,7 @@ struct PerfFrames {
 impl PerfFrames {
     const N: usize = 50;
 
-    fn report(&mut self) {
+    fn report(&mut self, mem: &str) {
         if self.render_us.len() < Self::N {
             return;
         }
@@ -281,10 +281,10 @@ impl PerfFrames {
             .map(|s| self.feed_bytes as f64 / s)
             .unwrap_or(0.0);
         eprintln!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={}",
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
             Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
             feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000,
-            self.feed_ms_max, self.feed_bytes_max, self.writer_queued_max
+            self.feed_ms_max, self.feed_bytes_max, self.writer_queued_max, mem
         );
         self.coalesced = 0;
         self.loop_gap_max_us = 0;
@@ -1790,6 +1790,8 @@ impl ApplicationHandler for AppHandler {
         let was_urgent = self.urgent_render;
         self.urgent_render = false;
         let t_render_start = Instant::now();
+        // 阶段 4K t2：内存观测在借用 vt/renderer/surface 之前取一次。
+        let mem = self.mem_summary();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
         if let (Some(vt), Some(renderer)) = (self.vt.as_ref(), self.renderer.as_mut()) {
@@ -1894,7 +1896,7 @@ impl ApplicationHandler for AppHandler {
                                 .map(|t| now.duration_since(t).as_millis() as u64)
                                 .unwrap_or(0);
                             if pf.present_us.len() >= PerfFrames::N {
-                                pf.report();
+                                pf.report(&mem);
                             }
                         }
                         if !self.first_frame_logged {
@@ -1980,7 +1982,7 @@ impl ApplicationHandler for AppHandler {
                                     .unwrap_or(0);
                                 // 每 50 帧输出一行帧耗时诊断（release 保留）。
                                 if pf.present_us.len() >= PerfFrames::N {
-                                    pf.report();
+                                    pf.report(&mem);
                                 }
                             }
                             #[cfg(debug_assertions)]
@@ -2568,6 +2570,28 @@ impl AppHandler {
     }
 
     /// 当前 scrollback 行数（snapshot 查询；失败回落 0）。
+    /// 内存相关观测摘要（阶段 4K t2）：随 5 秒帧日志输出，用于把 RSS 增长归到具体结构。
+    ///
+    /// 全部为只读取数、无分配以外副作用；release 可用。
+    fn mem_summary(&self) -> String {
+        let sb_rows = self.vt.as_ref().map(|v| v.scrollback_rows().unwrap_or(0)).unwrap_or(0);
+        let (glyphs, fb_bytes) = match self.renderer.as_ref() {
+            Some(RendererBackend::Cpu(c)) => c.cache_stats(),
+            // GPU 后端不回读帧缓冲：字形缓存复用同一份 Font 链，缓存规模不可直接取。
+            Some(RendererBackend::Gpu(_)) => (0, 0),
+            None => (0, 0),
+        };
+        let pending = self.pending_paste.len();
+        let pending_bytes: usize = self.pending_paste.iter().map(|c| c.len()).sum();
+        let (wq_cap, wq_len, wq_bytes) = match self.writer.as_ref() {
+            Some(w) => (w.capacity(), w.queued_len(), w.queued_bytes()),
+            None => (0, 0, 0),
+        };
+        format!(
+            "sb_rows={sb_rows} glyphs={glyphs} fb_bytes={fb_bytes} pending={pending}/{pending_bytes}B wq_cap={wq_cap} wq_len={wq_len} wq_bytes={wq_bytes}"
+        )
+    }
+
     /// 输入发往 PTY 前的**唯一入口**：按纯决策把视口拉回底部（阶段 4K t1b）。
     ///
     /// 修复前没有任何"输入→回底"逻辑，回底只由"新输出到达且 follow_bottom"触发；
@@ -2639,8 +2663,27 @@ impl AppHandler {
             .unwrap_or(false);
         let norm = normalize_paste(text, bracketed);
         if norm.len() >= 1024 * 1024 {
-            for chunk in paste_chunks(&norm) {
+            // 大块粘贴：同样受积压上限约束（超出部分丢弃并记日志），避免无界缓冲。
+            let backlog: usize = self.pending_paste.iter().map(|c| c.len()).sum();
+            let (accepted, dropped) = crate::paste::accept_within_backlog(
+                norm.as_bytes(),
+                backlog,
+                crate::paste::PASTE_BACKLOG_CAP,
+            );
+            if dropped > 0 {
+                eprintln!(
+                    "[perf] paste_dropped bytes={dropped} backlog={backlog} cap={}",
+                    crate::paste::PASTE_BACKLOG_CAP
+                );
+            }
+            let accepted = String::from_utf8_lossy(accepted).to_string();
+            for chunk in paste_chunks(&accepted) {
                 self.pending_paste.push_back(chunk.into_bytes());
+            }
+            self.follow_viewport_before_input(follow::InputEvent::Paste);
+            self.urgent_render = true;
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
             }
         } else {
             self.paste_text(&norm);
@@ -2655,8 +2698,44 @@ impl AppHandler {
     /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
     fn paste_text(&mut self, text: &str) {
         self.follow_viewport_before_input(follow::InputEvent::Paste);
-        if let Some(pty) = self.pty.as_mut() {
-            write_pty(pty, self.writer.as_ref(), text.as_bytes());
+        let bytes = text.as_bytes();
+        // 阶段 4K t2 修复：粘贴必须走**有界**的粘贴入队，而不是"键入"路径。
+        // 缺陷（4H 引入）：<1MB 的粘贴经 paste_text → enqueue_typed，而键入为"不丢"
+        // 设计不设上限；当接收端读得慢（例如把粘贴文本当命令逐条执行）时队列无界
+        // 增长（实测 4 分钟 49MB / 770 项，RSS 全落在匿名 mmap）。
+        // 现在：先按上限入队，剩余转 pending_paste，由既有的预算化排空 + request_redraw
+        // 自驱动；Ctrl-C 也能按"粘贴数据"整批丢弃。
+        let mut rest = None;
+        // 先按积压上限截断（阶段 4K t2）：非阻塞设计下若无上限，粘贴生产速率长期高于
+        // 接收端消费速率时 pending 会无界增长（实测 49MB+）。超限尾部丢弃并记一条日志。
+        let backlog: usize = self.pending_paste.iter().map(|c| c.len()).sum();
+        let (bytes, dropped) = crate::paste::accept_within_backlog(
+            bytes,
+            backlog,
+            crate::paste::PASTE_BACKLOG_CAP,
+        );
+        if dropped > 0 {
+            eprintln!(
+                "[perf] paste_dropped bytes={dropped} backlog={backlog} cap={}",
+                crate::paste::PASTE_BACKLOG_CAP
+            );
+        }
+        match self.writer.as_ref() {
+            Some(w) => {
+                let n = w.try_enqueue_paste(bytes);
+                if n < bytes.len() {
+                    rest = Some(bytes[n..].to_vec());
+                }
+            }
+            None => {
+                // 无写线程（Windows ConPTY 默认实现）：沿用同步写，行为不变。
+                if let Some(pty) = self.pty.as_mut() {
+                    write_pty(pty, None, bytes);
+                }
+            }
+        }
+        if let Some(tail) = rest {
+            self.pending_paste.push_back(tail);
         }
         self.urgent_render = true;
         if let Some(w) = self.window.as_ref() {

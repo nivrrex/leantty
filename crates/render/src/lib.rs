@@ -538,6 +538,11 @@ impl CpuRenderer {
         &self.framebuffer
     }
 
+    /// 渲染器内部缓存规模（阶段 4K t2 观测：字形缓存条目数 + 帧缓冲字节数）。
+    pub fn cache_stats(&self) -> (usize, usize) {
+        (self.glyph_cache.len(), self.framebuffer.len() * 4)
+    }
+
     /// 帧缓冲尺寸。
     pub fn framebuffer_size(&self) -> (u32, u32) {
         (self.fb_width, self.fb_height)
