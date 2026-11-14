@@ -310,9 +310,29 @@ pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>
         std::collections::HashMap::new();
     for (gi, spec) in specs.iter().enumerate() {
         let t_font = std::time::Instant::now();
+        // 阶段 4J t4：每组起止点（Windows 上 4 组合计约 400ms，是首帧最大单项）。
+        eprintln!(
+            "[perf] font_group_begin_ms group={} family='{}' style='{}' since_start={:.1}",
+            gi,
+            spec.family,
+            spec.style,
+            since_start_ms()
+        );
         let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache)
         {
             Ok((f, cached, used_style)) => {
+                // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
+                // "主字体面" 与 "回退字体面" 的成本。
+                eprintln!(
+                    "[perf] font_group_ms group={} family='{}' style='{}' used_style='{}' fallback={} total_ms={:.2} since_start={:.1}",
+                    gi,
+                    spec.family,
+                    spec.style,
+                    used_style,
+                    used_style != spec.style,
+                    t_font.elapsed().as_secs_f64() * 1000.0,
+                    since_start_ms()
+                );
                 eprintln!(
                     "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
                     gi,
@@ -1572,9 +1592,11 @@ fn load_font_styled_cached(
     if let Some(f) = cache.get(&id) {
         return Ok((f.clone(), true));
     }
+    let t_face = std::time::Instant::now();
     let face = db
         .face(id)
         .ok_or_else(|| Error::Font("face not found".to_string()))?;
+    let face_ms = t_face.elapsed().as_secs_f64() * 1000.0;
     let t_read = std::time::Instant::now();
     let bytes: Vec<u8> = match &face.source {
         Source::File(path) => std::fs::read(path)
@@ -1588,21 +1610,25 @@ fn load_font_styled_cached(
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
     // 阶段 4H t2：字体解析三段（face 查询 / 文件读取 / fontdue 解析）。
     // 只在缓存未命中（真正解析）时打印，命中路径不产生输出。
+    let parse_ms = t_parse.elapsed().as_secs_f64() * 1000.0;
     eprintln!(
-        "[perf] font_seg_ms family='{}' style='{}' bytes={} query_us={} read_ms={:.2} parse_ms={:.2} since_start={:.1}",
+        "[perf] font_seg_ms family='{}' style='{}' bytes={} query_us={} face_ms={:.2} read_ms={:.2} parse_ms={:.2} since_start={:.1}",
         family,
         style,
         bytes.len(),
         query_us,
+        face_ms,
         read_ms,
-        t_parse.elapsed().as_secs_f64() * 1000.0,
+        parse_ms,
         since_start_ms()
     );
     let t_cache = std::time::Instant::now();
     cache.insert(id, font.clone());
+    let cache_ms = t_cache.elapsed().as_secs_f64() * 1000.0;
+    let _ = cache_ms;
     eprintln!(
         "[perf] font_cache_ms={:.2} since_start={:.1} family='{}' style='{}'",
-        t_cache.elapsed().as_secs_f64() * 1000.0,
+        cache_ms,
         since_start_ms(),
         family,
         style
