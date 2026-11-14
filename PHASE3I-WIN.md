@@ -112,6 +112,16 @@
 - 日志：`vt-verify-win/logs/{3i-clippy-dev,3i-clippy-rel,3i-test,3i-tree,3i-writer-30,3i-drain-30}.log`；`vt-verify-win/logs/phase2b-win/{3i-sys-os4,3i-wez-os4,3i-*,t6-*}.{png,err}`；标记文件在 `vt-verify-win/osc/`。
 - 未入库：`perfdata/`、任何 conpty.dll/OpenConsole.exe。
 
+## 9.5 推送与打 tag（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `a642333997595981441c45a4404d94b8ddf610da` |
+| `refs/tags/phase3i-win-done`（tag 对象） | 见下方 push 后补记 |
+| `refs/tags/phase3i-win-done^{}`（解引用 commit） | 见下方 push 后补记 |
+
+- `git push origin win`：`73fc635..a642333  win -> win`。
+
 ## 10. 手动清单（≤3）
 
 1. 在空闲机器上重跑 §6 的三组对照（本机噪声导致同组内首帧差 1–3 倍）。
