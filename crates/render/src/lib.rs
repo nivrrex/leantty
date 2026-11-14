@@ -318,11 +318,30 @@ pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>
             spec.style,
             since_start_ms()
         );
-        let main = match load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache)
+        // 阶段 4M t3：组内三段（begin→load 调用、load 调用本身、load 返回→组尾），
+        // 微秒精度，用于定位 Windows 上 group_begin→seg / seg→cache / cache→end 的未归属耗时。
+        let t_before_load = std::time::Instant::now();
+        let pre_load_us = t_before_load.duration_since(t_font).as_micros();
+        let load_result =
+            load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache);
+        let load_us = t_before_load.elapsed().as_micros();
+        let main = match load_result
         {
             Ok((f, cached, used_style)) => {
                 // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
                 // "主字体面" 与 "回退字体面" 的成本。
+                let tail_us = t_before_load.elapsed().as_micros().saturating_sub(load_us);
+                eprintln!(
+                    "[perf] font_group_us group={} family='{}' style='{}' pre_load_us={} load_us={} tail_us={} total_us={} fallback={}",
+                    gi,
+                    spec.family,
+                    spec.style,
+                    pre_load_us,
+                    load_us,
+                    tail_us,
+                    t_font.elapsed().as_micros(),
+                    used_style != spec.style
+                );
                 eprintln!(
                     "[perf] font_group_ms group={} family='{}' style='{}' used_style='{}' fallback={} total_ms={:.2} since_start={:.1}",
                     gi,
@@ -1597,11 +1616,31 @@ fn load_font_styled_cached(
     if let Some(f) = cache.get(&id) {
         return Ok((f.clone(), true));
     }
+    // ---- 阶段 4M t3：语句级微秒打点（只补观测，不改行为）----
+    // 把"face 构造 / 元数据 / 读取 / fontdue 参数 / fontdue 调用 / clone / 缓存写入"
+    // 逐段量到微秒，并记录来源类型、字节数与是否为 .ttc 集合。
+    // 只统计**缓存未命中**（真正解析）的路径；每个 face 只打印一行，避免打印本身
+    // 在慢控制台上制造可观测的间隙（Windows 上每行 eprintln 可达数十毫秒，见 3J 数据）。
     let t_face = std::time::Instant::now();
     let face = db
         .face(id)
         .ok_or_else(|| Error::Font("face not found".to_string()))?;
-    let face_ms = t_face.elapsed().as_secs_f64() * 1000.0;
+    let face_us = t_face.elapsed().as_micros();
+
+    let (source_kind, path_opt) = match &face.source {
+        Source::File(path) => ("file", Some(path.clone())),
+        Source::Binary(_) => ("binary", None),
+        Source::SharedFile(path, _) => ("shared", Some(path.clone())),
+    };
+    // 元数据（stat）：区分"文件系统/安全软件扫描"与"解析"——stat 慢通常意味着
+    // 打开/属性查询被拦（AV 实时扫描的典型特征），而 read 慢更像顺序读盘/缓存未命中。
+    let t_meta = std::time::Instant::now();
+    let meta_len = path_opt
+        .as_ref()
+        .and_then(|p| std::fs::metadata(p).ok())
+        .map(|m| m.len() as usize);
+    let meta_us = t_meta.elapsed().as_micros();
+
     let t_read = std::time::Instant::now();
     let bytes: Vec<u8> = match &face.source {
         Source::File(path) => std::fs::read(path)
@@ -1609,34 +1648,51 @@ fn load_font_styled_cached(
         Source::Binary(data) => data.as_ref().as_ref().to_vec(),
         Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
     };
-    let read_ms = t_read.elapsed().as_secs_f64() * 1000.0;
+    let read_us = t_read.elapsed().as_micros();
+
+    // .ttc / OpenType 集合：fontdue 需要遍历集合内的 face，Windows 上解析更慢。
+    let is_collection = path_opt
+        .as_ref()
+        .map(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ttc")))
+        .unwrap_or(false)
+        || bytes.starts_with(b"ttcf");
+
+    let t_settings = std::time::Instant::now();
+    let fd_settings = fontdue::FontSettings::default();
+    let settings_us = t_settings.elapsed().as_micros();
+
     let t_parse = std::time::Instant::now();
-    let font = Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
+    let font = Font::from_bytes(bytes.as_slice(), fd_settings)
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
-    // 阶段 4H t2：字体解析三段（face 查询 / 文件读取 / fontdue 解析）。
-    // 只在缓存未命中（真正解析）时打印，命中路径不产生输出。
-    let parse_ms = t_parse.elapsed().as_secs_f64() * 1000.0;
+    let parse_us = t_parse.elapsed().as_micros();
+
+    let t_clone = std::time::Instant::now();
+    let cached = font.clone();
+    let clone_us = t_clone.elapsed().as_micros();
+
+    let t_insert = std::time::Instant::now();
+    cache.insert(id, cached);
+    let insert_us = t_insert.elapsed().as_micros();
+
+    let steps_us = query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
     eprintln!(
-        "[perf] font_seg_ms family='{}' style='{}' bytes={} query_us={} face_ms={:.2} read_ms={:.2} parse_ms={:.2} since_start={:.1}",
+        "[perf] font_steps_us family='{}' style='{}' kind={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
         family,
         style,
+        source_kind,
         bytes.len(),
+        meta_len.map(|v| v as i64).unwrap_or(-1),
+        is_collection,
         query_us,
-        face_ms,
-        read_ms,
-        parse_ms,
+        face_us,
+        meta_us,
+        read_us,
+        settings_us,
+        parse_us,
+        clone_us,
+        insert_us,
+        steps_us,
         since_start_ms()
-    );
-    let t_cache = std::time::Instant::now();
-    cache.insert(id, font.clone());
-    let cache_ms = t_cache.elapsed().as_secs_f64() * 1000.0;
-    let _ = cache_ms;
-    eprintln!(
-        "[perf] font_cache_ms={:.2} since_start={:.1} family='{}' style='{}'",
-        cache_ms,
-        since_start_ms(),
-        family,
-        style
     );
     Ok((font, false))
 }
