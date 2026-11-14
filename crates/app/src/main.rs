@@ -44,7 +44,14 @@ fn main() -> Result<(), app::Error> {
         t_cfg.elapsed().as_secs_f64() * 1000.0,
         app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
     );
+    let t_app = std::time::Instant::now();
     let app = app::App::new(config);
+    // 阶段 4H t2：App::new（配置归一化 + 字体设置解析 + 事件循环句柄）到 run 之间的分段点。
+    eprintln!(
+        "[perf] app_new_ms={:.1} since_start={:.1}",
+        t_app.elapsed().as_secs_f64() * 1000.0,
+        app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
+    );
     app.run()
 }
 

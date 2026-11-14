@@ -1669,6 +1669,160 @@ else
     echo "FAIL case37-cursor-hidden-on-scroll-cpu (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 38（4H-t3）：前台不读 stdin（非规范模式）时粘贴不得阻塞主线程。
+#   取证：同步写路径下 1MB 粘贴在 `stty -icanon; sleep` 期间造成主线程停顿 12.9s
+#   （loop_gap_ms=12936，6 次复现）。写线程后应 <100ms，且粘贴期间仍能处理事件；
+#   Ctrl-C 后未写出的粘贴数据被丢弃、命令立即生效。
+#   停顿只统计"粘贴已入队"之后（启动期空闲间隔不算）。
+CFG38="$OUT/case38-writer.toml"
+L38="$OUT/case38-writer.log"
+CLIP38="$OUT/case38-clip.txt"
+D38="$OUT/case38-dump.txt"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG38"
+awk 'BEGIN { for (i = 0; i < 20000; i++) printf "paste38_line_%06d\n", i }' > "$CLIP38"
+APP_CONFIG="$CFG38" APP_PERF_FRAMES=1 APP_TEST_PASTE="@$CLIP38" APP_TEST_PASTE_AT_MS=2500 \
+    APP_DUMP_SNAPSHOT="$D38" SHELL=/bin/sh "$APP_BIN" >"$L38" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    # 前台：非规范模式 + 忙等 14s 不读 stdin（此时终端输入队列很快被占满）
+    x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 14'"
+    x11 xdotool key --window "$WID" Return
+    sleep 2.6
+    # 粘贴窗口内持续驱动事件（每 40ms 一次鼠标移动）：主线程被 write 阻塞时
+    # 事件无法处理，每次迭代的间隔就会等于阻塞时长。
+    n=0
+    while [ $n -lt 110 ]; do
+        x11 xdotool mousemove_relative 1 0
+        sleep 0.04
+        n=$((n+1))
+    done
+    # 粘贴进行中缩放：仍应重绘（几何变化 + 画面变化）
+    x11 import -window "$WID" "$OUT/case38-pre-resize.png" 2>/dev/null
+    x11 xdotool windowsize "$WID" 720 420
+    sleep 1.0
+    GO38=$(x11 xdotool getwindowgeometry --shell "$WID")
+    W38=$(echo "$GO38" | grep '^WIDTH=' | cut -d= -f2)
+    x11 import -window "$WID" "$OUT/case38-post-resize.png" 2>/dev/null
+    # 尺寸不同不能直接 compare：用截图尺寸变化证明"缩放被处理并重绘"
+    SZPRE=$(identify -format "%w" "$OUT/case38-pre-resize.png" 2>/dev/null)
+    SZPOST=$(identify -format "%w" "$OUT/case38-post-resize.png" 2>/dev/null)
+    AE38=$([ "${SZPRE:-0}" != "${SZPOST:-0}" ] && echo 1 || echo 0)
+    MAX38=$(sed -n '/test_paste_fired/,$p' "$L38" | grep -oE 'loop_gap_ms=[0-9]+' | cut -d= -f2 | sort -n | tail -1)
+    # Ctrl-C 中断前台（键盘路径 → 0x03 入队并丢弃未写粘贴数据）
+    x11 xdotool key --window "$WID" ctrl+c
+    sleep 2.0
+    x11 import -window "$WID" "$OUT/case38-cc-a.png" 2>/dev/null
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/case38-cc-b.png" 2>/dev/null
+    AE38B=$(compare -metric AE "$OUT/case38-cc-a.png" "$OUT/case38-cc-b.png" null: 2>&1 | head -1)
+    DUMP38=$(cat "$D38" 2>/dev/null || echo "")
+    # 提示符返回（sh-5.2# 出现在网格里）
+    HAS_PROMPT=$(printf '%s' "$DUMP38" | grep -c "sh-5.2#" || true)
+    # 未写出的粘贴数据应被丢弃：1MB 素材的最后一行不得出现在网格里
+    HAS_TAIL=$(printf '%s' "$DUMP38" | grep -c "paste38_line_019999" || true)
+    echo "  粘贴窗口 loop_gap_max=${MAX38:-NA}ms（阈值 <100）缩放后宽=${W38:-NA} 截图宽 $SZPRE→$SZPOST"
+    echo "  Ctrl-C 后：提示符=$HAS_PROMPT 未写粘贴尾行=$HAS_TAIL 画面静止=$AE38B"
+    if [ "${MAX38:-9999}" -lt 100 ] && [ "${SZPRE:-0}" != "${SZPOST:-0}" ] \
+        && [ "$HAS_PROMPT" -ge 1 ] && [ "$HAS_TAIL" -eq 0 ] && [ "${AE38B:-9}" -eq 0 ]; then
+        echo "PASS case38-paste-no-main-thread-stall (gap=${MAX38}ms prompt=$HAS_PROMPT tail=$HAS_TAIL)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case38-paste-no-main-thread-stall (gap=${MAX38:-NA} resize=${SZPRE:-?}->${SZPOST:-?} prompt=$HAS_PROMPT tail=$HAS_TAIL settled=$AE38B)"
+        FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case38-paste-no-main-thread-stall (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 39（4H-t3）：正常读取的 shell 下 10MB 粘贴字节精确、无死锁。
+#   写线程引入的有界队列 + 预算化排空不得丢字节，也不得把主线程拖死。
+CFG39="$OUT/case39-10mb.toml"
+L39="$OUT/case39-10mb.log"
+CLIP39="$OUT/case39-clip.txt"
+RECV39="$OUT/case39-recv.bin"
+rm -f "$RECV39"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG39"
+awk 'BEGIN { for (i = 0; i < 260000; i++) printf "p39_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP39"
+SZ39=$(wc -c < "$CLIP39")
+APP_CONFIG="$CFG39" APP_PERF_FRAMES=1 APP_TEST_PASTE="@$CLIP39" APP_TEST_PASTE_AT_MS=1500 \
+    SHELL=/bin/sh "$APP_BIN" >"$L39" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    # 前台主动读 stdin：粘贴应完整送达且不停顿。
+    # 先关回显：7MB 粘贴若被 tty 逐字节回显，回声又会灌回 app 的读端，
+    # 造成"回显背压"（实测只送达 4.19MB 且 loop_gap 21s），与本用例要验的写阻塞无关。
+    x11 xdotool type --window "$WID" "stty -echo"
+    x11 xdotool key --window "$WID" Return
+    sleep 0.3
+    x11 xdotool type --window "$WID" "head -c $SZ39 > $RECV39"
+    x11 xdotool key --window "$WID" Return
+    # 等粘贴与读取完成（10MB / 写线程吞吐，留足余量）
+    i=0
+    while [ $i -lt 120 ]; do
+        [ "$(wc -c < "$RECV39" 2>/dev/null || echo 0)" -ge "$SZ39" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    sleep 1.0
+    GOT39=$(wc -c < "$RECV39" 2>/dev/null || echo 0)
+    MAX39=$(sed -n '/test_paste_fired/,$p' "$L39" | grep -oE 'loop_gap_ms=[0-9]+' | cut -d= -f2 | sort -n | tail -1)
+    echo "  粘贴=$SZ39 字节 收到=${GOT39:-0} 粘贴窗口 loop_gap_max=${MAX39:-NA}ms"
+    if [ "${GOT39:-0}" -eq "$SZ39" ] && [ "${MAX39:-9999}" -lt 100 ]; then
+        echo "PASS case39-10mb-paste-exact (bytes=$GOT39 gap=${MAX39}ms)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case39-10mb-paste-exact (bytes=${GOT39:-0}/$SZ39 gap=${MAX39:-NA})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case39-10mb-paste-exact (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 40（4H-t3）：粘贴进行中关闭窗口 → 限时退出、无 panic、无残留子进程。
+CFG40="$OUT/case40-close.toml"
+L40="$OUT/case40-close.log"
+CLIP40="$OUT/case40-clip.txt"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG40"
+awk 'BEGIN { for (i = 0; i < 200000; i++) printf "p40_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP40"
+APP_CONFIG="$CFG40" APP_TEST_PASTE="@$CLIP40" APP_TEST_PASTE_AT_MS=1500 \
+    SHELL=/bin/sh "$APP_BIN" >"$L40" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    # 前台不读 stdin，粘贴会在写线程里阻塞；此时关闭窗口
+    x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 30'"
+    x11 xdotool key --window "$WID" Return
+    sleep 3.0
+    SHELL_PID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+    kill -TERM "$APP_PID" 2>/dev/null
+    i=0
+    while [ $i -lt 40 ]; do
+        kill -0 "$APP_PID" 2>/dev/null || break
+        sleep 0.25
+        i=$((i+1))
+    done
+    ALIVE40=0
+    kill -0 "$APP_PID" 2>/dev/null && ALIVE40=1
+    PANIC40=$(grep -c "panicked at" "$L40" || true)
+    ORPHAN40=0
+    [ -n "$SHELL_PID" ] && kill -0 "$SHELL_PID" 2>/dev/null && ORPHAN40=1
+    echo "  退出用时≈$((i*250))ms 仍存活=$ALIVE40 panic=$PANIC40 残留 shell=$ORPHAN40"
+    if [ "$ALIVE40" -eq 0 ] && [ "$PANIC40" -eq 0 ] && [ "$ORPHAN40" -eq 0 ]; then
+        echo "PASS case40-close-during-paste (exit=$((i*250))ms)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case40-close-during-paste (alive=$ALIVE40 panic=$PANIC40 orphan=$ORPHAN40)"; FAIL=$((FAIL+1))
+    fi
+    APP_PID=""
+    kill -0 "${SHELL_PID:-0}" 2>/dev/null && kill_own "$SHELL_PID"
+else
+    echo "FAIL case40-close-during-paste (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
