@@ -79,6 +79,11 @@
 - 事实（3H，已验证）：启动缺口拆分（release，第 4 次无抖动运行 1318 ms）——**4 组字体逐面处理 675 ms（51%）**为最大单项，其中 fontdb 扫捾 69 ms（5%）、文件读取 0.6–1.1 ms/组、fontdue 解析 22–30 ms/组，剩余约 100 ms/组无打点；窗口创建 102 ms（8%）；其余各段均 ≤ 112 ms。3E/3F-b 的 ≈362 ms 即字体组总体，≈120 ms 即窗口创建 + ime + 就绪过渡。请求 1。
 - 事实（3H，已验证）：`writer::tests::paste_queue_respects_cap` 本机 10 次跑 3 次失败（队列上限断言与写线程消费赛跑），属共享测试时序假设；未改，请求 2。
 - 平台限制登记（3G，按要求写入）：系统 conhost 将 `ESC[7m` 物化为 `ESC[30m`+`ESC[47m`（默认色反色块显示 `normal[7]` 而非 `primary.foreground`）；`OSC 104` 被系统与 WezTerm 两种 ConPTY 丢弃（`OSC 4` 改色后无法复位）。
+- 事实（3I，已验证）：**OSC 4 在 Windows app 层确实生效**——系统 conhost 与 WezTerm conpty 下 `ESC[41m` 色块都变成 `#AABBCC`（1280 px，配置红 #d32f2f 像素 0），且用 pwsh 脚本首行写标记文件证明注入生效；故 3F-b 的“未核实”转为“已验证（生效）”，请求 19 可关闭。**OSC 104 后仍为 #AABBCC**（两种 ConPTY 一致，与 3G 字节取证吻合）。
+- 事实（3I，已验证）：`writer::tests::paste_queue_respects_cap` 不稳定——连续 30 次失败 **5 次（17%）**，消息 `接受量不应远超上限（accepted=1114112）`；`drain_to_writer` 相关 45 次里 1 次失败。请求 1。
+- 事实（3I，已验证）：Windows 上 Ctrl-C 取消粘贴 **0/5**（15 s 内标记未出现；debug 等 90 s 仍不可用；100KB 也 0/2），中断后屏幕仍是 `PS C:\Users\Admin> aaaa…`；无粘贴时同一命令 263 ms 生效（对照有效）。已送达的粘贴文本仍在控制台输入缓冲/PSReadLine 行内被逐字消费，Ctrl-C 只能丢弃 app 队列中 **未写出** 的部分（3H：5MB 只送达 123130 字节）。请求 2。
+- 事实（3I，已验证）：关窗耗时——无粘贴 390–464 ms（5 次）；5 MB 粘贴中固定 **2438–2467 ms**，stderr 5/5 出现 `pty writer: join 超时（2s），已分离线程（对端长期不读）`；退出后 ping/app 残留均 0。
+- 事实（3I，已验证）：字体对照（release 各 5 次）first_frame 中位/最小：A（Consolas+YaHei 回退）1440/1378、B（Consolas 无回退）1336/1245、C（Courier New 无回退）1376/1365；fontdb 三组 37–42 ms。同组内噪声 1–3 倍，只能给量级。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

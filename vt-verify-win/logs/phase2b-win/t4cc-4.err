@@ -1,0 +1,34 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.8 since_start=9.3
+[perf] app_new_ms=0.0 since_start=28.8
+[perf] event_loop_ms=14.1 since_start=61.4
+[perf] cpu_new_begin_ms=0.0 since_start=85.8
+[perf] fontdb_ms=51.6 since_start=155.4
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=178.1
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=20 read_ms=11.50 parse_ms=416.55 since_start=627.0
+[perf] font_cache_ms=131.59 since_start=813.9 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=671.3 since_start=849.4
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=897.6
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=163.7 since_start=1061.3
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1103.9
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=150.5 since_start=1254.3
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1296.6
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=166.1 since_start=1462.7
+[perf] cpu_groups_ms=1432.7 since_start=1536.5
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1477.9 since_start=1563.7
+[perf] cpu_state_ms=0.00 since_start=1601.4
+[perf] pre_window_ms=1554.8 since_start=1640.6
+[perf] window_ms=76.4 since_start=1744.6
+[perf] ime_ms=3.98 since_start=1771.2
+[perf] renderer_build_ms=0.0 since_start=1790.9 backend=cpu
+[perf] renderer_ready_ms=1809.6 since_start=1809.6
+[perf] surface_ms=0.8 since_start=1831.1
+[perf] vt_new_ms=0.13 since_start=1846.5
+[perf] pty_spawn_ms=67.5 since_start=1940.3
+[perf] writer_thread_ms=0.00 since_start=1963.7 enabled=true
+[perf] pre_first_submit_ms=1987 since_start=1987
+[perf] first_frame_ms=2017
+[perf] first_pty_byte_ms=2027 since_start=2027
+[perf] bg_fonts_ms=2552 count=3
+[perf] ctrl_c_drop_paste bytes=1048576

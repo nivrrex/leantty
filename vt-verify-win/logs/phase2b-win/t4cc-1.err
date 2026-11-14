@@ -1,0 +1,34 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.8 since_start=12.1
+[perf] app_new_ms=0.0 since_start=31.7
+[perf] event_loop_ms=13.9 since_start=71.5
+[perf] cpu_new_begin_ms=0.0 since_start=103.8
+[perf] fontdb_ms=66.2 since_start=190.3
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=214.6
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=21 read_ms=12.58 parse_ms=458.38 since_start=705.5
+[perf] font_cache_ms=160.34 since_start=940.8 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=759.6 since_start=974.2
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=1021.5
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=151.2 since_start=1172.7
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1219.5
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=166.7 since_start=1386.2
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1441.4
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=161.1 since_start=1602.6
+[perf] cpu_groups_ms=1592.0 since_start=1716.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1649.6 since_start=1753.4
+[perf] cpu_state_ms=0.00 since_start=1776.9
+[perf] pre_window_ms=1692.6 since_start=1796.4
+[perf] window_ms=76.3 since_start=1897.4
+[perf] ime_ms=4.23 since_start=1925.6
+[perf] renderer_build_ms=0.0 since_start=1945.8 backend=cpu
+[perf] renderer_ready_ms=1980.9 since_start=1980.9
+[perf] surface_ms=0.8 since_start=2002.7
+[perf] vt_new_ms=0.15 since_start=2021.0
+[perf] pty_spawn_ms=36.0 since_start=2078.3
+[perf] writer_thread_ms=0.00 since_start=2100.5 enabled=true
+[perf] pre_first_submit_ms=2125 since_start=2125
+[perf] first_frame_ms=2141
+[perf] first_pty_byte_ms=2150 since_start=2150
+[perf] bg_fonts_ms=2706 count=3
+[perf] ctrl_c_drop_paste bytes=1048576

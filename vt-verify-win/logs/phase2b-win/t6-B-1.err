@@ -1,0 +1,39 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=7.7
+[perf] app_new_ms=0.0 since_start=28.2
+[perf] event_loop_ms=17.2 since_start=64.8
+[perf] cpu_new_begin_ms=0.0 since_start=101.9
+[perf] fontdb_ms=39.3 since_start=159.0
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=180.6
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=28 read_ms=1.11 parse_ms=31.31 since_start=234.1
+[perf] font_cache_ms=7.66 since_start=301.7 family='Consolas' style='Regular'
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=156.3 since_start=337.0
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=418.9
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=29 read_ms=0.56 parse_ms=21.66 since_start=474.0
+[perf] font_cache_ms=6.55 since_start=528.0 family='Consolas' style='Bold'
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=137.2 since_start=556.1
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=594.8
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=21 read_ms=1.32 parse_ms=28.18 since_start=641.7
+[perf] font_cache_ms=7.82 since_start=700.2 family='Consolas' style='Italic'
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=146.7 since_start=741.4
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=783.6
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=31 read_ms=0.82 parse_ms=33.64 since_start=838.7
+[perf] font_cache_ms=7.04 since_start=889.8 family='Consolas' style='Bold Italic'
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=130.7 since_start=914.3
+[perf] cpu_groups_ms=840.3 since_start=960.0
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=879.7 since_start=981.6
+[perf] cpu_state_ms=0.00 since_start=999.4
+[perf] pre_window_ms=913.4 since_start=1015.3
+[perf] window_ms=54.3 since_start=1088.9
+[perf] ime_ms=5.65 since_start=1114.1
+[perf] renderer_build_ms=0.0 since_start=1135.2 backend=cpu
+[perf] renderer_ready_ms=1156.6 since_start=1156.6
+[perf] surface_ms=1.1 since_start=1176.5
+[perf] vt_new_ms=0.12 since_start=1195.8
+[perf] pty_spawn_ms=58.5 since_start=1270.6
+[perf] writer_thread_ms=0.00 since_start=1292.5 enabled=true
+[perf] pre_first_submit_ms=1328 since_start=1328
+[perf] first_frame_ms=1352
+[perf] first_pty_byte_ms=1363 since_start=1363
+[perf] bg_fonts_ms=1448 count=2
