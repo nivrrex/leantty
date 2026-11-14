@@ -1,0 +1,34 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=2.6 since_start=186.1
+[perf] app_new_ms=0.0 since_start=206.8
+[perf] event_loop_ms=5.8 since_start=847.9
+[perf] cpu_new_begin_ms=0.0 since_start=872.3
+[perf] fontdb_ms=94.9 since_start=987.9
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=1151.1
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=100 read_ms=10.30 parse_ms=2418.63 since_start=3603.6
+[perf] font_cache_ms=146.88 since_start=3815.3 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=2703.8 since_start=3854.9
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=3932.3
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=159.7 since_start=4092.1
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=4151.0
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=174.5 since_start=4325.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=4386.5
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=167.0 since_start=4553.5
+[perf] cpu_groups_ms=3765.3 since_start=4658.3
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=3809.4 since_start=4681.8
+[perf] cpu_state_ms=0.04 since_start=4703.0
+[perf] pre_window_ms=3849.1 since_start=4721.5
+[perf] window_ms=49.1 since_start=4790.6
+[perf] ime_ms=4.52 since_start=4822.9
+[perf] renderer_build_ms=0.0 since_start=4838.7 backend=cpu
+[perf] renderer_ready_ms=4855.9 since_start=4855.9
+[perf] surface_ms=0.8 since_start=4872.9
+[perf] vt_new_ms=1.00 since_start=4890.0
+[perf] pty_spawn_ms=11.9 since_start=4917.7
+[perf] writer_thread_ms=0.00 since_start=4945.2 enabled=true
+[perf] loop_gap_ms=0
+[perf] first_pty_byte_ms=4982 since_start=4982
+[perf] pre_first_submit_ms=5047 since_start=5047
+[perf] first_frame_ms=5112
+[perf] bg_fonts_ms=8136 count=3

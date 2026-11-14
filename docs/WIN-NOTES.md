@@ -75,6 +75,10 @@
 - 事实（3G，已验证）：`OSC 4` 在两种 ConPTY 下**都原样到达**（因此 3F-b 的“OSC 4 不生效”不能归因于 ConPTY，原结论证据不足，降为未核实）；**`OSC 104` 在两种 ConPTY 下都被丢弃**（平台限制，改色后无法复位）。
 - 事实（3G，已验证）：视口上滚隐藏光标在真实 Windows 上成立——品红光标计数：底部 128 px、上滚 5 格后连续 3 次均 0 px、回底 128 px 且画面与初始逐像素 diff=0。
 - 事实（3G，测试工具缺陷）：`mouse_event` 的 `dwData` 传 `0xFFFFFF88` 会被 PowerShell 当 Int32 −120，绑定 uint 参数抛 MethodException，导致“滚轮下滚”静默无效（影响 2B c2a 等旧脚本的下滚步骤，当时未断言方向所以结论不受影响）；正确写法 `[uint32]4294967176`。
+- 事实（3H，已验证，已实施）：Windows 上粘贴时主线程停顿——真实路径（右键 Paste + 前台 `ping -t` 不读 stdin）下 `loop_gap_ms` 最大 **1 MB 1104/1114/1111 ms、5 MB 1093/1108/1099 ms**（与数据量无关，取决于前台占用时间）；在 `crates/pty/src/windows.rs` 实现 `take_writer`（把 spawn 时已从 master 取出的写端移交 app 写线程，不改任何 trait 签名）后降到 **55–71 ms**。门禁：1MB 送达 1048576 字节、5MB 粘贴中 Ctrl-C 后仅送达 123130 字节（未写数据丢弃）、关窗 1.6–2.5 s 退出、pty_windows 21/21、回退实现必红（1135/1086 ms）。
+- 事实（3H，已验证）：启动缺口拆分（release，第 4 次无抖动运行 1318 ms）——**4 组字体逐面处理 675 ms（51%）**为最大单项，其中 fontdb 扫捾 69 ms（5%）、文件读取 0.6–1.1 ms/组、fontdue 解析 22–30 ms/组，剩余约 100 ms/组无打点；窗口创建 102 ms（8%）；其余各段均 ≤ 112 ms。3E/3F-b 的 ≈362 ms 即字体组总体，≈120 ms 即窗口创建 + ime + 就绪过渡。请求 1。
+- 事实（3H，已验证）：`writer::tests::paste_queue_respects_cap` 本机 10 次跑 3 次失败（队列上限断言与写线程消费赛跑），属共享测试时序假设；未改，请求 2。
+- 平台限制登记（3G，按要求写入）：系统 conhost 将 `ESC[7m` 物化为 `ESC[30m`+`ESC[47m`（默认色反色块显示 `normal[7]` 而非 `primary.foreground`）；`OSC 104` 被系统与 WezTerm 两种 ConPTY 丢弃（`OSC 4` 改色后无法复位）。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 
