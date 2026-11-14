@@ -208,6 +208,13 @@ impl Pty for WindowsPty {
         Ok(master.try_clone_reader()?)
     }
 
+    fn take_writer(&mut self) -> Option<Box<dyn Write + Send>> {
+        // 与 unix 语义一致：把 ConPTY 输入管道的写端移交给调用方（app 的写线程），
+        // 之后 writer() 返回 NotSpawned。spawn 时已从 master 取出该写端，
+        // 因此不需要再从 master 拿一次（避免两个写端并发写同一管道）。
+        self.writer.take()
+    }
+
     fn writer(&mut self) -> Result<&mut dyn Write, Error> {
         self.writer
             .as_mut()
