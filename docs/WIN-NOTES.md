@@ -84,6 +84,11 @@
 - 事实（3I，已验证）：Windows 上 Ctrl-C 取消粘贴 **0/5**（15 s 内标记未出现；debug 等 90 s 仍不可用；100KB 也 0/2），中断后屏幕仍是 `PS C:\Users\Admin> aaaa…`；无粘贴时同一命令 263 ms 生效（对照有效）。已送达的粘贴文本仍在控制台输入缓冲/PSReadLine 行内被逐字消费，Ctrl-C 只能丢弃 app 队列中 **未写出** 的部分（3H：5MB 只送达 123130 字节）。请求 2。
 - 事实（3I，已验证）：关窗耗时——无粘贴 390–464 ms（5 次）；5 MB 粘贴中固定 **2438–2467 ms**，stderr 5/5 出现 `pty writer: join 超时（2s），已分离线程（对端长期不读）`；退出后 ping/app 残留均 0。
 - 事实（3I，已验证）：字体对照（release 各 5 次）first_frame 中位/最小：A（Consolas+YaHei 回退）1440/1378、B（Consolas 无回退）1336/1245、C（Courier New 无回退）1376/1365；fontdb 三组 37–42 ms。同组内噪声 1–3 倍，只能给量级。
+- 事实（3J，已验证）：写线程测试稳定性——`writer::` 连续 30 次 **0 失败**（4J 修复前 5/30，消息 `接受量不应远超上限（accepted=1114112）`）；`follow` 与 `key_matches` 各 10 次均 0 失败；`cargo test --workspace` 40 个目标全绿。
+- 事实（3J，已验证）：输入回底——上滚后拇指底 424/480（lastLine 242），键入后回到 **479/480（lastLine 300，marker 1139ms）**；后台输出（ping）与 Copy（Ctrl+Insert）均不移动视口（408→408）。**短粘贴（<1MB）不回底（424 保持），1.2MB 分块粘贴回底（424→479）**——原因是 `paste_text_accepted()` 未调用 `follow_viewport_before_input(Paste)`，而 ≥1MB 路径调了。请求 1（共用，未改）。
+- 事实（3J，已验证）：无自定义绑定时默认 Ctrl+Shift+C 3/3 生效——剪贴板 = `CSELECTME`，随后 `echo MARK > 文件` 正常执行且无杂散 `C`（4K 前的问题未复现）。
+- 事实（3J，已验证）：粘贴积压拒绝在第 3 次 5MB 时发生，日志 `[perf] paste_rejected bytes=5242880 backlog=7471104 cap=12582912 oversized=false`；RSS 1518→1521 MB 有界；拒绝后 Ctrl-C 仍 15s 内无法执行命令（与 3I 一致）。
+- 事实（3J，已验证）：字体面成本（20 组样本）——`font_group_ms` total 中位 168.4/最小 144.7，其中 `face_ms` **恒为 0.00**、read 0.7、parse 23.9、cache 7.2，未归属 **137.0ms（81%）**；墙钟分布 begin→seg 73.7 / seg→cache 59.0 / cache→end 31.7。因此“每组 ~100ms”不在 face_ms。请求 2（观测）。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

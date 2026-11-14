@@ -10,3 +10,4 @@ scripts/e2e/out/
 /vt-verify-win/perfdata/
 /vt-verify-win/probe_render_win/target/
 /vt-verify-win/probe_inv/target/
+/vt-verify-win/osc/*.txt

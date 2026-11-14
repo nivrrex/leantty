@@ -1,0 +1,5 @@
+    Checking vt v0.1.0 (C:\dev\tty\crates\vt)
+    Checking render v0.1.0 (C:\dev\tty\crates\render)
+    Checking pty v0.1.0 (C:\dev\tty\crates\pty)
+    Checking app v0.1.0 (C:\dev\tty\crates\app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.68s
