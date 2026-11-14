@@ -141,6 +141,17 @@ fn take_writer(&mut self) -> Option<Box<dyn Write + Send>> {
 - 日志：`vt-verify-win/logs/{3h-clippy-dev,3h-clippy-rel,3h-clippy-dev2,3h-clippy-rel2,3h-test,3h-test-final,3h-tree,3h-perf}.log`；`vt-verify-win/logs/phase2b-win/p3-default-*.err`（完整时间戳序列）、`t4-*`、`gate-*`、`drop-probe.txt`。
 - 未入库：`perfdata/`、任何 conpty.dll/OpenConsole.exe。
 
+## 7.5 推送与打 tag（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `2ea9cdd7e196582a351e0f35aa7f8ade4d7af427` |
+| `refs/tags/phase3h-win-done`（tag 对象） | `0fe3b7f5e88eb0283d9f2991cc55dff6ba5cda8b` |
+| `refs/tags/phase3h-win-done^{}`（解引用 commit） | `2ea9cdd7e196582a351e0f35aa7f8ade4d7af427` |
+
+- 提交序列：`524fdb3`（合并 phase4h-done）→ `128c2bc`（win: take_writer）→ `2ea9cdd`（本轮文档/脚本）。
+- `git push origin win`：`e3a16ef..2ea9cdd  win -> win`；tag 新建后 push（`* [new tag]`）。全程无 force，未移动任何已有 tag。
+
 ## 8. 手动清单（≤3）
 
 1. 在空闲机器上重跑 §3 的 5 次采集，确认字体组那 51% 的占比是否稳定（本机有用户自己的 WezTerm 与安全软件常驻）。
