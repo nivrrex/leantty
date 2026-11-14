@@ -2036,6 +2036,106 @@ for c43 in cpu gpu; do
     fi
 done
 
+# 用例 44（4K-t1b）：滚到历史后"输入回底"的语义门禁（release 二进制，cpu/gpu 各一轮）。
+#   规格：视口不在底部时，向 PTY 发送内容（键入/粘贴/IME 提交）应回到底部；仅修饰键、
+#   复制动作、滚轮、选区、缩放不移动视口；上滚期间新输出不移动视口。
+#   观测：滚动条拇指的垂直位置（拇指=前景色块，位于窗口右缘 8px）。底部时拇指贴底
+#   （ratio≈1.00），上滚后 ratio 变小。比整屏像素差稳，不受内容变化影响。
+#   注意：组合键（Ctrl+Shift+C）必须对**焦点窗口**发送，不能用 --window（XSendEvent
+#   的合成事件不带修饰键状态，会被当成普通字符送进 PTY）。
+thumb_ratio() { # $1=图片 → 打印拇指底部占比（0..1，失败打印 -1）
+    # 纯 shell + ImageMagick：右侧 8px 条带灰度化，逐行取均值，>200 视为拇指（前景色块）。
+    # 不用 python（e2e lint 会把 python 的 import 行误判为裸调用 X11 客户端）。
+    _w=$(identify -format "%w" "$1" 2>/dev/null) || { echo -1; return; }
+    _h=$(identify -format "%h" "$1" 2>/dev/null) || { echo -1; return; }
+    convert "$1" -crop "8x${_h}+$((_w-8))+0" +repage -colorspace Gray -depth 8 txt:- 2>/dev/null \
+        | sed -n 's/^\([0-9]*\),\([0-9]*\):.*gray(\([0-9]*\)).*/\2 \3/p' \
+        | awk -v h="$_h" '{ if ($2+0 > 200 && $1+0 > m) m=$1+0 } END { if (m == "") print -1; else printf "%.3f\n", (m+1)/h }'
+}
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+for c44 in cpu gpu; do
+    CFG44="$OUT/case44-$c44.toml"
+    L44="$OUT/case44-$c44.log"
+    printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$c44" > "$CFG44"
+    if [ ! -x "$APP_REL" ]; then
+        echo "FAIL case44-input-follow-$c44 (缺 release 二进制)"; FAIL=$((FAIL+1)); continue
+    fi
+    APP_CONFIG="$CFG44" SHELL=/bin/sh "$APP_REL" >"$L44" 2>&1 &
+    APP_PID=$!
+    if ! wait_window; then
+        echo "FAIL case44-input-follow-$c44 (窗口未出现)"; FAIL=$((FAIL+1)); continue
+    fi
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    GEO44=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO44" | grep '^X=' | cut -d= -f2); GY=$(echo "$GEO44" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO44" | grep '^WIDTH=' | cut -d= -f2); GH=$(echo "$GEO44" | grep '^HEIGHT=' | cut -d= -f2)
+    CX44=$(( ${GX:-0} + ${GW:-640} / 2 )); CY44=$(( ${GY:-0} + ${GH:-384} / 2 ))
+    # 造出 scrollback（300 行）
+    x11 xdotool type --window "$WID" "seq 1 300"
+    x11 xdotool key --window "$WID" Return
+    sleep 2.0
+    x11 import -window "$WID" "$OUT/case44-$c44-A.png" 2>/dev/null
+    RA=$(thumb_ratio "$OUT/case44-$c44-A.png")
+    # 上滚 10 格
+    x11 xdotool mousemove $CX44 $CY44
+    n=0; while [ $n -lt 10 ]; do x11 xdotool click 4; n=$((n+1)); done
+    sleep 1.0
+    x11 import -window "$WID" "$OUT/case44-$c44-B.png" 2>/dev/null
+    RB=$(thumb_ratio "$OUT/case44-$c44-B.png")
+    # --- 1) 键入回底
+    x11 xdotool type --window "$WID" 'echo MARK_$((1+1))'
+    x11 xdotool key --window "$WID" Return
+    sleep 1.8
+    R1=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-C1.png" 2>/dev/null; echo "$OUT/case44-$c44-C1.png")")
+    # --- 2) 粘贴回底（真实路径：xclip + 右键）
+    printf 'printf "MARK_PASTE\\n"\n' > "$OUT/case44-clip.txt"
+    x11 xclip -selection clipboard -i "$OUT/case44-clip.txt" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.4
+    x11 xdotool mousemove $CX44 $CY44
+    n=0; while [ $n -lt 10 ]; do x11 xdotool click 4; n=$((n+1)); done
+    sleep 1.0
+    RB2=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-B2.png" 2>/dev/null; echo "$OUT/case44-$c44-B2.png")")
+    x11 xdotool click --delay 0 3
+    sleep 0.6
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null; CLIP_PID=""
+    R2=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-C2.png" 2>/dev/null; echo "$OUT/case44-$c44-C2.png")")
+    # --- 3) 上滚期间新输出到来：视口必须保持不动
+    x11 xdotool type --window "$WID" "for i in 1 2 3 4 5 6; do echo NEWOUT_\$i; sleep 0.4; done"
+    x11 xdotool key --window "$WID" Return
+    sleep 0.5
+    x11 xdotool mousemove $CX44 $CY44
+    n=0; while [ $n -lt 8 ]; do x11 xdotool click 4; n=$((n+1)); done
+    sleep 0.8
+    RD1=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-D1.png" 2>/dev/null; echo "$OUT/case44-$c44-D1.png")")
+    sleep 2.5
+    RD2=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-D2.png" 2>/dev/null; echo "$OUT/case44-$c44-D2.png")")
+    # --- 4) 复制动作（Ctrl+Shift+C，真实焦点）不得回底
+    x11 xdotool key ctrl+shift+c
+    sleep 1.0
+    R4=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/case44-$c44-E.png" 2>/dev/null; echo "$OUT/case44-$c44-E.png")")
+    echo "  [$c44] 拇指占比 A=$RA B=$RB | 键入后=$R1 粘贴前=$RB2 粘贴后=$R2 | 上滚中=$RD1→$RD2 | 复制后=$R4"
+    # 判据：A 贴底；B 明显离开底部；键入/粘贴后回到贴底；上滚期间拇指不动；复制后仍在历史
+    OK=1
+    [ "${RA}" = "-1" ] && OK=0
+    awk "BEGIN{exit !(${RA:-0} >= 0.98)}" || OK=0
+    awk "BEGIN{exit !(${RB:-1} < 0.95)}" || OK=0
+    awk "BEGIN{exit !(${R1:-0} >= 0.98)}" || OK=0
+    awk "BEGIN{exit !(${R2:-0} >= 0.98)}" || OK=0
+    awk "BEGIN{d=${RD1:-0}-${RD2:-1}; if (d<0) d=-d; exit !(d <= 0.02)}" || OK=0
+    awk "BEGIN{exit !(${R4:-1} < 0.95)}" || OK=0
+    if [ "$OK" = "1" ]; then
+        echo "PASS case44-input-follow-$c44"; PASS=$((PASS+1))
+    else
+        echo "FAIL case44-input-follow-$c44 (A=$RA B=$RB key=$R1 paste=$R2 hold=$RD1/$RD2 copy=$R4)"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+done
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

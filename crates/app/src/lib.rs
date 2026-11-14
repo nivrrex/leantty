@@ -210,6 +210,7 @@ pub fn reader_body_with_depth<R: std::io::Read>(
 }
 
 mod clipboard;
+mod follow;
 mod paste;
 mod framepace;
 mod ime;
@@ -1376,6 +1377,7 @@ impl ApplicationHandler for AppHandler {
                     let route = route_key(event.text.as_deref(), mapped, mods);
                     match route {
                         KeyRoute::Text(s) => {
+                            self.follow_viewport_before_input(follow::InputEvent::Printable);
                             if let Some(pty) = self.pty.as_mut() {
                                 write_pty(pty, self.writer.as_ref(), s.as_bytes());
                             }
@@ -1394,6 +1396,9 @@ impl ApplicationHandler for AppHandler {
                                             if bytes.contains(&0x03) {
                                                 self.pending_paste.clear();
                                             }
+                                            self.follow_viewport_before_input(
+                                                follow::InputEvent::EncodedKey,
+                                            );
                                             if let Some(pty) = self.pty.as_mut() {
                                                 write_pty(pty, self.writer.as_ref(), &bytes);
                                             }
@@ -2251,10 +2256,11 @@ impl AppHandler {
         if let Ime::Commit(s) = &event {
             // Commit 文本归一化（\n→\r）后写 PTY；Preedit 不写 PTY。
             let norm = normalize_ime_commit(s);
-            if !norm.is_empty()
-                && let Some(pty) = self.pty.as_mut()
-            {
-                write_pty(pty, self.writer.as_ref(), norm.as_bytes());
+            if !norm.is_empty() {
+                self.follow_viewport_before_input(follow::InputEvent::ImeCommit);
+                if let Some(pty) = self.pty.as_mut() {
+                    write_pty(pty, self.writer.as_ref(), norm.as_bytes());
+                }
             }
         }
         self.update_ime_cursor_area();
@@ -2562,6 +2568,39 @@ impl AppHandler {
     }
 
     /// 当前 scrollback 行数（snapshot 查询；失败回落 0）。
+    /// 输入发往 PTY 前的**唯一入口**：按纯决策把视口拉回底部（阶段 4K t1b）。
+    ///
+    /// 修复前没有任何"输入→回底"逻辑，回底只由"新输出到达且 follow_bottom"触发；
+    /// 滚轮上滚会把 follow_bottom 置 false，于是键入只写 PTY、视口停在历史位置。
+    /// 已在底部时本函数无副作用（不 request_redraw），避免每键一帧。
+    fn follow_viewport_before_input(&mut self, ev: follow::InputEvent) {
+        let alt = self
+            .vt
+            .as_ref()
+            .map(|v| v.is_alternate_screen().unwrap_or(false))
+            .unwrap_or(false);
+        let mouse = self
+            .vt
+            .as_ref()
+            .map(|v| v.is_mouse_tracking().unwrap_or(false))
+            .unwrap_or(false);
+        if !follow::should_follow(ev, alt, mouse) {
+            return;
+        }
+        if self.follow_bottom {
+            return;
+        }
+        self.follow_bottom = true;
+        self.offset_from_top = self.sb_rows();
+        if let Some(vt) = self.vt.as_mut() {
+            vt.scroll_viewport(ScrollViewport::Bottom);
+        }
+        self.urgent_render = true;
+        if let Some(w) = self.window.as_ref() {
+            w.request_redraw();
+        }
+    }
+
     fn sb_rows(&self) -> usize {
         self.vt
             .as_ref()
@@ -2615,6 +2654,7 @@ impl AppHandler {
     /// readline 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次
     /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
     fn paste_text(&mut self, text: &str) {
+        self.follow_viewport_before_input(follow::InputEvent::Paste);
         if let Some(pty) = self.pty.as_mut() {
             write_pty(pty, self.writer.as_ref(), text.as_bytes());
         }
@@ -2724,11 +2764,22 @@ fn find_key_binding(
 ) -> Option<ConfigAction> {
     let mut found = None;
     for b in bindings {
-        if b.key.as_deref() == Some(key) && b.mods == *mods {
+        if b.key.as_deref().is_some_and(|k| key_matches(k, key)) && b.mods == *mods {
             found = Some(b.action);
         }
     }
     found
+}
+
+/// 绑定键与按下的逻辑键是否匹配。
+///
+/// 单字符键按大小写无关比较：带 Shift 的组合键（如默认的 Ctrl+Shift+C）在 winit 里
+/// 上报为 `Character("C")`，而配置/内置绑定写的是 `"c"`；Shift 本身已由 `mods` 表达，
+/// 因此大小写不应再区分（阶段 4K：此前 Ctrl+Shift+C 不命中绑定，被当作编码键送进
+/// PTY，既没复制也会把视口带回底部）。
+fn key_matches(bound: &str, pressed: &str) -> bool {
+    bound == pressed
+        || (bound.len() == 1 && pressed.len() == 1 && bound.eq_ignore_ascii_case(pressed))
 }
 
 /// winit 修饰键状态 → config::Mods（绑定查表用；hyper 无对应键恒 false）。
@@ -3073,6 +3124,18 @@ mod binding_tests {
             None,
             "按钮不匹配应 None"
         );
+    }
+
+    #[test]
+    fn key_matches_is_case_insensitive_for_single_chars() {
+        // Ctrl+Shift+C 在 winit 里上报 Character("C")，绑定写 "c"：必须命中。
+        assert!(key_matches("c", "C"));
+        assert!(key_matches("C", "c"));
+        assert!(key_matches("c", "c"));
+        // 多字符键（Named 键名）保持精确匹配，不做大小写折叠。
+        assert!(key_matches("Insert", "Insert"));
+        assert!(!key_matches("Insert", "insert"));
+        assert!(!key_matches("c", "v"));
     }
 
     #[test]

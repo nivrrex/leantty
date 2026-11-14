@@ -259,6 +259,11 @@ impl VtTerminal {
         Ok(self.inner.is_mouse_tracking()?)
     }
 
+    /// 当前是否在备用屏（阶段 4K t1b：输入回底决策用，避免为一次按键构造整帧快照）。
+    pub fn is_alternate_screen(&self) -> Result<bool, Error> {
+        Ok(self.inner.active_screen()? == Screen::Alternate)
+    }
+
     /// 滚动视口（scrollback/备用屏联动；上滚偏移由调用方维护）。
     pub fn scroll_viewport(&mut self, scroll: libghostty_vt::terminal::ScrollViewport) {
         self.inner.scroll_viewport(scroll);
