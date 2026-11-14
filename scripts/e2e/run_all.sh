@@ -1689,15 +1689,16 @@ if wait_window; then
     # 前台：非规范模式 + 忙等 14s 不读 stdin（此时终端输入队列很快被占满）
     x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 14'"
     x11 xdotool key --window "$WID" Return
-    sleep 2.6
-    # 粘贴窗口内持续驱动事件（每 40ms 一次鼠标移动）：主线程被 write 阻塞时
-    # 事件无法处理，每次迭代的间隔就会等于阻塞时长。
+    # 单进程链式驱动（110 × 40ms ≈ 4.4s）：紧接命令之后开始，覆盖 2.5s 的粘贴触发点。
+    # 若在粘贴触发后才开始驱动，第一个 gap 会是"等事件"的空闲间隔（实测 ≈90ms），
+    # 会被误当成停顿。每次派生 xdotool 约 90ms，也会把 gap 变成驱动周期，故用链路。
+    CH38=""
     n=0
     while [ $n -lt 110 ]; do
-        x11 xdotool mousemove_relative 1 0
-        sleep 0.04
+        CH38="$CH38 mousemove_relative 1 0 sleep 0.04"
         n=$((n+1))
     done
+    x11 xdotool $CH38
     # 粘贴进行中缩放：仍应重绘（几何变化 + 画面变化）
     x11 import -window "$WID" "$OUT/case38-pre-resize.png" 2>/dev/null
     x11 xdotool windowsize "$WID" 720 420
@@ -1722,14 +1723,19 @@ if wait_window; then
     HAS_PROMPT=$(printf '%s' "$DUMP38" | grep -c "sh-5.2#" || true)
     # 未写出的粘贴数据应被丢弃：1MB 素材的最后一行不得出现在网格里
     HAS_TAIL=$(printf '%s' "$DUMP38" | grep -c "paste38_line_019999" || true)
+    A38=$(sed -n '/test_paste_fired/,$p' "$L38")
+    FMS38=$(printf '%s' "$A38" | grep -oE "feed_ms_max=[0-9.]+" | cut -d= -f2 | sort -n | tail -1)
+    FB38=$(printf '%s' "$A38" | grep -oE "feed_bytes_max=[0-9]+" | cut -d= -f2 | sort -n | tail -1)
+    WQ38=$(printf '%s' "$A38" | grep -oE "writer_queued_max=[0-9]+" | cut -d= -f2 | sort -n | tail -1)
     echo "  粘贴窗口 loop_gap_max=${MAX38:-NA}ms（阈值 <100）缩放后宽=${W38:-NA} 截图宽 $SZPRE→$SZPOST"
+    echo "  归因：feed_ms_max=${FMS38:-NA} feed_bytes_max=${FB38:-NA} writer_queued_max=${WQ38:-NA}"
     echo "  Ctrl-C 后：提示符=$HAS_PROMPT 未写粘贴尾行=$HAS_TAIL 画面静止=$AE38B"
     if [ "${MAX38:-9999}" -lt 100 ] && [ "${SZPRE:-0}" != "${SZPOST:-0}" ] \
         && [ "$HAS_PROMPT" -ge 1 ] && [ "$HAS_TAIL" -eq 0 ] && [ "${AE38B:-9}" -eq 0 ]; then
         echo "PASS case38-paste-no-main-thread-stall (gap=${MAX38}ms prompt=$HAS_PROMPT tail=$HAS_TAIL)"
         PASS=$((PASS+1))
     else
-        echo "FAIL case38-paste-no-main-thread-stall (gap=${MAX38:-NA} resize=${SZPRE:-?}->${SZPOST:-?} prompt=$HAS_PROMPT tail=$HAS_TAIL settled=$AE38B)"
+        echo "FAIL case38-paste-no-main-thread-stall (gap=${MAX38:-NA} resize=${SZPRE:-?}->${SZPOST:-?} prompt=$HAS_PROMPT tail=$HAS_TAIL settled=$AE38B feed_ms=${FMS38:-NA} feed_b=${FB38:-NA})"
         FAIL=$((FAIL+1))
     fi
     stop_app
