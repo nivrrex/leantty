@@ -1,0 +1,49 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=2.3 since_start=130.2
+[perf] app_new_ms=0.1 since_start=187.3
+[perf] event_loop_ms=6.4 since_start=227.1
+[perf] cpu_new_begin_ms=0.0 since_start=285.0
+[perf] fontdb_ms=91.6 since_start=418.9
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=441.4
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=466.8
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=119 face_ms=0.00 read_ms=0.76 parse_ms=143.93 since_start=644.3
+[perf] font_cache_ms=9.13 since_start=727.3 family='Consolas' style='Regular'
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=342.00 since_start=783.5
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=419.8 since_start=861.2
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=913.7
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=950.7
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=88 face_ms=0.00 read_ms=0.67 parse_ms=146.12 since_start=1119.3
+[perf] font_cache_ms=10.46 since_start=1210.8 family='Consolas' style='Bold'
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=331.03 since_start=1244.7
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=374.8 since_start=1288.5
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=1352.7
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=1390.4
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=98 face_ms=0.00 read_ms=0.90 parse_ms=160.04 since_start=1575.0
+[perf] font_cache_ms=8.59 since_start=1643.1 family='Consolas' style='Italic'
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=320.66 since_start=1673.4
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=382.4 since_start=1735.2
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=1774.5
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=1796.6
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=95 face_ms=0.00 read_ms=0.58 parse_ms=170.32 since_start=2002.3
+[perf] font_cache_ms=7.29 since_start=2078.5 family='Consolas' style='Bold Italic'
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=336.01 since_start=2110.6
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=376.0 since_start=2150.5
+[perf] cpu_groups_ms=1897.9 since_start=2225.2
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1974.2 since_start=2259.2
+[perf] cpu_state_ms=0.01 since_start=2281.3
+[perf] pre_window_ms=2016.3 since_start=2301.3
+[perf] window_ms=69.2 since_start=2401.8
+[perf] ime_ms=5.12 since_start=2433.6
+[perf] renderer_build_ms=0.0 since_start=2458.7 backend=cpu
+[perf] renderer_ready_ms=2482.0 since_start=2482.0
+[perf] surface_ms=5.0 since_start=2516.8
+[perf] vt_new_ms=1.18 since_start=2554.5
+[perf] pty_spawn_ms=8.6 since_start=2583.5
+[perf] writer_thread_ms=0.00 since_start=2608.9 enabled=true
+[perf] first_pty_byte_ms=2685 since_start=2685
+[perf] pre_first_submit_ms=2760 since_start=2760
+[perf] first_frame_ms=2815
+[perf] bg_fonts_ms=5949 count=3
+copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
