@@ -45,3 +45,4 @@ sh vt-verify/checks/run_all.sh
 - **`OSC 104`（重置调色板）在 Windows 两种 ConPTY 下都不到达**：`OSC 4` 改色后无法用 `OSC 104` 复位（依据：`PHASE3G-WIN.md` §4.1 的 s4 行与 §4.2 第 4 条）。
 - **Windows ConPTY 输入通道会吞掉括号粘贴标记与 SGR 鼠标序列**（`ESC[200~`/`ESC[201~` 只剩中间内容，`ESC[<0;10;5M` 到达 0 字节）；系统 conhost 还会把控制台宽度处的折行物化为 CRLF（依据：`docs/WIN-NOTES.md` 事实补充两条；`PHASE3D-WIN.md` 同类记录）。
 - **GPU 后端仅 Linux**：wgpu 依赖只写在 `crates/render/Cargo.toml` 的 `[target.'cfg(target_os = "linux")'.dependencies]`，Windows 构建里 wgpu/pollster 命中为 0，恒用 CPU 渲染（依据：`PHASE4A-LINUX.md` 选型与每轮 tag 前的依赖树复核）。
+- **Windows 上"粘贴大文本后 Ctrl-C"无法立即恢复输入**：app 侧会丢弃尚未写出的粘贴数据（3H 证据：5MB 粘贴中按 Ctrl-C 后子进程只收到 123130 字节），但**已进入控制台输入缓冲/PSReadLine 行内的部分无法撤回**，之后键入的命令会拼接在已送达文本之后——5MB 粘贴 0/5 通过、100KB 粘贴 0/2、单次 debug 等 90s 仍未恢复；对照"不粘贴直接输入同样命令"263ms 即生效（依据：`PHASE3I-WIN.md` §4）。Linux 无此限制（4H/4K 的 e2e 中 Ctrl-C 后提示符立即返回）。
