@@ -2271,6 +2271,107 @@ else
     fi
 fi
 
+# 用例 47（4M-t2）：粘贴回底的四种大小 + 被整条拒绝时不改变视口（release，cpu/gpu 各一轮）。
+#   背景（Windows 3J）：<1MB 的 paste_text_accepted 路径未调用 follow_viewport_before_input，
+#   只有 ≥1MB 的分块路径调用了 → 小粘贴在上滚后不回底（4K 的 case44 只覆盖了大粘贴）。
+#   观测沿用 case44 的"滚动条拇指底部占比"：底部≈1.00，上滚后<0.95。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+thumb_ratio() { # $1=图片 → 拇指底部占比（0..1，失败 -1）
+    _w=$(identify -format "%w" "$1" 2>/dev/null) || { echo -1; return; }
+    _h=$(identify -format "%h" "$1" 2>/dev/null) || { echo -1; return; }
+    convert "$1" -crop "8x${_h}+$((_w-8))+0" +repage -colorspace Gray -depth 8 txt:- 2>/dev/null \
+        | sed -n 's/^\([0-9]*\),\([0-9]*\):.*gray(\([0-9]*\)).*/\2 \3/p' \
+        | awk -v h="$_h" '{ if ($2+0 > 200 && $1+0 > m) m=$1+0 } END { if (m == "") print -1; else printf "%.3f\n", (m+1)/h }'
+}
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case47-paste-follow-by-size (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    # 五种**精确字节数**的粘贴素材（用 head -c 截断，避免估算偏差）
+    awk 'BEGIN { for (i = 0; i < 700000; i++) printf "#c47_line_%07d_xxxxxxxxxxxxxxxxxxxx\n", i }' > "$OUT/c47-src.txt"
+    printf 'tiny_20b_marker_xyz\n' > "$OUT/c47-20b.txt"
+    head -c 4096 "$OUT/c47-src.txt" > "$OUT/c47-4k.txt"
+    head -c 921600 "$OUT/c47-src.txt" > "$OUT/c47-900k.txt"
+    head -c 1258291 "$OUT/c47-1200k.txt" 2>/dev/null || head -c 1258291 "$OUT/c47-src.txt" > "$OUT/c47-1200k.txt"
+    head -c 13631488 "$OUT/c47-src.txt" > "$OUT/c47-13m.txt"
+    OK47=0
+    TOT47=0
+    for c47 in cpu gpu; do
+        TOT47=$((TOT47+1))
+        CFG47="$OUT/case47-$c47.toml"
+        L47="$OUT/case47-$c47.log"
+        printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$c47" > "$CFG47"
+        APP_CONFIG="$CFG47" SHELL=/bin/bash "$APP_REL" >"$L47" 2>&1 &
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case47-paste-follow-by-size-$c47 (窗口未出现)"; FAIL=$((FAIL+1)); continue
+        fi
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.0
+        GEO47=$(x11 xdotool getwindowgeometry --shell "$WID")
+        GX7=$(echo "$GEO47" | grep '^X=' | cut -d= -f2); GY7=$(echo "$GEO47" | grep '^Y=' | cut -d= -f2)
+        GW7=$(echo "$GEO47" | grep '^WIDTH=' | cut -d= -f2); GH7=$(echo "$GEO47" | grep '^HEIGHT=' | cut -d= -f2)
+        CX7=$(( ${GX7:-0} + ${GW7:-640} / 2 )); CY7=$(( ${GY7:-0} + ${GH7:-384} / 2 ))
+        x11 xdotool type --window "$WID" "seq 1 300"
+        x11 xdotool key --window "$WID" Return
+        sleep 2.0
+        RB47=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-bottom.png" 2>/dev/null; echo "$OUT/c47-$c47-bottom.png")")
+        BAD47=""
+        for pair in "20b:$OUT/c47-20b.txt" "4k:$OUT/c47-4k.txt" "900k:$OUT/c47-900k.txt" "1200k:$OUT/c47-1200k.txt"; do
+            TAG7=${pair%%:*}; FILE7=${pair#*:}
+            x11 xdotool mousemove $CX7 $CY7
+            n=0; while [ $n -lt 6 ]; do x11 xdotool click 4; n=$((n+1)); done
+            sleep 0.6
+            BEFORE7=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-$TAG7-before.png" 2>/dev/null; echo "$OUT/c47-$c47-$TAG7-before.png")")
+            x11 xclip -selection clipboard -i "$FILE7" >/dev/null 2>&1 &
+            CLIP_PID=$!
+            # 大剪贴板需要时间读完文件并取得选择所有权；0.35s 对 1.2MB 不够（实测粘贴为空）
+            sleep 0.8
+            x11 xdotool mousemove $CX7 $CY7
+            x11 xdotool click --delay 0 3
+            sleep 0.9
+            kill -TERM "${CLIP_PID:-}" 2>/dev/null; CLIP_PID=""
+            AFTER7=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-$TAG7-after.png" 2>/dev/null; echo "$OUT/c47-$c47-$TAG7-after.png")")
+            # 粘贴会被 readline 插入行缓冲，按 Return 消化掉，避免影响下一轮
+            x11 xdotool key --window "$WID" Return
+            sleep 0.6
+            RES7=BAD
+            awk "BEGIN{exit !(${AFTER7:-0} >= 0.98)}" && RES7=OK
+            echo "  [c47 $c47/$TAG7] 粘贴前=${BEFORE7} 粘贴后=${AFTER7}（应≥0.98）→ $RES7"
+            [ "$RES7" = "OK" ] || BAD47="$BAD47 $TAG7"
+        done
+        # 被整条拒绝的粘贴：视口必须**不动**（没有输入发往 PTY）
+        x11 xdotool mousemove $CX7 $CY7
+        n=0; while [ $n -lt 6 ]; do x11 xdotool click 4; n=$((n+1)); done
+        sleep 0.6
+        RB2_47=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-rej-before.png" 2>/dev/null; echo "$OUT/c47-$c47-rej-before.png")")
+        x11 xclip -selection clipboard -i "$OUT/c47-13m.txt" >/dev/null 2>&1 &
+        CLIP_PID=$!
+        sleep 1.2
+        x11 xdotool mousemove $CX7 $CY7
+        x11 xdotool click --delay 0 3
+        sleep 1.0
+        kill -TERM "${CLIP_PID:-}" 2>/dev/null; CLIP_PID=""
+        RA2_47=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-rej-after.png" 2>/dev/null; echo "$OUT/c47-$c47-rej-after.png")")
+        REJ47=$(grep -c "paste_rejected" "$L47" 2>/dev/null || true)
+        HOLD47=BAD
+        awk "BEGIN{d=${RA2_47:-0}-${RB2_47:-1}; if (d<0) d=-d; exit !(d <= 0.02)}" && [ "${REJ47:-0}" -ge 1 ] && HOLD47=OK
+        echo "  [c47 $c47/拒绝] 拒绝前=${RB2_47} 拒绝后=${RA2_47} paste_rejected=${REJ47:-0} → $HOLD47"
+        if [ -z "$BAD47" ] && [ "$HOLD47" = "OK" ]; then
+            echo "  [c47 $c47] PASS（四档均回底 + 拒绝不动视口）"
+            OK47=$((OK47+1))
+        else
+            echo "  [c47 $c47] FAIL 未回底:$BAD47 拒绝不动视口=$HOLD47"
+        fi
+        stop_app
+    done
+    if [ "$OK47" -eq "$TOT47" ] && [ "$TOT47" -eq 2 ]; then
+        echo "PASS case47-paste-follow-by-size ($OK47/$TOT47)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case47-paste-follow-by-size ($OK47/$TOT47)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

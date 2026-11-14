@@ -2667,20 +2667,10 @@ impl AppHandler {
         // 标记（readline 卡在粘贴状态）并可能切开 UTF-8 字符。
         let norm = normalize_paste(text, bracketed);
         if !self.accept_paste_or_reject(norm.len()) {
+            // 被整条拒绝：没有输入发往 PTY，视口不改变（规格）。
             return;
         }
-        if norm.len() >= 1024 * 1024 {
-            for chunk in paste_chunks(&norm) {
-                self.pending_paste.push_back(chunk.into_bytes());
-            }
-            self.follow_viewport_before_input(follow::InputEvent::Paste);
-            self.urgent_render = true;
-            if let Some(w) = self.window.as_ref() {
-                w.request_redraw();
-            }
-        } else {
-            self.paste_text_accepted(&norm);
-        }
+        self.paste_accepted(&norm);
     }
 
     /// 粘贴的积压判定（唯一入口）：整条接受返回 true；超限整条拒绝并记日志。
@@ -2701,13 +2691,48 @@ impl AppHandler {
         false
     }
 
-    /// 同步粘贴路径：写入 PTY 后**主动排一帧**。
+    /// 已通过积压判定的粘贴：**唯一入口**。
     ///
-    /// 阶段 4B-fix3：这条路径不产生应用侧状态变化，若不置 urgent，画面刷新只能
-    /// 等 PTY 回显字节到达后由帧间隔驱动；回显缺失/延迟时（shell 关闭 echo、
-    /// readline 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次
-    /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
-    /// 已通过积压判定的粘贴字节：有界入队（剩余转 pending_paste）。
+    /// 阶段 4M t2：回底判定收敛到这里，而不是散落在各调用点——此前 <1MB 路径
+    /// （`paste_text_accepted`）漏了 `follow_viewport_before_input(InputEvent::Paste)`，
+    /// 只有 ≥1MB 的分块路径调了，表现为"上滚后小粘贴不回底"（Windows 3J 实测）。
+    /// 被整条拒绝的粘贴不会走到这里（拒绝 = 没有输入发往 PTY = 不动视口）。
+    fn paste_accepted(&mut self, norm: &str) {
+        // 回底判定的唯一来源（接受 + 非空 + 非备用屏 + 非鼠标上报模式才回底）。
+        let alt = self
+            .vt
+            .as_ref()
+            .map(|v| v.is_alternate_screen().unwrap_or(false))
+            .unwrap_or(false);
+        let mouse = self
+            .vt
+            .as_ref()
+            .map(|v| v.is_mouse_tracking().unwrap_or(false))
+            .unwrap_or(false);
+        if follow::paste_returns_to_bottom(norm.len(), true, alt, mouse) {
+            self.follow_viewport_before_input(follow::InputEvent::Paste);
+        }
+        if norm.is_empty() {
+            return;
+        }
+        if norm.len() >= 1024 * 1024 {
+            for chunk in paste_chunks(norm) {
+                self.pending_paste.push_back(chunk.into_bytes());
+            }
+            self.urgent_render = true;
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
+            }
+            return;
+        }
+        self.paste_text_accepted(norm);
+    }
+
+    /// 小粘贴（<1MB）：有界入队（剩余转 pending_paste）。
+    ///
+    /// 阶段 4B-fix3：这条路径不产生应用侧状态变化，若不置 urgent，画面刷新只能等
+    /// PTY 回显字节到达后由帧间隔驱动；回显缺失/延迟时（shell 关闭 echo、readline
+    /// 尚未处理）会出现"内容已送入 shell 但画面不刷新，直到回车或再次键入"。
     fn paste_text_accepted(&mut self, text: &str) {
         let bytes = text.as_bytes();
         let mut rest = None;
