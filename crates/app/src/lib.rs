@@ -1370,6 +1370,15 @@ impl ApplicationHandler for AppHandler {
                                 match vt.key_encoder() {
                                     Ok(mut enc) => match enc.encode_key(key, mods, Action::Press) {
                                         Ok(bytes) => {
+                                            // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
+                                            // 写线程只能丢弃"已在队列里"的块（并补发括号
+                                            // 粘贴结束标记），但 app 侧的 pending_paste
+                                            // 会在下一帧继续回灌，粘贴实际没停（实测：
+                                            // 首次 Ctrl-C 后仍持续写入，第二次 Ctrl-C 又丢
+                                            // 1MiB）。中断语义要求粘贴整体作废，故此处清空。
+                                            if bytes.contains(&0x03) {
+                                                self.pending_paste.clear();
+                                            }
                                             if let Some(pty) = self.pty.as_mut() {
                                                 write_pty(pty, self.writer.as_ref(), &bytes);
                                             }

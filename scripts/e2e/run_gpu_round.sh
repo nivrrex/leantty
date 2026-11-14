@@ -261,6 +261,53 @@ else
     echo "FAIL gpu-round-cursor-hidden-on-scroll (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：Ctrl-C 截断括号粘贴后 bash 不得卡住"
+CFG41G="$OUT/gpu-round-bracketed-cancel.toml"
+W41G="$OUT/gpu-round-wedge.txt"
+CLIP41G="$OUT/gpu-round-clip.txt"
+rm -f "$W41G"
+printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG41G"
+awk 'BEGIN { for (i = 0; i < 130000; i++) printf "paste5m_line_%06d_yyyyyyyyyyyyyy\n", i }' > "$CLIP41G"
+L="$OUT/gpu-round-bracketed-cancel.log"
+if start_gpu_app "$CFG41G" "$L" ""; then
+    sleep 1.5
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    x11 xclip -selection clipboard -i "$CLIP41G" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO" | grep '^X=' | cut -d= -f2); GY=$(echo "$GEO" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2); GH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-400} / 2 )) $(( ${GY:-0} + ${GH:-300} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 0.6
+    x11 xdotool key --window "$WID" ctrl+c
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    sleep 1.2
+    x11 xdotool type --window "$WID" "echo WEDGE_OK_\$((1+1)) > $W41G"
+    x11 xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 30 ]; do
+        [ -s "$W41G" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    DROP=$(grep -oE "ctrl_c_drop_paste bytes=[0-9]+" "$L" | tail -1 | cut -d= -f2)
+    WOK=$(grep -c "WEDGE_OK_2" "$W41G" 2>/dev/null || true)
+    echo "  丢弃=${DROP:-0}B 探针=$WOK"
+    if [ "${DROP:-0}" -gt 0 ] && [ "${WOK:-0}" -ge 1 ]; then
+        echo "PASS gpu-round-bracketed-paste-ctrl-c"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-bracketed-paste-ctrl-c (dropped=${DROP:-0} ok=${WOK:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then

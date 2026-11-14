@@ -45,7 +45,15 @@ struct Item {
     bytes: Vec<u8>,
     /// 来自粘贴（Ctrl-C 时丢弃）。
     paste: bool,
+    /// 该块包含括号粘贴**起始**标记 `ESC[200~`（阶段 4I t2）。
+    starts_bracketed: bool,
+    /// 该块包含括号粘贴**结束**标记 `ESC[201~`（阶段 4I t2）。
+    ends_bracketed: bool,
 }
+
+/// 括号粘贴标记（与 `paste::normalize_paste` 生成的序列一致）。
+const PASTE_START: &[u8] = b"\x1b[200~";
+const PASTE_END: &[u8] = b"\x1b[201~";
 
 /// 共享状态（唯一可变状态，受互斥量保护）。
 struct State {
@@ -56,6 +64,10 @@ struct State {
     closing: bool,
     /// 写端错误（EIO/EPIPE 等），非 None 后不再接受入队。
     failed: Option<std::io::ErrorKind>,
+    /// 已开始写出括号粘贴起始标记、且结束标记尚未写出（阶段 4I t2）。
+    open_paste: bool,
+    /// 写线程当前在写的那一块本身带结束标记（此时不必补发）。
+    in_flight_ends: bool,
 }
 
 struct Shared {
@@ -85,6 +97,8 @@ impl PtyWriter {
                 queued: 0,
                 closing: false,
                 failed: None,
+                open_paste: false,
+                in_flight_ends: false,
             }),
             cv: Condvar::new(),
         });
@@ -108,11 +122,41 @@ impl PtyWriter {
             return;
         }
         if bytes.contains(&0x03) {
+            let dropped: usize = st.items.iter().filter(|it| it.paste).map(|it| it.bytes.len()).sum();
             st.items.retain(|it| !it.paste);
             st.queued = st.items.iter().map(|it| it.bytes.len()).sum();
+            // 阶段 4I t2 取证：Ctrl-C 时确实丢弃了"尚未写出"的粘贴数据。
+            // 仅在该罕见路径打印（无热路径开销），release 同样可用。
+            if dropped > 0 {
+                eprintln!("[perf] ctrl_c_drop_paste bytes={dropped}");
+            }
+            // 阶段 4I t2 修复：bash 等 readline 前端收到 `ESC[200~` 后进入"粘贴内容"
+            // 状态，只有 `ESC[201~` 才退出。若起始标记已写出、结束标记被上面的丢弃
+            // 语句一并丢掉，shell 会永久卡在该状态（实测 5/5 复现：之后键入不被执行、
+            // Ctrl-C 变成字面字符）。因此在 0x03 之前补发一个结束标记。
+            //
+            // 补发条件严格限定：起始已开始写、且正在写的那一块本身不带结束标记
+            // （后者说明结束标记已在途，再补会造成多余的结束标记）。
+            // 0x03 与结束标记同一临界区入队、紧随其后，不等待写出。
+            if st.open_paste && !st.in_flight_ends {
+                st.items.push_back(Item {
+                    bytes: PASTE_END.to_vec(),
+                    paste: false,
+                    starts_bracketed: false,
+                    ends_bracketed: true,
+                });
+                st.queued += PASTE_END.len();
+                st.open_paste = false;
+                eprintln!("[perf] ctrl_c_restore_paste_end");
+            }
         }
         st.queued += bytes.len();
-        st.items.push_back(Item { bytes: bytes.to_vec(), paste: false });
+        st.items.push_back(Item {
+            bytes: bytes.to_vec(),
+            paste: false,
+            starts_bracketed: false,
+            ends_bracketed: false,
+        });
         self.shared.cv.notify_one();
     }
 
@@ -127,7 +171,13 @@ impl PtyWriter {
         }
         let n = (WRITER_QUEUE_CAP - st.queued).min(bytes.len());
         st.queued += n;
-        st.items.push_back(Item { bytes: bytes[..n].to_vec(), paste: true });
+        let chunk = &bytes[..n];
+        st.items.push_back(Item {
+            bytes: chunk.to_vec(),
+            paste: true,
+            starts_bracketed: chunk.starts_with(PASTE_START),
+            ends_bracketed: chunk.ends_with(PASTE_END),
+        });
         self.shared.cv.notify_one();
         n
     }
@@ -187,6 +237,10 @@ fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
             loop {
                 if let Some(item) = st.items.pop_front() {
                     st.queued -= item.bytes.len();
+                    st.in_flight_ends = item.ends_bracketed;
+                    if item.starts_bracketed {
+                        st.open_paste = true;
+                    }
                     break Some(item);
                 }
                 if st.closing || st.failed.is_some() {
@@ -196,6 +250,7 @@ fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
             }
         };
         let Some(item) = item else { return };
+        let ends = item.ends_bracketed;
         if let Err(e) = writer.write_all(&item.bytes).and_then(|()| writer.flush()) {
             let mut st = shared.lock();
             st.failed = Some(e.kind());
@@ -203,6 +258,10 @@ fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
             st.queued = 0;
             shared.cv.notify_all();
             return;
+        }
+        if ends {
+            let mut st = shared.lock();
+            st.open_paste = false;
         }
     }
 }
@@ -329,5 +388,141 @@ mod tests {
         let got = sink.got.lock().unwrap().clone();
         assert_eq!(got, b"tail".to_vec(), "close 应把队列写空后退出");
         assert!(!w.failed());
+    }
+
+    /// 闸门写端：第一次 write 阻塞，直到测试放行；用于让"正在写的那一块"停在飞。
+    #[derive(Clone)]
+    struct GateSink {
+        gate: Arc<(StdMutex<bool>, Condvar)>,
+        got: Arc<StdMutex<Vec<u8>>>,
+    }
+
+    impl GateSink {
+        fn new(open: bool) -> Self {
+            Self {
+                gate: Arc::new((StdMutex::new(open), Condvar::new())),
+                got: Arc::new(StdMutex::new(Vec::new())),
+            }
+        }
+        fn release(&self) {
+            let (m, cv) = &*self.gate;
+            *m.lock().unwrap() = true;
+            cv.notify_all();
+        }
+    }
+
+    impl Write for GateSink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let (m, cv) = &*self.gate;
+            let mut open = m.lock().unwrap();
+            while !*open {
+                open = cv.wait(open).unwrap();
+            }
+            drop(open);
+            self.got.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// 等写线程真正进入"写第一块"的状态（in_flight 已置）。
+    fn wait_in_flight(w: &PtyWriter) {
+        for _ in 0..200 {
+            {
+                let st = w.shared.lock();
+                if st.open_paste || st.in_flight_ends {
+                    return;
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        panic!("写线程未进入在写状态");
+    }
+
+    #[test]
+    fn ctrl_c_restores_paste_end_when_start_already_writing() {
+        let sink = GateSink::new(false);
+        let w = PtyWriter::spawn(Box::new(sink.clone()));
+        // 起始块：worker 取走后阻塞在 write 里（结束标记尚未写出）
+        w.try_enqueue_paste(b"\x1b[200~start-of-paste");
+        wait_in_flight(&w);
+        // 后续块仍在队列里，会被 Ctrl-C 丢弃
+        assert!(w.try_enqueue_paste(b"middle-chunk-1") > 0);
+        w.enqueue_typed(&[0x03]);
+        {
+            let st = w.shared.lock();
+            assert!(
+                st.items.iter().all(|it| !it.paste),
+                "Ctrl-C 后队列中不应再有粘贴块"
+            );
+            let bytes: Vec<u8> = st.items.iter().flat_map(|it| it.bytes.clone()).collect();
+            assert!(
+                bytes.starts_with(b"\x1b[201~"),
+                "应先补发括号粘贴结束标记，实测队列={bytes:?}"
+            );
+            assert_eq!(bytes[PASTE_END.len()..], [0x03], "结束标记后应紧跟 0x03");
+        }
+        sink.release();
+        drop(w);
+    }
+
+    #[test]
+    fn no_restore_when_no_paste_started() {
+        let sink = GateSink::new(true);
+        let w = PtyWriter::spawn(Box::new(sink.clone()));
+        w.enqueue_typed(b"plain");
+        w.enqueue_typed(&[0x03]);
+        {
+            let st = w.shared.lock();
+            let bytes: Vec<u8> = st.items.iter().flat_map(|it| it.bytes.clone()).collect();
+            assert!(
+                !bytes.windows(PASTE_END.len()).any(|w| w == PASTE_END),
+                "从未开始括号粘贴时不应补发结束标记：{bytes:?}"
+            );
+        }
+        drop(w);
+    }
+
+    #[test]
+    fn no_restore_when_in_flight_chunk_ends_with_marker() {
+        let sink = GateSink::new(false);
+        let w = PtyWriter::spawn(Box::new(sink.clone()));
+        // 单块粘贴（起始 + 结束在同一块）：结束标记已在途，不应再补
+        w.try_enqueue_paste(b"\x1b[200~all\x1b[201~");
+        wait_in_flight(&w);
+        w.enqueue_typed(&[0x03]);
+        {
+            let st = w.shared.lock();
+            let bytes: Vec<u8> = st.items.iter().flat_map(|it| it.bytes.clone()).collect();
+            assert_eq!(bytes, vec![0x03], "结束标记已在途时不应重复补发：{bytes:?}");
+        }
+        sink.release();
+        drop(w);
+    }
+
+    #[test]
+    fn restore_once_for_multiple_dropped_pastes() {
+        let sink = GateSink::new(false);
+        let w = PtyWriter::spawn(Box::new(sink.clone()));
+        w.try_enqueue_paste(b"\x1b[200~p1");
+        wait_in_flight(&w);
+        // 两个粘贴的余下块堆在队列里，全部会被丢弃
+        w.try_enqueue_paste(b"p1-more");
+        w.try_enqueue_paste(b"\x1b[200~p2");
+        w.try_enqueue_paste(b"p2-more\x1b[201~");
+        w.enqueue_typed(&[0x03]);
+        {
+            let st = w.shared.lock();
+            let ends: usize = st
+                .items
+                .iter()
+                .filter(|it| it.bytes == PASTE_END.to_vec())
+                .count();
+            assert_eq!(ends, 1, "多次丢弃只补一个结束标记");
+        }
+        sink.release();
+        drop(w);
     }
 }

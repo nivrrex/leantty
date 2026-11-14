@@ -1823,6 +1823,63 @@ else
     echo "FAIL case40-close-during-paste (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 41（4I-t2）：Ctrl-C 截断括号粘贴后 bash 不得卡住。
+#   病史（已验证）：5MB 括号粘贴写入中途按 Ctrl-C，写线程丢弃队列里 1MiB 未写数据
+#   （含结束标记 ESC[201~），且 app 侧 pending_paste 继续回灌 → readline 永久停留在
+#   "粘贴内容"状态，之后键入不执行（修复前 5/5 复现）。修复 = 写线程在 0x03 前补发
+#   ESC[201~ + app 在 Ctrl-C 时清空 pending_paste。
+CFG41="$OUT/case41-bracketed-cancel.toml"
+L41="$OUT/case41-bracketed-cancel.log"
+CLIP41="$OUT/case41-clip.txt"
+W41="$OUT/case41-wedge.txt"
+rm -f "$W41"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG41"
+awk 'BEGIN { for (i = 0; i < 130000; i++) printf "paste5m_line_%06d_yyyyyyyyyyyyyy\n", i }' > "$CLIP41"
+APP_CONFIG="$CFG41" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_BIN" >"$L41" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    sleep 1.2
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    x11 xclip -selection clipboard -i "$CLIP41" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO41=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO41" | grep '^X=' | cut -d= -f2)
+    GY=$(echo "$GEO41" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO41" | grep '^WIDTH=' | cut -d= -f2)
+    GH=$(echo "$GEO41" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-400} / 2 )) $(( ${GY:-0} + ${GH:-300} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 0.6
+    x11 xdotool key --window "$WID" ctrl+c
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    sleep 1.2
+    # 探针命令：若 readline 仍在粘贴状态，这行不会被执行
+    x11 xdotool type --window "$WID" "echo WEDGE_OK_\$((1+1)) > $W41"
+    x11 xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 30 ]; do
+        [ -s "$W41" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    DROP41=$(grep -oE "ctrl_c_drop_paste bytes=[0-9]+" "$L41" | tail -1 | cut -d= -f2)
+    WOK41=$(grep -c "WEDGE_OK_2" "$W41" 2>/dev/null || true)
+    echo "  Ctrl-C 丢弃=${DROP41:-0}B 探针等待=$((i*500))ms 探针结果=$WOK41"
+    # 必须证明"写入中途被截断"（丢弃 >0）且之后命令能正常执行
+    if [ "${DROP41:-0}" -gt 0 ] && [ "${WOK41:-0}" -ge 1 ]; then
+        echo "PASS case41-bracketed-paste-ctrl-c (dropped=${DROP41}B)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case41-bracketed-paste-ctrl-c (dropped=${DROP41:-0} wedge_ok=${WOK41:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case41-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

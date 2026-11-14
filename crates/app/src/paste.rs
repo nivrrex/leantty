@@ -372,8 +372,18 @@ mod drain_to_writer_tests {
     fn drain_to_writer_stops_when_queue_full_and_keeps_remainder() {
         let w = crate::writer::PtyWriter::spawn(Box::new(SlowSink));
         // 塞满队列
-        let filler = vec![b'f'; crate::writer::WRITER_QUEUE_CAP];
-        assert_eq!(w.try_enqueue_paste(&filler), crate::writer::WRITER_QUEUE_CAP);
+        // 写线程会并发消费，故不能断言"一次恰好接受满上限"：持续入队直到拒绝。
+        let filler = vec![b'f'; 64 * 1024];
+        let mut total = 0usize;
+        for _ in 0..(crate::writer::WRITER_QUEUE_CAP / filler.len() + 4) {
+            let n = w.try_enqueue_paste(&filler);
+            if n == 0 {
+                break;
+            }
+            total += n;
+        }
+        assert!(total > 0, "入队应至少接受一块");
+        assert_eq!(w.try_enqueue_paste(&filler), 0, "队列应已满");
         let mut queue: VecDeque<Vec<u8>> = VecDeque::new();
         queue.push_back(b"paste-payload".to_vec());
         let report = drain_to_writer(&mut queue, &w, DrainBudget::default());
