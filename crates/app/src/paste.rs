@@ -354,25 +354,25 @@ mod drain_tests {
 mod drain_to_writer_tests {
     use super::*;
     use std::collections::VecDeque;
-    use std::io::Write;
 
-    /// 极慢写端：让队列保持在满的状态，用于验证"队列满即停"。
-    struct SlowSink;
-    impl Write for SlowSink {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
+    // 受控写端（放行前阻塞）代替原先"每次 write sleep 200ms"的时序方案：
+    // 队列是否保持满由测试线程决定，断言不再依赖 sleep 时长（阶段 4J t2）。
+    use crate::writer::test_support::GatedSink;
 
     #[test]
     fn drain_to_writer_stops_when_queue_full_and_keeps_remainder() {
-        let w = crate::writer::PtyWriter::spawn(Box::new(SlowSink));
-        // 塞满队列
-        // 写线程会并发消费，故不能断言"一次恰好接受满上限"：持续入队直到拒绝。
+        let sink = GatedSink::new();
+        let w = crate::writer::PtyWriter::spawn(Box::new(sink.clone()));
+        // 先让写线程取走一块并阻塞在写入；此后队列状态不再被消费改变。
+        let first = vec![b'g'; 64 * 1024];
+        assert!(w.try_enqueue_paste(&first) > 0);
+        for _ in 0..400 {
+            if w.queued_bytes() == 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_micros(500));
+        }
+        assert_eq!(w.queued_bytes(), 0, "写线程应已取走首块并阻塞");
         let filler = vec![b'f'; 64 * 1024];
         let mut total = 0usize;
         for _ in 0..(crate::writer::WRITER_QUEUE_CAP / filler.len() + 4) {
@@ -391,6 +391,8 @@ mod drain_to_writer_tests {
         assert!(report.would_block, "队列满应等价于 WouldBlock");
         assert_eq!(queue.len(), 1, "剩余数据应保留");
         assert_eq!(queue[0], b"paste-payload".to_vec(), "保留内容不得被截断");
+        sink.release();
+        drop(w);
     }
 
     #[test]

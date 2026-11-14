@@ -266,8 +266,79 @@ fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
     }
 }
 
+/// 测试支持：受控写端与放行闸门。
+///
+/// 只给测试用（`cfg(test)`），不进入任何构建产物。设计目的：让"写线程是否
+/// 已经消费"完全由测试线程决定，断言只依赖队列自身状态，不再与消费线程的
+/// 调度赛跑（阶段 4J t2）。
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::io::Write;
+    use std::sync::{Arc, Condvar, Mutex};
+
+    /// 闸门：`false` 时 write 阻塞，`release()` 后放行（单向）。
+    ///
+    /// `Clone` 共享同一份状态：测试保留一份用于放行与读回，写端另一份交给线程。
+    #[derive(Clone)]
+    pub(crate) struct GatedSink {
+        got: Arc<Mutex<Vec<u8>>>,
+        gate: Arc<(Mutex<bool>, Condvar)>,
+        fail_kind: Option<std::io::ErrorKind>,
+    }
+
+    impl GatedSink {
+        /// 关闭状态的闸门默认不放行。
+        pub(crate) fn new() -> Self {
+            Self {
+                got: Arc::new(Mutex::new(Vec::new())),
+                gate: Arc::new((Mutex::new(false), Condvar::new())),
+                fail_kind: None,
+            }
+        }
+
+        /// 立即失败的闸门（用于写端错误路径）。
+        pub(crate) fn failing(kind: std::io::ErrorKind) -> Self {
+            Self {
+                fail_kind: Some(kind),
+                ..Self::new()
+            }
+        }
+
+        /// 放行所有当前与后续 write。
+        pub(crate) fn release(&self) {
+            let (m, cv) = &*self.gate;
+            *m.lock().unwrap_or_else(|e| e.into_inner()) = true;
+            cv.notify_all();
+        }
+    }
+
+    impl Write for GatedSink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            if let Some(k) = self.fail_kind {
+                return Err(std::io::Error::new(k, "注入错误"));
+            }
+            let (m, cv) = &*self.gate;
+            let mut open = m.lock().unwrap_or_else(|e| e.into_inner());
+            while !*open {
+                open = cv.wait(open).unwrap_or_else(|e| e.into_inner());
+            }
+            drop(open);
+            self.got
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::test_support::GatedSink;
     use super::*;
     use std::io::ErrorKind;
     use std::sync::Mutex as StdMutex;
@@ -292,6 +363,18 @@ mod tests {
         }
     }
 
+    /// 等写线程取走首块并进入 `write`（受控 sink 关闭时它会阻塞在此）。
+    /// 返回 true 表示队列已空（首块在途）——此后队列状态不再被消费改变。
+    fn wait_consumed_first(w: &PtyWriter) -> bool {
+        for _ in 0..400 {
+            if w.queued_bytes() == 0 {
+                return true;
+            }
+            std::thread::sleep(std::time::Duration::from_micros(500));
+        }
+        w.queued_bytes() == 0
+    }
+
     fn wait_bytes(sink: &Sink, want: usize) {
         for _ in 0..200 {
             if sink.got.lock().unwrap().len() >= want {
@@ -303,10 +386,15 @@ mod tests {
 
     #[test]
     fn paste_queue_respects_cap() {
-        let sink = Sink::default();
+        // 受控 sink：写线程最多取走一块后阻塞在写入，队列状态对断言完全确定。
+        // （旧版用即时消费的 Sink，断言"持续入队必被拒绝"依赖生产者比消费者快，
+        //  在调度延迟更大时（Windows 实测 10 次失败 3 次）会失效。）
+        let sink = GatedSink::new();
         let w = PtyWriter::spawn(Box::new(sink.clone()));
-        // 先占满队列（写线程会并发消费，故循环入队直到拒绝）
         let chunk = vec![b'x'; 64 * 1024];
+        // 先让写线程取走一块并阻塞，之后队列状态完全由本线程决定。
+        assert!(w.try_enqueue_paste(&chunk) > 0);
+        assert!(wait_consumed_first(&w), "写线程应已取走首块并阻塞");
         let mut accepted = 0usize;
         let mut rejected = false;
         for _ in 0..64 {
@@ -318,10 +406,22 @@ mod tests {
                 n => accepted += n,
             }
         }
-        assert!(rejected, "持续入队应被上限拒绝（accepted={accepted}）");
-        assert!(accepted <= 64 * (WRITER_QUEUE_CAP / (64 * 1024)) + WRITER_QUEUE_CAP,
-            "接受量不应远超上限（accepted={accepted}）");
+        assert!(rejected, "队列满时应拒绝（accepted={accepted}）");
+        // 确定性上下界：写线程至多已取走一块（在写入中），故接受量落在
+        // [上限, 上限 + 一块] 内，与调度无关。
+        assert!(
+            accepted >= WRITER_QUEUE_CAP,
+            "接受量应至少达到上限（accepted={accepted}）"
+        );
+        assert!(
+            accepted <= WRITER_QUEUE_CAP + chunk.len(),
+            "接受量不应超过上限 + 一块在途（accepted={accepted}）"
+        );
         assert!(w.queued_bytes() <= WRITER_QUEUE_CAP, "排队字节不得超过上限");
+        // 写线程阻塞期间队列保持满：再入队仍被拒绝（不依赖消费速度）。
+        assert_eq!(w.try_enqueue_paste(&chunk), 0, "阻塞期间队列应保持满");
+        sink.release();
+        drop(w);
     }
 
     #[test]
@@ -338,13 +438,16 @@ mod tests {
 
     #[test]
     fn ctrl_c_drops_pending_paste_but_keeps_typed() {
-        let sink = Sink::default();
-        // 用不消费的写端先把队列堵住：注入 WouldBlock 之外的阻塞无法模拟，
-        // 改为在 close 之前不入队任何可被快速消费的内容——直接检查队列状态。
+        // 受控 sink：写线程阻塞在首块写入，后续入队全部留在队列里，
+        // "Ctrl-C 丢弃粘贴、保留键入"可被确定性观测（旧版依赖消费速度，可能
+        // 在断言前就被消费掉）。
+        let sink = GatedSink::new();
         let w = PtyWriter::spawn(Box::new(sink.clone()));
-        // 填满队列使后续粘贴留在队列内
         let big = vec![b'p'; 64 * 1024];
-        while w.try_enqueue_paste(&big) > 0 {}
+        assert!(w.try_enqueue_paste(&big) > 0, "首块应被接受");
+        assert!(wait_consumed_first(&w), "写线程应已取走首块并阻塞");
+        // 再灌一批粘贴数据，让 Ctrl-C 有东西可丢
+        assert!(w.try_enqueue_paste(&big) > 0, "第二块应被接受");
         w.enqueue_typed(b"typed-before");
         w.enqueue_typed(&[0x03]);
         let st = w.shared.lock();
@@ -357,16 +460,24 @@ mod tests {
             .collect();
         assert_eq!(paste_left, 0, "Ctrl-C 后队列中不应再有粘贴数据");
         assert!(typed.ends_with(&[0x03]), "0x03 应已入队且位于末尾：{typed:?}");
-        assert!(typed.starts_with(b"typed-before"), "键入数据应保留");
+        assert!(
+            typed.starts_with(b"typed-before"),
+            "键入数据应保留：queue={:?}",
+            st.items
+                .iter()
+                .map(|i| (i.paste, String::from_utf8_lossy(&i.bytes).to_string()))
+                .collect::<Vec<_>>()
+        );
         drop(st);
+        sink.release();
         drop(w);
     }
 
     #[test]
     fn write_error_sets_failed_without_panic() {
-        let sink = Sink { fail_kind: Some(ErrorKind::BrokenPipe), ..Default::default() };
-        let w = PtyWriter::spawn(Box::new(sink));
+        let w = PtyWriter::spawn(Box::new(GatedSink::failing(ErrorKind::BrokenPipe)));
         w.enqueue_typed(b"boom");
+        // 失败路径不依赖闸门：写端立即返回 EPIPE。轮询仅为等待写线程收敛。
         for _ in 0..200 {
             if w.failed() {
                 break;
