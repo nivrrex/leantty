@@ -71,6 +71,12 @@ impl Pty for NativePty {
             .ok_or(Error::NotSpawned)
     }
 
+    fn take_writer(&mut self) -> Option<Box<dyn Write + Send>> {
+        // 写端由 NativePty 持有（spawn 时 take_writer 自 master 取出），
+        // 取走后 self.writer 为 None，writer() 将返回 NotSpawned。
+        self.writer.take()
+    }
+
     fn resize(&mut self, cols: u16, rows: u16) -> Result<(), Error> {
         let master = self.master.as_ref().ok_or(Error::NotSpawned)?;
         master.resize(PtySize {

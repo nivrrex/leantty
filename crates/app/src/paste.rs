@@ -156,6 +156,44 @@ pub fn drain_pending<W: std::io::Write + ?Sized>(
     report
 }
 
+/// 把粘贴队列推入写线程的有界队列（阶段 4H t3）。
+///
+/// 与 `drain_pending` 同语义，但"写"变成"入队"：队列满（返回 0）等价于
+/// `WouldBlock`——保留剩余数据、下一轮（`request_redraw` 自驱动）继续，
+/// 主线程不等待。
+pub fn drain_to_writer(
+    queue: &mut std::collections::VecDeque<Vec<u8>>,
+    writer: &crate::writer::PtyWriter,
+    budget: DrainBudget,
+) -> DrainReport {
+    let mut report = DrainReport::default();
+    let mut chunks = 0usize;
+    while let Some(front) = queue.front_mut() {
+        if chunks >= budget.max_chunks || report.bytes_written >= budget.max_bytes {
+            report.budget_exhausted = !queue.is_empty();
+            break;
+        }
+        let n = writer.try_enqueue_paste(front);
+        if n == 0 {
+            if writer.failed() {
+                report.failed = true;
+                queue.clear();
+            } else {
+                report.would_block = true;
+            }
+            break;
+        }
+        report.bytes_written += n;
+        chunks += 1;
+        if n < front.len() {
+            front.drain(..n);
+        } else {
+            queue.pop_front();
+        }
+    }
+    report
+}
+
 #[cfg(test)]
 mod drain_tests {
     use super::*;
@@ -309,5 +347,51 @@ mod drain_tests {
         let r = drain_pending(&mut queue, &mut w, DrainBudget::default());
         assert_eq!(r, DrainReport::default());
         assert!(w.got.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod drain_to_writer_tests {
+    use super::*;
+    use std::collections::VecDeque;
+    use std::io::Write;
+
+    /// 极慢写端：让队列保持在满的状态，用于验证"队列满即停"。
+    struct SlowSink;
+    impl Write for SlowSink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn drain_to_writer_stops_when_queue_full_and_keeps_remainder() {
+        let w = crate::writer::PtyWriter::spawn(Box::new(SlowSink));
+        // 塞满队列
+        let filler = vec![b'f'; crate::writer::WRITER_QUEUE_CAP];
+        assert_eq!(w.try_enqueue_paste(&filler), crate::writer::WRITER_QUEUE_CAP);
+        let mut queue: VecDeque<Vec<u8>> = VecDeque::new();
+        queue.push_back(b"paste-payload".to_vec());
+        let report = drain_to_writer(&mut queue, &w, DrainBudget::default());
+        assert_eq!(report.bytes_written, 0, "队列满时本轮不应写入");
+        assert!(report.would_block, "队列满应等价于 WouldBlock");
+        assert_eq!(queue.len(), 1, "剩余数据应保留");
+        assert_eq!(queue[0], b"paste-payload".to_vec(), "保留内容不得被截断");
+    }
+
+    #[test]
+    fn drain_to_writer_consumes_whole_chunk_when_room() {
+        let w = crate::writer::PtyWriter::spawn(Box::new(std::io::sink()));
+        let mut queue: VecDeque<Vec<u8>> = VecDeque::new();
+        queue.push_back(b"abc".to_vec());
+        queue.push_back(b"def".to_vec());
+        let report = drain_to_writer(&mut queue, &w, DrainBudget::default());
+        assert_eq!(report.bytes_written, 6);
+        assert!(queue.is_empty(), "空间足够时应排空队列");
+        assert!(!report.would_block && !report.failed);
     }
 }

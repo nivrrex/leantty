@@ -30,6 +30,13 @@ pub trait Pty {
     fn take_reader(&mut self) -> Result<Box<dyn Read + Send>, Error>;
     /// 取写句柄。
     fn writer(&mut self) -> Result<&mut dyn Write, Error>;
+    /// 取走**可独立持有**的写端（阶段 4H t3：供 app 侧独立写线程独占使用）。
+    ///
+    /// 默认返回 `None`：调用方沿用 `writer()` 的同步写路径（Windows ConPTY 走此
+    /// 默认实现，行为不变）。取走后 `writer()` 不再可用，二者不应混用。
+    fn take_writer(&mut self) -> Option<Box<dyn Write + Send>> {
+        None
+    }
     /// 调整 PTY 行列。
     fn resize(&mut self, cols: u16, rows: u16) -> Result<(), Error>;
     /// 非阻塞查询子进程退出状态。

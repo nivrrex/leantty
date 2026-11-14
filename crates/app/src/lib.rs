@@ -214,13 +214,14 @@ mod paste;
 mod framepace;
 mod ime;
 mod scrollbar;
+mod writer;
 mod selection;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
 pub use framepace::{next_ema, target_interval, PACE_EMA_ALPHA, PACE_K, PACE_MAX_MS, PACE_MIN_MS};
 pub use ime::{normalize_ime_commit, preedit_display};
 pub use paste::{
-    drain_pending, normalize_paste, paste_chunks, DrainBudget, DrainReport, PASTE_CHUNK,
+    drain_pending, drain_to_writer, normalize_paste, paste_chunks, DrainBudget, DrainReport, PASTE_CHUNK,
 };
 pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
 pub use selection::{
@@ -413,6 +414,7 @@ impl App {
             first_frame_logged: false,
             first_pty_byte_logged: false,
             pre_first_submit_logged: false,
+            writer: None,
             last_loop_at: None,
             loop_report_at: None,
             chan_depth: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
@@ -440,6 +442,11 @@ impl App {
         }
         // run_app 返回后回收：先 close（先释放主端再回收子进程，kill 子进程使 reader
         // 读端得 EOF 而退出），再带超时 join reader 线程（顺序倒置将空等 5s 超时）。
+        // 顺序（阶段 4H t3 契约）：写线程先写空队列并释放写端（PTY 主端一侧），
+        // 再 close（释放 master 并回收子进程），最后带超时 join 读线程。
+        if let Some(mut w) = handler.writer.take() {
+            w.close();
+        }
         if let Some(mut pty) = handler.pty.take() {
             pty.close()?;
         }
@@ -778,6 +785,9 @@ struct AppHandler {
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
     first_pty_byte_logged: bool,
+    /// PTY 写线程（阶段 4H t3）：拿到可独立持有的写端时启用；None = 沿用同步写
+    /// （Windows ConPTY 的 `take_writer` 走 trait 默认实现返回 None）。
+    writer: Option<writer::PtyWriter>,
     /// 上次事件循环迭代时刻（阶段 4G t2a 的 loop gap 观测）。
     last_loop_at: Option<std::time::Instant>,
     /// 下次独立打印 loop gap 的时刻（每 5 秒）。
@@ -1106,6 +1116,18 @@ impl ApplicationHandler for AppHandler {
                 t0.elapsed().as_secs_f64() * 1000.0
             );
         }
+        // 阶段 4H t3：前台程序不读 stdin 时同步写会阻塞主线程（release 实测 1MB
+        // 粘贴停顿 12.9s）。取走可独立持有的写端，交给独立写线程；拿不到
+        // （Windows 默认实现返回 None）则继续用同步写路径。
+        self.writer = pty.take_writer().map(writer::PtyWriter::spawn);
+        if let Some(t0) = crate::start_time() {
+            eprintln!(
+                "[perf] writer_thread_ms={:.2} since_start={:.1} enabled={}",
+                0.0,
+                t0.elapsed().as_secs_f64() * 1000.0,
+                self.writer.is_some()
+            );
+        }
         let mut reader = match pty.take_reader() {
             Ok(r) => r,
             Err(e) => {
@@ -1340,7 +1362,7 @@ impl ApplicationHandler for AppHandler {
                     match route {
                         KeyRoute::Text(s) => {
                             if let Some(pty) = self.pty.as_mut() {
-                                write_pty(pty, s.as_bytes());
+                                write_pty(pty, self.writer.as_ref(), s.as_bytes());
                             }
                         }
                         KeyRoute::Encoded { key, mods } => {
@@ -1349,7 +1371,7 @@ impl ApplicationHandler for AppHandler {
                                     Ok(mut enc) => match enc.encode_key(key, mods, Action::Press) {
                                         Ok(bytes) => {
                                             if let Some(pty) = self.pty.as_mut() {
-                                                write_pty(pty, &bytes);
+                                                write_pty(pty, self.writer.as_ref(), &bytes);
                                             }
                                         }
                                         Err(e) => eprintln!("encode: {}", e),
@@ -1458,6 +1480,13 @@ impl ApplicationHandler for AppHandler {
                     eprintln!("[perf] test_paste_fired");
                     self.paste_from_text(&text);
                     self.test_paste_fired = Some(std::time::Instant::now());
+                    // 停顿统计从"粘贴已入队"这一刻重新起算，避免把启动期的空闲
+                    // 间隔（事件循环等定时唤醒）算成本次粘贴的停顿。
+                    if let Some(pf) = self.perf_frames.as_mut() {
+                        pf.loop_gap_max_us = 0;
+                    }
+                    self.last_loop_at = Some(std::time::Instant::now());
+                    self.loop_report_at = None;
                 }
             } else {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
@@ -1488,6 +1517,14 @@ impl ApplicationHandler for AppHandler {
             let mut report = crate::paste::DrainReport::default();
             let mut pty_gone = false;
             match self.pty.as_mut() {
+                Some(_pty) if self.writer.is_some() => {
+                    // 写线程路径：入队即返回，队列满则本轮到此为止（下一帧继续）。
+                    report = drain_to_writer(
+                        &mut self.pending_paste,
+                        self.writer.as_ref().expect("writer 已判定存在"),
+                        crate::paste::DrainBudget::default(),
+                    );
+                }
                 Some(pty) => match pty.writer() {
                     Ok(w) => {
                         report = drain_pending(
@@ -1608,7 +1645,7 @@ impl ApplicationHandler for AppHandler {
             && let Some(pty) = self.pty.as_mut()
         {
             while let Ok(bytes) = pty_write_rx.try_recv() {
-                write_pty(pty, &bytes);
+                write_pty(pty, self.writer.as_ref(), &bytes);
             }
         }
         // 6. 子进程退出 → 关闭窗口
@@ -1955,6 +1992,12 @@ impl ApplicationHandler for AppHandler {
         if will_render {
             self.update_ime_cursor_area();
         }
+        // 钩子待触发时必须保持定时唤醒：渲染路径在"到期渲染"后不设 ControlFlow，
+        // 事件循环会进入无限 Wait，导致 APP_TEST_PASTE_AT_MS 永远不触发（实测）。
+        #[cfg(debug_assertions)]
+        if let Some(t) = self.test_paste_at {
+            event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+        }
     }
 }
 
@@ -2006,7 +2049,7 @@ impl AppHandler {
                 && let Some(pty) = self.pty.as_mut()
             {
                 match enc.encode_button(action, btn, mods, pos) {
-                    Ok(bytes) => write_pty(pty, &bytes),
+                    Ok(bytes) => write_pty(pty, self.writer.as_ref(), &bytes),
                     Err(e) => eprintln!("mouse encode: {}", e),
                 }
             }
@@ -2114,7 +2157,7 @@ impl AppHandler {
                 && let Some(pty) = self.pty.as_mut()
                 && let Ok(bytes) = enc.encode_button(vt::MouseAction::Motion, None, mods, pos)
             {
-                write_pty(pty, &bytes);
+                write_pty(pty, self.writer.as_ref(), &bytes);
             }
         }
     }
@@ -2134,7 +2177,7 @@ impl AppHandler {
             if !norm.is_empty()
                 && let Some(pty) = self.pty.as_mut()
             {
-                write_pty(pty, norm.as_bytes());
+                write_pty(pty, self.writer.as_ref(), norm.as_bytes());
             }
         }
         self.update_ime_cursor_area();
@@ -2200,14 +2243,14 @@ impl AppHandler {
                     && let Ok(mut enc) = vt.mouse_encoder()
                     && let Ok(bytes) = enc.encode_button(vt::MouseAction::Press, Some(btn), mods, pos)
                 {
-                    write_pty(pty, &bytes);
+                    write_pty(pty, self.writer.as_ref(), &bytes);
                 }
                 if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
                     && let Ok(mut enc) = vt.mouse_encoder()
                     && let Ok(bytes) =
                         enc.encode_button(vt::MouseAction::Release, Some(btn), mods, pos)
                 {
-                    write_pty(pty, &bytes);
+                    write_pty(pty, self.writer.as_ref(), &bytes);
                 }
             }
             return;
@@ -2238,8 +2281,8 @@ impl AppHandler {
                     && let Ok(bytes) = enc.encode_key(key, Mods::empty(), Action::Press)
                     && let Ok(bytes2) = enc.encode_key(key, Mods::empty(), Action::Release)
                 {
-                    write_pty(pty, &bytes);
-                    write_pty(pty, &bytes2);
+                    write_pty(pty, self.writer.as_ref(), &bytes);
+                    write_pty(pty, self.writer.as_ref(), &bytes2);
                 }
             }
             return;
@@ -2496,7 +2539,7 @@ impl AppHandler {
     /// 键入"。测试钩子 `APP_TEST_PASTE` 也走这里，保证门禁验证的是同一段代码。
     fn paste_text(&mut self, text: &str) {
         if let Some(pty) = self.pty.as_mut() {
-            write_pty(pty, text.as_bytes());
+            write_pty(pty, self.writer.as_ref(), text.as_bytes());
         }
         self.urgent_render = true;
         if let Some(w) = self.window.as_ref() {
@@ -2684,8 +2727,16 @@ fn default_key_bindings() -> Vec<config::Binding> {
     ]
 }
 
-/// 写字节到 PTY 并 flush（外部 I/O 失败路径覆盖）。
-fn write_pty(pty: &mut NativePty, bytes: &[u8]) {
+/// 写字节到 PTY：有写线程时入队（主线程不阻塞），否则同步写并 flush。
+///
+/// 阶段 4H t3：前台程序不读 stdin 时同步写会阻塞主线程（实测 12.9s），
+/// 因此 Unix 上写端已交给 `writer::PtyWriter`；Windows（`take_writer` 默认
+/// 返回 None）保持原同步路径，行为不变。
+fn write_pty(pty: &mut NativePty, writer: Option<&writer::PtyWriter>, bytes: &[u8]) {
+    if let Some(w) = writer {
+        w.enqueue_typed(bytes);
+        return;
+    }
     match pty.writer() {
         Ok(w) => {
             if let Err(e) = w.write_all(bytes).and_then(|()| w.flush()) {
