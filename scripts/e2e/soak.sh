@@ -80,7 +80,7 @@ run_backend() { # $1 = cpu|gpu
         # 每轮都持续滚动输出（保证渲染压力连续，避免只有突发负载）
         x11 xdotool type --window "$WID" "seq 1 800"
         x11 xdotool key --window "$WID" Return
-        case $((STEP % 6)) in
+        case $((STEP % 8)) in
             0)
                 # 大量滚动输出（固定种子由 APP_RANDOM_SEED 控制渲染随机性）
                 x11 xdotool type --window "$WID" "seq 1 6000 | tail -n +1"
@@ -119,6 +119,39 @@ run_backend() { # $1 = cpu|gpu
                 x11 xdotool mousemove $(( ${WX:-0} + 300 )) $(( ${WY:-0} + 200 ))
                 sleep 0.2
                 x11 xdotool mouseup 1
+                ;;
+            6)
+                # 阶段 4J t6：滚轮上滚进 scrollback 后再滚回底部（覆盖视口光标隐藏
+                # 与 auto-follow 恢复路径）
+                GC=$(x11 xdotool getwindowgeometry --shell "$WID")
+                CCX=$(echo "$GC" | grep '^X=' | cut -d= -f2)
+                CCY=$(echo "$GC" | grep '^Y=' | cut -d= -f2)
+                CCW=$(echo "$GC" | grep '^WIDTH=' | cut -d= -f2)
+                CCH=$(echo "$GC" | grep '^HEIGHT=' | cut -d= -f2)
+                x11 xdotool mousemove $(( ${CCX:-0} + ${CCW:-800} / 2 )) $(( ${CCY:-0} + ${CCH:-500} / 2 ))
+                n=0; while [ $n -lt 8 ]; do x11 xdotool click 4; n=$((n+1)); done
+                sleep 0.3
+                n=0; while [ $n -lt 14 ]; do x11 xdotool click 5; n=$((n+1)); done
+                ;;
+            7)
+                # 阶段 4J t6：粘贴进行中发 Ctrl-C 取消（写线程丢弃未写数据 + 补发
+                # ESC[201~ 的路径），每 10 轮至少一次（本分支每 8 轮一次）
+                x11 xdotool type --window "$WID" "sleep 20"
+                x11 xdotool key --window "$WID" Return
+                sleep 0.8
+                x11 xclip -selection clipboard -i "$CLIP_FILE" >/dev/null 2>&1 &
+                CLIP_PID=$!
+                sleep 0.4
+                GC=$(x11 xdotool getwindowgeometry --shell "$WID")
+                CCX=$(echo "$GC" | grep '^X=' | cut -d= -f2)
+                CCY=$(echo "$GC" | grep '^Y=' | cut -d= -f2)
+                x11 xdotool mousemove $(( ${CCX:-0} + 100 )) $(( ${CCY:-0} + 100 ))
+                x11 xdotool click --delay 0 3
+                sleep 2
+                x11 xdotool key --window "$WID" ctrl+c
+                sleep 0.5
+                kill -TERM "$CLIP_PID" 2>/dev/null
+                CLIP_PID=""
                 ;;
             5)
                 # 滚动条拖动（右缘 12px 条带内）
@@ -205,6 +238,8 @@ run_backend() { # $1 = cpu|gpu
     done
 
     echo "  [perf] 帧日志条数=$(grep -c '\[perf\] frames n=' "$LOG" 2>/dev/null || echo 0)"
+    LG=$(grep -oE 'loop_gap_ms=[0-9]+' "$LOG" | cut -d= -f2 | sort -n | tail -1)
+    echo "  [perf] loop_gap 最大值=${LG:-NA}ms（长跑负载下仅作观测，不作为门限）"
     echo "  采集表：$CSV"
 }
 
