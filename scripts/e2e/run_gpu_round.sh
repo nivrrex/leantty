@@ -261,6 +261,84 @@ else
     echo "FAIL gpu-round-cursor-hidden-on-scroll (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：Ctrl-C 截断括号粘贴后 bash 不得卡住"
+CFG41G="$OUT/gpu-round-bracketed-cancel.toml"
+W41G="$OUT/gpu-round-wedge.txt"
+CLIP41G="$OUT/gpu-round-clip.txt"
+rm -f "$W41G"
+printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG41G"
+awk 'BEGIN { for (i = 0; i < 130000; i++) printf "paste5m_line_%06d_yyyyyyyyyyyyyy\n", i }' > "$CLIP41G"
+L="$OUT/gpu-round-bracketed-cancel.log"
+if start_gpu_app "$CFG41G" "$L" ""; then
+    sleep 1.5
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    x11 xclip -selection clipboard -i "$CLIP41G" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO" | grep '^X=' | cut -d= -f2); GY=$(echo "$GEO" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO" | grep '^WIDTH=' | cut -d= -f2); GH=$(echo "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-400} / 2 )) $(( ${GY:-0} + ${GH:-300} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 0.6
+    x11 xdotool key --window "$WID" ctrl+c
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    sleep 1.2
+    x11 xdotool type --window "$WID" "echo WEDGE_OK_\$((1+1)) > $W41G"
+    x11 xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 30 ]; do
+        [ -s "$W41G" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    DROP=$(grep -oE "ctrl_c_drop_paste bytes=[0-9]+" "$L" | tail -1 | cut -d= -f2)
+    WOK=$(grep -c "WEDGE_OK_2" "$W41G" 2>/dev/null || true)
+    echo "  丢弃=${DROP:-0}B 探针=$WOK"
+    if [ "${DROP:-0}" -gt 0 ] && [ "${WOK:-0}" -ge 1 ]; then
+        echo "PASS gpu-round-bracketed-paste-ctrl-c"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-bracketed-paste-ctrl-c (dropped=${DROP:-0} ok=${WOK:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+echo "--- GPU 轮：OSC 4 / OSC 104 在 app 层生效"
+CFG42G="$OUT/gpu-round-osc-color.toml"
+printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42G"
+L="$OUT/gpu-round-osc-color.log"
+cnt42() { convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" -format "%[fx:int(mean*w*h)]" info: 2>/dev/null; }
+if start_gpu_app "$CFG42G" "$L" ""; then
+    sleep 1.5
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.5
+    x11 xdotool type --window "$WID" "printf '\\033]4;1;rgb:aa/bb/cc\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/gpu-round-osc4.png" 2>/dev/null
+    A=$(cnt42 "$OUT/gpu-round-osc4.png" "#aabbcc")
+    x11 xdotool type --window "$WID" "printf '\\033]104\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/gpu-round-osc104.png" 2>/dev/null
+    B=$(cnt42 "$OUT/gpu-round-osc104.png" "#d32f2f")
+    echo "  OSC4 后 #AABBCC=$A；OSC104 后配置红 #d32f2f=$B"
+    if [ "${A:-0}" -ge 500 ] && [ "${B:-0}" -ge 500 ]; then
+        echo "PASS gpu-round-osc4-osc104"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-osc4-osc104 (osc4=${A:-0} cfg_red=${B:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-osc4-osc104 (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then

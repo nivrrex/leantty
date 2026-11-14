@@ -246,6 +246,11 @@ struct PerfFrames {
     chan_depth_max: usize,
     /// 本窗口内"两次事件循环迭代"的最大间隔（阶段 4G t2a，用于量化主线程停顿）。
     loop_gap_max_us: u128,
+    /// 单次迭代内 feed 的总耗时峰值与对应字节数（阶段 4I t3 归因）。
+    feed_ms_max: f64,
+    feed_bytes_max: u64,
+    /// 写线程队列深度峰值（阶段 4I t3 归因）。
+    writer_queued_max: usize,
 }
 
 impl PerfFrames {
@@ -275,12 +280,16 @@ impl PerfFrames {
             .map(|s| self.feed_bytes as f64 / s)
             .unwrap_or(0.0);
         eprintln!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={}",
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={}",
             Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
-            feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000
+            feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000,
+            self.feed_ms_max, self.feed_bytes_max, self.writer_queued_max
         );
         self.coalesced = 0;
         self.loop_gap_max_us = 0;
+        self.feed_ms_max = 0.0;
+        self.feed_bytes_max = 0;
+        self.writer_queued_max = 0;
         self.feed_bytes = 0;
         self.chan_depth_max = 0;
         self.window_start = Some(std::time::Instant::now());
@@ -352,6 +361,10 @@ impl App {
             );
         }
         let mut handler = AppHandler {
+            perf_reset_at: std::env::var("APP_PERF_RESET_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .map(|ms| Instant::now() + std::time::Duration::from_millis(ms)),
             config: Some(self),
             selection: None,
             mouse_down: false,
@@ -792,6 +805,8 @@ struct AppHandler {
     last_loop_at: Option<std::time::Instant>,
     /// 下次独立打印 loop gap 的时刻（每 5 秒）。
     loop_report_at: Option<std::time::Instant>,
+    /// 观测窗口重置时刻（阶段 4I t3，`APP_PERF_RESET_MS`，release 可用）。
+    perf_reset_at: Option<std::time::Instant>,
     /// 首帧提交前一刻是否已打印（阶段 4C t3 启动打点）。
     pre_first_submit_logged: bool,
     /// 有界 channel 的"已入队未取走"计数（reader 加、主线程减），用于
@@ -1370,6 +1385,15 @@ impl ApplicationHandler for AppHandler {
                                 match vt.key_encoder() {
                                     Ok(mut enc) => match enc.encode_key(key, mods, Action::Press) {
                                         Ok(bytes) => {
+                                            // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
+                                            // 写线程只能丢弃"已在队列里"的块（并补发括号
+                                            // 粘贴结束标记），但 app 侧的 pending_paste
+                                            // 会在下一帧继续回灌，粘贴实际没停（实测：
+                                            // 首次 Ctrl-C 后仍持续写入，第二次 Ctrl-C 又丢
+                                            // 1MiB）。中断语义要求粘贴整体作废，故此处清空。
+                                            if bytes.contains(&0x03) {
+                                                self.pending_paste.clear();
+                                            }
                                             if let Some(pty) = self.pty.as_mut() {
                                                 write_pty(pty, self.writer.as_ref(), &bytes);
                                             }
@@ -1443,6 +1467,26 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // 阶段 4I t3：观测窗口重置（APP_PERF_RESET_MS，默认关闭）。用于把启动期
+        // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
+        if let Some(t) = self.perf_reset_at
+            && Instant::now() >= t
+        {
+            self.perf_reset_at = None;
+            if let Some(pf) = self.perf_frames.as_mut() {
+                pf.loop_gap_max_us = 0;
+                pf.feed_ms_max = 0.0;
+                pf.feed_bytes_max = 0;
+                pf.writer_queued_max = 0;
+                pf.chan_depth_max = 0;
+                pf.coalesced = 0;
+                pf.feed_bytes = 0;
+                pf.window_start = Some(Instant::now());
+            }
+            self.last_loop_at = Some(Instant::now());
+            self.loop_report_at = None;
+            eprintln!("[perf] window_reset");
+        }
         // 阶段 4G t2a 观测：两次事件循环迭代的最大间隔（主线程停顿的直接度量）。
         // 仅在 APP_PERF_FRAMES 开启时统计（默认关闭，代价一次 Option 判空）。
         if self.perf_frames.is_some() {
@@ -1463,7 +1507,16 @@ impl ApplicationHandler for AppHandler {
                     .as_ref()
                     .map(|p| p.loop_gap_max_us / 1000)
                     .unwrap_or(0);
-                eprintln!("[perf] loop_gap_ms={ms}");
+                // 同时带上迭代级归因字段：慢渲染/少帧场景下 frames 行可能不出现，
+                // 只有这条 5 秒线才能给出"停顿期间 feed 花了多少"。
+                let (fms, fb, wq) = self
+                    .perf_frames
+                    .as_ref()
+                    .map(|p| (p.feed_ms_max, p.feed_bytes_max, p.writer_queued_max))
+                    .unwrap_or((0.0, 0, 0));
+                eprintln!(
+                    "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq}"
+                );
                 if let Some(pf) = self.perf_frames.as_mut() {
                     pf.loop_gap_max_us = 0;
                 }
@@ -1546,6 +1599,14 @@ impl ApplicationHandler for AppHandler {
                 },
                 None => pty_gone = true,
             }
+            if let Some(w) = self.writer.as_ref()
+                && let Some(pf) = self.perf_frames.as_mut()
+            {
+                let q = w.queued_bytes();
+                if q > pf.writer_queued_max {
+                    pf.writer_queued_max = q;
+                }
+            }
             if pty_gone {
                 // 窗口/PTY 已关闭：未发完的数据丢弃，不挂起事件循环。
                 self.pending_paste.clear();
@@ -1579,6 +1640,9 @@ impl ApplicationHandler for AppHandler {
             && let Some(vt) = self.vt.as_mut()
         {
             let mut n_drained = 0usize;
+            // 阶段 4I t3：单次迭代内 feed 的总耗时与字节数（归因"主线程停在哪"）。
+            let t_feed = Instant::now();
+            let mut iter_feed_bytes = 0u64;
             while let Ok(bytes) = rx.try_recv() {
                 if !self.first_pty_byte_logged {
                     self.first_pty_byte_logged = true;
@@ -1597,10 +1661,23 @@ impl ApplicationHandler for AppHandler {
                 // 阶段 4C t3 观测：累计喂入字节（release 亦可用，仅一次 Option 判空）
                 self.chan_depth
                     .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+                iter_feed_bytes += n as u64;
                 if let Some(pf) = self.perf_frames.as_mut() {
                     pf.feed_bytes += n as u128;
                     if pf.window_start.is_none() {
                         pf.window_start = Some(std::time::Instant::now());
+                    }
+                }
+            }
+            // 单次迭代 feed 峰值（只有真的喂过数据才记录）
+            if iter_feed_bytes > 0 {
+                let ms = t_feed.elapsed().as_secs_f64() * 1000.0;
+                if let Some(pf) = self.perf_frames.as_mut() {
+                    if ms > pf.feed_ms_max {
+                        pf.feed_ms_max = ms;
+                    }
+                    if iter_feed_bytes > pf.feed_bytes_max {
+                        pf.feed_bytes_max = iter_feed_bytes;
                     }
                 }
             }

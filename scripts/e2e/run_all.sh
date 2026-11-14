@@ -1689,15 +1689,16 @@ if wait_window; then
     # 前台：非规范模式 + 忙等 14s 不读 stdin（此时终端输入队列很快被占满）
     x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 14'"
     x11 xdotool key --window "$WID" Return
-    sleep 2.6
-    # 粘贴窗口内持续驱动事件（每 40ms 一次鼠标移动）：主线程被 write 阻塞时
-    # 事件无法处理，每次迭代的间隔就会等于阻塞时长。
+    # 单进程链式驱动（110 × 40ms ≈ 4.4s）：紧接命令之后开始，覆盖 2.5s 的粘贴触发点。
+    # 若在粘贴触发后才开始驱动，第一个 gap 会是"等事件"的空闲间隔（实测 ≈90ms），
+    # 会被误当成停顿。每次派生 xdotool 约 90ms，也会把 gap 变成驱动周期，故用链路。
+    CH38=""
     n=0
     while [ $n -lt 110 ]; do
-        x11 xdotool mousemove_relative 1 0
-        sleep 0.04
+        CH38="$CH38 mousemove_relative 1 0 sleep 0.04"
         n=$((n+1))
     done
+    x11 xdotool $CH38
     # 粘贴进行中缩放：仍应重绘（几何变化 + 画面变化）
     x11 import -window "$WID" "$OUT/case38-pre-resize.png" 2>/dev/null
     x11 xdotool windowsize "$WID" 720 420
@@ -1722,14 +1723,19 @@ if wait_window; then
     HAS_PROMPT=$(printf '%s' "$DUMP38" | grep -c "sh-5.2#" || true)
     # 未写出的粘贴数据应被丢弃：1MB 素材的最后一行不得出现在网格里
     HAS_TAIL=$(printf '%s' "$DUMP38" | grep -c "paste38_line_019999" || true)
+    A38=$(sed -n '/test_paste_fired/,$p' "$L38")
+    FMS38=$(printf '%s' "$A38" | grep -oE "feed_ms_max=[0-9.]+" | cut -d= -f2 | sort -n | tail -1)
+    FB38=$(printf '%s' "$A38" | grep -oE "feed_bytes_max=[0-9]+" | cut -d= -f2 | sort -n | tail -1)
+    WQ38=$(printf '%s' "$A38" | grep -oE "writer_queued_max=[0-9]+" | cut -d= -f2 | sort -n | tail -1)
     echo "  粘贴窗口 loop_gap_max=${MAX38:-NA}ms（阈值 <100）缩放后宽=${W38:-NA} 截图宽 $SZPRE→$SZPOST"
+    echo "  归因：feed_ms_max=${FMS38:-NA} feed_bytes_max=${FB38:-NA} writer_queued_max=${WQ38:-NA}"
     echo "  Ctrl-C 后：提示符=$HAS_PROMPT 未写粘贴尾行=$HAS_TAIL 画面静止=$AE38B"
     if [ "${MAX38:-9999}" -lt 100 ] && [ "${SZPRE:-0}" != "${SZPOST:-0}" ] \
         && [ "$HAS_PROMPT" -ge 1 ] && [ "$HAS_TAIL" -eq 0 ] && [ "${AE38B:-9}" -eq 0 ]; then
         echo "PASS case38-paste-no-main-thread-stall (gap=${MAX38}ms prompt=$HAS_PROMPT tail=$HAS_TAIL)"
         PASS=$((PASS+1))
     else
-        echo "FAIL case38-paste-no-main-thread-stall (gap=${MAX38:-NA} resize=${SZPRE:-?}->${SZPOST:-?} prompt=$HAS_PROMPT tail=$HAS_TAIL settled=$AE38B)"
+        echo "FAIL case38-paste-no-main-thread-stall (gap=${MAX38:-NA} resize=${SZPRE:-?}->${SZPOST:-?} prompt=$HAS_PROMPT tail=$HAS_TAIL settled=$AE38B feed_ms=${FMS38:-NA} feed_b=${FB38:-NA})"
         FAIL=$((FAIL+1))
     fi
     stop_app
@@ -1821,6 +1827,106 @@ if wait_window; then
     kill -0 "${SHELL_PID:-0}" 2>/dev/null && kill_own "$SHELL_PID"
 else
     echo "FAIL case40-close-during-paste (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 41（4I-t2）：Ctrl-C 截断括号粘贴后 bash 不得卡住。
+#   病史（已验证）：5MB 括号粘贴写入中途按 Ctrl-C，写线程丢弃队列里 1MiB 未写数据
+#   （含结束标记 ESC[201~），且 app 侧 pending_paste 继续回灌 → readline 永久停留在
+#   "粘贴内容"状态，之后键入不执行（修复前 5/5 复现）。修复 = 写线程在 0x03 前补发
+#   ESC[201~ + app 在 Ctrl-C 时清空 pending_paste。
+CFG41="$OUT/case41-bracketed-cancel.toml"
+L41="$OUT/case41-bracketed-cancel.log"
+CLIP41="$OUT/case41-clip.txt"
+W41="$OUT/case41-wedge.txt"
+rm -f "$W41"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG41"
+awk 'BEGIN { for (i = 0; i < 130000; i++) printf "paste5m_line_%06d_yyyyyyyyyyyyyy\n", i }' > "$CLIP41"
+APP_CONFIG="$CFG41" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_BIN" >"$L41" 2>&1 &
+APP_PID=$!
+if wait_window; then
+    sleep 1.2
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    x11 xclip -selection clipboard -i "$CLIP41" >/dev/null 2>&1 &
+    CLIP_PID=$!
+    sleep 0.5
+    GEO41=$(x11 xdotool getwindowgeometry --shell "$WID")
+    GX=$(echo "$GEO41" | grep '^X=' | cut -d= -f2)
+    GY=$(echo "$GEO41" | grep '^Y=' | cut -d= -f2)
+    GW=$(echo "$GEO41" | grep '^WIDTH=' | cut -d= -f2)
+    GH=$(echo "$GEO41" | grep '^HEIGHT=' | cut -d= -f2)
+    x11 xdotool mousemove $(( ${GX:-0} + ${GW:-400} / 2 )) $(( ${GY:-0} + ${GH:-300} / 2 ))
+    sleep 0.2
+    x11 xdotool click 3
+    sleep 0.6
+    x11 xdotool key --window "$WID" ctrl+c
+    kill -TERM "${CLIP_PID:-}" 2>/dev/null
+    CLIP_PID=""
+    sleep 1.2
+    # 探针命令：若 readline 仍在粘贴状态，这行不会被执行
+    x11 xdotool type --window "$WID" "echo WEDGE_OK_\$((1+1)) > $W41"
+    x11 xdotool key --window "$WID" Return
+    i=0
+    while [ $i -lt 30 ]; do
+        [ -s "$W41" ] && break
+        sleep 0.5
+        i=$((i+1))
+    done
+    DROP41=$(grep -oE "ctrl_c_drop_paste bytes=[0-9]+" "$L41" | tail -1 | cut -d= -f2)
+    WOK41=$(grep -c "WEDGE_OK_2" "$W41" 2>/dev/null || true)
+    echo "  Ctrl-C 丢弃=${DROP41:-0}B 探针等待=$((i*500))ms 探针结果=$WOK41"
+    # 必须证明"写入中途被截断"（丢弃 >0）且之后命令能正常执行
+    if [ "${DROP41:-0}" -gt 0 ] && [ "${WOK41:-0}" -ge 1 ]; then
+        echo "PASS case41-bracketed-paste-ctrl-c (dropped=${DROP41}B)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case41-bracketed-paste-ctrl-c (dropped=${DROP41:-0} wedge_ok=${WOK41:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case41-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
+# 用例 42（4I-t4）：OSC 4（改索引色）与 OSC 104（重置）在**app 层**生效。
+#   背景：Windows 3G 证明 OSC 4 能到达 app、OSC 104 被 ConPTY 丢弃；3F-b 的
+#   "OSC 4 在 app 层不生效"证据不足。本用例在 Linux 上给结论：配置 normal.red =
+#   #d32f2f；OSC 4;1;rgb:aa/bb/cc（BEL）后 ESC[31m 的反色实心块应为 #AABBCC；
+#   OSC 104（重置）后同样的块应回到配置 #d32f2f（不是内置默认 #CC6666）。
+#   取样用反色实心块（10 格 ≈1280px）而非文字笔画：文字抗锯齿下精确色像素只有个位数。
+CFG42="$OUT/case42-osc-color.toml"
+L42="$OUT/case42-osc-color.log"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42"
+APP_CONFIG="$CFG42" APP_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/sh "$APP_BIN" >"$L42" 2>&1 &
+APP_PID=$!
+count42() { # $1=img $2=#rrggbb（先黑化非目标色再白化目标色，与 case36/37 同口径）
+    convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
+        -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
+}
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    # OSC 4 改索引色 1 → 再用 ESC[31m + 反色画实心块
+    x11 xdotool type --window "$WID" "printf '\\033]4;1;rgb:aa/bb/cc\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$OUT/case42-after-osc4.png" 2>/dev/null
+    C42A=$(count42 "$OUT/case42-after-osc4.png" "#aabbcc")
+    # OSC 104 重置 → 同一块应回到配置 normal.red
+    x11 xdotool type --window "$WID" "printf '\\033]104\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$OUT/case42-after-osc104.png" 2>/dev/null
+    C42B=$(count42 "$OUT/case42-after-osc104.png" "#d32f2f")
+    C42D=$(count42 "$OUT/case42-after-osc104.png" "#cc6666")
+    echo "  OSC4 后 #AABBCC=$C42A；OSC104 后配置红 #d32f2f=$C42B（内置默认 #CC6666=$C42D）"
+    if [ "${C42A:-0}" -ge 500 ] && [ "${C42B:-0}" -ge 500 ]; then
+        echo "PASS case42-osc4-osc104 (osc4=$C42A cfg_red=$C42B builtin=$C42D)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case42-osc4-osc104 (osc4=${C42A:-0} cfg_red=${C42B:-0} builtin=${C42D:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case42-osc4-osc104 (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
