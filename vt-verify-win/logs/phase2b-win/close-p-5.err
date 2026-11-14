@@ -1,0 +1,34 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=16.0
+[perf] app_new_ms=0.0 since_start=38.1
+[perf] event_loop_ms=14.0 since_start=79.0
+[perf] cpu_new_begin_ms=0.0 since_start=101.6
+[perf] fontdb_ms=41.1 since_start=161.3
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=185.0
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=22 read_ms=10.65 parse_ms=408.77 since_start=628.6
+[perf] font_cache_ms=158.99 since_start=849.0 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=711.5 since_start=896.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=952.0
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=181.8 since_start=1133.8
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1174.9
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=156.6 since_start=1331.6
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1376.7
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=168.4 since_start=1545.0
+[perf] cpu_groups_ms=1527.4 since_start=1647.6
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1569.9 since_start=1671.5
+[perf] cpu_state_ms=0.00 since_start=1690.2
+[perf] pre_window_ms=1615.3 since_start=1716.9
+[perf] window_ms=58.3 since_start=1801.7
+[perf] ime_ms=3.64 since_start=1855.3
+[perf] renderer_build_ms=0.0 since_start=1875.1 backend=cpu
+[perf] renderer_ready_ms=1902.0 since_start=1902.0
+[perf] surface_ms=0.9 since_start=1921.4
+[perf] vt_new_ms=0.12 since_start=1946.6
+[perf] pty_spawn_ms=8.8 since_start=1973.0
+[perf] writer_thread_ms=0.00 since_start=1992.9 enabled=true
+[perf] pre_first_submit_ms=2017 since_start=2017
+[perf] first_frame_ms=2047
+[perf] first_pty_byte_ms=2057 since_start=2057
+[perf] bg_fonts_ms=2589 count=3
+pty writer: join 超时（2s），已分离线程（对端长期不读）

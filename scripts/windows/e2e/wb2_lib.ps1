@@ -22,6 +22,8 @@ Copy-Item (Join-Path $ROOT 'vt-verify-win\inv_block.ps1') (Join-Path $env:TEMP '
 Copy-Item (Join-Path $ROOT 'vt-verify-win\inv_red.ps1') (Join-Path $env:TEMP 'inv_red.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc4_red.ps1') (Join-Path $env:TEMP 'osc4_red.ps1') -Force
 Copy-Item (Join-Path $ROOT 'vt-verify-win\osc104_red.ps1') (Join-Path $env:TEMP 'osc104_red.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc\osc4_bg.ps1') (Join-Path $env:TEMP 'osc4_bg.ps1') -Force
+Copy-Item (Join-Path $ROOT 'vt-verify-win\osc\osc104_bg.ps1') (Join-Path $env:TEMP 'osc104_bg.ps1') -Force
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 $PASS = 0; $FAIL = 0
 Add-Type -AssemblyName System.Windows.Forms

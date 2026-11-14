@@ -1,0 +1,33 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.8 since_start=6.1
+[perf] app_new_ms=0.0 since_start=31.3
+[perf] event_loop_ms=15.3 since_start=78.1
+[perf] cpu_new_begin_ms=0.0 since_start=106.1
+[perf] fontdb_ms=46.2 since_start=172.8
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=197.7
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=21 read_ms=9.97 parse_ms=427.24 since_start=660.2
+[perf] font_cache_ms=139.18 since_start=863.8 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=701.0 since_start=898.7
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=941.5
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=148.1 since_start=1089.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1134.4
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=160.6 since_start=1295.0
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1339.6
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=160.1 since_start=1499.7
+[perf] cpu_groups_ms=1448.6 since_start=1575.2
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1492.0 since_start=1598.1
+[perf] cpu_state_ms=0.00 since_start=1616.4
+[perf] pre_window_ms=1528.0 since_start=1634.1
+[perf] window_ms=64.4 since_start=1719.5
+[perf] ime_ms=5.00 since_start=1753.2
+[perf] renderer_build_ms=0.0 since_start=1774.2 backend=cpu
+[perf] renderer_ready_ms=1802.5 since_start=1802.5
+[perf] surface_ms=14.8 since_start=1847.7
+[perf] vt_new_ms=0.18 since_start=1873.0
+[perf] pty_spawn_ms=10.1 since_start=1903.8
+[perf] writer_thread_ms=0.00 since_start=1950.2 enabled=true
+[perf] first_pty_byte_ms=1986 since_start=1986
+[perf] pre_first_submit_ms=1998 since_start=1998
+[perf] first_frame_ms=2016
+[perf] bg_fonts_ms=2540 count=3

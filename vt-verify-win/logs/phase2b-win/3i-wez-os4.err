@@ -1,0 +1,33 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=14.7
+[perf] app_new_ms=0.0 since_start=35.0
+[perf] event_loop_ms=23.6 since_start=79.6
+[perf] cpu_new_begin_ms=0.0 since_start=101.0
+[perf] fontdb_ms=36.9 since_start=159.4
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=184.2
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=21 read_ms=11.16 parse_ms=416.11 since_start=636.4
+[perf] font_cache_ms=145.34 since_start=845.9 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=694.4 since_start=878.7
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=920.5
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=142.2 since_start=1062.7
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1106.4
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=147.0 since_start=1253.4
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1310.4
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=153.7 since_start=1464.0
+[perf] cpu_groups_ms=1439.9 since_start=1562.3
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1483.0 since_start=1584.0
+[perf] cpu_state_ms=0.00 since_start=1601.4
+[perf] pre_window_ms=1515.6 since_start=1616.6
+[perf] window_ms=61.5 since_start=1698.7
+[perf] ime_ms=3.46 since_start=1721.6
+[perf] renderer_build_ms=0.0 since_start=1745.4 backend=cpu
+[perf] renderer_ready_ms=1763.3 since_start=1763.3
+[perf] surface_ms=4.9 since_start=1788.6
+[perf] vt_new_ms=0.13 since_start=1809.1
+[perf] pty_spawn_ms=75.9 since_start=1901.7
+[perf] writer_thread_ms=0.00 since_start=1923.3 enabled=true
+[perf] pre_first_submit_ms=1951 since_start=1951
+[perf] first_frame_ms=1981
+[perf] first_pty_byte_ms=1992 since_start=1992
+[perf] bg_fonts_ms=2494 count=3

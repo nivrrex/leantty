@@ -1,0 +1,415 @@
+=== run 1 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 2 ===
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 3 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 4 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 5 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 6 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 7 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::order_is_preserved ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 8 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 9 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 10 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 11 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 12 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... FAILED
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+thread 'writer::tests::paste_queue_respects_cap' (7196) panicked at crates\app\src\writer.rs:322:9:
+接受量不应远超上限（accepted=1114112）
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+=== run 13 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::paste_queue_respects_cap ... FAILED
+test writer::tests::write_error_sets_failed_without_panic ... ok
+thread 'writer::tests::paste_queue_respects_cap' (11036) panicked at crates\app\src\writer.rs:322:9:
+接受量不应远超上限（accepted=1179648）
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+=== run 14 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 15 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... FAILED
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+thread 'writer::tests::paste_queue_respects_cap' (1248) panicked at crates\app\src\writer.rs:322:9:
+接受量不应远超上限（accepted=1114112）
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+=== run 16 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 17 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::paste_queue_respects_cap ... FAILED
+thread 'writer::tests::paste_queue_respects_cap' (12092) panicked at crates\app\src\writer.rs:322:9:
+接受量不应远超上限（accepted=1179648）
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.02s
+=== run 18 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 19 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 20 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 21 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 22 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 23 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 24 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::order_is_preserved ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 25 ===
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::paste_queue_respects_cap ... FAILED
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+thread 'writer::tests::paste_queue_respects_cap' (2732) panicked at crates\app\src\writer.rs:322:9:
+接受量不应远超上限（accepted=1179648）
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+=== run 26 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 27 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 28 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 29 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.03s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+=== run 30 ===
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
