@@ -1,0 +1,35 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=5.4
+[perf] app_new_ms=0.0 since_start=24.9
+[perf] event_loop_ms=6.6 since_start=50.3
+[perf] cpu_new_begin_ms=0.0 since_start=71.3
+[perf] fontdb_ms=41.5 since_start=132.8
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=158.2
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=39 read_ms=11.02 parse_ms=398.34 since_start=592.2
+[perf] font_cache_ms=143.19 since_start=791.6 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=667.3 since_start=825.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=894.9
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=151.0 since_start=1045.9
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1087.8
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=137.3 since_start=1225.1
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1282.4
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=161.9 since_start=1444.2
+[perf] cpu_groups_ms=1421.4 since_start=1512.7
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1463.9 since_start=1535.2
+[perf] cpu_state_ms=0.00 since_start=1555.0
+[perf] pre_window_ms=1501.8 since_start=1573.1
+[perf] window_ms=54.3 since_start=1645.3
+[perf] ime_ms=4.63 since_start=1671.6
+[perf] renderer_build_ms=0.0 since_start=1691.8 backend=cpu
+[perf] renderer_ready_ms=1714.8 since_start=1714.8
+[perf] surface_ms=1.3 since_start=1737.7
+[perf] vt_new_ms=0.13 since_start=1758.0
+[perf] pty_spawn_ms=9.8 since_start=1787.6
+[perf] writer_thread_ms=0.00 since_start=1808.4 enabled=false
+[perf] loop_gap_ms=0
+[perf] first_pty_byte_ms=1846 since_start=1846
+[perf] pre_first_submit_ms=1859 since_start=1859
+[perf] first_frame_ms=1873
+[perf] bg_fonts_ms=2360 count=3
+[perf] loop_gap_ms=760
