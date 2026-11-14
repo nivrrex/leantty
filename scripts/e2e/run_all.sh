@@ -1886,6 +1886,49 @@ else
     echo "FAIL case41-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+# 用例 42（4I-t4）：OSC 4（改索引色）与 OSC 104（重置）在**app 层**生效。
+#   背景：Windows 3G 证明 OSC 4 能到达 app、OSC 104 被 ConPTY 丢弃；3F-b 的
+#   "OSC 4 在 app 层不生效"证据不足。本用例在 Linux 上给结论：配置 normal.red =
+#   #d32f2f；OSC 4;1;rgb:aa/bb/cc（BEL）后 ESC[31m 的反色实心块应为 #AABBCC；
+#   OSC 104（重置）后同样的块应回到配置 #d32f2f（不是内置默认 #CC6666）。
+#   取样用反色实心块（10 格 ≈1280px）而非文字笔画：文字抗锯齿下精确色像素只有个位数。
+CFG42="$OUT/case42-osc-color.toml"
+L42="$OUT/case42-osc-color.log"
+printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42"
+APP_CONFIG="$CFG42" APP_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/sh "$APP_BIN" >"$L42" 2>&1 &
+APP_PID=$!
+count42() { # $1=img $2=#rrggbb（先黑化非目标色再白化目标色，与 case36/37 同口径）
+    convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
+        -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
+}
+if wait_window; then
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.8
+    # OSC 4 改索引色 1 → 再用 ESC[31m + 反色画实心块
+    x11 xdotool type --window "$WID" "printf '\\033]4;1;rgb:aa/bb/cc\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$OUT/case42-after-osc4.png" 2>/dev/null
+    C42A=$(count42 "$OUT/case42-after-osc4.png" "#aabbcc")
+    # OSC 104 重置 → 同一块应回到配置 normal.red
+    x11 xdotool type --window "$WID" "printf '\\033]104\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.2
+    x11 import -window "$WID" "$OUT/case42-after-osc104.png" 2>/dev/null
+    C42B=$(count42 "$OUT/case42-after-osc104.png" "#d32f2f")
+    C42D=$(count42 "$OUT/case42-after-osc104.png" "#cc6666")
+    echo "  OSC4 后 #AABBCC=$C42A；OSC104 后配置红 #d32f2f=$C42B（内置默认 #CC6666=$C42D）"
+    if [ "${C42A:-0}" -ge 500 ] && [ "${C42B:-0}" -ge 500 ]; then
+        echo "PASS case42-osc4-osc104 (osc4=$C42A cfg_red=$C42B builtin=$C42D)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case42-osc4-osc104 (osc4=${C42A:-0} cfg_red=${C42B:-0} builtin=${C42D:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL case42-osc4-osc104 (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

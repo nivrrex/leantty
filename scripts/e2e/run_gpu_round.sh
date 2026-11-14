@@ -308,6 +308,37 @@ else
     echo "FAIL gpu-round-bracketed-paste-ctrl-c (窗口未出现)"; FAIL=$((FAIL+1))
 fi
 
+echo "--- GPU 轮：OSC 4 / OSC 104 在 app 层生效"
+CFG42G="$OUT/gpu-round-osc-color.toml"
+printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42G"
+L="$OUT/gpu-round-osc-color.log"
+cnt42() { convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" -format "%[fx:int(mean*w*h)]" info: 2>/dev/null; }
+if start_gpu_app "$CFG42G" "$L" ""; then
+    sleep 1.5
+    x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+    x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    sleep 0.5
+    x11 xdotool type --window "$WID" "printf '\\033]4;1;rgb:aa/bb/cc\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/gpu-round-osc4.png" 2>/dev/null
+    A=$(cnt42 "$OUT/gpu-round-osc4.png" "#aabbcc")
+    x11 xdotool type --window "$WID" "printf '\\033]104\\007\\033[31m\\033[7m          \\033[0m\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/gpu-round-osc104.png" 2>/dev/null
+    B=$(cnt42 "$OUT/gpu-round-osc104.png" "#d32f2f")
+    echo "  OSC4 后 #AABBCC=$A；OSC104 后配置红 #d32f2f=$B"
+    if [ "${A:-0}" -ge 500 ] && [ "${B:-0}" -ge 500 ]; then
+        echo "PASS gpu-round-osc4-osc104"; PASS=$((PASS+1))
+    else
+        echo "FAIL gpu-round-osc4-osc104 (osc4=${A:-0} cfg_red=${B:-0})"; FAIL=$((FAIL+1))
+    fi
+    stop_app
+else
+    echo "FAIL gpu-round-osc4-osc104 (窗口未出现)"; FAIL=$((FAIL+1))
+fi
+
 echo "--- GPU 轮：auto + 无 ICD → 回落 CPU 且窗口正常"
 L="$OUT/gpu-round-auto-noicd.log"
 if start_gpu_app "$CFG_AUTO" "$L" "VK_ICD_FILENAMES=/nonexistent/icd.json"; then
