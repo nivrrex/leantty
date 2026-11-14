@@ -71,6 +71,10 @@
 - 事实（3F-b，未核实）：OSC 4/104 在 vt 层单测通过（osc_overrides_then_resets_back_to_configured_palette），但 app 层三次截图都未出现 #AABBCC（31m 仍为配置红），无法区分序列未送达还是未生效；请求 19（OSC 状态观测点）。
 - 事实（3F-b，已验证）：4E 放开门控后，Windows 上首次真实运行 background_load(2)/baseline_alignment(1)/cell_metrics(1)/fallback_chain(3)/glyph_clip(1)/preedit_ghost(2)/wide_glyph(4)/inverse_pixels(4) 全通过；无运行时 SKIP，仅 2 个 `#[ignore]` 基准（bench_frame、font_load_time）。DejaVu Sans Mono / Liberation Mono / Noto Sans CJK SC / Consolas / Courier New 在本机均已安装，测试不是靠回退字体勉强通过。
 - 事实（3F-b，已验证）：启动新点 cpu_renderer_ready_ms 中位 465.9（5 次 446–561），first_frame 781（751–846）；字体加载结束后到 cpu_renderer_ready 约 362 ms、window 后到 renderer_ready 约 120 ms 仍无打点（请求 20）。
+- 事实（3G，已验证，ConPTY 字节取证）：系统 conhost 把 **`ESC[7m` 物化为 `ESC[30m`+`ESC[47m`**（黑前景/白背景），并把 10 个空格改写为 `ESC[10X`/`ESC[10C`；WezTerm conpty 则原样保留 `ESC[7m` 与空格。所以 3F-b 的“默认色反色块 = normal.white”是**平台行为**（palette 索引 0/7），不是 app 缺陷；请求 18 降为文档事项。
+- 事实（3G，已验证）：`OSC 4` 在两种 ConPTY 下**都原样到达**（因此 3F-b 的“OSC 4 不生效”不能归因于 ConPTY，原结论证据不足，降为未核实）；**`OSC 104` 在两种 ConPTY 下都被丢弃**（平台限制，改色后无法复位）。
+- 事实（3G，已验证）：视口上滚隐藏光标在真实 Windows 上成立——品红光标计数：底部 128 px、上滚 5 格后连续 3 次均 0 px、回底 128 px 且画面与初始逐像素 diff=0。
+- 事实（3G，测试工具缺陷）：`mouse_event` 的 `dwData` 传 `0xFFFFFF88` 会被 PowerShell 当 Int32 −120，绑定 uint 参数抛 MethodException，导致“滚轮下滚”静默无效（影响 2B c2a 等旧脚本的下滚步骤，当时未断言方向所以结论不受影响）；正确写法 `[uint32]4294967176`。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 
