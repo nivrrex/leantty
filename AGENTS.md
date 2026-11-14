@@ -30,3 +30,10 @@
 - 等待确认：我的消息含"先回答""先评审""先分析""确认后再实施""等我判断"等意思时，这是 `decision` 停止点：先在正文写出结论，再调用 `decision` 并停下，不用 `milestone`；我确认前不实施。
 - 自动出现的"继续执行下一步"催促消息不是我的确认；正在等待我确认时，仍调用 `decision`，不得开始实施。
 <!-- /pi-hg-rule -->
+
+## 打 tag 的唯一方式
+
+- 一律使用 `sh scripts/tag_checked.sh <tag 名>`；它要求工作区干净、`<git-dir>/gates_ok` 的 hash 等于当前 HEAD、tag 名未存在且符合 `^phase[0-9]+[a-z]*-[A-Za-z0-9._-]+$`，且脚本内不含 `-f/--force`。
+- `gates_ok` 只由 `sh scripts/gates.sh` 在"cargo test / clippy debug+release / release 零告警 / e2e run_all / Windows 依赖树与目标检查"全过且工作区干净时写入；任一失败即删除。
+- 禁止手写 `git tag`、禁止移动既有 tag；写错就新建带后缀的 tag 并在报告中说明。
+
