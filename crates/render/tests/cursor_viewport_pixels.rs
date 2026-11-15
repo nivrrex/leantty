@@ -101,7 +101,12 @@ fn cursor_pixels_absent_after_scroll_up_gpu() {
     use render::gpu::GpuRenderer;
     use render::Error;
 
-    let mut gpu = match GpuRenderer::new_offscreen(&settings(), RenderOptions::default(), palette()) {
+    let mut gpu = match GpuRenderer::new_offscreen(
+        &settings(),
+        RenderOptions::default(),
+        palette(),
+        render::gpu::allow_software_from_env(),
+    ) {
         Ok(g) => g,
         Err(Error::Backend(msg)) => {
             eprintln!("SKIP: 无可用真实 GPU 适配器（{msg}）");

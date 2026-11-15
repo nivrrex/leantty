@@ -80,6 +80,13 @@ Windows 目标现在也能编译并使用 wgpu 的 GPU 后端（Vulkan + DX12）
 选适配器时先排除软件实现（`DeviceType::Cpu`，含 Windows 的 WARP/Basic Render Driver），
 再按 Discrete > Integrated > 其他 的类型优先级选择（同级保持枚举顺序）。
 
+**软件适配器诊断开关**（阶段 4Q）：`APP_GPU_ALLOW_SOFTWARE=1` 允许选中软件 GPU 适配器
+（Linux 的 lavapipe、Windows 的 WARP / Basic Render Driver），**仅当 `backend = "gpu"` 时生效**；
+`backend = "auto"` 永远忽略该变量。选中软件适配器时会默认打印一行用户可见警告
+（"正在使用软件 GPU 适配器：<名称>，仅用于诊断"），诊断日志里标 `software=true`。
+排序规则不变（Discrete > Integrated > 其他），所以软件适配器只有在没有真实适配器时才会被选中
+（除非同时用 `WGPU_ADAPTER_NAME` 指定它）。
+
 **已知未验证项**（截至阶段 4P）：真实 Windows GPU 上的 present 行为；DX12 与 Vulkan 在
 Windows 上的差异；无 GPU 的 Windows 机器上 `backend="gpu"` 的实际退出路径（Linux 端已用
 "无 ICD" 场景覆盖）。

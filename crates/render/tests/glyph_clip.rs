@@ -293,6 +293,7 @@ fn glyph_top_not_clipped_gpu() {
         &settings("DejaVu Sans Mono", 13.0),
         RenderOptions::default(),
         Palette::default(),
+        render::gpu::allow_software_from_env(),
     ) {
         Ok(g) => g,
         Err(Error::Backend(msg)) => {

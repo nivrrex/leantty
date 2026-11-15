@@ -189,6 +189,7 @@ fn inverse_cell_gpu_absolute_pixels() {
         &settings(),
         RenderOptions::default(),
         p,
+        render::gpu::allow_software_from_env(),
     ) {
         Ok(g) => g,
         Err(Error::Backend(msg)) => {

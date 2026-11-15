@@ -81,6 +81,8 @@ pub struct GpuRenderer {
     preedit: Option<PreeditOverlay>,
     /// 渲染目标：离屏（对拍/测试）或窗口 surface（正式路径）。
     target: Target,
+    /// surface acquire 结果计数（阶段 4Q t3 观测）。
+    acquire: AcquireStats,
     /// 上一帧回读的 RGBA 数据（t3 对拍用）。
     rgba: Vec<u8>,
     /// 字形 → 组内字体索引缓存（与 CPU 同规则）。
@@ -145,8 +147,9 @@ impl GpuRenderer {
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
+        allow_software: bool,
     ) -> Result<Self, Error> {
-        let gpu = Gpu::new()?;
+        let gpu = Gpu::new(allow_software)?;
         let groups = std::sync::Arc::new(crate::build_font_groups(settings)?);
         let atlas = GlyphAtlas::new(
             &gpu.device,
@@ -156,11 +159,13 @@ impl GpuRenderer {
         );
         let pipelines = Pipelines::new(&gpu.device, &atlas, TARGET_FORMAT);
         let target = Target::Offscreen(OffscreenTarget::new(&gpu.device, 1, 1));
+        let acquire = AcquireStats::default();
         Ok(Self {
             gpu,
             pipelines,
             atlas,
             groups,
+            acquire,
             font_size: settings.size,
             scale: 1.0,
             options,
@@ -647,8 +652,9 @@ impl GpuRenderer {
         options: RenderOptions,
         palette: Palette,
         surface: SurfaceInit,
+        allow_software: bool,
     ) -> Result<Self, Error> {
-        Self::new_surface_with_groups(settings, options, palette, None, surface)
+        Self::new_surface_with_groups(settings, options, palette, None, surface, allow_software)
     }
 
     /// 同 `new_surface`，但可复用**已构建的**字体组（`Arc` 共享，零拷贝）。
@@ -662,6 +668,7 @@ impl GpuRenderer {
         palette: Palette,
         reuse_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>>,
         surface: SurfaceInit,
+        allow_software: bool,
     ) -> Result<Self, Error> {
         let SurfaceInit {
             raw_window,
@@ -675,7 +682,7 @@ impl GpuRenderer {
             crate::since_start_ms(),
             reuse_groups.is_some()
         );
-        let gpu = Gpu::new()?;
+        let gpu = Gpu::new(allow_software)?;
         let groups = match reuse_groups {
             Some(g) => g,
             None => std::sync::Arc::new(crate::build_font_groups(settings)?),
@@ -749,6 +756,7 @@ impl GpuRenderer {
             selection: None,
             scrollbar: None,
             preedit: None,
+            acquire: AcquireStats::default(),
             target: Target::Surface(SurfaceTarget {
                 surface,
                 raw_window,
@@ -783,6 +791,38 @@ impl GpuRenderer {
         }
     }
 
+    /// 把已取得的 surface 纹理绘制并 present（Success 与 Suboptimal 共用）。
+    fn present_acquired(
+        &mut self,
+        tex: wgpu::SurfaceTexture,
+        inst: &crate::gpu::FrameInstances,
+        pixel_w: u32,
+        pixel_h: u32,
+    ) -> Result<(), Error> {
+        let view = tex
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
+        self.pipelines
+            .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
+        let clear = self.clear_color();
+        self.pipelines.submit(
+            &self.gpu.device,
+            &self.gpu.queue,
+            &self.atlas,
+            &view,
+            inst,
+            clear,
+        )?;
+        self.gpu.queue.present(tex);
+        Ok(())
+    }
+
+    /// surface acquire 结果计数（阶段 4Q t3 观测）。
+    pub fn acquire_stats(&self) -> AcquireStats {
+        self.acquire
+    }
+
     /// 渲染一帧到 surface 并 present（整帧重绘，不回读）。
     ///
     /// surface Lost/Outdated：reconfigure 后重试本帧；device lost：重建一次；
@@ -807,35 +847,26 @@ impl GpuRenderer {
         for attempt in 0..2u8 {
             let acquired = t.surface.get_current_texture();
             match acquired {
-                wgpu::CurrentSurfaceTexture::Success(tex)
-                | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                    let view = tex
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
-                    self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
-                    self.pipelines.ensure_capacity(
-                        &self.gpu.device,
-                        inst.quads.len(),
-                        inst.glyphs.len().max(1),
-                    );
-                    let clear = self.clear_color();
-                    self.pipelines.submit(
-                        &self.gpu.device,
-                        &self.gpu.queue,
-                        &self.atlas,
-                        &view,
-                        &inst,
-                        clear,
-                    )?;
-                    self.gpu.queue.present(tex);
+                // 阶段 4Q t3：Suboptimal 与 Success 走同一条渲染路径，但单独计数——
+                // 若空闲时 suboptimal 持续增长，说明交换链一直在"次优"状态被反复渲染。
+                wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                    self.acquire.suboptimal += 1;
+                    self.present_acquired(tex, &inst, pixel_w, pixel_h)?;
+                    return Ok(());
+                }
+                wgpu::CurrentSurfaceTexture::Success(tex) => {
+                    self.acquire.success += 1;
+                    self.present_acquired(tex, &inst, pixel_w, pixel_h)?;
                     return Ok(());
                 }
                 wgpu::CurrentSurfaceTexture::Outdated if attempt == 0 => {
+                    self.acquire.outdated += 1;
                     // 旧交换链/尺寸过期：reconfigure 后重试一次本帧。
                     t.surface.configure(&self.gpu.device, &t.config);
                     continue;
                 }
                 wgpu::CurrentSurfaceTexture::Lost if attempt == 0 => {
+                    self.acquire.lost += 1;
                     // 重建 surface（保留 device）后重试一次本帧。
                     let surface = unsafe {
                         self.gpu.instance.create_surface_unsafe(
@@ -852,6 +883,7 @@ impl GpuRenderer {
                     continue;
                 }
                 other => {
+                    self.acquire.other += 1;
                     return Err(Error::Backend(format!(
                         "get_current_texture: {}",
                         surface_status_desc(&other)
@@ -993,6 +1025,21 @@ fn push_style_lines(
     }
 }
 
+/// surface acquire 结果计数（阶段 4Q t3 观测：空闲时是否出现异常分支）。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AcquireStats {
+    /// 直接成功（含 Suboptimal，后者按成功处理且不重配置）。
+    pub success: u64,
+    /// Suboptimal（按成功渲染，仅计数以便发现"每帧都 suboptimal"）。
+    pub suboptimal: u64,
+    /// Outdated（reconfigure 后重试）。
+    pub outdated: u64,
+    /// Lost（重建 surface 后重试）。
+    pub lost: u64,
+    /// 其它（Timeout/Occluded/Validation 等，直接返回错误）。
+    pub other: u64,
+}
+
 /// surface 获取失败的状态描述（CurrentSurfaceTexture 未实现 Display）。
 fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
     match s {
@@ -1004,6 +1051,56 @@ fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
         wgpu::CurrentSurfaceTexture::Lost => "Lost",
         wgpu::CurrentSurfaceTexture::Validation => "Validation",
     }
+}
+
+/// 解析 `WGPU_BACKEND` 的逗号列表（阶段 4Q t2）。
+///
+/// 与 wgpu 自带 `Backends::from_comma_list` 的差别：**无法识别的记号返回 Err**
+/// （携带原始值与出错记号），而不是静默丢弃；同时显式 trim 空白、大小写不敏感
+/// （wgpu 内部也 trim，但丢弃未知记号后只剩空集合，用户无法得知自己写错了）。
+///
+/// 支持的记号（大小写不敏感，等价于 wgpu）：`vulkan`/`vk`、`dx12`/`d3d12`、
+/// `metal`/`mtl`、`gl`/`gles`/`opengl`、`webgpu`。
+pub fn parse_backends_spec(spec: &str) -> Result<wgpu::Backends, String> {
+    let mut out = wgpu::Backends::empty();
+    let mut unknown: Vec<&str> = Vec::new();
+    let mut any = false;
+    for tok in spec.split(',') {
+        let t = tok.trim();
+        if t.is_empty() {
+            continue;
+        }
+        any = true;
+        let lower = t.to_ascii_lowercase();
+        out |= match lower.as_str() {
+            "vulkan" | "vk" => wgpu::Backends::VULKAN,
+            "dx12" | "d3d12" => wgpu::Backends::DX12,
+            "metal" | "mtl" => wgpu::Backends::METAL,
+            "gl" | "gles" | "opengl" => wgpu::Backends::GL,
+            "webgpu" => wgpu::Backends::BROWSER_WEBGPU,
+            _ => {
+                unknown.push(t);
+                wgpu::Backends::empty()
+            }
+        };
+    }
+    if !unknown.is_empty() {
+        return Err(format!(
+            "WGPU_BACKEND='{spec}' 含无法识别的后端记号 {unknown:?}；支持：vulkan|vk, dx12|d3d12, metal|mtl, gl|gles|opengl, webgpu"
+        ));
+    }
+    if !any || out.is_empty() {
+        return Err(format!("WGPU_BACKEND='{spec}' 未包含任何后端名"));
+    }
+    Ok(out)
+}
+
+/// 是否允许使用软件 GPU 适配器（阶段 4Q t4，仅诊断/测试用）。
+///
+/// 只有 `APP_GPU_ALLOW_SOFTWARE=1` 时为真；**是否真正生效由调用方决定**：
+/// app 只在配置为 `backend="gpu"` 时传入，`backend="auto"` 永远忽略（见 app 的后端选择）。
+pub fn allow_software_from_env() -> bool {
+    std::env::var("APP_GPU_ALLOW_SOFTWARE").is_ok_and(|v| v.trim() == "1")
 }
 
 impl Gpu {
@@ -1029,9 +1126,15 @@ impl Gpu {
     }
 
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
-    fn new() -> Result<Self, Error> {
+    fn new(allow_software: bool) -> Result<Self, Error> {
         let t_instance = std::time::Instant::now();
-        let backends = wgpu::Backends::from_env().unwrap_or_else(Self::default_backends);
+        // 阶段 4Q t2：自己解析（严格），并把"原始值 / 生效值"都打出来，用引号包住原始值
+        // 以暴露尾随空格这类问题；无法识别时明确报错而不是回落到默认值。
+        let backends_env = std::env::var("WGPU_BACKEND").ok();
+        let backends = match backends_env.as_deref() {
+            Some(raw) => parse_backends_spec(raw).map_err(Error::Backend)?,
+            None => Self::default_backends(),
+        };
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
             flags: wgpu::InstanceFlags::empty(),
@@ -1041,16 +1144,23 @@ impl Gpu {
         });
         let adapters = pollster::block_on(instance.enumerate_adapters(backends));
         eperf!(
-            "[perf] gpu_instance_ms={:.1} since_start={:.1} backends={:?} count={}",
+            "[perf] gpu_instance_ms={:.1} since_start={:.1} backends_env='{}' backends_effective={:?} count={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
+            backends_env.as_deref().unwrap_or("<unset>"),
             backends,
             adapters.len()
         );
         if adapters.is_empty() {
-            return Err(Error::Backend(format!(
-                "适配器枚举为空（backends={backends:?}；无可用 ICD/驱动）"
-            )));
+            let hint = if let Some(raw) = backends_env.as_deref() {
+                format!(
+                    "请求的后端（WGPU_BACKEND='{}' → {backends:?}）在本平台/本构建不可用或没有对应驱动",
+                    raw
+                )
+            } else {
+                format!("默认后端 {backends:?} 没有可用适配器（无 ICD/驱动）")
+            };
+            return Err(Error::Backend(format!("适配器枚举为空：{hint}")));
         }
         // 适配器清单（诊断）：每个一行，含 name / backend / type / driver
         for a in &adapters {
@@ -1070,7 +1180,7 @@ impl Gpu {
         let mut real: Vec<_> = Vec::new();
         for a in adapters {
             let info = a.get_info();
-            if info.device_type == wgpu::DeviceType::Cpu {
+            if info.device_type == wgpu::DeviceType::Cpu && !allow_software {
                 eperf!("[perf] gpu_skip_software name='{}'", info.name);
                 continue;
             }
@@ -1115,14 +1225,23 @@ impl Gpu {
             }
         };
         let info = adapter.get_info();
+        let is_software = info.device_type == wgpu::DeviceType::Cpu;
+        if is_software {
+            // 用户可见警告（不受 APP_PERF_FRAMES 门控）：软件适配器只用于诊断
+            eprintln!(
+                "正在使用软件 GPU 适配器：{}，仅用于诊断（APP_GPU_ALLOW_SOFTWARE=1）",
+                info.name
+            );
+        }
         eperf!(
-            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}' backend={:?} type={:?} driver='{}'",
+            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}' backend={:?} type={:?} driver='{}' software={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
             info.name,
             info.backend,
             info.device_type,
-            info.driver
+            info.driver,
+            is_software
         );
         let limits = adapter.limits();
         // 不要直接拿 adapter.limits() 当 required_limits：部分驱动会把
@@ -1607,4 +1726,72 @@ fn glyph_bytes(v: &[GlyphInstance]) -> Vec<u8> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod backends_spec_tests {
+    use super::parse_backends_spec;
+
+    #[test]
+    fn parses_single_names_case_insensitively() {
+        assert_eq!(parse_backends_spec("dx12").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec("DX12").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec("vulkan").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("vK").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("d3d12").unwrap(), wgpu::Backends::DX12);
+    }
+
+    #[test]
+    fn trims_surrounding_whitespace() {
+        // 这正是 Windows 上 `set X=dx12 && app` 会产生的尾随空格
+        assert_eq!(parse_backends_spec("dx12 ").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec(" vulkan").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("\tdx12\n").unwrap(), wgpu::Backends::DX12);
+    }
+
+    #[test]
+    fn parses_comma_list_with_spaces() {
+        assert_eq!(
+            parse_backends_spec("vulkan,dx12").unwrap(),
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        );
+        assert_eq!(
+            parse_backends_spec(" vulkan , dx12 ").unwrap(),
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        );
+        // 重复项不报错
+        assert_eq!(
+            parse_backends_spec("vulkan,vulkan").unwrap(),
+            wgpu::Backends::VULKAN
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_token_with_original_value() {
+        for bad in ["dx", "vk12", "d3d11", "gpu", "乱码"] {
+            let err = parse_backends_spec(bad).expect_err("无法识别的记号必须报错");
+            assert!(err.contains(bad), "错误信息应包含原始值：{err}");
+            assert!(err.contains("WGPU_BACKEND="), "错误信息应带变量名：{err}");
+        }
+        // 列表里混入未知项同样报错（不静默丢弃）
+        let err = parse_backends_spec("vulkan,dx").expect_err("混入未知项必须报错");
+        assert!(err.contains("dx"), "{err}");
+    }
+
+    #[test]
+    fn rejects_empty_or_blank() {
+        for bad in ["", "   ", ",", " , "] {
+            assert!(
+                parse_backends_spec(bad).is_err(),
+                "空值/仅分隔符必须报错（实测 {bad:?}）"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_all_supported_names() {
+        for ok in ["metal", "mtl", "gl", "gles", "opengl", "webgpu"] {
+            assert!(parse_backends_spec(ok).is_ok(), "{ok} 应可解析");
+        }
+    }
 }

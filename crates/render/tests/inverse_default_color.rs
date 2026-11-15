@@ -146,7 +146,12 @@ fn inverse_default_color_semantics_gpu() {
     use render::Error;
     use render::gpu::GpuRenderer;
 
-    let mut gpu = match GpuRenderer::new_offscreen(&settings(), RenderOptions::default(), palette()) {
+    let mut gpu = match GpuRenderer::new_offscreen(
+        &settings(),
+        RenderOptions::default(),
+        palette(),
+        render::gpu::allow_software_from_env(),
+    ) {
         Ok(g) => g,
         Err(Error::Backend(msg)) => {
             eprintln!("SKIP: 无可用真实 GPU 适配器（{msg}）");
