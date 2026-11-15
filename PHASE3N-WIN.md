@@ -109,4 +109,11 @@
 
 ## 9. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `4b79b14779d47df3ad36b3e5eb6f383108a501ba` |
+| `refs/tags/phase3n-win-done`（tag 对象） | `1254d2576b592e79d892f351cbc49aafbc87fd85` |
+| `refs/tags/phase3n-win-done^{}`（解引用 commit） | `4b79b14779d47df3ad36b3e5eb6f383108a501ba` |
+
+- `git push origin win`：`558e061..4b79b14  win -> win`；tag 新建后 push（`* [new tag]`）。未 force、未移动任何已有 tag。
+- 提交内容：`PHASE3N-WIN.md`、`docs/WIN-NOTES.md`（5 条 3N 事实 + 请求 1/2）、`scripts/windows/tonight/*`（5 个文件）、`vt-verify-win/logs/3n/*-summary.md`（两次试跑的汇总副本）、`.gitignore`（kit 输出目录、zip、试跑目录、3n 的 json）。**zip 与所有二进制均未入库**（提交前检查 .exe/.dll/.zip/.png 命中 0）。
