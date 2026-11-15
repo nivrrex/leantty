@@ -207,7 +207,13 @@
 
 ## 9. 推送与打 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `b42f02580cdcce7b99e34b69ff02c15317cdb992` |
+| `refs/tags/phase3k-win-done`（tag 对象） | `8dac33272255579d3a9f759104b596d83e5bff7a` |
+| `refs/tags/phase3k-win-done^{}`（解引用 commit） | `b42f02580cdcce7b99e34b69ff02c15317cdb992` |
+
+- `git push origin win`：`5ffd6fa..b42f025  win -> win`；tag 为新建后 push（`* [new tag]`）。未使用 force，未移动任何已有 tag。
 
 ## 10. 手动清单（≤3）
 
