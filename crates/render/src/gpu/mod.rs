@@ -81,6 +81,8 @@ pub struct GpuRenderer {
     preedit: Option<PreeditOverlay>,
     /// 渲染目标：离屏（对拍/测试）或窗口 surface（正式路径）。
     target: Target,
+    /// surface acquire 结果计数（阶段 4Q t3 观测）。
+    acquire: AcquireStats,
     /// 上一帧回读的 RGBA 数据（t3 对拍用）。
     rgba: Vec<u8>,
     /// 字形 → 组内字体索引缓存（与 CPU 同规则）。
@@ -156,11 +158,13 @@ impl GpuRenderer {
         );
         let pipelines = Pipelines::new(&gpu.device, &atlas, TARGET_FORMAT);
         let target = Target::Offscreen(OffscreenTarget::new(&gpu.device, 1, 1));
+        let acquire = AcquireStats::default();
         Ok(Self {
             gpu,
             pipelines,
             atlas,
             groups,
+            acquire,
             font_size: settings.size,
             scale: 1.0,
             options,
@@ -749,6 +753,7 @@ impl GpuRenderer {
             selection: None,
             scrollbar: None,
             preedit: None,
+            acquire: AcquireStats::default(),
             target: Target::Surface(SurfaceTarget {
                 surface,
                 raw_window,
@@ -783,6 +788,38 @@ impl GpuRenderer {
         }
     }
 
+    /// 把已取得的 surface 纹理绘制并 present（Success 与 Suboptimal 共用）。
+    fn present_acquired(
+        &mut self,
+        tex: wgpu::SurfaceTexture,
+        inst: &crate::gpu::FrameInstances,
+        pixel_w: u32,
+        pixel_h: u32,
+    ) -> Result<(), Error> {
+        let view = tex
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
+        self.pipelines
+            .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
+        let clear = self.clear_color();
+        self.pipelines.submit(
+            &self.gpu.device,
+            &self.gpu.queue,
+            &self.atlas,
+            &view,
+            inst,
+            clear,
+        )?;
+        self.gpu.queue.present(tex);
+        Ok(())
+    }
+
+    /// surface acquire 结果计数（阶段 4Q t3 观测）。
+    pub fn acquire_stats(&self) -> AcquireStats {
+        self.acquire
+    }
+
     /// 渲染一帧到 surface 并 present（整帧重绘，不回读）。
     ///
     /// surface Lost/Outdated：reconfigure 后重试本帧；device lost：重建一次；
@@ -807,35 +844,26 @@ impl GpuRenderer {
         for attempt in 0..2u8 {
             let acquired = t.surface.get_current_texture();
             match acquired {
-                wgpu::CurrentSurfaceTexture::Success(tex)
-                | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                    let view = tex
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
-                    self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
-                    self.pipelines.ensure_capacity(
-                        &self.gpu.device,
-                        inst.quads.len(),
-                        inst.glyphs.len().max(1),
-                    );
-                    let clear = self.clear_color();
-                    self.pipelines.submit(
-                        &self.gpu.device,
-                        &self.gpu.queue,
-                        &self.atlas,
-                        &view,
-                        &inst,
-                        clear,
-                    )?;
-                    self.gpu.queue.present(tex);
+                // 阶段 4Q t3：Suboptimal 与 Success 走同一条渲染路径，但单独计数——
+                // 若空闲时 suboptimal 持续增长，说明交换链一直在"次优"状态被反复渲染。
+                wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                    self.acquire.suboptimal += 1;
+                    self.present_acquired(tex, &inst, pixel_w, pixel_h)?;
+                    return Ok(());
+                }
+                wgpu::CurrentSurfaceTexture::Success(tex) => {
+                    self.acquire.success += 1;
+                    self.present_acquired(tex, &inst, pixel_w, pixel_h)?;
                     return Ok(());
                 }
                 wgpu::CurrentSurfaceTexture::Outdated if attempt == 0 => {
+                    self.acquire.outdated += 1;
                     // 旧交换链/尺寸过期：reconfigure 后重试一次本帧。
                     t.surface.configure(&self.gpu.device, &t.config);
                     continue;
                 }
                 wgpu::CurrentSurfaceTexture::Lost if attempt == 0 => {
+                    self.acquire.lost += 1;
                     // 重建 surface（保留 device）后重试一次本帧。
                     let surface = unsafe {
                         self.gpu.instance.create_surface_unsafe(
@@ -852,6 +880,7 @@ impl GpuRenderer {
                     continue;
                 }
                 other => {
+                    self.acquire.other += 1;
                     return Err(Error::Backend(format!(
                         "get_current_texture: {}",
                         surface_status_desc(&other)
@@ -991,6 +1020,21 @@ fn push_style_lines(
     if cell.overline {
         hline(quads, 1, 1);
     }
+}
+
+/// surface acquire 结果计数（阶段 4Q t3 观测：空闲时是否出现异常分支）。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AcquireStats {
+    /// 直接成功（含 Suboptimal，后者按成功处理且不重配置）。
+    pub success: u64,
+    /// Suboptimal（按成功渲染，仅计数以便发现"每帧都 suboptimal"）。
+    pub suboptimal: u64,
+    /// Outdated（reconfigure 后重试）。
+    pub outdated: u64,
+    /// Lost（重建 surface 后重试）。
+    pub lost: u64,
+    /// 其它（Timeout/Occluded/Validation 等，直接返回错误）。
+    pub other: u64,
 }
 
 /// surface 获取失败的状态描述（CurrentSurfaceTexture 未实现 Display）。

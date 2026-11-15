@@ -2402,6 +2402,56 @@ else
     fi
 fi
 
+# 用例 49（4Q-t3）：GPU 后端**空闲时不得持续渲染**（真实 GPU）。
+#   背景（Windows 3O）：GPU 后端在输出停止后仍以 16–19ms 间隔连续渲染约 17 秒（1050 帧、
+#   每帧约 5ms、feed_bytes=0）；CPU 后端同阶段只有 1 行帧日志。Linux 本机用真实 GPU 复现了
+#   同一现象（空闲 5 秒窗口 205 帧）——根因是帧节流每帧后排 WaitUntil，静止时仍被定时唤醒，
+#   CPU 只是"渲染但不提交"，GPU 却真正整帧 present。
+#   观测：`[perf] loop_gap_ms ... frames_window=N`（每 5 秒一行，只统计真正绘制的帧）。
+#   判据：输出停止后的空闲窗口 frames_window ≤3；窗口缩放后同样在 1 个窗口内收敛到 ≤3。
+#   另：WINIT_X11_SCALE_FACTOR=1.5 重复一次（模拟 Windows 上的非整数缩放）。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case49-gpu-idle-no-spin (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OK49=0; TOT49=0
+    for variant in s1 s15; do
+        TOT49=$((TOT49+1))
+        CFG49="$OUT/case49-$variant.toml"
+        L49="$OUT/case49-$variant.log"
+        printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG49"
+        if [ "$variant" = "s15" ]; then
+            WINIT_X11_SCALE_FACTOR=1.5 APP_CONFIG="$CFG49" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L49" 2>&1 &
+        else
+            APP_CONFIG="$CFG49" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L49" 2>&1 &
+        fi
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case49-gpu-idle-no-spin-$variant (窗口未出现)"; continue
+        fi
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.0
+        x11 xdotool type --window "$WID" "seq 1 40"
+        x11 xdotool key --window "$WID" Return
+        sleep 12          # 输出结束 + 收尾（覆盖两个 5 秒窗口）
+        IDLE49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
+        x11 xdotool windowsize "$WID" 700 420
+        sleep 12
+        AFTER49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
+        echo "  [c49 $variant] 空闲窗口帧数=${IDLE49:-NA} 缩放后窗口帧数=${AFTER49:-NA}（判据 ≤3）"
+        if [ "${IDLE49:-999}" -le 3 ] && [ "${AFTER49:-999}" -le 3 ]; then
+            OK49=$((OK49+1))
+        fi
+        stop_app
+    done
+    if [ "$OK49" -eq "$TOT49" ] && [ "$TOT49" -eq 2 ]; then
+        echo "PASS case49-gpu-idle-no-spin ($OK49/$TOT49)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case49-gpu-idle-no-spin ($OK49/$TOT49)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

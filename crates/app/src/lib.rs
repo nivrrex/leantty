@@ -449,6 +449,9 @@ impl App {
             first_pty_byte_logged: false,
             pre_first_submit_logged: false,
             writer: None,
+            last_geom_drawn: None,
+            frames_window: (0, 0, 0, 0),
+            next_frame_origin: 0,
             last_loop_at: None,
             loop_report_at: None,
             chan_depth: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
@@ -833,6 +836,13 @@ struct AppHandler {
     /// PTY 写线程（阶段 4H t3）：拿到可独立持有的写端时启用；None = 沿用同步写
     /// （Windows ConPTY 的 `take_writer` 走 trait 默认实现返回 None）。
     writer: Option<writer::PtyWriter>,
+    /// 本窗口（5 秒）内渲染的帧数与按来源分类（阶段 4Q t3 观测）：
+    /// (总数, OS 重绘触发, 缩放/尺寸事件触发, 其它/自驱动)。
+    frames_window: (u32, u32, u32, u32),
+    /// 上次真正画到屏幕上的滚动条几何（阶段 4Q t3 空闲判定用）。
+    last_geom_drawn: Option<(u32, u32)>,
+    /// 待归属的"下一个渲染帧来源"：1=OS 重绘, 2=缩放/尺寸, 0=其它。
+    next_frame_origin: u8,
     /// 上次事件循环迭代时刻（阶段 4G t2a 的 loop gap 观测）。
     last_loop_at: Option<std::time::Instant>,
     /// 下次独立打印 loop gap 的时刻（每 5 秒）。
@@ -1347,12 +1357,16 @@ impl ApplicationHandler for AppHandler {
                 }
                 self.os_redraw_pending = true;
                 self.urgent_render = true;
+                if self.next_frame_origin == 0 {
+                    self.next_frame_origin = 1; // OS 触发
+                }
             }
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
                 mut inner_size_writer,
             } => {
+                self.next_frame_origin = 2; // 缩放因子变化也归类为缩放触发
                 // HiDPI：重算格子物理尺寸 → InnerSizeWriter 保持 dimensions 行列数
                 // （逻辑尺寸 = 行列*逻辑格子 + 2*padding）；随后 Resized 走统一路径
                 // 重排网格并 resize vt/pty。字形位图缓存整体失效（set_scale_factor）。
@@ -1452,6 +1466,7 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
+                self.next_frame_origin = 2; // 缩放/尺寸事件触发
                 self.urgent_render = true;
                 let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
                 let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
@@ -1557,9 +1572,21 @@ impl ApplicationHandler for AppHandler {
                     .as_ref()
                     .map(|p| (p.feed_ms_max, p.feed_bytes_max, p.writer_queued_max))
                     .unwrap_or((0.0, 0, 0));
+                let (fw, fos, frs, fot) = self.frames_window;
+                let acq = match self.renderer.as_ref() {
+                    Some(RendererBackend::Gpu(g)) => {
+                        let a = g.acquire_stats();
+                        format!(
+                            " success={} suboptimal={} outdated={} lost={} other={}",
+                            a.success, a.suboptimal, a.outdated, a.lost, a.other
+                        )
+                    }
+                    _ => String::new(),
+                };
                 eperf!(
-                    "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq}"
+                    "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq} frames_window={fw} frames_os={fos} frames_resize={frs} frames_other={fot}{acq}"
                 );
+                self.frames_window = (0, 0, 0, 0);
                 if let Some(pf) = self.perf_frames.as_mut() {
                     pf.loop_gap_max_us = 0;
                 }
@@ -1824,6 +1851,8 @@ impl ApplicationHandler for AppHandler {
         }
         let prev_render = self.last_render;
         self.last_render = Some(now);
+        // 本帧是否有 "紧急" 触发（输入/粘贴/OS 重绘等）：release 也需要（空闲判定用）
+        let urgent_before = self.urgent_render;
         #[cfg(debug_assertions)]
         let was_urgent = self.urgent_render;
         self.urgent_render = false;
@@ -1868,6 +1897,36 @@ impl ApplicationHandler for AppHandler {
                         }
                         self.last_sel_region = vis_region;
                     }
+                    // 滚动条几何（提前算：既用于空闲判定，也用于随后的 set_scrollbar）
+                    let geom_now: Option<(u32, u32)> = {
+                        let sb = sb_render;
+                        if sb == 0 {
+                            None
+                        } else {
+                            scrollbar_geometry(
+                                sb as u64,
+                                u64::from(self.rows),
+                                self.offset_from_top,
+                                self.last_size.map(|(_, h)| h).unwrap_or(16),
+                            )
+                            .map(|g| (g.thumb_y, g.thumb_h))
+                        }
+                    };
+                    // 阶段 4Q t3：**空闲帧不渲染**。
+                    // 帧节流每帧后都会排一次 WaitUntil（尾沿保证），静止画面也会被定时
+                    // 唤醒；CPU 后端此时"渲染但不提交"（damage 为空即返回），GPU 后端却会
+                    // 真正整帧 present → 空闲持续占用 GPU（Windows 实测 17 秒 1050 帧、
+                    // 每帧约 5ms、feed_bytes=0）。这里在渲染前判定：只有"有输入/有脏行/
+                    // 整屏重绘/OS 重绘/选区或滚动条变化"才画。
+                    if is_gpu
+                        && !urgent_before
+                        && !snap.full_redraw
+                        && snap.is_clean()
+                        && geom_now == self.last_geom_drawn
+                    {
+                        self.update_ime_cursor_area();
+                        return;
+                    }
                     // debug-only 强制全量（e2e 对拍用；release 不含该分支）
                     #[cfg(debug_assertions)]
                     if self.force_full_redraw {
@@ -1875,15 +1934,10 @@ impl ApplicationHandler for AppHandler {
                     }
                     let (pw, ph) = self.last_size.unwrap_or((8, 16));
                     renderer.set_selection(vis_region);
-                    // 滚动条几何（scrollback=0 时不绘制）
-                    let sb = sb_render;
-                    let geom = if sb == 0 {
-                        None
-                    } else {
-                        scrollbar_geometry(sb as u64, u64::from(self.rows), self.offset_from_top, ph)
-                            .map(|g| (g.thumb_y, g.thumb_h))
-                    };
+                    // 滚动条几何（scrollback=0 时不绘制）——已在空闲判定前算好
+                    let geom = geom_now;
                     renderer.set_scrollbar(geom);
+                    self.last_geom_drawn = geom;
                     // IME 预编辑叠加层（不写入网格；空串=清除）。
                     // debug 测试注入（APP_TEST_PREEDIT）优先于真实 Ime 事件。
                     #[cfg(debug_assertions)]
@@ -1914,6 +1968,14 @@ impl ApplicationHandler for AppHandler {
                             t0.elapsed().as_millis()
                         );
                     }
+                    // 阶段 4Q t3：只统计**真正绘制**的帧（空闲跳过不计入），并记来源。
+                    self.frames_window.0 = self.frames_window.0.saturating_add(1);
+                    match self.next_frame_origin {
+                        1 => self.frames_window.1 = self.frames_window.1.saturating_add(1),
+                        2 => self.frames_window.2 = self.frames_window.2.saturating_add(1),
+                        _ => self.frames_window.3 = self.frames_window.3.saturating_add(1),
+                    }
+                    self.next_frame_origin = 0;
                     if let Err(e) = renderer.render(&snap, pw, ph) {
                         eprintln!("render: {}", e);
                     }
