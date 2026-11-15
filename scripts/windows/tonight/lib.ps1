@@ -96,16 +96,17 @@ function Start-AppDirect {
     # Launches app.exe with a DIRECT file handle for stderr (cmd /c "... 2>log"),
     # because PowerShell's Start-Process -RedirectStandardError costs ~6.8 ms per
     # log line and inflates first_frame by 4x (PHASE3L/3M).
-    param([string]$Exe, [string]$Config, [string]$LogPath, [string]$WorkDir)
+    # -EnvVars passes extra variables through cmd in the canonical quoted form
+    # (set "K=V"), so no trailing space can leak into the value.
+    param([string]$Exe, [string]$Config, [string]$LogPath, [string]$WorkDir, [hashtable]$EnvVars = @{})
     $wrapper = Join-Path $WorkDir ('launch-{0}.cmd' -f ([Guid]::NewGuid().ToString('N').Substring(0, 8)))
-    $lines = @(
-        '@echo off',
-        # the child must run in the kit directory: the shell started by the app
-        # inherits it, and every typed command uses relative paths
-        ('cd /d "{0}"' -f $WorkDir),
-        ('set APP_PERF_FRAMES=1'),
-        ('"{0}" --config "{1}" 2>"{2}"' -f $Exe, $Config, $LogPath)
-    )
+    $lines = @('@echo off')
+    $lines += ('cd /d "{0}"' -f $WorkDir)
+    $lines += 'set "APP_PERF_FRAMES=1"'
+    foreach ($k in ($EnvVars.Keys | Sort-Object)) {
+        $lines += ('set "{0}={1}"' -f $k, $EnvVars[$k])
+    }
+    $lines += ('"{0}" --config "{1}" 2>"{2}"' -f $Exe, $Config, $LogPath)
     # Default = ANSI (GBK on zh-CN): cmd.exe reads .cmd files in the ANSI code page,
     # so a kit path with non-ASCII characters survives only in this encoding
     $lines -join "`r`n" | Set-Content -Path $wrapper -Encoding Default
@@ -121,6 +122,10 @@ function Start-AppDirect {
         } else {
             Start-Sleep -Milliseconds 25
         }
+    }
+    if ($app) {
+        if (-not (Get-Variable -Name KitPids -Scope Script -ErrorAction SilentlyContinue)) { $script:KitPids = @() }
+        $script:KitPids += $app.Id
     }
     return [pscustomobject]@{ Cmd = $cmd; App = $app; Wrapper = $wrapper; Log = $LogPath }
 }
@@ -162,6 +167,27 @@ function Stop-OwnApp {
     if ($Cmd) {
         try { if (-not $Cmd.HasExited) { Stop-Process -Id $Cmd.Id -ErrorAction SilentlyContinue } } catch { }
     }
+}
+
+function Stop-AllKitApps {
+    # Stops ONLY apps this kit started (PIDs recorded by Start-AppDirect) and only
+    # while their command line still points into the kit directory. Used before the
+    # summary/zip step so a timed-out stage cannot leave a writer holding a log.
+    param([string]$WorkDir)
+    $stopped = @()
+    if (-not (Get-Variable -Name KitPids -Scope Script -ErrorAction SilentlyContinue)) { return $stopped }
+    foreach ($id in ($script:KitPids | Select-Object -Unique)) {
+        $p = Get-Process -Id $id -ErrorAction SilentlyContinue
+        if (-not $p) { continue }
+        $ci = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $id) -ErrorAction SilentlyContinue
+        $cmdline = if ($ci) { [string]$ci.CommandLine } else { '' }
+        if ($WorkDir -and $cmdline -and ($cmdline -notlike ('*' + (Split-Path -Leaf $WorkDir) + '*'))) {
+            continue
+        }
+        try { Stop-Process -Id $id -ErrorAction SilentlyContinue; $stopped += $id } catch { }
+    }
+    if ($stopped.Count -gt 0) { Start-Sleep -Milliseconds 800 }
+    return $stopped
 }
 
 function Get-AppStats {
@@ -249,7 +275,31 @@ function Get-Geometry {
 }
 
 # ---------------------------------------------------------------- screenshots
+function Invoke-ShotHelper {
+    # runs shot.ps1 in a fresh process (per-monitor-v2 awareness is set at its very
+    # first statement; in this process the awareness is already fixed)
+    param([string]$Mode, [string]$Path = '', [IntPtr]$Hwnd = [IntPtr]::Zero)
+    $helper = Join-Path $PSScriptRoot 'shot.ps1'
+    # no embedded quotes: with the call operator every array element is one
+    # argument, and a quoted string would arrive with the quotes as part of the path
+    $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $helper, '-Mode', $Mode)
+    if ($Path) { $args += @('-Out', $Path) }
+    if ($Hwnd -ne [IntPtr]::Zero) { $args += @('-Hwnd', $Hwnd.ToInt64().ToString()) }
+    $out = & powershell.exe @args 2>&1
+    $line = ($out | Where-Object { $_ -match '^\{' } | Select-Object -Last 1)
+    if (-not $line) { throw ('shot.ps1 {0} produced no JSON: {1}' -f $Mode, ($out -join ' ')) }
+    return ($line | ConvertFrom-Json)
+}
+
 function Save-Shot {
+    param([IntPtr]$Hwnd, [string]$Path)
+    $r = Invoke-ShotHelper -Mode 'shot' -Path $Path -Hwnd $Hwnd
+    $props = $r.PSObject.Properties.Name
+    if ($props -contains 'error') { throw ('screenshot failed: {0}' -f $r.error) }
+    return $r.bytes
+}
+
+function Save-ShotLocal {
     param([IntPtr]$Hwnd, [string]$Path)
     Add-Type -AssemblyName System.Drawing
     $c = New-Object TN.Win+RECT

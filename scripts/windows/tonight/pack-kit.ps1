@@ -3,7 +3,8 @@
 # Contents (all relative to -OutDir):
 #   app.exe, conpty.dll, OpenConsole.exe   (verified, see fetch-conpty.ps1 pins)
 #   LICENSE-ConPTY.txt, NOTICE.md          (verbatim upstream, sha256 pinned)
-#   run-tonight.ps1, lib.ps1, configs\     (the test harness)
+#   run-tonight.ps1, lib.ps1, shot.ps1, configs\  (the test harness; shot.ps1 is the
+#                                           DPI-aware helper run as a child process)
 #   README-TONIGHT.md, MANIFEST.txt        (one page + per-file sha256)
 #
 # Every path is a parameter or derived from the repo root; nothing is hard-coded
@@ -46,7 +47,7 @@ function Assert-Sha256([string]$path, [string]$expected, [string]$what) {
 
 $appExe = Join-Path $TargetDir 'app.exe'
 $conptyLicense = Join-Path $repo 'scripts\windows\conpty\LICENSE-ConPTY.txt'
-foreach ($p in @($appExe, $conptyLicense, (Join-Path $here 'run-tonight.ps1'), (Join-Path $here 'lib.ps1'), (Join-Path $here 'README-TONIGHT.md'), (Join-Path $here 'configs'))) {
+foreach ($p in @($appExe, $conptyLicense, (Join-Path $here 'run-tonight.ps1'), (Join-Path $here 'lib.ps1'), (Join-Path $here 'shot.ps1'), (Join-Path $here 'README-TONIGHT.md'), (Join-Path $here 'configs'))) {
     if (-not (Test-Path $p)) { throw "missing input: $p" }
 }
 
@@ -99,6 +100,7 @@ try {
     # harness + docs
     Copy-Item (Join-Path $here 'run-tonight.ps1') $stage
     Copy-Item (Join-Path $here 'lib.ps1') $stage
+    Copy-Item (Join-Path $here 'shot.ps1') $stage
     Copy-Item (Join-Path $here 'README-TONIGHT.md') $stage
     $cfgOut = Join-Path $stage 'configs'
     New-Item -ItemType Directory -Force -Path $cfgOut | Out-Null

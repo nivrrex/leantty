@@ -20,11 +20,62 @@ param(
     [int]$SoakMinutes = 5,
     [switch]$SkipSoak,
     [string]$OutDir = '',
-    [switch]$Quick
+    [switch]$Quick,
+    [switch]$SelfTest,
+    [switch]$ForceZipFailure
 )
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 . (Join-Path $Root 'lib.ps1')
+
+if ($SelfTest) {
+    # exercises the archive routine used by P4: a 60 MB file (tail-only rule), a file
+    # that cannot be read (skipped with a note) and a normal payload
+    $st = Join-Path ([IO.Path]::GetTempPath()) ('kit-selftest-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path (Join-Path $st 'logs') | Out-Null
+    'summary' | Set-Content (Join-Path $st 'summary.md')
+    $big = Join-Path $st 'logs/big.log'
+    $w = New-Object System.IO.StreamWriter($big, $false)
+    $line = 'x' * 200
+    for ($i = 0; $i -lt 300000; $i++) { $w.WriteLine($line) }
+    $w.Dispose()
+    $locked = Join-Path $st 'logs/locked.log'
+    'held' | Set-Content $locked
+    $holder = [IO.File]::Open($locked, 'Open', 'Read', 'ReadWrite')
+    $out = Join-Path $st 'selftest.zip'
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $fs = [IO.File]::Open($out, 'Create', 'Write')
+    $arch = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create)
+    $skipped = @(); $truncated = @()
+    foreach ($f in (Get-ChildItem $st -Recurse -File | Where-Object { $_.Name -ne 'selftest.zip' })) {
+        $rel = $f.FullName.Substring($st.Length + 1).Replace([char]92, '/')
+        $skipBytes = [int64]0
+        if ($f.Length -gt 50MB) { $skipBytes = $f.Length - 5MB; $truncated += $rel }
+        try {
+            $e = $arch.CreateEntry($rel, [System.IO.Compression.CompressionLevel]::Fastest)
+            $es = $e.Open()
+            try {
+                $src = [IO.File]::Open($f.FullName, 'Open', 'Read', 'ReadWrite')
+                try {
+                    if ($skipBytes -gt 0) { [void]$src.Seek($skipBytes, 'Begin') }
+                    $buf = New-Object byte[] 65536
+                    while (($n = $src.Read($buf, 0, $buf.Length)) -gt 0) { $es.Write($buf, 0, $n) }
+                } finally { $src.Dispose() }
+            } finally { $es.Dispose() }
+        } catch { $skipped += $rel }
+    }
+    $arch.Dispose(); $fs.Dispose()
+    $holder.Dispose()
+    $entries = @()
+    $z = [System.IO.Compression.ZipFile]::OpenRead($out)
+    foreach ($e in $z.Entries) { $entries += ('{0}:{1}' -f $e.FullName, $e.Length) }
+    $z.Dispose()
+    Write-Host ('SELFTEST zip={0} bytes={1}' -f $out, (Get-Item $out).Length)
+    Write-Host ('SELFTEST truncated=[{0}] skipped=[{1}]' -f ($truncated -join ','), ($skipped -join ','))
+    Write-Host ('SELFTEST entries=[{0}]' -f ($entries -join ' '))
+    Write-Host 'SELFTEST-DONE'
+    exit 0
+}
 
 $StartTime = Get-Date
 if (-not $OutDir) { $OutDir = Join-Path $Root 'results' }
@@ -112,6 +163,8 @@ function Start-Session([string]$Config, [string]$LogTag) {
     return [pscustomobject]@{ Handle = $h; Hwnd = $hwnd; Log = $log; FocusOk = $focus }
 }
 
+function Get-ShotShortPath { return (Get-ShortPath $Root) }
+
 function Set-AppFocus {
     # click into the window as well: after the cover-window test SetForegroundWindow
     # alone sometimes leaves the focus with another window
@@ -175,8 +228,14 @@ Invoke-Stage -Name 'P0' -LimitSec 240 -Title 'environment capture' -Body {
         }
     }
 
-    $script:Env.displays = @(Get-Displays)
-    $script:Env.dpi_aware = [bool](Initialize-DpiAware)
+    # DPI awareness must be set in a FRESH process at its first statement: this
+    # process already has a fixed awareness (loading GDI+/WinForms seals it), which
+    # is why the previous kit reported dpi_aware=false.
+    $script:Env.dpi_aware_in_process = [bool](Initialize-DpiAware)
+    $dpi = Invoke-ShotHelper -Mode 'info'
+    $script:Env.displays = @($dpi.displays)
+    $script:Env.dpi_aware = [bool]$dpi.aware
+    $script:Env.dpi_helper_pid = $dpi.pid
     $script:Rdp = Test-RdpSession
     $script:Env.rdp = [bool]$script:Rdp
     $script:Env.sessionname = $env:SESSIONNAME
@@ -429,7 +488,10 @@ Invoke-Stage -Name 'P1' -LimitSec 900 -Title 'CPU baseline' -Body {
 }
 
 # ---------------------------------------------------------------- P2 GPU
-Invoke-Stage -Name 'P2' -LimitSec 600 -Title 'GPU backends (N/A when build has no GPU)' -Body {
+# Every variant records: requested vs actual backends, adapter enumeration, then -
+# if the GPU path really runs - the same content screenshot as P1, 30 s idle memory
+# with an idle frame count, and one 300k-line throughput run.
+Invoke-Stage -Name 'P2' -LimitSec 900 -Title 'GPU backends' -Body {
     if ($script:Rdp) {
         $script:StageStatusOverride = 'SKIP'
         $script:StageNote = 'GPU data is meaningless in an RDP session'
@@ -437,29 +499,28 @@ Invoke-Stage -Name 'P2' -LimitSec 600 -Title 'GPU backends (N/A when build has n
         return
     }
     $variants = @(
-        @{ tag = 'default'; env = @{}; cfg = $CfgGpuAuto },
-        @{ tag = 'dx12'; env = @{ WGPU_BACKEND = 'dx12' }; cfg = $CfgGpu },
-        @{ tag = 'vulkan'; env = @{ WGPU_BACKEND = 'vulkan' }; cfg = $CfgGpu }
+        @{ tag = 'default'; env = @{}; cfg = $CfgGpuAuto; expect = 'VULKAN | DX12' },
+        @{ tag = 'dx12'; env = @{ WGPU_BACKEND = 'dx12' }; cfg = $CfgGpu; expect = 'DX12' },
+        @{ tag = 'vulkan'; env = @{ WGPU_BACKEND = 'vulkan' }; cfg = $CfgGpu; expect = 'VULKAN' }
     )
     $naReasons = @()
+    $mismatch = @()
+    $big = Join-Path $Root 'big.txt'
+    if (-not (Test-Path $big)) { [void](New-TestFile -Path $big -Lines 300000) }
+
     foreach ($v in $variants) {
         Test-Deadline
         $log = Join-Path $LogDir ('app-p2-{0}.log' -f $v.tag)
-        foreach ($k in $v.env.Keys) { Set-Item -Path ('Env:' + $k) -Value $v.env[$k] }
-        try {
-            $h = Start-AppDirect -Exe $App -Config $v.cfg -LogPath $log -WorkDir $Root
-        } finally {
-            foreach ($k in $v.env.Keys) { Remove-Item -Path ('Env:' + $k) -ErrorAction SilentlyContinue }
-        }
+        if (Test-Path $log) { Remove-Item $log -Force -ErrorAction SilentlyContinue }
+        $h = Start-AppDirect -Exe $App -Config $v.cfg -LogPath $log -WorkDir $Root -EnvVars $v.env
         if (-not $h.App) {
             $naReasons += ('{0}: failed to start' -f $v.tag)
             Stop-OwnApp $h.App $h.Cmd
             continue
         }
-        # give the renderer a moment, then decide N/A *before* any window work.
-        # backend=gpu exits within ~1 s on this machine, so wait for the exit (or the
-        # timeout) and re-read the log until it stops growing - otherwise the reason
-        # text can be read before gpu_adapters was flushed
+        # wait until the process exits or the log stops growing (backend=gpu exits
+        # within ~1 s when no adapter is usable, so the reason text must not be read
+        # before gpu_adapters was flushed)
         $waited = 0
         $lastLen = -1
         while ($waited -lt 12000) {
@@ -473,76 +534,112 @@ Invoke-Stage -Name 'P2' -LimitSec 600 -Title 'GPU backends (N/A when build has n
         }
         $txt = ''
         if (Test-Path $log) { try { $txt = Get-Content $log -Raw -Encoding UTF8 -ErrorAction SilentlyContinue } catch { } }
-        # a real GPU path is the ONLY thing that prints gpu_init_ms; backend=gpu on
-        # a CPU-only build prints the platform-unavailable line and falls back
-        $unavailable = -not ($txt -match 'gpu_init_ms')
-        if ($unavailable -or $h.App.HasExited) {
-            # three distinguishable reasons: no GPU backend in this build, no usable
-            # adapter on this machine, or the process died for another reason
+        $actual = 'unknown'
+        if ($txt -match 'backends=Backends\(([^)]*)\)') { $actual = ($Matches[1] -replace '\s*\|\s*', ' | ').Trim() }
+        $script:Env['backends_req_' + $v.tag] = $v.expect
+        $script:Env['backends_act_' + $v.tag] = $actual
+        $script:Notes += ('P2 {0}: requested backends {1}, actual {2}' -f $v.tag, $v.expect, $actual)
+        if ($actual -ne $v.expect -and $actual -ne 'unknown') {
+            $mismatch += ('{0}: requested {1}, got {2} (WGPU_BACKEND is not honored)' -f $v.tag, $v.expect, $actual)
+        }
+        $adapterLine = Get-PerfLine $log 'gpu_adapters'
+        if ($adapterLine) { $script:Notes += ('P2 {0}: {1}' -f $v.tag, $adapterLine) }
+
+        $gpuOk = ($txt -match 'gpu_init_ms')
+        if (-not $gpuOk) {
             $why = 'exited on start'
             if ($txt -match 'gpu_adapters') { $why = 'no usable GPU adapter (only software adapters were enumerated)' }
             elseif ($txt -match 'backend=auto') { $why = 'auto uses the CPU path on Windows by design (no GPU attempt)' }
-            elseif ($txt -match '在当前平台不可用') { $why = 'this build has no GPU backend (stderr reports platform unavailable)' }
             $naReasons += ('{0}: {1}' -f $v.tag, $why)
             Stop-OwnApp $h.App $h.Cmd
             continue
         }
-        $hwnd = Wait-AppWindow -App $h.App -TimeoutMs 15000
+
+        # ---- the GPU path really runs: collect the same evidence as the CPU stage
+        $script:GpuAvailable = $true
+        $hwnd = Wait-AppWindow -App $h.App -TimeoutMs 20000
         if ($hwnd -eq [IntPtr]::Zero) {
             $naReasons += ('{0}: no usable window' -f $v.tag)
             Stop-OwnApp $h.App $h.Cmd
             continue
         }
-        # a working GPU path: five starts, adapter info, screenshot, idle memory
-        $script:GpuAvailable = $true
-        $vals = @()
-        $adapters = Get-PerfLine $log 'gpu_init_ms'
-        for ($i = 1; $i -le 5; $i++) {
-            Test-Deadline
-            $ff = Wait-PerfKey $log 'first_frame_ms' 20000
-            if ($null -ne $ff) { $vals += $ff }
-            if ($i -lt 5) {
-                Stop-OwnApp $h.App $h.Cmd
-                Start-Sleep -Milliseconds 800
-                $h = Start-AppDirect -Exe $App -Config $v.cfg -LogPath $log -WorkDir $Root
-                $hwnd = Wait-AppWindow -App $h.App -TimeoutMs 15000
-            }
+        $script:Env['gpu_info_' + $v.tag] = (Get-PerfLine $log 'gpu_init_ms')
+        $ff = Wait-PerfKey $log 'first_frame_ms' 20000
+        $script:FirstFrame['gpu-' + $v.tag] = @($ff)
+
+        # content: same injected sample as P1, proven by the marker file
+        [void](Set-AppFocus $hwnd)
+        Send-Line ('cd /d ' + (Get-ShotShortPath))
+        Start-Sleep -Milliseconds 600
+        $mk = Join-Path $Root 'sample-done.txt'
+        if (-not (Confirm-Typing $h 'sample' $mk 12000)) {
+            $script:Notes += ('P2 {0}: content injection did not take effect (sample-done.txt missing)' -f $v.tag)
         }
-        $script:FirstFrame['gpu-' + $v.tag] = $vals
-        [void](Focus-Window $hwnd)
-        Start-Sleep -Milliseconds 800
+        Start-Sleep -Seconds 2
         $shot = Join-Path $ShotDir ('S_gpu_{0}.png' -f $v.tag)
         [void](Save-Shot $hwnd $shot)
-        if ($script:ShotCpu) {
+        if ($script:ShotCpu -and (Test-Path $shot)) {
             $cmp = Compare-Png $script:ShotCpu $shot
             $script:Env['gpu_cmp_' + $v.tag] = $cmp
+            $script:Notes += ('P2 {0}: vs S_cpu max_diff={1} gt32_ratio={2} blank_rows={3} blank_cols={4}' -f $v.tag, $cmp.max_diff, $cmp.gt32_ratio, $cmp.blank_rows, $cmp.blank_cols)
         }
         $black = Get-BlackRatio $shot
-        if ($black -gt 0.9) { $script:Notes += ('P2 {0}: S_gpu_{0}.png is almost entirely black ({1}) -> FAIL' -f $v.tag, $black) }
+        if ($black -gt 0.9) { $script:Notes += ('P2 {0}: screenshot almost entirely black ({1})' -f $v.tag, $black) }
+
+        # idle: 30 s memory + frame count (a GPU backend that keeps rendering while
+        # idle is exactly what this looks for)
+        $framesBefore = 0
+        if (Test-Path $log) { $framesBefore = @(Select-String -Path $log -Pattern '\[perf\] frames ' -ErrorAction SilentlyContinue).Count }
         $mem = @()
-        foreach ($t in 5, 15, 30) {
+        foreach ($t in 10, 20, 30) {
             Test-Deadline
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds 10
             $st = Get-AppStats $h.App.Id
-            if ($st) { $mem += [pscustomobject]@{ t_s = $t; ws_mb = $st.ws_mb; priv_mb = $st.priv_mb } }
+            if ($st) { $mem += [pscustomobject]@{ t_s = $t; ws_mb = $st.ws_mb; priv_mb = $st.priv_mb; handles = $st.handles } }
         }
+        $framesAfter = 0
+        if (Test-Path $log) { $framesAfter = @(Select-String -Path $log -Pattern '\[perf\] frames ' -ErrorAction SilentlyContinue).Count }
         $script:Env['idle_gpu_' + $v.tag] = $mem
-        $script:Env['gpu_info_' + $v.tag] = (Get-PerfLine $log 'gpu_init_ms')
-        foreach ($key in 'gpu_adapters', 'gpu_skip_software', 'gpu_adapter_ms', 'gpu_atlas_ms', 'gpu_begin_ms') {
-            $line = Get-PerfLine $log $key
-            if ($line) { $script:Notes += ('P2 {0}: {1}' -f $v.tag, $line) }
+        $script:Notes += ('P2 {0}: idle 30 s ws {1} MB, frame reports +{2}' -f $v.tag, $(if ($mem) { $mem[-1].ws_mb } else { 'n/a' }), ($framesAfter - $framesBefore))
+
+        # throughput 120x30 once
+        $tp = Join-Path $Root ('tp-gpu-' + $v.tag + '.done')
+        if (Test-Path $tp) { Remove-Item $tp -Force }
+        [void](Set-AppFocus $hwnd)
+        $t0 = Get-Date
+        Send-Line ('type big.txt & echo DONE>' + ('tp-gpu-' + $v.tag + '.done'))
+        $remain = [int](($script:Deadline - (Get-Date)).TotalSeconds)
+        if (Wait-File $tp ([math]::Min(900, [math]::Max(60, $remain)) * 1000)) {
+            $el = ((Get-Date) - $t0).TotalSeconds
+            $fr = Get-PerfFrames $log
+            $script:Env['tp_gpu_' + $v.tag] = [pscustomobject]@{ seconds = [math]::Round($el, 1); frames = $fr }
+            $script:Notes += ('P2 {0}: throughput 120x30 {1:N1}s' -f $v.tag, $el)
+        } else {
+            $script:Notes += ('P2 {0}: throughput 120x30 did not finish in the stage window' -f $v.tag)
         }
         Stop-OwnApp $h.App $h.Cmd
     }
     if (-not $script:GpuAvailable) {
+        # no GPU path at all: N/A wins over the backend-selection mismatch (a machine
+        # without a usable adapter cannot demonstrate either backend)
         $script:StageStatusOverride = 'N/A'
-        $script:StageNote = ($naReasons -join ' | ')
+        $script:StageNote = ('no usable GPU path ({0}){1}' -f ($naReasons -join '; '), $(if ($mismatch.Count -gt 0) { '; backend selection not honored: ' + ($mismatch -join '; ') } else { '' }))
         $script:Notes += ('P2 = N/A: no usable GPU path on this machine/build ({0})' -f ($naReasons -join '; '))
+        if ($mismatch.Count -gt 0) { $script:Notes += ('P2 backend selection not honored: ' + ($mismatch -join '; ')) }
+    } elseif ($mismatch.Count -gt 0) {
+        $script:StageStatusOverride = 'FAIL'
+        $script:StageNote = ('backend selection not honored: ' + ($mismatch -join '; '))
+        $script:Notes += ('P2 FAIL: ' + ($mismatch -join '; '))
     }
 }
 
 # ---------------------------------------------------------------- P3 soak
-Invoke-Stage -Name 'P3' -LimitSec ([math]::Max(180, $SoakMinutes * 60 + 240)) -Title 'soak' -Body {
+# the soak limit must follow the real load: one minute per backend (cpu, and gpu
+# when the GPU path works) plus slack for setup, sampling and shutdown
+$backendCount = if ($script:GpuAvailable) { 2 } else { 1 }
+$soakMinutesEff = if ($Quick) { 1 } else { $SoakMinutes }
+$soakLimit = [int]($backendCount * $soakMinutesEff * 60 + 180)
+Invoke-Stage -Name 'P3' -LimitSec $soakLimit -Title ('soak {0} backend(s) x {1} min' -f $backendCount, $soakMinutesEff) -Body {
     if ($SkipSoak) { $script:Notes += 'P3 skipped: -SkipSoak'; return }
     $backends = @(@{ tag = 'cpu'; cfg = $CfgCpu })
     if ($script:GpuAvailable) { $backends += @{ tag = 'gpu'; cfg = $CfgGpuAuto } }
@@ -610,7 +707,11 @@ Invoke-Stage -Name 'P3' -LimitSec ([math]::Max(180, $SoakMinutes * 60 + 240)) -T
 }
 
 # ---------------------------------------------------------------- P4 summary
-Invoke-Stage -Name 'P4' -LimitSec 240 -Title 'summary + zip' -Body {
+Invoke-Stage -Name 'P4' -LimitSec 300 -Title 'summary + zip' -Body {
+    # a stage that hit its deadline may have left a kit app writing its log: stop
+    # those (own PIDs only) before the archive step
+    $leftover = @(Stop-AllKitApps -WorkDir $Root)
+    if ($leftover.Count -gt 0) { $script:Notes += ('P4: stopped leftover kit app(s) before zipping: {0}' -f ($leftover -join ',')) }
     $endTime = Get-Date
     $elapsed = ($endTime - $StartTime).TotalMinutes
     $md = New-Object System.Collections.Generic.List[string]
@@ -719,20 +820,86 @@ Invoke-Stage -Name 'P4' -LimitSec 240 -Title 'summary + zip' -Body {
     }
     $json | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $RunDir 'summary.json') -Encoding UTF8
 
-    # always produce the zip, even when stages failed
+    # always produce the zip, even when stages failed.
+    # Implementation notes (3P): PowerShell 5.1's Compress-Archive builds the whole
+    # archive in memory (System.OutOfMemoryException on the target machine after
+    # ~1000 s), so the archive is written with ZipArchive in a streaming fashion to
+    # a temporary file first and then renamed. The output zip lives OUTSIDE the run
+    # directory, so it can never include itself.
     $zip = Join-Path $OutDir ('tonight-{0}.zip' -f $Stamp)
-    for ($try = 1; $try -le 5; $try++) {
-        if (Test-Path $zip) { Remove-Item $zip -Force -ErrorAction SilentlyContinue }
-        [GC]::Collect()
+    $tmpZip = $zip + '.partial'
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    function Add-FileToZip($archive, [string]$full, [string]$entryName) {
+        $info = Get-Item $full
+        $limit = 50MB
+        $skip = 0
+        if ($info.Length -gt $limit) {
+            $skip = $info.Length - 5MB
+            $script:Notes += ('zip: {0} is {1:N1} MB, only the last 5 MB are archived' -f $entryName, ($info.Length / 1MB))
+        }
+        $entry = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Fastest)
+        $es = $entry.Open()
         try {
-            Compress-Archive -Path (Join-Path $RunDir '*') -DestinationPath $zip -CompressionLevel Optimal -ErrorAction Stop
-            break
+            $fs = [IO.File]::Open($full, 'Open', 'Read', 'ReadWrite')
+            try {
+                if ($skip -gt 0) { [void]$fs.Seek($skip, 'Begin') }
+                $buf = New-Object byte[] 65536
+                $written = [int64]0
+                while (($n = $fs.Read($buf, 0, $buf.Length)) -gt 0) {
+                    $es.Write($buf, 0, $n)
+                    $written += $n
+                    if ($written -gt 200MB) { break }
+                }
+            } finally { $fs.Dispose() }
+        } finally { $es.Dispose() }
+    }
+    $zipOk = $false
+    try {
+        if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force }
+        $fsZip = [IO.File]::Open($tmpZip, 'Create', 'Write')
+        try {
+            if ($ForceZipFailure) { throw 'forced zip failure (validation switch)' }
+            $archive = New-Object System.IO.Compression.ZipArchive($fsZip, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+                $files = Get-ChildItem -Path $RunDir -Recurse -File | Sort-Object FullName
+                foreach ($f in $files) {
+                    if ($f.FullName -eq $zip -or $f.FullName -eq $tmpZip) { continue }
+                    $rel = $f.FullName.Substring($RunDir.Length + 1).Replace([char]92, '/')
+                    try { Add-FileToZip $archive $f.FullName $rel }
+                    catch { $script:Notes += ('zip: skipped {0} ({1})' -f $rel, $_.Exception.Message) }
+                }
+            } finally { $archive.Dispose() }
+        } finally { $fsZip.Dispose() }
+        if (Test-Path $zip) { Remove-Item $zip -Force }
+        Move-Item $tmpZip $zip -Force
+        $zipOk = $true
+        Write-Host ('ZIP {0} {1} bytes' -f $zip, (Get-Item $zip).Length)
+    } catch {
+        $script:Notes += ('zip failed: {0}' -f $_.Exception.Message)
+        Write-Host ('ZIP-FAILED ' + $_.Exception.Message)
+    }
+    if (-not $zipOk) {
+        # minimal archive: summary.md plus whatever logs already exist
+        try {
+            $tmpMin = $zip + '.min'
+            $fsMin = [IO.File]::Open($tmpMin, 'Create', 'Write')
+            try {
+                $archMin = New-Object System.IO.Compression.ZipArchive($fsMin, [System.IO.Compression.ZipArchiveMode]::Create)
+                try {
+                    foreach ($f in (Get-ChildItem -Path $RunDir -Recurse -File)) {
+                        if ($f.Length -gt 50MB) { continue }
+                        $rel = $f.FullName.Substring($RunDir.Length + 1).Replace([char]92, '/')
+                        try { Add-FileToZip $archMin $f.FullName $rel } catch { }
+                    }
+                } finally { $archMin.Dispose() }
+            } finally { $fsMin.Dispose() }
+            if (Test-Path $zip) { Remove-Item $zip -Force }
+            Move-Item $tmpMin $zip -Force
+            Write-Host ('ZIP-MINIMAL {0} {1} bytes' -f $zip, (Get-Item $zip).Length)
         } catch {
-            if ($try -eq 5) { throw ('zip failed after 5 attempts: ' + $_.Exception.Message) }
-            Start-Sleep -Seconds 2
+            Write-Host ('ZIP-MINIMAL-FAILED ' + $_.Exception.Message)
         }
     }
-    Write-Host ('ZIP {0} {1} bytes' -f $zip, (Get-Item $zip).Length)
 }
 
 # ---------------------------------------------------------------- final report

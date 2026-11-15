@@ -34,3 +34,9 @@ scripts/e2e/out/
 /vt-verify-win/3o-warn-full/
 /vt-verify-win/3o-mem/*.csv
 /vt-verify-win/3o-mem/*.json
+/vt-verify-win/tonight-kit-v3/
+/vt-verify-win/tonight-kit-v3.zip
+/vt-verify-win/3p-kit/
+/vt-verify-win/3p-oom/
+/vt-verify-win/kit-trial v3/
+/vt-verify-win/probe_wgpuenv/target/

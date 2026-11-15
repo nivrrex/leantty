@@ -1,0 +1,9 @@
+[package]
+name = "probe_wgpuenv"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu = { version = "=30.0.2", default-features = false, features = ["vulkan", "dx12", "wgsl"] }
+
+[workspace]
