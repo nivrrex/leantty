@@ -721,6 +721,7 @@ pub fn create_renderer(
                     RendererBackend::Cpu(c) => Some(c.font_groups()),
                     _ => None,
                 });
+                ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(false)); // auto 永远忽略软件开关
                 match build_gpu(font_settings, options, palette, window, scale, reuse) {
                     Ok((gpu, adapter)) => {
                         eperf!(
@@ -751,6 +752,7 @@ pub fn create_renderer(
                     RendererBackend::Cpu(c) => Some(c.font_groups()),
                     _ => None,
                 });
+                ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(true)); // 显式 gpu 才可能允许
                 let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale, reuse)?;
                 eperf!(
                     "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
@@ -771,6 +773,17 @@ pub fn create_renderer(
 
 /// 用 winit 窗口的 raw handle 创建 GPU surface 渲染器（仅 Linux）。
 #[cfg(any(target_os = "linux", target_os = "windows"))]
+/// `APP_GPU_ALLOW_SOFTWARE=1` 且配置显式 `backend="gpu"` 时才允许软件适配器。
+fn cfg_gpu_forces_software() -> bool {
+    ALLOW_SOFTWARE_REQUESTED.with(|c| c.get()) && render::gpu::allow_software_from_env()
+}
+
+thread_local! {
+    /// 由 create_renderer 在调用 build_gpu 前设置：本次是否允许软件适配器
+    /// （`backend="gpu"` → true；`backend="auto"` → false，永远忽略该环境变量）。
+    static ALLOW_SOFTWARE_REQUESTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 fn build_gpu(
     font_settings: &render::FontSettings,
     options: render::RenderOptions,
@@ -802,6 +815,9 @@ fn build_gpu(
             width: size.width.max(1),
             height: size.height.max(1),
         },
+        // 阶段 4Q t4：软件适配器仅当 backend="gpu" 且 APP_GPU_ALLOW_SOFTWARE=1 时允许；
+        // build_gpu 只被 Gpu/（Linux 的）Auto 调用，故此处再确认一次"强制 gpu"。
+        cfg_gpu_forces_software(),
     )?;
     gpu.set_scale_factor(scale);
     let name = gpu.adapter_name().to_string();

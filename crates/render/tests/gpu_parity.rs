@@ -90,6 +90,7 @@ fn make_gpu(scale: f64) -> Option<GpuRenderer> {
         &settings(16.0),
         RenderOptions::default(),
         Palette::default(),
+        render::gpu::allow_software_from_env(),
     ) {
         Ok(r) => r,
         Err(Error::Backend(msg)) => {

@@ -147,8 +147,9 @@ impl GpuRenderer {
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
+        allow_software: bool,
     ) -> Result<Self, Error> {
-        let gpu = Gpu::new()?;
+        let gpu = Gpu::new(allow_software)?;
         let groups = std::sync::Arc::new(crate::build_font_groups(settings)?);
         let atlas = GlyphAtlas::new(
             &gpu.device,
@@ -651,8 +652,9 @@ impl GpuRenderer {
         options: RenderOptions,
         palette: Palette,
         surface: SurfaceInit,
+        allow_software: bool,
     ) -> Result<Self, Error> {
-        Self::new_surface_with_groups(settings, options, palette, None, surface)
+        Self::new_surface_with_groups(settings, options, palette, None, surface, allow_software)
     }
 
     /// 同 `new_surface`，但可复用**已构建的**字体组（`Arc` 共享，零拷贝）。
@@ -666,6 +668,7 @@ impl GpuRenderer {
         palette: Palette,
         reuse_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>>,
         surface: SurfaceInit,
+        allow_software: bool,
     ) -> Result<Self, Error> {
         let SurfaceInit {
             raw_window,
@@ -679,7 +682,7 @@ impl GpuRenderer {
             crate::since_start_ms(),
             reuse_groups.is_some()
         );
-        let gpu = Gpu::new()?;
+        let gpu = Gpu::new(allow_software)?;
         let groups = match reuse_groups {
             Some(g) => g,
             None => std::sync::Arc::new(crate::build_font_groups(settings)?),
@@ -1092,6 +1095,14 @@ pub fn parse_backends_spec(spec: &str) -> Result<wgpu::Backends, String> {
     Ok(out)
 }
 
+/// 是否允许使用软件 GPU 适配器（阶段 4Q t4，仅诊断/测试用）。
+///
+/// 只有 `APP_GPU_ALLOW_SOFTWARE=1` 时为真；**是否真正生效由调用方决定**：
+/// app 只在配置为 `backend="gpu"` 时传入，`backend="auto"` 永远忽略（见 app 的后端选择）。
+pub fn allow_software_from_env() -> bool {
+    std::env::var("APP_GPU_ALLOW_SOFTWARE").is_ok_and(|v| v.trim() == "1")
+}
+
 impl Gpu {
     /// 默认后端集合（未设置 `WGPU_BACKEND` 时）：Linux 仅 Vulkan，Windows 为 Vulkan|DX12。
     ///
@@ -1115,7 +1126,7 @@ impl Gpu {
     }
 
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
-    fn new() -> Result<Self, Error> {
+    fn new(allow_software: bool) -> Result<Self, Error> {
         let t_instance = std::time::Instant::now();
         // 阶段 4Q t2：自己解析（严格），并把"原始值 / 生效值"都打出来，用引号包住原始值
         // 以暴露尾随空格这类问题；无法识别时明确报错而不是回落到默认值。
@@ -1169,7 +1180,7 @@ impl Gpu {
         let mut real: Vec<_> = Vec::new();
         for a in adapters {
             let info = a.get_info();
-            if info.device_type == wgpu::DeviceType::Cpu {
+            if info.device_type == wgpu::DeviceType::Cpu && !allow_software {
                 eperf!("[perf] gpu_skip_software name='{}'", info.name);
                 continue;
             }
@@ -1214,14 +1225,23 @@ impl Gpu {
             }
         };
         let info = adapter.get_info();
+        let is_software = info.device_type == wgpu::DeviceType::Cpu;
+        if is_software {
+            // 用户可见警告（不受 APP_PERF_FRAMES 门控）：软件适配器只用于诊断
+            eprintln!(
+                "正在使用软件 GPU 适配器：{}，仅用于诊断（APP_GPU_ALLOW_SOFTWARE=1）",
+                info.name
+            );
+        }
         eperf!(
-            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}' backend={:?} type={:?} driver='{}'",
+            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}' backend={:?} type={:?} driver='{}' software={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
             info.name,
             info.backend,
             info.device_type,
-            info.driver
+            info.driver,
+            is_software
         );
         let limits = adapter.limits();
         // 不要直接拿 adapter.limits() 当 required_limits：部分驱动会把
