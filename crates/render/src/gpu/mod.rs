@@ -1077,9 +1077,7 @@ impl Gpu {
         // 以暴露尾随空格这类问题；无法识别时明确报错而不是回落到默认值。
         let backends_env = std::env::var("WGPU_BACKEND").ok();
         let backends = match backends_env.as_deref() {
-            Some(raw) => parse_backends_spec(raw)
-                .map_err(|e| Error::Backend(e))?
-                ,
+            Some(raw) => parse_backends_spec(raw).map_err(Error::Backend)?,
             None => Self::default_backends(),
         };
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
