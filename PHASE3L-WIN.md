@@ -228,4 +228,11 @@ A1 曲线（每 ~100 ms 取样，`vt-verify-win/logs/3l-mem/fine-A1.csv` 全量 
 
 ## 8. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `cdc49fca8c5fec2ca23a1d436f8270f34b06817a` |
+| `refs/tags/phase3l-win-done`（tag 对象） | `bfbccef86a54d88801986bc9ebf4957f25d80207` |
+| `refs/tags/phase3l-win-done^{}`（解引用 commit） | `cdc49fca8c5fec2ca23a1d436f8270f34b06817a` |
+
+- `git push origin win`：`e172399..cdc49fc  win -> win`；tag 为新建后 push（`* [new tag]`）。未使用 force，未移动/clobber 任何已有 tag（`phase4m-done` 仍为轻量 tag `2d08837`）。
+- 提交内容：`PHASE3L-WIN.md`、`docs/WIN-NOTES.md`（3L 事实与请求 1/2/3）、`scripts/windows/package.ps1`、3 个新 cfg、`vt-verify-win/` 下探针与 3L 日志、`.gitignore`（dist/zip/probe target、3l-deploy 二进制目录）、`.gitattributes`（`vt-verify-win/logs/** -text`，保证证据逐字保留）。**无任何二进制入库**（提交前 `git status` 检查 .exe/.dll/.zip/.png 命中 0）。
