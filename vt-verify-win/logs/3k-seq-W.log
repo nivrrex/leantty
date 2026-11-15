@@ -1,0 +1,11 @@
+T4 W s1_inverse_default pwsh rc=0
+T4 W s1_inverse_default bash rc=0
+T4 W s2_inverse_white pwsh rc=0
+T4 W s2_inverse_white bash rc=0
+T4 W s3_red_text pwsh rc=0
+T4 W s3_red_text bash rc=0
+T4 W s4_osc4_red pwsh rc=0
+T4 W s4_osc4_red bash rc=0
+T4 W s5_osc0_title pwsh rc=0
+T4 W s5_osc0_title bash rc=0
+T4 W done

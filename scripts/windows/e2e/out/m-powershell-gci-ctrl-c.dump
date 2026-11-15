@@ -1,25 +1,25 @@
-# cols=80 rows=24 wide=4 spacer=4 alternate=false
-
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
--a----        2026/11/12      7:10          33108 lib.rs
-
-
-    目录: C:\dev\tty\crates\config\tests
-
-
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
--a----        2026/11/12     23:15           7367 config.rs
-
-
-    目录: C:\dev\tty\crates\pty
-
-
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
-d-----         2026/11/8     18:34                src
-d-----         2026/11/9      1:04                target
+# cols=80 rows=24 wide=0 spacer=0 alternate=false
+d-----         2026/11/8     19:54                winapi-x86_64-pc-windows-gnu-
+                                                  43ea3c1a30c81d92
+d-----         2026/11/8     19:54                winapi-x86_64-pc-windows-gnu-
+                                                  ea0c11aa47998b7d
+d-----         2026/11/9      2:49                windows-link-33c6888038906e64
+d-----         2026/11/9      0:36                windows-link-998475ad3a6299c1
+d-----         2026/11/9      2:49                windows-sys-0ee959d79ff80f3b
+d-----         2026/11/9      2:49                windows-sys-14da80ad399bf281
+d-----         2026/11/9      0:36                windows-sys-522b74172819c882
+d-----         2026/11/9      0:37                windows-sys-6836a9a162a0e935
+d-----        2026/11/12      7:29                windows-sys-87e27e03c6fda9f1
+d-----        2026/11/12      7:54                windows-sys-9418040126f024fd
+d-----         2026/11/9      0:36                windows-targets-4d49292c6350c
+                                                  41a
+d-----         2026/11/9      2:49                windows-targets-bb483b8424791
+                                                  e4a
+d-----         2026/11/9      0:36                windows_x86_64_gnu-42ef9d6766
+                                                  9d3db2
+d-----         2026/11/9      0:36                windows_x86_64_gnu-6996b3ec11
+                                                  3ad92d
+d-----         2026/11/9      0:36                windows_x86_64_gnu-854ba83bce
 PS C:\Users\Admin> echo CCCDONE
 CCCDONE
 PS C:\Users\Admin>

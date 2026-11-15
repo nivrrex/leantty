@@ -1,0 +1,35 @@
+ConPTY redistributable NOTICE
+=============================
+
+Component : conpty.dll, OpenConsole.exe (Windows pseudo console host)
+Version   : 1.25.261109001
+Origin    : NuGet package Microsoft.Windows.Console.ConPTY 1.25.261109001
+            https://www.nuget.org/packages/Microsoft.Windows.Console.ConPTY/1.25.261109001
+Upstream  : https://github.com/microsoft/terminal (projectUrl from the package's nuspec)
+Licence   : MIT, Copyright (c) Microsoft Corporation. All rights reserved.
+            Verbatim text: LICENSE-ConPTY.txt in this directory.
+            Upstream NOTICE file (third-party components shipped inside the binaries):
+            https://github.com/microsoft/terminal/blob/main/NOTICE.md
+            (23 176 bytes at the time of writing; not reproduced here - see the URL,
+             or fetch it with scripts/windows/conpty/fetch-conpty.ps1's proxy setting.)
+Copyright : (c) Microsoft Corporation.
+
+Hashes (measured 2026-11-15, see PHASE3K-WIN.md t1):
+
+  package   Microsoft.Windows.Console.ConPTY.1.25.261109001.nupkg
+            sha256 3d77f535df848e44225c2a8912ac844fecb23f3057732b639f3034b587496f09
+  conpty.dll        sha256 e971856f89748dc3b458125e9afdd79b5e9574a7c937676116d3cbbd3b71f492  (119 608 bytes)
+  OpenConsole.exe   sha256 b17e48b07ef153b420f0a6e178bacd31fb4c3390e21ae746586213fc0719a775  (1 089 336 bytes)
+
+Authenticode: both files are signed by CN=Microsoft Corporation and timestamped by
+Microsoft Time-Stamp Service; `Get-AuthenticodeSignature` reports Status=Valid.
+
+Redistribution notes (facts only, from the MIT text):
+  * MIT requires the copyright notice and permission notice to be included in all
+    copies or substantial portions of the software. LICENSE-ConPTY.txt is shipped
+    for that purpose.
+  * The package's nuspec declares `<license type="expression">MIT</license>` and
+    `requireLicenseAcceptance=false`; no additional restriction is stated there.
+  * No separate restriction specific to OpenConsole.exe was found in the package
+    or the repository licence text. Third-party components inside the binaries are
+    listed in the upstream NOTICE.md, which was not audited line by line here.

@@ -1,39 +1,47 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
 config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
-[perf] config_ms=19.3 since_start=29.0
-[perf] app_new_ms=0.1 since_start=54.9
-[perf] event_loop_ms=15.2 since_start=88.8
-[perf] cpu_new_begin_ms=0.0 since_start=113.3
-[perf] fontdb_ms=67.6 since_start=200.5
-[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=222.3
-[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=65 read_ms=1.07 parse_ms=25.61 since_start=269.3
-[perf] font_cache_ms=8.85 since_start=333.1 family='Consolas' style='Regular'
-[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=151.1 since_start=373.4
-[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=421.1
-[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=23 read_ms=0.59 parse_ms=22.36 since_start=462.3
-[perf] font_cache_ms=8.69 since_start=526.4 family='Consolas' style='Bold'
-[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=139.3 since_start=560.3
-[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=605.6
-[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=34 read_ms=1.08 parse_ms=29.67 since_start=659.4
-[perf] font_cache_ms=7.86 since_start=720.7 family='Consolas' style='Italic'
-[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=145.0 since_start=750.6
-[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=797.3
-[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=44 read_ms=0.66 parse_ms=22.93 since_start=842.1
-[perf] font_cache_ms=7.61 since_start=921.5 family='Consolas' style='Bold Italic'
-[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=155.1 since_start=952.4
-[perf] cpu_groups_ms=877.0 since_start=1009.9
+[perf] config_ms=46.0 since_start=51.9
+[perf] app_new_ms=0.0 since_start=75.5
+[perf] event_loop_ms=6.2 since_start=100.3
+[perf] cpu_new_begin_ms=0.0 since_start=121.1
+[perf] fontdb_ms=73.3 since_start=213.4
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=253.0
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=279.8
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=32 face_ms=0.00 read_ms=0.68 parse_ms=23.31 since_start=324.9
+[perf] font_cache_ms=7.10 since_start=383.3 family='Consolas' style='Regular'
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=160.59 since_start=413.5
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=197.1 since_start=450.1
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=487.1
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=507.1
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=22 face_ms=0.00 read_ms=0.70 parse_ms=21.18 since_start=545.2
+[perf] font_cache_ms=6.51 since_start=596.4 family='Consolas' style='Bold'
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=132.90 since_start=620.0
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=183.9 since_start=671.1
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=712.5
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=734.6
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=25 face_ms=0.00 read_ms=0.66 parse_ms=22.94 since_start=778.7
+[perf] font_cache_ms=6.80 since_start=830.4 family='Consolas' style='Italic'
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=144.68 since_start=857.2
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=183.9 since_start=896.3
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=936.0
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=956.8
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=29 face_ms=0.00 read_ms=0.57 parse_ms=28.45 since_start=1016.4
+[perf] font_cache_ms=7.31 since_start=1086.6 family='Consolas' style='Bold Italic'
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=176.15 since_start=1112.2
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=212.8 since_start=1148.8
+[perf] cpu_groups_ms=1057.9 since_start=1198.1
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] cpu_renderer_ready_ms=922.7 since_start=1036.0
-[perf] cpu_state_ms=0.00 since_start=1055.5
-[perf] pre_window_ms=960.9 since_start=1074.2
-[perf] window_ms=71.0 since_start=1165.7
-[perf] ime_ms=6.03 since_start=1192.5
-[perf] renderer_build_ms=0.0 since_start=1212.3 backend=cpu
-[perf] renderer_ready_ms=1235.0 since_start=1235.0
-[perf] surface_ms=1.4 since_start=1259.2
-[perf] vt_new_ms=0.28 since_start=1280.0
-[perf] pty_spawn_ms=10.4 since_start=1305.1
-[perf] writer_thread_ms=0.00 since_start=1328.8 enabled=false
-[perf] first_pty_byte_ms=1354 since_start=1354
-[perf] pre_first_submit_ms=1367 since_start=1367
-[perf] first_frame_ms=1381
+[perf] cpu_renderer_ready_ms=1097.9 since_start=1219.0
+[perf] cpu_state_ms=0.00 since_start=1237.7
+[perf] pre_window_ms=1130.6 since_start=1251.8
+[perf] window_ms=76.7 since_start=1347.2
+[perf] ime_ms=3.74 since_start=1395.9
+[perf] renderer_build_ms=0.0 since_start=1413.7 backend=cpu
+[perf] renderer_ready_ms=1434.0 since_start=1434.0
+[perf] surface_ms=0.7 since_start=1452.5
+[perf] vt_new_ms=0.17 since_start=1469.2
+[perf] pty_spawn_ms=754.6 since_start=2240.9
+[perf] writer_thread_ms=0.00 since_start=2267.0 enabled=true
+[perf] first_pty_byte_ms=2288 since_start=2288
+[perf] pre_first_submit_ms=2301 since_start=2301
+[perf] first_frame_ms=2313

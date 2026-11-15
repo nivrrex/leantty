@@ -1,0 +1,47 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=1.2 since_start=11.0
+[perf] app_new_ms=0.0 since_start=54.3
+[perf] event_loop_ms=6.5 since_start=89.0
+[perf] cpu_new_begin_ms=0.0 since_start=115.6
+[perf] fontdb_ms=46.5 since_start=180.2
+[perf] font_group_begin_ms group=0 family='Courier New' style='Regular' since_start=215.0
+[perf] font_lookup_begin_ms family='Courier New' style='Regular' since_start=261.7
+[perf] font_seg_ms family='Courier New' style='Regular' bytes=806504 query_us=28 face_ms=0.00 read_ms=0.98 parse_ms=38.65 since_start=322.1
+[perf] font_cache_ms=10.67 since_start=386.4 family='Courier New' style='Regular'
+[perf] font_group_ms group=0 family='Courier New' style='Regular' used_style='Regular' fallback=false total_ms=210.29 since_start=425.3
+[perf] font_ms=0 family='Courier New' style='Regular' used_style='Regular' cached=false ms=254.9 since_start=469.9
+[perf] font_group_begin_ms group=1 family='Courier New' style='Bold' since_start=507.0
+[perf] font_lookup_begin_ms family='Courier New' style='Bold' since_start=531.0
+[perf] font_seg_ms family='Courier New' style='Bold' bytes=805244 query_us=30 face_ms=0.00 read_ms=0.69 parse_ms=37.52 since_start=587.4
+[perf] font_cache_ms=11.74 since_start=652.5 family='Courier New' style='Bold'
+[perf] font_group_ms group=1 family='Courier New' style='Bold' used_style='Bold' fallback=false total_ms=172.23 since_start=679.3
+[perf] font_ms=1 family='Courier New' style='Bold' used_style='Bold' cached=false ms=211.7 since_start=718.7
+[perf] font_group_begin_ms group=2 family='Courier New' style='Italic' since_start=754.4
+[perf] font_lookup_begin_ms family='Courier New' style='Italic' since_start=780.4
+[perf] font_seg_ms family='Courier New' style='Italic' bytes=667440 query_us=20 face_ms=0.00 read_ms=0.56 parse_ms=21.73 since_start=819.7
+[perf] font_cache_ms=6.69 since_start=872.8 family='Courier New' style='Italic'
+[perf] font_group_ms group=2 family='Courier New' style='Italic' used_style='Italic' fallback=false total_ms=145.90 since_start=900.3
+[perf] font_ms=2 family='Courier New' style='Italic' used_style='Italic' cached=false ms=182.6 since_start=937.0
+[perf] font_group_begin_ms group=3 family='Courier New' style='Bold Italic' since_start=974.7
+[perf] font_lookup_begin_ms family='Courier New' style='Bold Italic' since_start=996.0
+[perf] font_seg_ms family='Courier New' style='Bold Italic' bytes=577488 query_us=17 face_ms=0.00 read_ms=0.49 parse_ms=25.51 since_start=1040.6
+[perf] font_cache_ms=8.57 since_start=1098.6 family='Courier New' style='Bold Italic'
+[perf] font_group_ms group=3 family='Courier New' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=178.66 since_start=1153.3
+[perf] font_ms=3 family='Courier New' style='Bold Italic' used_style='Bold Italic' cached=false ms=214.9 since_start=1189.6
+[perf] cpu_groups_ms=1103.6 since_start=1237.3
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1140.5 since_start=1256.1
+[perf] cpu_state_ms=0.00 since_start=1272.9
+[perf] pre_window_ms=1171.4 since_start=1287.1
+[perf] window_ms=55.5 since_start=1358.6
+[perf] ime_ms=5.71 since_start=1396.9
+[perf] renderer_build_ms=0.0 since_start=1414.5 backend=cpu
+[perf] renderer_ready_ms=1433.9 since_start=1433.9
+[perf] surface_ms=0.6 since_start=1454.6
+[perf] vt_new_ms=0.12 since_start=1474.9
+[perf] pty_spawn_ms=35.4 since_start=1523.5
+[perf] writer_thread_ms=0.00 since_start=1542.2 enabled=true
+[perf] pre_first_submit_ms=1578 since_start=1578
+[perf] first_frame_ms=1594
+[perf] first_pty_byte_ms=1604 since_start=1604
+[perf] bg_fonts_ms=1727 count=2

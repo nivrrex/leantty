@@ -92,6 +92,10 @@ if ($a.hwnd -ne [IntPtr]::Zero) {
     $okOut = Wait-Dump2 $a.dump 'LN300' 60
     Start-Sleep -Milliseconds 800
     $maxBottom = Max-LineNo $a.dump
+    # background output that needs NO typing: typed input legitimately scrolls
+    # back to the bottom since 4K, so it cannot be used to test auto-follow pausing
+    Send-Text2 'ping -n 30 127.0.0.1'; Send-Vk2 0x0D
+    Start-Sleep -Seconds 2
     $geom = Get-Geom $a.hwnd
     Move-To ([int]($geom.ox + $geom.cw / 2)) ([int]($geom.oy + $geom.ch / 2))
     for ($i = 0; $i -lt 5; $i++) {
@@ -100,8 +104,7 @@ if ($a.hwnd -ne [IntPtr]::Zero) {
     }
     Start-Sleep -Milliseconds 600
     $maxScrolled = Max-LineNo $a.dump
-    Send-Text2 'echo afterscroll'; Send-Vk2 0x0D
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 4
     $maxAfter = Max-LineNo $a.dump
     $upWorked = ($maxScrolled -ge 0) -and ($maxScrolled -lt $maxBottom)
     $paused = ($maxAfter -le $maxScrolled + 2)

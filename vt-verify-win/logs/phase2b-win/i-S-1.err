@@ -1,0 +1,57 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=5.7
+[perf] app_new_ms=0.0 since_start=26.5
+[perf] event_loop_ms=16.5 since_start=62.1
+[perf] cpu_new_begin_ms=0.0 since_start=100.2
+[perf] fontdb_ms=43.6 since_start=169.1
+[perf] font_group_begin_ms group=0 family='Microsoft YaHei Mono' style='Regular' since_start=202.7
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=227.8
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=32 face_ms=0.00 read_ms=9.72 parse_ms=439.83 since_start=700.4
+[perf] font_cache_ms=192.93 since_start=947.5 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_group_ms group=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' fallback=false total_ms=783.72 since_start=986.4
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=829.8 since_start=1032.5
+[perf] font_group_begin_ms group=1 family='Microsoft YaHei Mono' style='Bold' since_start=1070.0
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=1093.5
+[perf] font_group_ms group=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' fallback=false total_ms=179.80 since_start=1249.8
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=224.3 since_start=1294.2
+[perf] font_group_begin_ms group=2 family='Microsoft YaHei Mono' style='Italic' since_start=1332.8
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1355.9
+[perf] font_group_ms group=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' fallback=false total_ms=187.10 since_start=1519.9
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=228.2 since_start=1561.0
+[perf] font_group_begin_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' since_start=1600.8
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1626.5
+[perf] font_group_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=173.53 since_start=1774.3
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=213.2 since_start=1813.9
+[perf] cpu_groups_ms=1762.1 since_start=1887.6
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1809.4 since_start=1909.6
+[perf] cpu_state_ms=0.01 since_start=1929.5
+[perf] pre_window_ms=1853.4 since_start=1953.6
+[perf] window_ms=66.8 since_start=2045.8
+[perf] ime_ms=6.68 since_start=2075.4
+[perf] renderer_build_ms=0.0 since_start=2095.3 backend=cpu
+[perf] renderer_ready_ms=2117.4 since_start=2117.4
+[perf] surface_ms=0.7 since_start=2141.3
+[perf] vt_new_ms=0.14 since_start=2157.4
+[perf] pty_spawn_ms=8.3 since_start=2181.9
+[perf] writer_thread_ms=0.00 since_start=2207.2 enabled=true
+[perf] loop_gap_ms=0 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=0
+[perf] first_pty_byte_ms=2262 since_start=2262
+[perf] pre_first_submit_ms=2273 since_start=2273
+[perf] first_frame_ms=2288
+[perf] bg_fonts_ms=2810 count=3
+[perf] loop_gap_ms=710 feed_ms_max=10.2 feed_bytes_max=446 writer_queued_max=0
+[perf] frames n=50 render_ms(med=0 p95=1) present_ms(med=0 p95=2) coalesced=753 interval_ms=8 ~125fps feed_bytes_per_s=164 chan_depth_max=0 loop_gap_max_ms=40 feed_ms_max=10.2 feed_bytes_max=446 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=63/4128768B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=2 p95=3) coalesced=219 interval_ms=8 ~125fps feed_bytes_per_s=76 chan_depth_max=0 loop_gap_max_ms=97 feed_ms_max=0.0 feed_bytes_max=5 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=61/3997696B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=1 p95=2) coalesced=209 interval_ms=8 ~125fps feed_bytes_per_s=40 chan_depth_max=1 loop_gap_max_ms=108 feed_ms_max=0.0 feed_bytes_max=5 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=58/3801088B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=2 p95=2) coalesced=243 interval_ms=8 ~125fps feed_bytes_per_s=0 chan_depth_max=0 loop_gap_max_ms=101 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=57/3735552B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=1 p95=2) coalesced=237 interval_ms=8 ~125fps feed_bytes_per_s=36 chan_depth_max=0 loop_gap_max_ms=118 feed_ms_max=0.0 feed_bytes_max=3 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=55/3604480B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=3) present_ms(med=2 p95=2) coalesced=213 interval_ms=8 ~125fps feed_bytes_per_s=84 chan_depth_max=0 loop_gap_max_ms=102 feed_ms_max=0.0 feed_bytes_max=9 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=53/3473408B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=3) present_ms(med=1 p95=2) coalesced=246 interval_ms=8 ~125fps feed_bytes_per_s=0 chan_depth_max=0 loop_gap_max_ms=100 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=51/3342336B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] loop_gap_ms=75 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=1 p95=3) coalesced=223 interval_ms=8 ~125fps feed_bytes_per_s=20 chan_depth_max=0 loop_gap_max_ms=52 feed_ms_max=0.0 feed_bytes_max=5 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=49/3211264B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=2 p95=2) coalesced=192 interval_ms=8 ~125fps feed_bytes_per_s=74 chan_depth_max=0 loop_gap_max_ms=103 feed_ms_max=0.0 feed_bytes_max=6 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=48/3145728B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=3) present_ms(med=1 p95=2) coalesced=230 interval_ms=8 ~125fps feed_bytes_per_s=21 chan_depth_max=0 loop_gap_max_ms=99 feed_ms_max=0.0 feed_bytes_max=9 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=45/2949120B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=2 p95=4) present_ms(med=2 p95=2) coalesced=215 interval_ms=8 ~125fps feed_bytes_per_s=0 chan_depth_max=0 loop_gap_max_ms=88 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=43/2818048B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=3 p95=5) present_ms(med=2 p95=2) coalesced=189 interval_ms=8 ~125fps feed_bytes_per_s=91 chan_depth_max=0 loop_gap_max_ms=80 feed_ms_max=0.0 feed_bytes_max=8 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=41/2686976B wq_cap=16 wq_len=16 wq_bytes=1048576
+[perf] frames n=50 render_ms(med=3 p95=4) present_ms(med=2 p95=2) coalesced=201 interval_ms=8 ~125fps feed_bytes_per_s=24 chan_depth_max=0 loop_gap_max_ms=88 feed_ms_max=0.0 feed_bytes_max=4 writer_queued_max=1048576 sb_rows=12 glyphs=43 fb_bytes=1843200 pending=38/2490368B wq_cap=16 wq_len=16 wq_bytes=1048576
