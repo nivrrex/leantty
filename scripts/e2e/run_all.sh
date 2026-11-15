@@ -1378,7 +1378,7 @@ H32="$OUT/case32-frames.hash"
 L32="$OUT/case32-paste-frame.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG32"
 rm -f "$H32"
-APP_CONFIG="$CFG32" APP_FRAME_HASH="$H32" APP_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
+APP_CONFIG="$CFG32" APP_PERF_FRAMES=1 APP_FRAME_HASH="$H32" APP_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
   APP_TEST_PASTE="SILENT_PASTE" APP_TEST_PASTE_AT_MS=3500 \
   SHELL=/bin/sh "$APP_BIN" >"$L32" 2>&1 &
 APP_PID=$!
@@ -2300,7 +2300,7 @@ else
         CFG47="$OUT/case47-$c47.toml"
         L47="$OUT/case47-$c47.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$c47" > "$CFG47"
-        APP_CONFIG="$CFG47" SHELL=/bin/bash "$APP_REL" >"$L47" 2>&1 &
+        APP_CONFIG="$CFG47" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_REL" >"$L47" 2>&1 &
         APP_PID=$!
         if ! wait_window; then
             echo "FAIL case47-paste-follow-by-size-$c47 (窗口未出现)"; FAIL=$((FAIL+1)); continue
