@@ -56,6 +56,19 @@ pub fn should_follow(ev: InputEvent, alt_screen: bool, mouse_reporting: bool) ->
     ev.sends_bytes() && !alt_screen && !mouse_reporting
 }
 
+/// 粘贴入队前的回底判定（纯函数，阶段 4M t2 的单一入口用）。
+///
+/// 只有"**被接受**（未因积压上限整条拒绝）且**非空**"的粘贴才回底：
+/// 被拒绝的粘贴没有输入发往 PTY，按规格不改变视口；空粘贴同理。
+pub fn paste_returns_to_bottom(
+    len: usize,
+    accepted: bool,
+    alt_screen: bool,
+    mouse_reporting: bool,
+) -> bool {
+    accepted && len > 0 && should_follow(InputEvent::Paste, alt_screen, mouse_reporting)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,6 +127,21 @@ mod tests {
         ] {
             assert!(!should_follow(ev, MAIN, MOUSE), "鼠标上报模式下 {ev:?} 不应回底");
         }
+    }
+
+    #[test]
+    fn paste_entry_returns_to_bottom_only_when_accepted_and_nonempty() {
+        // 接受且非空 → 回底
+        assert!(paste_returns_to_bottom(20, true, MAIN, NO_MOUSE));
+        assert!(paste_returns_to_bottom(1_200_000, true, MAIN, NO_MOUSE));
+        // 整条拒绝（积压超限 / 单条超上限）→ 不回底（没有输入发往 PTY）
+        assert!(!paste_returns_to_bottom(20, false, MAIN, NO_MOUSE));
+        assert!(!paste_returns_to_bottom(13_631_488, false, MAIN, NO_MOUSE));
+        // 空粘贴 → 不回底
+        assert!(!paste_returns_to_bottom(0, true, MAIN, NO_MOUSE));
+        // 备用屏与鼠标上报模式保持既有行为
+        assert!(!paste_returns_to_bottom(20, true, ALT, NO_MOUSE));
+        assert!(!paste_returns_to_bottom(20, true, MAIN, MOUSE));
     }
 
     #[test]
