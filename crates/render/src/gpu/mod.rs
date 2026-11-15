@@ -1789,6 +1789,15 @@ mod backends_spec_tests {
     }
 
     #[test]
+    fn rejects_literal_quotes_from_shell_typos() {
+        // cmd 的规范写法 `set "WGPU_BACKEND=vulkan"` 不会把引号带进变量值；若带进来了
+        // （例如误写成 set WGPU_BACKEND="vulkan"），必须明确报错而不是静默忽略。
+        let err = parse_backends_spec("\"vulkan\"").expect_err("字面引号值必须报错");
+        assert!(err.contains("\"vulkan\""), "错误信息应回显原始值：{err}");
+        assert!(parse_backends_spec("\"dx12\" ").is_err());
+    }
+
+    #[test]
     fn accepts_all_supported_names() {
         for ok in ["metal", "mtl", "gl", "gles", "opengl", "webgpu"] {
             assert!(parse_backends_spec(ok).is_ok(), "{ok} 应可解析");
