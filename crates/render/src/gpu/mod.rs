@@ -215,7 +215,7 @@ impl GpuRenderer {
             "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
             shared.len(),
             self.groups.len(),
-            shared.iter().map(|a| std::sync::Arc::strong_count(a)).collect::<Vec<_>>(),
+            shared.iter().map(std::sync::Arc::strong_count).collect::<Vec<_>>(),
             t_merge.elapsed().as_micros()
         );
         self.char_font.clear();
