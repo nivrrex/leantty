@@ -41,6 +41,27 @@ fn since_start_ms() -> f64 {
 pub use decide::{decide, CellDecision, DecideCtx};
 pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
 
+
+/// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
+///
+/// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
+/// 设置环境变量 `APP_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
+/// 面向用户的警告/错误（配置告警、hinting 不支持、backend 回落等）不受此开关影响。
+fn perf_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
+}
+
+/// 受 `perf_on()` 门控的 eprintln（仅用于 `[perf]` 诊断行）。
+macro_rules! eperf {
+    ($($arg:tt)*) => {
+        if crate::perf_on() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+pub(crate) use eperf;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -296,7 +317,7 @@ pub(crate) fn build_font_groups(
     let mut db = Database::new();
     let t_db = std::time::Instant::now();
     db.load_system_fonts();
-    eprintln!(
+    eperf!(
         "[perf] fontdb_ms={:.1} since_start={:.1}",
         t_db.elapsed().as_secs_f64() * 1000.0,
         since_start_ms()
@@ -315,7 +336,7 @@ pub(crate) fn build_font_groups(
     for (gi, spec) in specs.iter().enumerate() {
         let t_font = std::time::Instant::now();
         // 阶段 4J t4：每组起止点（Windows 上 4 组合计约 400ms，是首帧最大单项）。
-        eprintln!(
+        eperf!(
             "[perf] font_group_begin_ms group={} family='{}' style='{}' since_start={:.1}",
             gi,
             spec.family,
@@ -335,7 +356,7 @@ pub(crate) fn build_font_groups(
                 // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
                 // "主字体面" 与 "回退字体面" 的成本。
                 let tail_us = t_before_load.elapsed().as_micros().saturating_sub(load_us);
-                eprintln!(
+                eperf!(
                     "[perf] font_group_us group={} family='{}' style='{}' pre_load_us={} load_us={} tail_us={} total_us={} fallback={}",
                     gi,
                     spec.family,
@@ -346,7 +367,7 @@ pub(crate) fn build_font_groups(
                     t_font.elapsed().as_micros(),
                     used_style != spec.style
                 );
-                eprintln!(
+                eperf!(
                     "[perf] font_group_ms group={} family='{}' style='{}' used_style='{}' fallback={} total_ms={:.2} since_start={:.1}",
                     gi,
                     spec.family,
@@ -356,7 +377,7 @@ pub(crate) fn build_font_groups(
                     t_font.elapsed().as_secs_f64() * 1000.0,
                     since_start_ms()
                 );
-                eprintln!(
+                eperf!(
                     "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
                     gi,
                     spec.family,
@@ -438,14 +459,14 @@ impl CpuRenderer {
         let t_ctor = std::time::Instant::now();
         // 阶段 4H t2：CpuRenderer 内部逐段打点（Windows 首帧 781ms 中这段此前无观测）。
         // 入口先报一次 since_start，便于判断"进入 new 之前"是否已耗时。
-        eprintln!(
+        eperf!(
             "[perf] cpu_new_begin_ms={:.1} since_start={:.1}",
             0.0,
             since_start_ms()
         );
         let t_groups = std::time::Instant::now();
         let groups = std::sync::Arc::new(build_font_groups(settings)?);
-        eprintln!(
+        eperf!(
             "[perf] cpu_groups_ms={:.1} since_start={:.1}",
             t_groups.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -454,7 +475,7 @@ impl CpuRenderer {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
         // 阶段 4E t2：字体加载完成 → 字形缓存/帧缓冲等结构就绪的打点
-        eprintln!(
+        eperf!(
             "[perf] cpu_renderer_ready_ms={:.1} since_start={:.1}",
             t_ctor.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -483,7 +504,7 @@ impl CpuRenderer {
             band_backup: None,
             damage: Vec::new(),
         });
-        eprintln!(
+        eperf!(
             "[perf] cpu_state_ms={:.2} since_start={:.1}",
             t_state.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -1609,7 +1630,7 @@ fn load_font_styled_cached(
         ..Default::default()
     };
     // 阶段 4H t2：查找入口（此前从上一段到这里约有 20ms 无标注，实测为 fontdb face 查询）。
-    eprintln!(
+    eperf!(
         "[perf] font_lookup_begin_ms family='{}' style='{}' since_start={:.1}",
         family,
         style,
@@ -1684,7 +1705,7 @@ fn load_font_styled_cached(
     let insert_us = t_insert.elapsed().as_micros();
 
     let steps_us = query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
-    eprintln!(
+    eperf!(
         "[perf] font_steps_us family='{}' style='{}' kind={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
         family,
         style,

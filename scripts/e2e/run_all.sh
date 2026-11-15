@@ -1339,7 +1339,7 @@ backend = "cpu"
 [window]
 dimensions = { columns = 80, lines = 24 }
 TOML
-APP_CONFIG="$CFG31" SHELL=/bin/sh "$APP_BIN" >"$L31" 2>&1 &
+APP_CONFIG="$CFG31" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$L31" 2>&1 &
 APP_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -2369,6 +2369,31 @@ else
         echo "PASS case47-paste-follow-by-size ($OK47/$TOT47)"; PASS=$((PASS+1))
     else
         echo "FAIL case47-paste-follow-by-size ($OK47/$TOT47)"; FAIL=$((FAIL+1))
+    fi
+fi
+
+# 用例 48（4O-t3）：启动期 [perf] 默认关闭，且 APP_PERF_FRAMES=1 时恢复。
+#   背景：PHASE3L-WIN §2.1 实测同一 release 二进制经 PowerShell 重定向时每条 eprintln
+#   约 6.8ms；启动期 30+ 行 [perf] 既是可观测的启动成本也是噪音。现仅在设置
+#   APP_PERF_FRAMES 时打印；面向用户的警告/错误不受影响（本用例一并断言）。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case48-perf-log-default-off (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    CFG48="$OUT/case48-perf.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG48"
+    L48A="$OUT/case48-default.err"
+    L48B="$OUT/case48-on.err"
+    ( APP_CONFIG="$CFG48" SHELL=/bin/sh timeout 5 "$APP_REL" >/dev/null 2>"$L48A" ) || true
+    ( APP_CONFIG="$CFG48" APP_PERF_FRAMES=1 SHELL=/bin/sh timeout 5 "$APP_REL" >/dev/null 2>"$L48B" ) || true
+    N48A=$(grep -c "\[perf\]" "$L48A" 2>/dev/null || true)
+    N48B=$(grep -c "\[perf\]" "$L48B" 2>/dev/null || true)
+    FF48=$(grep -c "first_frame_ms" "$L48B" 2>/dev/null || true)
+    echo "  默认 [perf] 行数=${N48A:-0}（应 0）  APP_PERF_FRAMES=1 时=${N48B:-0}（应 >0，含 first_frame_ms=$FF48）"
+    if [ "${N48A:-1}" -eq 0 ] && [ "${N48B:-0}" -gt 10 ] && [ "${FF48:-0}" -ge 1 ]; then
+        echo "PASS case48-perf-log-default-off (default=$N48A on=$N48B)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case48-perf-log-default-off (default=${N48A:-NA} on=${N48B:-NA} ff=$FF48)"; FAIL=$((FAIL+1))
     fi
 fi
 
