@@ -1,0 +1,93 @@
+# ==============================================================================
+# Alacritty Windows 配置
+# 极致鲜艳 + 高对比度浅色方案
+# ==============================================================================
+
+[window]
+position = { x = 50, y = 40 }
+dimensions = { columns = 120, lines = 30 }
+padding = { x = 0, y = 0 }
+dynamic_title = true
+opacity = 1.0
+
+[scrolling]
+history = 10000
+multiplier = 10
+
+# ==============================================================================
+# PowerShell 7（不硬编码绝对路径）
+# ==============================================================================
+[terminal]
+shell = { program = 'powershell.exe', args = ['-NoProfile', '-Command', "[Console]::Write(('A'*200)); Start-Sleep -Seconds 300"] }
+
+[font]
+size = 13.0
+# Windows 下使用微软雅黑等宽字体
+normal = { family = "Microsoft YaHei Mono", style = "Regular" }
+bold = { family = "Microsoft YaHei Mono", style = "Bold" }
+italic = { family = "Microsoft YaHei Mono", style = "Italic" }
+bold_italic = { family = "Microsoft YaHei Mono", style = "Bold Italic" }
+fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
+
+[selection]
+save_to_clipboard = true
+semantic_escape_chars = ",│`|:\"' ()[]{}<>"
+
+# ==============================================================================
+# 颜色设置：高饱和度宝石色方案
+# ==============================================================================
+[colors]
+# 粗体文字使用 bright ANSI 颜色
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#fcfcfc"
+foreground = "#000000"
+
+[colors.cursor]
+text = "#fcfcfc"
+cursor = "#0000ff"
+
+[colors.normal]
+black   = "#000000"
+red     = "#d32f2f"
+green   = "#008800"
+yellow  = "#af8700"
+blue    = "#0033cc"
+magenta = "#c2185b"
+cyan    = "#0097a7"
+white   = "#757575"
+
+[colors.bright]
+black   = "#424242"
+red     = "#ff0000"
+green   = "#00aa00"
+yellow  = "#fbc02d"
+blue    = "#0000ff"
+magenta = "#ff00ff"
+cyan    = "#00e5ff"
+white   = "#212121"
+
+# ==============================================================================
+# 鼠标
+# ==============================================================================
+[[mouse.bindings]]
+mouse = "Middle"
+action = "Copy"
+
+[[mouse.bindings]]
+mouse = "Right"
+action = "Paste"
+
+# ==============================================================================
+# 键盘
+# ==============================================================================
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Control"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Shift"
+action = "Paste"
