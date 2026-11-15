@@ -196,4 +196,11 @@ WARP 比 CPU 慢约 2–2.6 倍——**这是软件光栅化的预期结果，�
 
 ## 9. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `cc43cf03529fd123a8a26cb964c4640f71edd780` |
+| `refs/tags/phase3q-win-done`（tag 对象） | `85b842bb6e62fa43283b8b3f5a7c4d003a7dbfd0` |
+| `refs/tags/phase3q-win-done^{}`（解引用 commit） | `cc43cf03529fd123a8a26cb964c4640f71edd780` |
+
+- `git push origin win`：`426f825..cc43cf0`；tag 新建后 push（`* [new tag]`）。未 force、未移动已有 tag。
+- 提交内容：kit v4 四个脚本（run-tonight/lib/shot/zip-run）+ README/pack-kit、`PHASE3Q-WIN.md`、`docs/WIN-NOTES.md`、取证脚本（`run_3q_backend.ps1`、`run_3q_warp.ps1`、`run_3q_paste.ps1`）、`.gitignore`。**zip 与所有二进制未入库**（提交前检查 .exe/.dll/.zip/.png 命中 0）。
