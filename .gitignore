@@ -22,3 +22,8 @@ scripts/e2e/out/
 /vt-verify-win/start-S/
 /vt-verify-win/start-N/
 /vt-verify-win/logs/3m-start/*.log
+/vt-verify-win/tonight-kit/
+/vt-verify-win/tonight-kit-v1.zip
+/vt-verify-win/kit-run/
+/vt-verify-win/kit-trial*/
+/vt-verify-win/logs/3n/*.json

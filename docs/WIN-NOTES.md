@@ -108,6 +108,13 @@
 - 事实（3M，已验证）：只剩 `conpty.dll`（删 `OpenConsole.exe`）时 app 正常启动、无错误输出，但 pty 宿主是 `C:\Windows\system32\conhost.exe --headless …` —— **静默回退系统 conhost**，不是 dist 内 OpenConsole；完整 dist 下宿主是 `<dist>\OpenConsole.exe --headless …`（子进程命令行取证）。
 - 事实（3M，已验证）：折行判别的正确判据是原始字节——系统 conhost 把 200 字符物化为 80/80/43+CRLF，官方 1.25 与 WezTerm 均为单段 200 无 CRLF；120 列窗口下像素判别对两者同形，不可用。
 - 事实（3M，未核实）：t5 的键入注入未取得有效证据——`terminal.shell.args` 被覆盖为 `/K "chcp 65001"`（子进程命令行为证），合成按键在对照组（完整 dist）也未能写入标记文件，故判为注入无效，输入路径未核实。
+- 事实（3N，已验证）：`clippy -D warnings` 在 dev/release 两配置均失败于 **upstream 4O** 的 `crates/render/src/lib.rs:63 'pub(crate) use eperf;'`（unused import），release 构建同样报该警告；按规则未改 `crates/`，记为请求 1。
+- 事实（3N，已验证）：`frame_bytes_identical` 在本机 **SKIP**——4O 引入字体指纹校验，本机 `DejaVuSansMono.ttf` 为 340712 B（指纹 `:53dd`），期望 343140 B（`:c69b`）；即使帧哈希仍等于 GOLDEN（507485fb7945fb8f）也按指纹跳过，故该黄金断言在 Windows 上不再执行（请求 2）。
+- 事实（3N，已验证）：kit v1 在本机（无 GPU 构建）`-Quick` 5.7 min、默认参数（浸泡 5 min）10.1 min 全程 PASS/N-A 并生成 results zip；P2 因本构建无 GPU 后端自动 N/A（判定依据=`[perf] gpu_init_ms` 是否出现，而非 stderr 文案）；`first_frame_ms` n=5 中位 419 ms、空闲 ws 269.2 MB、吞吐 120×30 63.1 s（feed 374 794 B/s）、200×60 66.8 s（feed 280 308 B/s）、最小化与遮挡对比 diff=0。
+- 事实（3N，已验证）：试跑共修 8 个 kit 自身缺陷——ASCII 编码写 `launch-*.cmd` 破坏含中文的路径、shell cwd 不在 kit 目录、`sample.ps1` 绝对路径、吞吐等待时限的运算优先级、吞吐完成标记路径不一致、`[perf] frames` 无 `key=` 形式导致解析失败、GPU 可用性误判（`auto` 变体被当成 GPU）、缩放/最小化截图基线用了过期快照。
+- 事实（3N，已验证）：kit 包 `vt-verify-win/tonight-kit-v1.zip`（不入库）3 460 316 B，sha256 45a93931cf187f4377e2852f9992c92f99b7a05f268f8be8c11639fd7e866ae4；内含 12 个文件 9 167 934 B，ConPTY 两文件与 NOTICE.md 的 sha256 与 3K 一致。
+- 请求 1（3N，CI P1）：`crates/render/src/lib.rs:63` 的 `pub(crate) use eperf;` unused import，使 `clippy -D warnings` 与 release 零告警门槛无法达成；删掉或使用即可。状态=已验证事实。
+- 请求 2（3N，测试 P2）：`frame_bytes_identical` 的 `GOLDEN_FINGERPRINT` 绑定单一 DejaVu 文件尺寸（343140 B），Windows 侧为 340712 B 因而恒 SKIP，黄金校验在该平台失效；建议改为指纹集合或分平台期望值。状态=已验证事实。
 - 请求 1（3M，功能 P2）：`render::load_font_list()`（后台回退路径）不打 `font_steps_us`（3L 提出，3M 用 YS/Y1 兜出数量级）。状态=已验证事实。
 - 请求 2（3M，功能 P2）：`terminal.shell.args` 在 Windows 上被丢弃——子进程命令行恒为 `cmd.exe /K "chcp 65001"`，配置的 args 不出现；若属有意（强制 UTF-8）需在文档/校验处明示，否则应改为追加。状态=已验证事实（命令行证据）。
 - 请求 3（3M，观测增强 P2）：只剩 `conpty.dll` 时静默回退系统 conhost 且无任何日志，建议 `load_conpty()` 成功但宿主不是同目录 `OpenConsole.exe` 时打 warn（不改行为）。状态=已验证事实。
