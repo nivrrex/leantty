@@ -2354,8 +2354,13 @@ else
         kill -TERM "${CLIP_PID:-}" 2>/dev/null; CLIP_PID=""
         RA2_47=$(thumb_ratio "$(x11 import -window "$WID" "$OUT/c47-$c47-rej-after.png" 2>/dev/null; echo "$OUT/c47-$c47-rej-after.png")")
         REJ47=$(grep -c "paste_rejected" "$L47" 2>/dev/null || true)
+        # 判据（阶段 4P 修订）：被拒绝的粘贴不得让视口**回到底部**。
+        # 不能用"拇指比例不变"——拒绝期间后台仍在回显此前已接受的粘贴内容，
+        # 回滚缓冲变长会让同一绝对位置的相对比例自然下降（实测 gpu 上 0.958→0.889）。
         HOLD47=BAD
-        awk "BEGIN{d=${RA2_47:-0}-${RB2_47:-1}; if (d<0) d=-d; exit !(d <= 0.02)}" && [ "${REJ47:-0}" -ge 1 ] && HOLD47=OK
+        # "未回底"用 < 0.98 判定（回底时拇指占比 ≈1.000），另允许自然下降但不允许跳上去。
+        awk "BEGIN{exit !(${RA2_47:-1} < 0.98 && ${RA2_47:-1} <= ${RB2_47:-0} + 0.02)}" \
+            && [ "${REJ47:-0}" -ge 1 ] && HOLD47=OK
         echo "  [c47 $c47/拒绝] 拒绝前=${RB2_47} 拒绝后=${RA2_47} paste_rejected=${REJ47:-0} → $HOLD47"
         if [ -z "$BAD47" ] && [ "$HOLD47" = "OK" ]; then
             echo "  [c47 $c47] PASS（四档均回底 + 拒绝不动视口）"

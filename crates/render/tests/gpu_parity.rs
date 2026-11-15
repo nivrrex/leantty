@@ -1,4 +1,4 @@
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", target_os = "windows"))]
 //! GPU 对拍门禁（阶段 4B t3）：`CpuRenderer` 与 `GpuRenderer` 渲染同一快照，
 //! 逐像素比较。无真实 Vulkan 适配器时**显式 SKIP 并打印原因**（不静默通过）。
 //!

@@ -9,7 +9,7 @@
 //!   重新上传当前帧所需字形（保证画面正确性，不 panic）。
 //! - 本模块 t3 阶段只做离屏渲染 + 回读（供对拍门禁使用）；t4 再接入 surface。
 
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", target_os = "windows"))]
 
 use crate::eperf;
 use std::collections::HashMap;
@@ -720,10 +720,14 @@ impl GpuRenderer {
         };
         surface.configure(&gpu.device, &config);
         eperf!(
-            "[perf] gpu_surface_ms={:.1} since_start={:.1} fmt={:?}",
+            "[perf] gpu_surface_ms={:.1} since_start={:.1} fmt={:?} present={:?} alpha={:?} size={}x{}",
             t_atlas.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
-            config.format
+            config.format,
+            config.present_mode,
+            config.alpha_mode,
+            config.width,
+            config.height
         );
         let t_pipe = std::time::Instant::now();
         let pipelines = Pipelines::new(&gpu.device, &atlas, config.format);
@@ -1003,49 +1007,124 @@ fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
 }
 
 impl Gpu {
+    /// 默认后端集合（未设置 `WGPU_BACKEND` 时）：Linux 仅 Vulkan，Windows 为 Vulkan|DX12。
+    ///
+    /// 阶段 4P：可用标准环境变量 `WGPU_BACKEND`（如 `dx12`、`vulkan`、`vulkan,dx12`）覆盖，
+    /// 不新增任何配置项。
+    fn default_backends() -> wgpu::Backends {
+        if cfg!(target_os = "windows") {
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        } else {
+            wgpu::Backends::VULKAN
+        }
+    }
+
+    /// 适配器类型优先级：独显 > 集显 > 其他（软件适配器在更早就被排除）。
+    fn type_rank(t: wgpu::DeviceType) -> u8 {
+        match t {
+            wgpu::DeviceType::DiscreteGpu => 0,
+            wgpu::DeviceType::IntegratedGpu => 1,
+            _ => 2,
+        }
+    }
+
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
     fn new() -> Result<Self, Error> {
         let t_instance = std::time::Instant::now();
+        let backends = wgpu::Backends::from_env().unwrap_or_else(Self::default_backends);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
+            backends,
             flags: wgpu::InstanceFlags::empty(),
             memory_budget_thresholds: Default::default(),
             backend_options: Default::default(),
             display: None,
         });
-        let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN));
+        let adapters = pollster::block_on(instance.enumerate_adapters(backends));
         eperf!(
-            "[perf] gpu_instance_ms={:.1} since_start={:.1} count={}",
+            "[perf] gpu_instance_ms={:.1} since_start={:.1} backends={:?} count={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
+            backends,
             adapters.len()
         );
         if adapters.is_empty() {
-            return Err(Error::Backend(
-                "Vulkan 适配器枚举为空（无可用 ICD 或驱动）".to_string(),
-            ));
+            return Err(Error::Backend(format!(
+                "适配器枚举为空（backends={backends:?}；无可用 ICD/驱动）"
+            )));
         }
-        let mut chosen = None;
+        // 适配器清单（诊断）：每个一行，含 name / backend / type / driver
+        for a in &adapters {
+            let i = a.get_info();
+            eperf!(
+                "[perf] gpu_adapters name='{}' backend={:?} type={:?} driver='{}' driver_info='{}' vendor=0x{:04x} device=0x{:04x}",
+                i.name,
+                i.backend,
+                i.device_type,
+                i.driver,
+                i.driver_info,
+                i.vendor,
+                i.device
+            );
+        }
+        // 过滤掉软件适配器（含 Windows 的 WARP / Basic Render Driver）
+        let mut real: Vec<_> = Vec::new();
         for a in adapters {
             let info = a.get_info();
             if info.device_type == wgpu::DeviceType::Cpu {
-                eprintln!("[gpu] 跳过软件适配器: {}", info.name);
+                eperf!("[perf] gpu_skip_software name='{}'", info.name);
                 continue;
             }
-            chosen = Some(a);
-            break;
+            real.push(a);
         }
-        let adapter = chosen.ok_or_else(|| {
-            Error::Backend("未找到真实 GPU 适配器（仅软件实现可用）".to_string())
-        })?;
+        if real.is_empty() {
+            return Err(Error::Backend(
+                "未找到真实 GPU 适配器（仅软件实现可用）".to_string(),
+            ));
+        }
+        // 选择：WGPU_ADAPTER_NAME 子串匹配（不区分大小写）优先；否则按类型优先级，
+        // 同级保持枚举顺序（稳定排序）。
+        let adapter = match std::env::var("WGPU_ADAPTER_NAME") {
+            Ok(want) if !want.is_empty() => {
+                let want_lc = want.to_lowercase();
+                let idx = real.iter().position(|a| {
+                    a.get_info().name.to_lowercase().contains(&want_lc)
+                });
+                match idx {
+                    Some(i) => real.swap_remove(i),
+                    None => {
+                        return Err(Error::Backend(format!(
+                            "WGPU_ADAPTER_NAME='{want}' 未匹配到任何非软件适配器（可用：{}）",
+                            real.iter()
+                                .map(|a| a.get_info().name)
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )));
+                    }
+                }
+            }
+            _ => {
+                let mut best = 0usize;
+                for (i, a) in real.iter().enumerate() {
+                    if Self::type_rank(a.get_info().device_type)
+                        < Self::type_rank(real[best].get_info().device_type)
+                    {
+                        best = i;
+                    }
+                }
+                real.swap_remove(best)
+            }
+        };
         let info = adapter.get_info();
-        let limits = adapter.limits();
         eperf!(
-            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}'",
+            "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}' backend={:?} type={:?} driver='{}'",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
-            info.name
+            info.name,
+            info.backend,
+            info.device_type,
+            info.driver
         );
+        let limits = adapter.limits();
         // 不要直接拿 adapter.limits() 当 required_limits：部分驱动会把
         // max_buffer_size/max_memory_allocation_size 报得极大，request_device
         // 会以 "Not enough memory left" 失败（实测）。按需收敛到本项目实际用量。

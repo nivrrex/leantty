@@ -8,13 +8,13 @@
 //! g/p/y 是否下行），本测**绝对适配**（字形是否完整落在格内，尤其 CJK 回退字体）。
 
 use render::{Font, cell_metrics};
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 use render::{FontSettings, FontSpec, Palette, RenderOptions};
 
 /// 常用汉字取样（覆盖不同部首与笔画密度，≥200 个）。
 const HANZI: &str = "的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感";
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn settings(family: &str, size: f32) -> FontSettings {
     let spec = |style: &str| FontSpec {
         family: family.to_string(),
@@ -282,7 +282,7 @@ fn glyph_fits_in_cell_font_matrix() {
 
 /// GPU 侧同源检查：用 GpuRenderer 渲染真实汉字，检查格顶第一行是否有墨迹被切
 /// （等价于"顶部像素贴着格顶且上边缺失"）。无适配器显式 SKIP。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn glyph_top_not_clipped_gpu() {
     use render::gpu::GpuRenderer;

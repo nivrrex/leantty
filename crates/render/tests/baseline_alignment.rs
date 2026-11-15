@@ -358,7 +358,7 @@ fn run_external(path: &str) -> Result<bool, String> {
 }
 
 /// GPU 后端的绝对基线（任务 A 要求 CPU/GPU 各跑；无适配器显式 SKIP 并计数）。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn baseline_alignment_gpu() {
     use render::gpu::GpuRenderer;
