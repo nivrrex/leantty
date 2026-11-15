@@ -170,4 +170,11 @@ P2 现在与 P1 用同一套 helper，每个变体（default / dx12 / vulkan）�
 
 ## 11. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `ba36e44ad681bdc12fe81448c7b421a32e4c8a93` |
+| `refs/tags/phase3p-win-done`（tag 对象） | `53789fef97c70f5235cc1b8693a335667de3d263` |
+| `refs/tags/phase3p-win-done^{}`（解引用 commit） | `ba36e44ad681bdc12fe81448c7b421a32e4c8a93` |
+
+- `git push origin win`：`8ea6d29..ba36e44`；tag 新建后 push（`* [new tag]`）。未 force、未移动已有 tag。
+- 提交内容：kit v3 四个脚本 + README、`PHASE3P-WIN.md`、`docs/WIN-NOTES.md`、取证脚本与日志（`vt-verify-win/run_3p_env.ps1`、`run_3p_zip.ps1`、`probe_wgpuenv/`、`3p-env/`、`3p-oom/t4-results.json`）、`.gitignore`（kit v3、试跑目录、探针 target）。**zip 与所有二进制未入库**（提交前检查 .exe/.dll/.zip/.png 命中 0）。
