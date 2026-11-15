@@ -12,3 +12,9 @@ scripts/e2e/out/
 /vt-verify-win/probe_inv/target/
 /vt-verify-win/osc/*.txt
 /vt-verify-win/conpty-dl/
+/vt-verify-win/dist/
+/vt-verify-win/*.zip
+/vt-verify-win/probe_logcost/target/
+/vt-verify-win/logs/3l-deploy/dist*/
+/vt-verify-win/logs/3l-deploy/tty dist*/
+/vt-verify-win/logs/3l-deploy/*.png

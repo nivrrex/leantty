@@ -1,0 +1,109 @@
+# ==============================================================================
+# Alacritty Windows 配置
+# 极致鲜艳 + 高对比度浅色方案
+# ==============================================================================
+
+[window]
+position = { x = 50, y = 40 }
+dimensions = { columns = 120, lines = 30 }
+padding = { x = 0, y = 0 }
+dynamic_title = true
+opacity = 1.0
+
+[scrolling]
+history = 10000
+multiplier = 10
+
+# ==============================================================================
+# PowerShell 7（不硬编码绝对路径）
+# ==============================================================================
+[terminal]
+shell = { program = "pwsh.exe", args = [] }
+
+[font]
+size = 13.0
+# 主字体：请选小体积的等宽西文字体（Consolas 为 Windows 自带等宽西文，约 1MB）。
+# 原因：主字体在启动时同步加载并解析（fontdue from_bytes），字体文件越大解析越慢，
+#      直接拖慢首帧——实测 16MB 级 CJK 字体 from_bytes 约 230ms（Windows 上更慢），
+#      0.3MB 级等宽西文约 12ms。
+# 大体积 CJK 字体放到 font.fallback：它在后台线程加载，不阻塞首帧，
+#      到位前缺字显示占位方块，到位后自动重绘。
+# 注意：不要用 Microsoft YaHei Mono 等大体积字体作主字体（Windows 实测首帧 2071ms
+#      vs 默认 319ms）。
+normal = { family = "Microsoft YaHei", style = "Regular" }
+bold = { family = "Microsoft YaHei", style = "Bold" }
+italic = { family = "Microsoft YaHei", style = "Italic" }
+bold_italic = { family = "Microsoft YaHei", style = "Bold Italic" }
+# CJK 回退：Windows 自带微软雅黑
+# fallback removed for t6-B
+
+# --- [渲染后端：阶段 4B] ---
+# backend = "auto"  自动：优先 GPU（Linux 上为 wgpu/Vulkan），不可用时回落 CPU
+# backend = "cpu"   强制 CPU 光栅化
+# backend = "gpu"   强制 GPU：不可用时启动失败（非零退出）
+# 仅 Linux 目标提供 GPU 后端；Windows 目标一律 CPU（gpu 会警告并回落）。
+[renderer]
+backend = "auto"
+
+[selection]
+save_to_clipboard = true
+semantic_escape_chars = ",│`|:\"' ()[]{}<>"
+
+# ==============================================================================
+# 颜色设置：高饱和度宝石色方案
+# ==============================================================================
+[colors]
+# 粗体文字使用 bright ANSI 颜色
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#fcfcfc"
+foreground = "#000000"
+
+[colors.cursor]
+text = "#fcfcfc"
+cursor = "#0000ff"
+
+[colors.normal]
+black   = "#000000"
+red     = "#d32f2f"
+green   = "#008800"
+yellow  = "#af8700"
+blue    = "#0033cc"
+magenta = "#c2185b"
+cyan    = "#0097a7"
+white   = "#757575"
+
+[colors.bright]
+black   = "#424242"
+red     = "#ff0000"
+green   = "#00aa00"
+yellow  = "#fbc02d"
+blue    = "#0000ff"
+magenta = "#ff00ff"
+cyan    = "#00e5ff"
+white   = "#212121"
+
+# ==============================================================================
+# 鼠标
+# ==============================================================================
+[[mouse.bindings]]
+mouse = "Middle"
+action = "Copy"
+
+[[mouse.bindings]]
+mouse = "Right"
+action = "Paste"
+
+# ==============================================================================
+# 键盘
+# ==============================================================================
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Control"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Shift"
+action = "Paste"

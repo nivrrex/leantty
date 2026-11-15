@@ -1,0 +1,1 @@
+eprintln n=50 med_us=6754 min_us=4897 max_us=16476 | rawwrite med_us=1933 min_us=1543 max_us=4895

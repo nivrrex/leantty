@@ -94,6 +94,17 @@
 - 事实（3K，已验证）：app 空闲内存基线（release，60s 稳定）——默认配置（Consolas+YaHei 回退）WS 878–880MB / Private 896–902MB；**去掉回退后降至 189–190MB（差 ~690MB）**；仅 Courier New 207MB。3J 的 1518MB RSS 是空闲基线加粘贴余量，不是粘贴造成。Linux CPU 基线 ~215MB（PHASE4K-LINUX）。
 - 事实（3K，已验证）：字体文件打开成本——consola 首次读字节 0.16ms/全读 0.95ms/热开 0.29ms；msyh.ttc 0.15/9.78/0.34ms；系统路径与临时副本无差异 → 3J 的“137ms 来自首次打开被扫描”假设**不被数据支持**（待验证→否定）。
 - 事实（3K，流程事故）：本轮曾按 PID 结束两个 `OpenConsole.exe`（7552/11252），WezTerm 也使用 OpenConsole 作为 pty 宿主，可能导致用户终端会话中断。后续规则：不结束任何 OpenConsole 进程，不论 PID 来源。
+- 事实（3L，已验证）：`font_group_us` 的 `total_us − steps_us` 缺口不是字体处理，而是**测试端 stderr 重定向方式**——同一 release 二进制，PowerShell `Start-Process -RedirectStandardError` 下缺口 122–162ms、首帧 1962ms，bash 直接 `2>file` 下缺口 1.3–1.9ms、首帧 418ms；独立探针（probe_logcost，50 行同长度）实测每次 eprintln 到文件：bash 句柄 28µs / PowerShell 重定向 **6754µs** / NUL 4µs。3J 的“137ms 未归属”即此项。
+- 事实（3L，已验证）：主字体面（Consolas ×4，bash 重定向）parse 22–27ms、clone 7–10ms、steps 30–47ms/面，四组合计 ~165ms，`total−steps` 0.5–1.9ms。CJK ttc 面（YaHei 作主字体）：19.7MB/16.9MB，read 11–15ms、**parse 490–585ms、clone 161–195ms**；同 face 被后两组复用时纯 clone **135–155ms/组**（无 `font_steps_us` 行）。
+- 事实（3L，已验证）：默认配置下后台回退面 YaHei 由 `load_font_list()` 非缓存路径加载，**无 `font_steps_us` 输出**（`bg_fonts count=3`），故默认配置的回退面 parse/clone 不可观测（请求 1）。
+- 事实（3L，已验证）：内存时间线（20ms 采样 + app 自身 `since_start` 对齐）——默认配置在 `bg_fonts` 到位（~2.5s）后**连续爬升约 650ms**、峰值 **~1010MB**、随后回落 ~130MB 稳定在 877MB；不是一次性跳升，也不是 4×170MB 台阶；无回退配置停在 189MB，60s 内两者均平坦。
+- 事实（3L，已验证）：`scripts/windows/package.ps1` 端到端可用——dist 8 文件 9 093 735B、zip 3 436 974B（sha256 04b55b79…）；hash 不符时非零退出且不留半成品；部署验证在含空格+中文路径、异工作目录启动下，模块列表确认加载的是 dist 内 conpty.dll；删两文件后回退系统 conhost 可正常启动（无 conpty.dll 模块）。
+- 事实（3L，已验证）：NOTICE.md（上游 commit f6de9e0，sha256 e7fbaade…）逐字随附；其中 chromium/base/numerics、cmark 要求二进制形式复现声明，interval_tree/PCG/Oklab/cmark/fzf/GSL/UI-XAML/VirtualDesktopUtils/wil 要求所有副本包含版权与许可声明；未发现与再分发冲突的条款（不作法律结论）。
+- 事实（3L，未取得结论）：部署验证的像素级折行判别在 120 列窗口下失效（conhost 与 conpty.dll 都按窗口宽度换行，三种布局“最右暗像素”同为 958px），未完成；仅剩 conpty.dll 时的 pty 宿主身份未核实。
+- 事实（3L，已验证）：本轮三次 dist 启动/关闭前后，OpenConsole PID 集合（328,9376）与 conhost 数量（25）**完全未变**（采样点为启动前/关闭后 2s，运行期间瞬时宿主未采样）。
+- 请求 1（3L，观测增强 P2）：`render::load_font_list()`（后台回退路径）不打 `font_steps_us`，默认配置下回退面 YaHei 的 parse/clone 完全不可观测；建议该路径复用 `load_font_with_fallback_cached` 的观测或在 `add_background_fonts` 处补点。状态=已验证事实（`bg_fonts count=3` 且无 font_steps_us 行）。
+- 请求 2（3L，观测增强 P2）：`font_group_us` 缺 `cache_hit` 字段——本轮 group2/3 无 `font_steps_us` 行却有 135–155ms `load_us`，只能靠“缺行”反推为缓存命中的 `Font::clone()`；建议显式标注。状态=已验证事实。
+- 请求 3（3L，测试脚手架，不改产品代码）：perf 采集必须用直接文件句柄重定向——PowerShell `Start-Process -RedirectStandardError` 每次写 ~6.8ms，把 `total−steps` 与首帧放大 4–5 倍（1962ms vs 418ms），跨平台/跨轮数据不可比。状态=已验证事实。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 
