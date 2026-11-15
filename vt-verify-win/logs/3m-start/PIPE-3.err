@@ -1,0 +1,47 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.6 since_start=0.7
+[perf] app_new_ms=0.0 since_start=0.7
+[perf] event_loop_ms=26.2 since_start=26.9
+[perf] cpu_new_begin_ms=0.0 since_start=27.0
+[perf] fontdb_ms=63.8 since_start=90.8
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=90.9
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=90.9
+[perf] font_steps_us family='Consolas' style='Regular' kind=file bytes=459180 meta_len=459180 ttc=false query_us=15 face_us=0 meta_us=96 read_us=434 settings_us=0 parse_us=25535 clone_us=1 insert_us=3 steps_us=26084 since_start=117.0
+[perf] font_group_us group=0 family='Consolas' style='Regular' pre_load_us=32 load_us=26265 tail_us=0 total_us=26298 fallback=false
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=26.34 since_start=117.2
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=26.4 since_start=117.3
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=117.3
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=117.3
+[perf] font_steps_us family='Consolas' style='Bold' kind=file bytes=397896 meta_len=397896 ttc=false query_us=16 face_us=0 meta_us=199 read_us=343 settings_us=0 parse_us=24450 clone_us=0 insert_us=1 steps_us=25009 since_start=142.4
+[perf] font_group_us group=1 family='Consolas' style='Bold' pre_load_us=25 load_us=25172 tail_us=0 total_us=25198 fallback=false
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=25.24 since_start=142.6
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=25.3 since_start=142.6
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=142.6
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=142.7
+[perf] font_steps_us family='Consolas' style='Italic' kind=file bytes=467584 meta_len=467584 ttc=false query_us=16 face_us=0 meta_us=326 read_us=620 settings_us=0 parse_us=31979 clone_us=0 insert_us=2 steps_us=32943 since_start=175.6
+[perf] font_group_us group=2 family='Consolas' style='Italic' pre_load_us=25 load_us=33093 tail_us=0 total_us=33118 fallback=false
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=33.16 since_start=175.8
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=33.2 since_start=175.8
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=175.9
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=175.9
+[perf] font_steps_us family='Consolas' style='Bold Italic' kind=file bytes=407956 meta_len=407956 ttc=false query_us=16 face_us=0 meta_us=295 read_us=334 settings_us=0 parse_us=23520 clone_us=0 insert_us=3 steps_us=24168 since_start=200.1
+[perf] font_group_us group=3 family='Consolas' style='Bold Italic' pre_load_us=26 load_us=24332 tail_us=0 total_us=24359 fallback=false
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=24.40 since_start=200.3
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=24.4 since_start=200.3
+[perf] cpu_groups_ms=173.5 since_start=200.5
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=173.5 since_start=200.5
+[perf] cpu_state_ms=0.00 since_start=200.5
+[perf] pre_window_ms=173.6 since_start=200.6
+[perf] window_ms=95.4 since_start=296.0
+[perf] ime_ms=5.06 since_start=301.1
+[perf] renderer_build_ms=0.0 since_start=301.2 backend=cpu
+[perf] renderer_ready_ms=301.2 since_start=301.2
+[perf] surface_ms=18.7 since_start=320.0
+[perf] vt_new_ms=0.08 since_start=320.2
+[perf] pty_spawn_ms=97.6 since_start=417.7
+[perf] writer_thread_ms=0.00 since_start=417.9 enabled=true
+[perf] pre_first_submit_ms=419 since_start=419
+[perf] first_frame_ms=423
+[perf] first_pty_byte_ms=771 since_start=771
+[perf] bg_fonts_ms=975 count=3

@@ -18,3 +18,7 @@ scripts/e2e/out/
 /vt-verify-win/logs/3l-deploy/dist*/
 /vt-verify-win/logs/3l-deploy/tty dist*/
 /vt-verify-win/logs/3l-deploy/*.png
+/vt-verify-win/logs/3m-deploy/dist*/
+/vt-verify-win/start-S/
+/vt-verify-win/start-N/
+/vt-verify-win/logs/3m-start/*.log
