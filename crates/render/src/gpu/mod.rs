@@ -206,10 +206,18 @@ impl GpuRenderer {
     /// 并入后台字体（CJK fallback）。
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
         // 阶段 4N t3：与 CPU 渲染器一致——每个回退字体只包一次 Arc，四组共享。
+        let t_merge = std::time::Instant::now();
         let shared: Vec<std::sync::Arc<Font>> = fonts.into_iter().map(std::sync::Arc::new).collect();
         for g in std::sync::Arc::make_mut(&mut self.groups) {
             g.extend(shared.iter().cloned());
         }
+        crate::eperf!(
+            "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
+            shared.len(),
+            self.groups.len(),
+            shared.iter().map(|a| std::sync::Arc::strong_count(a)).collect::<Vec<_>>(),
+            t_merge.elapsed().as_micros()
+        );
         self.char_font.clear();
     }
 

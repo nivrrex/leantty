@@ -1187,7 +1187,14 @@ impl ApplicationHandler for AppHandler {
         let (bg_tx, bg_rx) = mpsc::channel::<Vec<render::Font>>();
         let bg_specs = config.font_settings.fallback.clone();
         std::thread::spawn(move || {
+            let t_bg = std::time::Instant::now();
             let fonts = render::load_font_list(&bg_specs);
+            // 阶段 4O t4：后台字体加载整体耗时（与各 font_steps_us(kind=background) 之和对照）
+            eperf!(
+                "[perf] bg_font_list_us={} count={}",
+                t_bg.elapsed().as_micros(),
+                fonts.len()
+            );
             let _ = bg_tx.send(fonts);
             if let Some(proxy) = bg_proxy {
                 let _ = proxy.send_event(());
