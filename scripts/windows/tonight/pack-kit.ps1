@@ -47,7 +47,7 @@ function Assert-Sha256([string]$path, [string]$expected, [string]$what) {
 
 $appExe = Join-Path $TargetDir 'app.exe'
 $conptyLicense = Join-Path $repo 'scripts\windows\conpty\LICENSE-ConPTY.txt'
-foreach ($p in @($appExe, $conptyLicense, (Join-Path $here 'run-tonight.ps1'), (Join-Path $here 'lib.ps1'), (Join-Path $here 'shot.ps1'), (Join-Path $here 'README-TONIGHT.md'), (Join-Path $here 'configs'))) {
+foreach ($p in @($appExe, $conptyLicense, (Join-Path $here 'run-tonight.ps1'), (Join-Path $here 'lib.ps1'), (Join-Path $here 'shot.ps1'), (Join-Path $here 'zip-run.ps1'), (Join-Path $here 'README-TONIGHT.md'), (Join-Path $here 'configs'))) {
     if (-not (Test-Path $p)) { throw "missing input: $p" }
 }
 
@@ -101,6 +101,7 @@ try {
     Copy-Item (Join-Path $here 'run-tonight.ps1') $stage
     Copy-Item (Join-Path $here 'lib.ps1') $stage
     Copy-Item (Join-Path $here 'shot.ps1') $stage
+    Copy-Item (Join-Path $here 'zip-run.ps1') $stage
     Copy-Item (Join-Path $here 'README-TONIGHT.md') $stage
     $cfgOut = Join-Path $stage 'configs'
     New-Item -ItemType Directory -Force -Path $cfgOut | Out-Null
