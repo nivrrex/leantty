@@ -102,6 +102,15 @@
 - 事实（3L，已验证）：NOTICE.md（上游 commit f6de9e0，sha256 e7fbaade…）逐字随附；其中 chromium/base/numerics、cmark 要求二进制形式复现声明，interval_tree/PCG/Oklab/cmark/fzf/GSL/UI-XAML/VirtualDesktopUtils/wil 要求所有副本包含版权与许可声明；未发现与再分发冲突的条款（不作法律结论）。
 - 事实（3L，未取得结论）：部署验证的像素级折行判别在 120 列窗口下失效（conhost 与 conpty.dll 都按窗口宽度换行，三种布局“最右暗像素”同为 958px），未完成；仅剩 conpty.dll 时的 pty 宿主身份未核实。
 - 事实（3L，已验证）：本轮三次 dist 启动/关闭前后，OpenConsole PID 集合（328,9376）与 conhost 数量（25）**完全未变**（采样点为启动前/关闭后 2s，运行期间瞬时宿主未采样）。
+- 事实（3M，已验证）：4N 的 Arc 共享在 Windows 生效——默认配置（Consolas ×4 + YaHei 回退）空闲 ws 由 3L 的 877–879MB 降到 **252MB**（priv 244MB），峰值由 ~1010MB 降到 **252MB（无过冲）**；仅 Consolas 基线由 189MB 降到 **83MB**；单 YaHei Regular 实例参考值 220MB（含基线 83），两实例 371MB。爬升段由"650ms 内 +740MB 后回落 130MB"变为"约 350ms 内 +100MB 后稳定"。
+- 事实（3M，已验证）：4N 三个新测试在 Windows 真实通过——黄金帧 hash `507485fb7945fb8f` 与 Linux 相同（DejaVu Sans Mono + Noto Sans CJK SC 本机均安装）；`same_face_is_shared_not_cloned` 通过；`measure_font_instance_and_clone_cost` 非 SKIP：Noto CJK 19.5MB ttc 实例 **298.7MB**、clone 再 +298.7MB（1:1 深拷贝），DejaVu 340KB→8.9MB。
+- 事实（3M，已验证，修正 3K）：直接句柄重定向下 S（系统 conhost）first_frame 中位 **419ms**/最小 395，N（官方 ConPTY 1.25）**524ms**/416，差 **+105ms**；3K 的 +110ms 结论方向成立，但 3K 记录的绝对首帧 1.6–1.9s 不成立（PowerShell 重定向放大 4.2–4.4 倍：1772ms vs 419ms）。**明确记录：3C–3L 的启动数据均用 PowerShell 重定向采集，绝对值已知偏高，只能横向比较，对照 3L §2.1 与 3M §4.2。**
+- 事实（3M，已验证）：只剩 `conpty.dll`（删 `OpenConsole.exe`）时 app 正常启动、无错误输出，但 pty 宿主是 `C:\Windows\system32\conhost.exe --headless …` —— **静默回退系统 conhost**，不是 dist 内 OpenConsole；完整 dist 下宿主是 `<dist>\OpenConsole.exe --headless …`（子进程命令行取证）。
+- 事实（3M，已验证）：折行判别的正确判据是原始字节——系统 conhost 把 200 字符物化为 80/80/43+CRLF，官方 1.25 与 WezTerm 均为单段 200 无 CRLF；120 列窗口下像素判别对两者同形，不可用。
+- 事实（3M，未核实）：t5 的键入注入未取得有效证据——`terminal.shell.args` 被覆盖为 `/K "chcp 65001"`（子进程命令行为证），合成按键在对照组（完整 dist）也未能写入标记文件，故判为注入无效，输入路径未核实。
+- 请求 1（3M，功能 P2）：`render::load_font_list()`（后台回退路径）不打 `font_steps_us`（3L 提出，3M 用 YS/Y1 兜出数量级）。状态=已验证事实。
+- 请求 2（3M，功能 P2）：`terminal.shell.args` 在 Windows 上被丢弃——子进程命令行恒为 `cmd.exe /K "chcp 65001"`，配置的 args 不出现；若属有意（强制 UTF-8）需在文档/校验处明示，否则应改为追加。状态=已验证事实（命令行证据）。
+- 请求 3（3M，观测增强 P2）：只剩 `conpty.dll` 时静默回退系统 conhost 且无任何日志，建议 `load_conpty()` 成功但宿主不是同目录 `OpenConsole.exe` 时打 warn（不改行为）。状态=已验证事实。
 - 请求 1（3L，观测增强 P2）：`render::load_font_list()`（后台回退路径）不打 `font_steps_us`，默认配置下回退面 YaHei 的 parse/clone 完全不可观测；建议该路径复用 `load_font_with_fallback_cached` 的观测或在 `add_background_fonts` 处补点。状态=已验证事实（`bg_fonts count=3` 且无 font_steps_us 行）。
 - 请求 2（3L，观测增强 P2）：`font_group_us` 缺 `cache_hit` 字段——本轮 group2/3 无 `font_steps_us` 行却有 135–155ms `load_us`，只能靠“缺行”反推为缓存命中的 `Font::clone()`；建议显式标注。状态=已验证事实。
 - 请求 3（3L，测试脚手架，不改产品代码）：perf 采集必须用直接文件句柄重定向——PowerShell `Start-Process -RedirectStandardError` 每次写 ~6.8ms，把 `total−steps` 与首帧放大 4–5 倍（1962ms vs 418ms），跨平台/跨轮数据不可比。状态=已验证事实。
