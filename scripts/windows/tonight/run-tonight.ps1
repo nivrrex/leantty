@@ -456,15 +456,34 @@ Invoke-Stage -Name 'P2' -LimitSec 600 -Title 'GPU backends (N/A when build has n
             Stop-OwnApp $h.App $h.Cmd
             continue
         }
-        # give the renderer a moment, then decide N/A *before* any window work
-        Start-Sleep -Seconds 3
+        # give the renderer a moment, then decide N/A *before* any window work.
+        # backend=gpu exits within ~1 s on this machine, so wait for the exit (or the
+        # timeout) and re-read the log until it stops growing - otherwise the reason
+        # text can be read before gpu_adapters was flushed
+        $waited = 0
+        $lastLen = -1
+        while ($waited -lt 12000) {
+            Start-Sleep -Milliseconds 500
+            $waited += 500
+            $len = 0
+            if (Test-Path $log) { try { $len = (Get-Item $log).Length } catch { } }
+            $h.App.Refresh()
+            if ($h.App.HasExited -and $len -eq $lastLen) { break }
+            $lastLen = $len
+        }
         $txt = ''
         if (Test-Path $log) { try { $txt = Get-Content $log -Raw -Encoding UTF8 -ErrorAction SilentlyContinue } catch { } }
         # a real GPU path is the ONLY thing that prints gpu_init_ms; backend=gpu on
         # a CPU-only build prints the platform-unavailable line and falls back
         $unavailable = -not ($txt -match 'gpu_init_ms')
         if ($unavailable -or $h.App.HasExited) {
-            $naReasons += ('{0}: this build has no GPU backend ({1})' -f $v.tag, $(if ($unavailable) { 'stderr reports platform unavailable' } else { 'exited on start' }))
+            # three distinguishable reasons: no GPU backend in this build, no usable
+            # adapter on this machine, or the process died for another reason
+            $why = 'exited on start'
+            if ($txt -match 'gpu_adapters') { $why = 'no usable GPU adapter (only software adapters were enumerated)' }
+            elseif ($txt -match 'backend=auto') { $why = 'auto uses the CPU path on Windows by design (no GPU attempt)' }
+            elseif ($txt -match '在当前平台不可用') { $why = 'this build has no GPU backend (stderr reports platform unavailable)' }
+            $naReasons += ('{0}: {1}' -f $v.tag, $why)
             Stop-OwnApp $h.App $h.Cmd
             continue
         }
@@ -509,12 +528,16 @@ Invoke-Stage -Name 'P2' -LimitSec 600 -Title 'GPU backends (N/A when build has n
         }
         $script:Env['idle_gpu_' + $v.tag] = $mem
         $script:Env['gpu_info_' + $v.tag] = (Get-PerfLine $log 'gpu_init_ms')
+        foreach ($key in 'gpu_adapters', 'gpu_skip_software', 'gpu_adapter_ms', 'gpu_atlas_ms', 'gpu_begin_ms') {
+            $line = Get-PerfLine $log $key
+            if ($line) { $script:Notes += ('P2 {0}: {1}' -f $v.tag, $line) }
+        }
         Stop-OwnApp $h.App $h.Cmd
     }
     if (-not $script:GpuAvailable) {
         $script:StageStatusOverride = 'N/A'
         $script:StageNote = ($naReasons -join ' | ')
-        $script:Notes += ('P2 = N/A: this build has no GPU backend ({0})' -f ($naReasons -join '; '))
+        $script:Notes += ('P2 = N/A: no usable GPU path on this machine/build ({0})' -f ($naReasons -join '; '))
     }
 }
 
@@ -591,7 +614,7 @@ Invoke-Stage -Name 'P4' -LimitSec 240 -Title 'summary + zip' -Body {
     $endTime = Get-Date
     $elapsed = ($endTime - $StartTime).TotalMinutes
     $md = New-Object System.Collections.Generic.List[string]
-    $md.Add('# tonight kit v1 - run report')
+    $md.Add('# tonight kit v2 - run report')
     $md.Add('')
     if ($script:Rdp) {
         $md.Add('> **WARNING: this run was executed in a REMOTE DESKTOP session.**')

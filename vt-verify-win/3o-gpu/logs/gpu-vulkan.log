@@ -1,0 +1,44 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=1.3 since_start=1.6
+[perf] app_new_ms=0.0 since_start=1.9
+[perf] event_loop_ms=11.9 since_start=13.9
+[perf] cpu_new_begin_ms=0.0 since_start=14.1
+[perf] fontdb_ms=85.5 since_start=99.8
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=100.8
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=101.3
+[perf] font_steps_us family='Consolas' style='Regular' kind=group src=file bytes=459180 meta_len=459180 ttc=false query_us=18 face_us=0 meta_us=208 read_us=609 settings_us=0 parse_us=22014 arc_us=0 clone_us=0 insert_us=11 steps_us=22860 since_start=124.5
+[perf] font_group_us group=0 family='Consolas' style='Regular' pre_load_us=414 load_us=26847 tail_us=0 total_us=27262 fallback=false cache_hit=false
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=27.44 since_start=128.3
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=27.6 since_start=128.4
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=128.5
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=128.6
+[perf] font_steps_us family='Consolas' style='Bold' kind=group src=file bytes=397896 meta_len=397896 ttc=false query_us=22 face_us=0 meta_us=328 read_us=408 settings_us=0 parse_us=40090 arc_us=1 clone_us=1 insert_us=1 steps_us=40850 since_start=169.6
+[perf] font_group_us group=1 family='Consolas' style='Bold' pre_load_us=74 load_us=41362 tail_us=1 total_us=41437 fallback=false cache_hit=false
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=41.69 since_start=170.2
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=41.9 since_start=170.4
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=170.7
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=170.8
+[perf] font_steps_us family='Consolas' style='Italic' kind=group src=file bytes=467584 meta_len=467584 ttc=false query_us=23 face_us=0 meta_us=384 read_us=701 settings_us=0 parse_us=44361 arc_us=1 clone_us=1 insert_us=1 steps_us=45471 since_start=216.4
+[perf] font_group_us group=2 family='Consolas' style='Italic' pre_load_us=127 load_us=45989 tail_us=0 total_us=46116 fallback=false cache_hit=false
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=46.25 since_start=216.9
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=46.4 since_start=217.1
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=217.2
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=217.3
+[perf] font_steps_us family='Consolas' style='Bold Italic' kind=group src=file bytes=407956 meta_len=407956 ttc=false query_us=17 face_us=0 meta_us=313 read_us=341 settings_us=0 parse_us=61237 arc_us=0 clone_us=0 insert_us=4 steps_us=61912 since_start=279.3
+[perf] font_group_us group=3 family='Consolas' style='Bold Italic' pre_load_us=89 load_us=62336 tail_us=0 total_us=62425 fallback=false cache_hit=false
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=62.57 since_start=279.8
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=62.7 since_start=279.9
+[perf] cpu_groups_ms=265.9 since_start=280.2
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=266.1 since_start=280.3
+[perf] cpu_state_ms=0.00 since_start=280.3
+[perf] pre_window_ms=266.3 since_start=280.4
+[perf] window_ms=74.7 since_start=355.2
+[perf] ime_ms=6.93 since_start=362.3
+[perf] gpu_begin_ms=0.0 since_start=362.4 reuse_groups=true
+[perf] gpu_instance_ms=47.4 since_start=410.0 backends=Backends(VULKAN | DX12) count=1
+[perf] gpu_adapters name='Microsoft Basic Render Driver' backend=Dx12 type=Cpu driver='10.0.19041.4355' driver_info='' vendor=0x1414 device=0x008c
+[perf] gpu_skip_software name='Microsoft Basic Render Driver'
+create_renderer(gpu): render error: backend error: 未找到真实 GPU 适配器（仅软件实现可用）
+[perf] loop_gap_ms=0 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=0
+Error: Render(Backend("未找到真实 GPU 适配器（仅软件实现可用）"))
