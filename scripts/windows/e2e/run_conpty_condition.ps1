@@ -26,6 +26,11 @@ switch ($Condition) {
         Copy-Item (Join-Path $WezDir 'conpty.dll') (Join-Path $appDir 'conpty.dll') -Force
         Copy-Item (Join-Path $WezDir 'OpenConsole.exe') (Join-Path $appDir 'OpenConsole.exe') -Force
     }
+    'official' {
+        $off = Join-Path $ROOT 'vt-verify-win\conpty-dl\official'
+        Copy-Item (Join-Path $off 'conpty.dll') (Join-Path $appDir 'conpty.dll') -Force
+        Copy-Item (Join-Path $off 'OpenConsole.exe') (Join-Path $appDir 'OpenConsole.exe') -Force
+    }
     'nodepity' {
         Copy-Item (Join-Path $NodeDir 'conpty.dll') (Join-Path $appDir 'conpty.dll') -Force
         Copy-Item (Join-Path $NodeDir 'OpenConsole.exe') (Join-Path $appDir 'OpenConsole.exe') -Force
@@ -34,8 +39,7 @@ switch ($Condition) {
 }
 
 function Run-Suite([string]$name, [string]$script, [string]$tag) {
-    # a previous suite can leave hidden app windows that steal focus; clear them
-    Get-Process app -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # no name-based process cleanup: each suite stops the PIDs it started itself
     Start-Sleep -Seconds 3
     $out = Join-Path $logs ("$tag-" + $name + ".log")
     & powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File $script 2>&1 | Out-File -Encoding utf8 $out

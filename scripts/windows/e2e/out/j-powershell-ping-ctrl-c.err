@@ -1,15 +1,48 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
 config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
-[perf] config_ms=24.7 since_start=30.3
-[perf] fontdb_ms=191.1 since_start=265.5
-[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=207.1 since_start=502.3
-[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=202.8 since_start=757.1
-[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=286.4 since_start=1123.6
-[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=224.2 since_start=1400.2
+[perf] config_ms=46.7 since_start=54.4
+[perf] app_new_ms=0.1 since_start=77.0
+[perf] event_loop_ms=6.1 since_start=103.9
+[perf] cpu_new_begin_ms=0.0 since_start=125.5
+[perf] fontdb_ms=101.4 since_start=247.9
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=280.0
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=318.7
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=108 face_ms=0.00 read_ms=0.72 parse_ms=125.23 since_start=489.4
+[perf] font_cache_ms=9.06 since_start=551.4 family='Consolas' style='Regular'
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=315.85 since_start=595.9
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=359.0 since_start=639.0
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=677.6
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=707.1
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=104 face_ms=0.00 read_ms=0.56 parse_ms=135.05 since_start=862.5
+[perf] font_cache_ms=8.65 since_start=939.6 family='Consolas' style='Bold'
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=303.42 since_start=981.0
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=347.2 since_start=1024.9
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=1067.0
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=1087.0
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=95 face_ms=0.00 read_ms=0.87 parse_ms=139.66 since_start=1246.5
+[perf] font_cache_ms=9.81 since_start=1340.4 family='Consolas' style='Italic'
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=300.38 since_start=1367.4
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=342.4 since_start=1409.4
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=1470.7
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=1496.7
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=104 face_ms=0.00 read_ms=0.51 parse_ms=130.99 since_start=1648.3
+[perf] font_cache_ms=7.38 since_start=1706.5 family='Consolas' style='Bold Italic'
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=267.66 since_start=1738.4
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=304.4 since_start=1775.1
+[perf] cpu_groups_ms=1677.6 since_start=1824.1
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=132.3 since_start=1655.6
-[perf] surface_ms=16.4 since_start=1698.4
-[perf] pty_spawn_ms=2499.3 since_start=4221.9
-[perf] first_frame_ms=4311
-[perf] first_pty_byte_ms=4329 since_start=4329
-[perf] bg_fonts_ms=4868 count=2
+[perf] cpu_renderer_ready_ms=1735.3 since_start=1860.8
+[perf] cpu_state_ms=0.01 since_start=1882.2
+[perf] pre_window_ms=1781.1 since_start=1906.7
+[perf] window_ms=65.9 since_start=1999.6
+[perf] ime_ms=4.80 since_start=2027.8
+[perf] renderer_build_ms=0.0 since_start=2060.7 backend=cpu
+[perf] renderer_ready_ms=2092.2 since_start=2092.2
+[perf] surface_ms=1.1 since_start=2114.9
+[perf] vt_new_ms=1.12 since_start=2212.1
+[perf] pty_spawn_ms=115.3 since_start=2347.1
+[perf] writer_thread_ms=0.00 since_start=2367.4 enabled=true
+[perf] first_pty_byte_ms=2418 since_start=2418
+[perf] pre_first_submit_ms=2442 since_start=2442
+[perf] first_frame_ms=2478
+[perf] bg_fonts_ms=2916 count=2

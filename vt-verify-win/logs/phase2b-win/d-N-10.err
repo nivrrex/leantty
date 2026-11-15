@@ -1,0 +1,42 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.9 since_start=5.5
+[perf] app_new_ms=0.0 since_start=38.0
+[perf] event_loop_ms=17.6 since_start=78.7
+[perf] cpu_new_begin_ms=0.0 since_start=103.2
+[perf] fontdb_ms=56.4 since_start=178.5
+[perf] font_group_begin_ms group=0 family='Microsoft YaHei Mono' style='Regular' since_start=204.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=232.9
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=29 face_ms=0.00 read_ms=8.34 parse_ms=438.13 since_start=699.4
+[perf] font_cache_ms=158.82 since_start=933.7 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_group_ms group=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' fallback=false total_ms=765.77 since_start=970.2
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=815.1 since_start=1019.5
+[perf] font_group_begin_ms group=1 family='Microsoft YaHei Mono' style='Bold' since_start=1057.2
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=1091.3
+[perf] font_group_ms group=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' fallback=false total_ms=199.68 since_start=1256.9
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=254.7 since_start=1311.9
+[perf] font_group_begin_ms group=2 family='Microsoft YaHei Mono' style='Italic' since_start=1363.0
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=1386.9
+[perf] font_group_ms group=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' fallback=false total_ms=200.41 since_start=1563.4
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=246.1 since_start=1609.1
+[perf] font_group_begin_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' since_start=1650.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=1677.0
+[perf] font_group_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=181.02 since_start=1831.6
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=223.9 since_start=1874.4
+[perf] cpu_groups_ms=1820.2 since_start=1942.2
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1863.1 since_start=1966.2
+[perf] cpu_state_ms=0.00 since_start=1982.6
+[perf] pre_window_ms=1898.9 since_start=2002.1
+[perf] window_ms=72.5 since_start=2093.4
+[perf] ime_ms=4.30 since_start=2118.7
+[perf] renderer_build_ms=0.0 since_start=2142.9 backend=cpu
+[perf] renderer_ready_ms=2167.0 since_start=2167.0
+[perf] surface_ms=2.9 since_start=2206.3
+[perf] vt_new_ms=0.12 since_start=2228.0
+[perf] pty_spawn_ms=192.5 since_start=2443.9
+[perf] writer_thread_ms=0.00 since_start=2464.2 enabled=true
+[perf] loop_gap_ms=0 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=0
+[perf] first_pty_byte_ms=2538 since_start=2538
+[perf] pre_first_submit_ms=2558 since_start=2558
+[perf] first_frame_ms=2576
+[perf] bg_fonts_ms=3067 count=3

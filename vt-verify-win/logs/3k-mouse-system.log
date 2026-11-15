@@ -1,0 +1,12 @@
+PASS k1-ctrl-insert-copy (row=3 clip='alpha beta gamma')
+PASS k2-shift-insert-paste (pasted=True executed=True)
+PASS w1-wheel-autofollow (bottom=300 scrolled=257 afterOut=257)
+PASS w2-scrollbar-drag (bottom=300 afterDrag=17)
+GUARD: foreground is not the app window (fg=131268 app=393452); input refused
+GUARD: foreground is not the app window (fg=131268 app=393452); input refused
+GUARD: foreground is not the app window (fg=131268 app=393452); input refused
+GUARD: foreground is not the app window (fg=131268 app=393452); input refused
+GUARD: foreground is not the app window (fg=131268 app=393452); input refused
+FAIL w3-scroll-bindings (bottom=-1 scrolled=-1 top=-1 back=-1)
+PASS s1-sgr-conpty-strips (1000:bytes=-1 1002:bytes=-1 1003:bytes=-1 alive=True)
+==== 2B mouse/sgr summary: PASS=5 FAIL=1 ====

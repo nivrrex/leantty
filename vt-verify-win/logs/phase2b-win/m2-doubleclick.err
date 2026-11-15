@@ -1,17 +1,45 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
-[perf] config_ms=3.3 since_start=8.9
-[perf] fontdb_ms=132.3 since_start=205.1
-[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=4174.2 since_start=4402.8
-[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=204.7 since_start=4662.7
-[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=241.6 since_start=4971.4
-[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=191.8 since_start=5244.0
+[perf] config_ms=2.6 since_start=8.2
+[perf] app_new_ms=0.1 since_start=28.3
+[perf] event_loop_ms=19.3 since_start=66.1
+[perf] cpu_new_begin_ms=0.0 since_start=86.5
+[perf] fontdb_ms=127.8 since_start=232.3
+[perf] font_group_begin_ms group=0 family='Microsoft YaHei Mono' style='Regular' since_start=257.4
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=282.8
+[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=95 face_ms=0.00 read_ms=11.47 parse_ms=2800.74 since_start=3116.8
+[perf] font_cache_ms=160.28 since_start=3404.6 family='Microsoft YaHei Mono' style='Regular'
+[perf] font_group_ms group=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' fallback=false total_ms=3178.28 since_start=3435.7
+[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3222.8 since_start=3480.2
+[perf] font_group_begin_ms group=1 family='Microsoft YaHei Mono' style='Bold' since_start=3519.6
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=3556.9
+[perf] font_group_ms group=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' fallback=false total_ms=226.18 since_start=3745.8
+[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=299.7 since_start=3819.3
+[perf] font_group_begin_ms group=2 family='Microsoft YaHei Mono' style='Italic' since_start=3869.2
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=3893.1
+[perf] font_group_ms group=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' fallback=false total_ms=204.50 since_start=4073.7
+[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=267.3 since_start=4136.5
+[perf] font_group_begin_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' since_start=4191.5
+[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=4223.3
+[perf] font_group_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=200.39 since_start=4391.9
+[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=254.5 since_start=4446.1
+[perf] cpu_groups_ms=4457.2 since_start=4561.7
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] window_ms=108.6 since_start=5467.6
-[perf] surface_ms=8.0 since_start=5504.5
-[perf] pty_spawn_ms=31.4 since_start=5561.2
-[perf] first_frame_ms=5677
-[perf] first_pty_byte_ms=5692 since_start=5692
+[perf] cpu_renderer_ready_ms=4495.7 since_start=4582.2
+[perf] cpu_state_ms=0.01 since_start=4603.6
+[perf] pre_window_ms=4536.4 since_start=4623.0
+[perf] window_ms=67.8 since_start=4712.4
+[perf] ime_ms=3.53 since_start=4735.2
+[perf] renderer_build_ms=0.0 since_start=4754.8 backend=cpu
+[perf] renderer_ready_ms=4773.9 since_start=4773.9
+[perf] surface_ms=3.2 since_start=4799.1
+[perf] vt_new_ms=0.98 since_start=4818.3
+[perf] pty_spawn_ms=1147.4 since_start=5982.8
+[perf] writer_thread_ms=0.00 since_start=6008.7 enabled=true
+[perf] first_pty_byte_ms=6077 since_start=6077
+[perf] pre_first_submit_ms=6106 since_start=6106
+[perf] first_frame_ms=6154
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
-[perf] bg_fonts_ms=9312 count=3
+copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
+[perf] bg_fonts_ms=9283 count=3

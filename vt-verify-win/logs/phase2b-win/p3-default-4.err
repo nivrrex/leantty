@@ -1,39 +1,47 @@
 [perf] main_ms=unknown（无法读取进程启动时刻）
 config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
-[perf] config_ms=24.0 since_start=29.4
-[perf] app_new_ms=0.0 since_start=50.1
-[perf] event_loop_ms=10.2 since_start=78.1
-[perf] cpu_new_begin_ms=0.0 since_start=100.1
-[perf] fontdb_ms=39.2 since_start=158.3
-[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=180.4
-[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=34 read_ms=0.66 parse_ms=22.81 since_start=228.4
-[perf] font_cache_ms=6.68 since_start=293.1 family='Consolas' style='Regular'
-[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=143.7 since_start=324.0
-[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=360.7
-[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=23 read_ms=0.49 parse_ms=20.78 since_start=402.6
-[perf] font_cache_ms=7.01 since_start=454.2 family='Consolas' style='Bold'
-[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=127.5 since_start=488.3
-[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=548.3
-[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=25 read_ms=0.71 parse_ms=23.31 since_start=595.2
-[perf] font_cache_ms=8.43 since_start=649.4 family='Consolas' style='Italic'
-[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=131.8 since_start=680.1
-[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=726.4
-[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=32 read_ms=0.58 parse_ms=25.33 since_start=774.2
-[perf] font_cache_ms=6.41 since_start=833.1 family='Consolas' style='Bold Italic'
-[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=137.7 since_start=864.1
-[perf] cpu_groups_ms=800.8 since_start=919.9
+[perf] config_ms=20.6 since_start=25.9
+[perf] app_new_ms=0.0 since_start=53.9
+[perf] event_loop_ms=5.7 since_start=82.7
+[perf] cpu_new_begin_ms=0.0 since_start=104.9
+[perf] fontdb_ms=48.2 since_start=186.6
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=211.0
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=236.9
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=45 face_ms=0.00 read_ms=0.62 parse_ms=21.57 since_start=281.7
+[perf] font_cache_ms=7.02 since_start=355.4 family='Consolas' style='Regular'
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=189.37 since_start=400.4
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=232.4 since_start=443.4
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=494.8
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=518.9
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=28 face_ms=0.00 read_ms=0.46 parse_ms=25.17 since_start=748.5
+[perf] font_cache_ms=7.07 since_start=1032.0 family='Consolas' style='Bold'
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=576.27 since_start=1071.1
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=628.2 since_start=1123.0
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=1917.0
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=1938.9
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=26 face_ms=0.00 read_ms=0.69 parse_ms=24.21 since_start=1981.5
+[perf] font_cache_ms=7.98 since_start=2060.0 family='Consolas' style='Italic'
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=180.41 since_start=2097.4
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=230.0 since_start=2147.0
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=2187.8
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=2211.9
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=41 face_ms=0.00 read_ms=0.56 parse_ms=22.95 since_start=2253.8
+[perf] font_cache_ms=8.25 since_start=2333.3 family='Consolas' style='Bold Italic'
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=184.28 since_start=2372.1
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=224.5 since_start=2412.3
+[perf] cpu_groups_ms=2335.7 since_start=2474.1
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] cpu_renderer_ready_ms=845.2 since_start=945.3
-[perf] cpu_state_ms=0.00 since_start=965.0
-[perf] pre_window_ms=894.9 since_start=995.1
-[perf] window_ms=76.0 since_start=1096.7
-[perf] ime_ms=3.97 since_start=1131.0
-[perf] renderer_build_ms=0.0 since_start=1150.5 backend=cpu
-[perf] renderer_ready_ms=1176.4 since_start=1176.4
-[perf] surface_ms=1.4 since_start=1199.4
-[perf] vt_new_ms=0.20 since_start=1219.5
-[perf] pty_spawn_ms=9.7 since_start=1247.6
-[perf] writer_thread_ms=0.00 since_start=1268.8 enabled=false
-[perf] first_pty_byte_ms=1293 since_start=1293
-[perf] pre_first_submit_ms=1304 since_start=1304
-[perf] first_frame_ms=1318
+[perf] cpu_renderer_ready_ms=2402.3 since_start=2507.2
+[perf] cpu_state_ms=0.00 since_start=2529.0
+[perf] pre_window_ms=2453.9 since_start=2558.8
+[perf] window_ms=63.0 since_start=2642.0
+[perf] ime_ms=4.85 since_start=2668.9
+[perf] renderer_build_ms=0.0 since_start=2693.6 backend=cpu
+[perf] renderer_ready_ms=2717.5 since_start=2717.5
+[perf] surface_ms=4.7 since_start=2745.9
+[perf] vt_new_ms=0.15 since_start=2767.4
+[perf] pty_spawn_ms=26.8 since_start=2813.0
+[perf] writer_thread_ms=0.00 since_start=2834.5 enabled=true
+[perf] pre_first_submit_ms=2857 since_start=2857
+[perf] first_frame_ms=2872
+[perf] first_pty_byte_ms=2882 since_start=2882

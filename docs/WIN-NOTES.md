@@ -89,6 +89,11 @@
 - 事实（3J，已验证）：无自定义绑定时默认 Ctrl+Shift+C 3/3 生效——剪贴板 = `CSELECTME`，随后 `echo MARK > 文件` 正常执行且无杂散 `C`（4K 前的问题未复现）。
 - 事实（3J，已验证）：粘贴积压拒绝在第 3 次 5MB 时发生，日志 `[perf] paste_rejected bytes=5242880 backlog=7471104 cap=12582912 oversized=false`；RSS 1518→1521 MB 有界；拒绝后 Ctrl-C 仍 15s 内无法执行命令（与 3I 一致）。
 - 事实（3J，已验证）：字体面成本（20 组样本）——`font_group_ms` total 中位 168.4/最小 144.7，其中 `face_ms` **恒为 0.00**、read 0.7、parse 23.9、cache 7.2，未归属 **137.0ms（81%）**；墙钟分布 begin→seg 73.7 / seg→cache 59.0 / cache→end 31.7。因此“每组 ~100ms”不在 face_ms。请求 2（观测）。
+- 事实（3K，已验证）：官方 ConPTY 可再分发且可核实——NuGet `Microsoft.Windows.Console.ConPTY` 最新稳定版 **1.25.261109001**（2026-11-11，MIT）；x64 `conpty.dll` 119 608B sha256 e971856f…、`OpenConsole.exe` 1 089 336B sha256 b17e48b0…，两者 Authenticode 均 **Valid / CN=Microsoft Corporation**（含时间戳）；包 sha256 3d77f535…；包内不含许可文本（MIT 原文另存）。
+- 事实（3K，已验证，三方对照）：与系统 conhost 相比，官方 1.25 **不物化折行**（200 字符到达为单段，S 为 80/80/43+CRLF）、**保留 `ESC[7m`**、且 **`OSC 104` 可达**（S/W 均丢弃）；e2e 13/14 + 11/11 + 6/6 + 8/8（唯一失败为已知注入抖动）、pwsh 20/20、1MB/5MB 粘贴精确、关窗与 loop_gap(86ms) 均无新增失败。代价：启动 first_frame 中位 +110ms、2M 行吞吐 355s vs 330s。判定：满足启用门槛。
+- 事实（3K，已验证）：app 空闲内存基线（release，60s 稳定）——默认配置（Consolas+YaHei 回退）WS 878–880MB / Private 896–902MB；**去掉回退后降至 189–190MB（差 ~690MB）**；仅 Courier New 207MB。3J 的 1518MB RSS 是空闲基线加粘贴余量，不是粘贴造成。Linux CPU 基线 ~215MB（PHASE4K-LINUX）。
+- 事实（3K，已验证）：字体文件打开成本——consola 首次读字节 0.16ms/全读 0.95ms/热开 0.29ms；msyh.ttc 0.15/9.78/0.34ms；系统路径与临时副本无差异 → 3J 的“137ms 来自首次打开被扫描”假设**不被数据支持**（待验证→否定）。
+- 事实（3K，流程事故）：本轮曾按 PID 结束两个 `OpenConsole.exe`（7552/11252），WezTerm 也使用 OpenConsole 作为 pty 宿主，可能导致用户终端会话中断。后续规则：不结束任何 OpenConsole 进程，不论 PID 来源。
 - 请求 6（P1，功能完整性）：app 的 1MB 级粘贴排空依赖事件循环唤醒——about_to_wait 每轮只写一个 pending 块且不自触发下一轮，无新事件时排空停摆（Windows 实测 131066/1048576；持续产生鼠标事件后全部送达）。建议 push 后 request_redraw() 或单轮按预算循环排空。未擅改（共享行为变更）。
 - 事实补充（非请求）：ConPTY 输入通道吞掉 ESC[200~/ESC[201~ 与 SGR 鼠标序列（probe_ptyin：写 ESC[200~AB ESC[201~ 只到 AB；写 ESC[<0;10;5M 到 0 字节），故括号粘贴与 SGR 上报在 Windows 子侧不可观测，仅能由 Linux e2e 覆盖。
 

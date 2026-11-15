@@ -116,6 +116,16 @@
 - 日志：`vt-verify-win/logs/{3j-clippy-dev,3j-clippy-rel,3j-test,3j-tree,3j-writer-30,3j-follow-10,3j-keymatches-10}.log`；`vt-verify-win/logs/phase2b-win/{t3*,t4*,t6j-*}.{png,err}`；标记文件在 `vt-verify-win/osc/`。
 - 未入库：`perfdata/`、任何 conpty.dll/OpenConsole.exe。
 
+## 9.5 推送与打 tag（ls-remote 实际输出）
+
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `eb2b8aef88774625e99573ee971392b8b5b507d2` |
+| `refs/tags/phase3j-win-done`（tag 对象） | `23c40713862596c5232cd1c432b4206b7e239d12` |
+| `refs/tags/phase3j-win-done^{}`（解引用 commit） | `eb2b8aef88774625e99573ee971392b8b5b507d2` |
+
+- `git push origin win`：`9ce7daa..eb2b8ae  win -> win`；tag 为新建后 push（`* [new tag]`）。全程未使用 force，未移动任何已有 tag。
+
 ## 10. 手动清单（≤3）
 
 1. 在空闲机器上复测 §6（本机同组内噪声仍有 1.7 s 级异常值）。

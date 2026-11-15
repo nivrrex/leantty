@@ -1,0 +1,48 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+config: C:\Users\Admin\AppData\Roaming\app\app.toml 未读取 (系统找不到指定的路径。 (os error 3)); using defaults
+[perf] config_ms=126.1 since_start=667.9
+[perf] app_new_ms=0.0 since_start=844.9
+[perf] event_loop_ms=6.2 since_start=982.5
+[perf] cpu_new_begin_ms=0.0 since_start=1332.0
+[perf] fontdb_ms=70.2 since_start=1423.6
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=1469.1
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=1493.9
+[perf] font_seg_ms family='Consolas' style='Regular' bytes=459180 query_us=30 face_ms=0.00 read_ms=0.58 parse_ms=24.31 since_start=1541.2
+[perf] font_cache_ms=6.32 since_start=1597.5 family='Consolas' style='Regular'
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=161.19 since_start=1630.3
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=202.1 since_start=1671.2
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=1712.4
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=1734.6
+[perf] font_seg_ms family='Consolas' style='Bold' bytes=397896 query_us=25 face_ms=0.00 read_ms=0.56 parse_ms=21.07 since_start=1775.4
+[perf] font_cache_ms=7.50 since_start=1839.6 family='Consolas' style='Bold'
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=156.60 since_start=1869.0
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=195.9 since_start=1908.3
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=1958.9
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=2009.5
+[perf] font_seg_ms family='Consolas' style='Italic' bytes=467584 query_us=40 face_ms=0.00 read_ms=1.00 parse_ms=35.58 since_start=2072.9
+[perf] font_cache_ms=7.17 since_start=2149.9 family='Consolas' style='Italic'
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=217.51 since_start=2176.4
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=268.8 since_start=2227.8
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=2265.5
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=2287.2
+[perf] font_seg_ms family='Consolas' style='Bold Italic' bytes=407956 query_us=22 face_ms=0.00 read_ms=0.53 parse_ms=22.53 since_start=2331.8
+[perf] font_cache_ms=6.27 since_start=2393.8 family='Consolas' style='Bold Italic'
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=151.60 since_start=2417.1
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=194.1 since_start=2459.6
+[perf] cpu_groups_ms=1148.6 since_start=2501.9
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=1188.1 since_start=2520.1
+[perf] cpu_state_ms=0.00 since_start=2536.5
+[perf] pre_window_ms=1218.8 since_start=2550.8
+[perf] window_ms=95.5 since_start=2662.5
+[perf] ime_ms=4.42 since_start=2688.3
+[perf] renderer_build_ms=0.0 since_start=2706.8 backend=cpu
+[perf] renderer_ready_ms=2734.1 since_start=2734.1
+[perf] surface_ms=0.7 since_start=2760.5
+[perf] vt_new_ms=0.11 since_start=2783.8
+[perf] pty_spawn_ms=10.9 since_start=2815.6
+[perf] writer_thread_ms=0.00 since_start=2840.8 enabled=true
+[perf] pre_first_submit_ms=2867 since_start=2867
+[perf] first_frame_ms=2879
+[perf] first_pty_byte_ms=2890 since_start=2890
+[perf] bg_fonts_ms=3009 count=2
