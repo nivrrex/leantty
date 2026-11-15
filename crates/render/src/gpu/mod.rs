@@ -70,7 +70,7 @@ pub struct GpuRenderer {
     pipelines: Pipelines,
     atlas: GlyphAtlas,
     /// 四组字体链（与 CPU 后端同源，`Arc` 共享以避免重复加载）。
-    groups: std::sync::Arc<Vec<Vec<Font>>>,
+    groups: std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>,
     font_size: f32,
     scale: f64,
     options: RenderOptions,
@@ -204,8 +204,10 @@ impl GpuRenderer {
 
     /// 并入后台字体（CJK fallback）。
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
+        // 阶段 4N t3：与 CPU 渲染器一致——每个回退字体只包一次 Arc，四组共享。
+        let shared: Vec<std::sync::Arc<Font>> = fonts.into_iter().map(std::sync::Arc::new).collect();
         for g in std::sync::Arc::make_mut(&mut self.groups) {
-            g.extend(fonts.iter().cloned());
+            g.extend(shared.iter().cloned());
         }
         self.char_font.clear();
     }
@@ -649,7 +651,7 @@ impl GpuRenderer {
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
-        reuse_groups: Option<std::sync::Arc<Vec<Vec<Font>>>>,
+        reuse_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>>,
         surface: SurfaceInit,
     ) -> Result<Self, Error> {
         let SurfaceInit {

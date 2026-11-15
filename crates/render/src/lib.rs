@@ -42,6 +42,7 @@ pub use decide::{decide, CellDecision, DecideCtx};
 pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use fontdb::{Database, Family, Query, Source, Style as DbStyle, Weight};
 pub use fontdue::Font;
@@ -289,7 +290,9 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
 ///
 /// 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底由 app 层后台加载后
 /// 经 `add_background_fonts` 并入。返回顺序固定为 [normal, bold, italic, bold_italic]。
-pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>>, Error> {
+pub(crate) fn build_font_groups(
+    settings: &FontSettings,
+) -> Result<Vec<Vec<Arc<Font>>>, Error> {
     let mut db = Database::new();
     let t_db = std::time::Instant::now();
     db.load_system_fonts();
@@ -304,9 +307,10 @@ pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>
         &settings.italic,
         &settings.bold_italic,
     ];
-    let mut groups: Vec<Vec<Font>> = Vec::with_capacity(4);
+    let mut groups: Vec<Vec<Arc<Font>>> = Vec::with_capacity(4);
     // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
-    let mut face_cache: std::collections::HashMap<fontdb::ID, Font> =
+    // 阶段 4N t3：缓存与样式组共享同一份解析结果（Arc），同一 face 在进程内只保留一份。
+    let mut face_cache: std::collections::HashMap<fontdb::ID, Arc<Font>> =
         std::collections::HashMap::new();
     for (gi, spec) in specs.iter().enumerate() {
         let t_font = std::time::Instant::now();
@@ -372,7 +376,7 @@ pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Font>
                     "font group {} ('{}' '{}') load failed: {}; using normal font",
                     gi, spec.family, spec.style, e
                 );
-                groups[GROUP_NORMAL][0].clone()
+                Arc::clone(&groups[GROUP_NORMAL][0])
             }
         };
         groups.push(vec![main]);
@@ -385,7 +389,7 @@ pub struct CpuRenderer {
     /// 用 `Arc` 共享：auto/gpu 模式下窗口前先建 CPU 渲染器、窗口后再建 GPU 渲染器，
     /// 两者复用同一份字体链，避免重复 fontdb 扫描 + 字体解析（阶段 4E t3 实测
     /// 该重复约占 GPU 首帧的 155ms）。
-    groups: std::sync::Arc<Vec<Vec<Font>>>,
+    groups: std::sync::Arc<Vec<Vec<Arc<Font>>>>,
     font_size: f32,
     options: RenderOptions,
     palette: Palette,
@@ -604,13 +608,16 @@ impl CpuRenderer {
 
     /// 后台字体到位：并入各组并清空码点归属与字形缓存（归属与位图可能变化）。
     /// 四组字体链的共享句柄（供 GPU 渲染器复用，避免重复加载；阶段 4E t3）。
-    pub fn font_groups(&self) -> std::sync::Arc<Vec<Vec<Font>>> {
+    pub fn font_groups(&self) -> Arc<Vec<Vec<Arc<Font>>>> {
         self.groups.clone()
     }
 
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
-        for g in std::sync::Arc::make_mut(&mut self.groups) {
-            g.extend(fonts.iter().cloned());
+        // 阶段 4N t3：每个回退字体只包一次 Arc，四个样式组共享同一份实例
+        // （此前 `cloned()` 会把每个回退字体深拷贝 4 份，每个 CJK 面 ≈300MB）。
+        let shared: Vec<Arc<Font>> = fonts.into_iter().map(Arc::new).collect();
+        for g in Arc::make_mut(&mut self.groups) {
+            g.extend(shared.iter().cloned());
         }
         self.char_font.clear();
         self.glyph_cache.clear();
@@ -1592,8 +1599,8 @@ fn load_font_styled_cached(
     db: &Database,
     family: &str,
     style: &str,
-    cache: &mut std::collections::HashMap<fontdb::ID, Font>,
-) -> Result<(Font, bool), Error> {
+    cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
+) -> Result<(Arc<Font>, bool), Error> {
     let (w, s) = style_query(style);
     let query = Query {
         families: &[Family::Name(family), Family::Monospace],
@@ -1614,7 +1621,8 @@ fn load_font_styled_cached(
         .ok_or_else(|| Error::Font(format!("family '{}' style '{}' not found", family, style)))?;
     let query_us = t_query.elapsed().as_micros();
     if let Some(f) = cache.get(&id) {
-        return Ok((f.clone(), true));
+        // 命中：共享同一份解析结果（Arc clone 不是深拷贝）
+        return Ok((Arc::clone(f), true));
     }
     // ---- 阶段 4M t3：语句级微秒打点（只补观测，不改行为）----
     // 把"face 构造 / 元数据 / 读取 / fontdue 参数 / fontdue 调用 / clone / 缓存写入"
@@ -1666,12 +1674,13 @@ fn load_font_styled_cached(
         .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
     let parse_us = t_parse.elapsed().as_micros();
 
+    // 阶段 4N t3：不再深拷贝字体实例，改为共享引用（Arc::new 只搬一次指针）。
     let t_clone = std::time::Instant::now();
-    let cached = font.clone();
+    let shared = Arc::new(font);
     let clone_us = t_clone.elapsed().as_micros();
 
     let t_insert = std::time::Instant::now();
-    cache.insert(id, cached);
+    cache.insert(id, Arc::clone(&shared));
     let insert_us = t_insert.elapsed().as_micros();
 
     let steps_us = query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
@@ -1694,7 +1703,7 @@ fn load_font_styled_cached(
         steps_us,
         since_start_ms()
     );
-    Ok((font, false))
+    Ok((shared, false))
 }
 
 /// 带缓存的 family 加载（style 缺失回落顺序同 load_font_with_fallback）。
@@ -1702,8 +1711,8 @@ fn load_font_with_fallback_cached(
     db: &Database,
     family: &str,
     style: &str,
-    cache: &mut std::collections::HashMap<fontdb::ID, Font>,
-) -> Result<(Font, bool, String), Error> {
+    cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
+) -> Result<(Arc<Font>, bool, String), Error> {
     let mut candidates = vec![
         style.to_string(),
         "Bold".to_string(),
