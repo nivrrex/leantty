@@ -743,7 +743,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<render::Font>>>>,
+    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
