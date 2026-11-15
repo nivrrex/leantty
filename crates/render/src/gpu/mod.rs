@@ -1006,6 +1006,48 @@ fn surface_status_desc(s: &wgpu::CurrentSurfaceTexture) -> &'static str {
     }
 }
 
+/// 解析 `WGPU_BACKEND` 的逗号列表（阶段 4Q t2）。
+///
+/// 与 wgpu 自带 `Backends::from_comma_list` 的差别：**无法识别的记号返回 Err**
+/// （携带原始值与出错记号），而不是静默丢弃；同时显式 trim 空白、大小写不敏感
+/// （wgpu 内部也 trim，但丢弃未知记号后只剩空集合，用户无法得知自己写错了）。
+///
+/// 支持的记号（大小写不敏感，等价于 wgpu）：`vulkan`/`vk`、`dx12`/`d3d12`、
+/// `metal`/`mtl`、`gl`/`gles`/`opengl`、`webgpu`。
+pub fn parse_backends_spec(spec: &str) -> Result<wgpu::Backends, String> {
+    let mut out = wgpu::Backends::empty();
+    let mut unknown: Vec<&str> = Vec::new();
+    let mut any = false;
+    for tok in spec.split(',') {
+        let t = tok.trim();
+        if t.is_empty() {
+            continue;
+        }
+        any = true;
+        let lower = t.to_ascii_lowercase();
+        out |= match lower.as_str() {
+            "vulkan" | "vk" => wgpu::Backends::VULKAN,
+            "dx12" | "d3d12" => wgpu::Backends::DX12,
+            "metal" | "mtl" => wgpu::Backends::METAL,
+            "gl" | "gles" | "opengl" => wgpu::Backends::GL,
+            "webgpu" => wgpu::Backends::BROWSER_WEBGPU,
+            _ => {
+                unknown.push(t);
+                wgpu::Backends::empty()
+            }
+        };
+    }
+    if !unknown.is_empty() {
+        return Err(format!(
+            "WGPU_BACKEND='{spec}' 含无法识别的后端记号 {unknown:?}；支持：vulkan|vk, dx12|d3d12, metal|mtl, gl|gles|opengl, webgpu"
+        ));
+    }
+    if !any || out.is_empty() {
+        return Err(format!("WGPU_BACKEND='{spec}' 未包含任何后端名"));
+    }
+    Ok(out)
+}
+
 impl Gpu {
     /// 默认后端集合（未设置 `WGPU_BACKEND` 时）：Linux 仅 Vulkan，Windows 为 Vulkan|DX12。
     ///
@@ -1031,7 +1073,15 @@ impl Gpu {
     /// 创建实例 + 适配器 + 设备；无真实适配器（或仅软件实现）时返回 Err。
     fn new() -> Result<Self, Error> {
         let t_instance = std::time::Instant::now();
-        let backends = wgpu::Backends::from_env().unwrap_or_else(Self::default_backends);
+        // 阶段 4Q t2：自己解析（严格），并把"原始值 / 生效值"都打出来，用引号包住原始值
+        // 以暴露尾随空格这类问题；无法识别时明确报错而不是回落到默认值。
+        let backends_env = std::env::var("WGPU_BACKEND").ok();
+        let backends = match backends_env.as_deref() {
+            Some(raw) => parse_backends_spec(raw)
+                .map_err(|e| Error::Backend(e))?
+                ,
+            None => Self::default_backends(),
+        };
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
             flags: wgpu::InstanceFlags::empty(),
@@ -1041,16 +1091,23 @@ impl Gpu {
         });
         let adapters = pollster::block_on(instance.enumerate_adapters(backends));
         eperf!(
-            "[perf] gpu_instance_ms={:.1} since_start={:.1} backends={:?} count={}",
+            "[perf] gpu_instance_ms={:.1} since_start={:.1} backends_env='{}' backends_effective={:?} count={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
+            backends_env.as_deref().unwrap_or("<unset>"),
             backends,
             adapters.len()
         );
         if adapters.is_empty() {
-            return Err(Error::Backend(format!(
-                "适配器枚举为空（backends={backends:?}；无可用 ICD/驱动）"
-            )));
+            let hint = if let Some(raw) = backends_env.as_deref() {
+                format!(
+                    "请求的后端（WGPU_BACKEND='{}' → {backends:?}）在本平台/本构建不可用或没有对应驱动",
+                    raw
+                )
+            } else {
+                format!("默认后端 {backends:?} 没有可用适配器（无 ICD/驱动）")
+            };
+            return Err(Error::Backend(format!("适配器枚举为空：{hint}")));
         }
         // 适配器清单（诊断）：每个一行，含 name / backend / type / driver
         for a in &adapters {
@@ -1607,4 +1664,72 @@ fn glyph_bytes(v: &[GlyphInstance]) -> Vec<u8> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod backends_spec_tests {
+    use super::parse_backends_spec;
+
+    #[test]
+    fn parses_single_names_case_insensitively() {
+        assert_eq!(parse_backends_spec("dx12").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec("DX12").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec("vulkan").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("vK").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("d3d12").unwrap(), wgpu::Backends::DX12);
+    }
+
+    #[test]
+    fn trims_surrounding_whitespace() {
+        // 这正是 Windows 上 `set X=dx12 && app` 会产生的尾随空格
+        assert_eq!(parse_backends_spec("dx12 ").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(parse_backends_spec(" vulkan").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(parse_backends_spec("\tdx12\n").unwrap(), wgpu::Backends::DX12);
+    }
+
+    #[test]
+    fn parses_comma_list_with_spaces() {
+        assert_eq!(
+            parse_backends_spec("vulkan,dx12").unwrap(),
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        );
+        assert_eq!(
+            parse_backends_spec(" vulkan , dx12 ").unwrap(),
+            wgpu::Backends::VULKAN | wgpu::Backends::DX12
+        );
+        // 重复项不报错
+        assert_eq!(
+            parse_backends_spec("vulkan,vulkan").unwrap(),
+            wgpu::Backends::VULKAN
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_token_with_original_value() {
+        for bad in ["dx", "vk12", "d3d11", "gpu", "乱码"] {
+            let err = parse_backends_spec(bad).expect_err("无法识别的记号必须报错");
+            assert!(err.contains(bad), "错误信息应包含原始值：{err}");
+            assert!(err.contains("WGPU_BACKEND="), "错误信息应带变量名：{err}");
+        }
+        // 列表里混入未知项同样报错（不静默丢弃）
+        let err = parse_backends_spec("vulkan,dx").expect_err("混入未知项必须报错");
+        assert!(err.contains("dx"), "{err}");
+    }
+
+    #[test]
+    fn rejects_empty_or_blank() {
+        for bad in ["", "   ", ",", " , "] {
+            assert!(
+                parse_backends_spec(bad).is_err(),
+                "空值/仅分隔符必须报错（实测 {bad:?}）"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_all_supported_names() {
+        for ok in ["metal", "mtl", "gl", "gles", "opengl", "webgpu"] {
+            assert!(parse_backends_spec(ok).is_ok(), "{ok} 应可解析");
+        }
+    }
 }
