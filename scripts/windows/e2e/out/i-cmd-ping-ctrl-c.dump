@@ -1,7 +1,7 @@
 # cols=80 rows=24 wide=44 spacer=44 alternate=false
-Active code page: 65001
 
-C:\Users\Admin>ping -t 127.0.0.1
+
+g -t 127.0.0.1
 
 Pinging 127.0.0.1 with 32 bytes of data:
 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128

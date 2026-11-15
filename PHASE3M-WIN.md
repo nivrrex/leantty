@@ -180,4 +180,11 @@
 
 ## 10. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `f475a8467c8913d94e28c2a2d3fcda6c0f808b13` |
+| `refs/tags/phase3m-win-done`（tag 对象） | `bea283fd7d715c18058e28024ef453eb235274a9` |
+| `refs/tags/phase3m-win-done^{}`（解引用 commit） | `f475a8467c8913d94e28c2a2d3fcda6c0f808b13` |
+
+- `git push origin win`：`65a91d0..f475a84  win -> win`；tag 新建后 push（`* [new tag]`）。未 force、未移动任何已有 tag。
+- 提交内容：`PHASE3M-WIN.md`、`docs/WIN-NOTES.md`（6 条 3M 事实 + 请求 1/2/3）、`vt-verify-win/` 下 3M 探针与日志、3 个新 cfg（`t6d-yahei-ttc` 沿用、`t6e-yahei-single`、`wrap200-cmd/win`）、`.gitignore`（3m-deploy 二进制目录、start-S/N 暂存目录）。**无二进制入库**（提交前检查 .exe/.dll/.zip/.png 命中 0）。

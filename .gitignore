@@ -22,3 +22,15 @@ scripts/e2e/out/
 /vt-verify-win/start-S/
 /vt-verify-win/start-N/
 /vt-verify-win/logs/3m-start/*.log
+/vt-verify-win/tonight-kit/
+/vt-verify-win/tonight-kit-v1.zip
+/vt-verify-win/kit-run/
+/vt-verify-win/kit-trial*/
+/vt-verify-win/logs/3n/*.json
+/vt-verify-win/tonight-kit-v2/
+/vt-verify-win/tonight-kit-v2.zip
+/vt-verify-win/start-S3o/
+/vt-verify-win/3o-warn/
+/vt-verify-win/3o-warn-full/
+/vt-verify-win/3o-mem/*.csv
+/vt-verify-win/3o-mem/*.json

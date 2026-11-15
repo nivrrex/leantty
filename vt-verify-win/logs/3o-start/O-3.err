@@ -1,0 +1,64 @@
+[perf] main_ms=unknown（无法读取进程启动时刻）
+[perf] config_ms=0.7 since_start=0.9
+[perf] app_new_ms=0.0 since_start=1.1
+[perf] event_loop_ms=4.7 since_start=6.0
+[perf] cpu_new_begin_ms=0.0 since_start=6.2
+[perf] fontdb_ms=49.6 since_start=56.0
+[perf] font_group_begin_ms group=0 family='Consolas' style='Regular' since_start=56.2
+[perf] font_lookup_begin_ms family='Consolas' style='Regular' since_start=56.4
+[perf] font_steps_us family='Consolas' style='Regular' kind=group src=file bytes=459180 meta_len=459180 ttc=false query_us=16 face_us=0 meta_us=118 read_us=429 settings_us=0 parse_us=27547 arc_us=1 clone_us=1 insert_us=7 steps_us=28118 since_start=84.7
+[perf] font_group_us group=0 family='Consolas' style='Regular' pre_load_us=200 load_us=29172 tail_us=0 total_us=29373 fallback=false cache_hit=false
+[perf] font_group_ms group=0 family='Consolas' style='Regular' used_style='Regular' fallback=false total_ms=31.23 since_start=87.4
+[perf] font_ms=0 family='Consolas' style='Regular' used_style='Regular' cached=false ms=31.4 since_start=87.7
+[perf] font_group_begin_ms group=1 family='Consolas' style='Bold' since_start=87.9
+[perf] font_lookup_begin_ms family='Consolas' style='Bold' since_start=88.1
+[perf] font_steps_us family='Consolas' style='Bold' kind=group src=file bytes=397896 meta_len=397896 ttc=false query_us=21 face_us=0 meta_us=273 read_us=573 settings_us=0 parse_us=23085 arc_us=0 clone_us=0 insert_us=1 steps_us=23953 since_start=112.1
+[perf] font_group_us group=1 family='Consolas' style='Bold' pre_load_us=108 load_us=24527 tail_us=0 total_us=24636 fallback=false cache_hit=false
+[perf] font_group_ms group=1 family='Consolas' style='Bold' used_style='Bold' fallback=false total_ms=24.81 since_start=112.8
+[perf] font_ms=1 family='Consolas' style='Bold' used_style='Bold' cached=false ms=25.0 since_start=112.9
+[perf] font_group_begin_ms group=2 family='Consolas' style='Italic' since_start=113.1
+[perf] font_lookup_begin_ms family='Consolas' style='Italic' since_start=113.3
+[perf] font_steps_us family='Consolas' style='Italic' kind=group src=file bytes=467584 meta_len=467584 ttc=false query_us=24 face_us=0 meta_us=392 read_us=612 settings_us=0 parse_us=30452 arc_us=1 clone_us=1 insert_us=1 steps_us=31482 since_start=144.9
+[perf] font_group_us group=2 family='Consolas' style='Italic' pre_load_us=234 load_us=32052 tail_us=0 total_us=32287 fallback=false cache_hit=false
+[perf] font_group_ms group=2 family='Consolas' style='Italic' used_style='Italic' fallback=false total_ms=32.48 since_start=145.6
+[perf] font_ms=2 family='Consolas' style='Italic' used_style='Italic' cached=false ms=32.7 since_start=145.8
+[perf] font_group_begin_ms group=3 family='Consolas' style='Bold Italic' since_start=146.0
+[perf] font_lookup_begin_ms family='Consolas' style='Bold Italic' since_start=146.1
+[perf] font_steps_us family='Consolas' style='Bold Italic' kind=group src=file bytes=407956 meta_len=407956 ttc=false query_us=20 face_us=0 meta_us=402 read_us=414 settings_us=0 parse_us=33036 arc_us=1 clone_us=1 insert_us=3 steps_us=33876 since_start=180.1
+[perf] font_group_us group=3 family='Consolas' style='Bold Italic' pre_load_us=107 load_us=34432 tail_us=1 total_us=34540 fallback=false cache_hit=false
+[perf] font_group_ms group=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=34.67 since_start=180.7
+[perf] font_ms=3 family='Consolas' style='Bold Italic' used_style='Bold Italic' cached=false ms=34.8 since_start=180.8
+[perf] cpu_groups_ms=174.7 since_start=181.1
+hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
+[perf] cpu_renderer_ready_ms=175.0 since_start=181.2
+[perf] cpu_state_ms=0.00 since_start=181.3
+[perf] pre_window_ms=175.1 since_start=181.4
+[perf] window_ms=97.3 since_start=278.8
+[perf] ime_ms=10.04 since_start=288.9
+[perf] backend=auto → cpu（Windows 上 auto 不尝试 GPU，见 DECISIONS）
+[perf] renderer_build_ms=0.0 since_start=289.1 backend=cpu
+[perf] renderer_ready_ms=289.2 since_start=289.2
+[perf] surface_ms=1.0 since_start=290.2
+[perf] vt_new_ms=0.10 since_start=290.5
+[perf] pty_spawn_ms=100.2 since_start=390.9
+[perf] writer_thread_ms=0.00 since_start=391.1 enabled=true
+[perf] bg_db_new_us=2
+[perf] loop_gap_ms=0 feed_ms_max=0.0 feed_bytes_max=0 writer_queued_max=0
+[perf] pre_first_submit_ms=397 since_start=397
+[perf] first_frame_ms=402
+[perf] bg_fontdb_us=50672
+[perf] font_lookup_begin_ms family='Microsoft YaHei' style='Regular' since_start=446.7
+[perf] first_pty_byte_ms=661 since_start=661
+[perf] font_steps_us family='Microsoft YaHei' style='Regular' kind=background src=file bytes=19701556 meta_len=19701556 ttc=true query_us=80 face_us=0 meta_us=174 read_us=12127 settings_us=0 parse_us=470841 arc_us=0 clone_us=0 insert_us=2 steps_us=483224 since_start=930.0
+[perf] bg_font_face_us family='Microsoft YaHei' style='Regular' used_style='Regular' cached=false fallback=false total_us=484323
+[perf] bg_font_clone_us family='Microsoft YaHei' deep_copy_us=142544
+[perf] bg_specs_loop_us=627078
+[perf] bg_font_face_us family='Monospace' generic=true total_us=39507
+[perf] bg_font_face_us family='SansSerif' generic=true total_us=37465
+[perf] bg_generic_loop_us=77190
+[perf] bg_font_free_us=40852
+[perf] bg_print_us=659
+[perf] bg_font_list_us=796146 count=3
+[perf] bg_fonts_ms=1192 count=3
+[perf] bg_fonts_merge_us families=3 groups=4 strong_refs=[5, 5, 5] merge_us=8
+[perf] loop_gap_ms=9 feed_ms_max=0.2 feed_bytes_max=77 writer_queued_max=0

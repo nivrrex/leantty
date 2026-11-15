@@ -1,46 +1,6 @@
-[perf] main_ms=unknown（无法读取进程启动时刻）
-[perf] config_ms=3.2 since_start=7.9
-[perf] app_new_ms=0.1 since_start=28.9
-[perf] event_loop_ms=5.8 since_start=55.4
-[perf] cpu_new_begin_ms=0.0 since_start=88.5
-[perf] fontdb_ms=90.3 since_start=195.1
-[perf] font_group_begin_ms group=0 family='Microsoft YaHei Mono' style='Regular' since_start=224.6
-[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Regular' since_start=246.4
-[perf] font_seg_ms family='Microsoft YaHei Mono' style='Regular' bytes=14960568 query_us=103 face_ms=0.00 read_ms=10.69 parse_ms=2733.58 since_start=3011.9
-[perf] font_cache_ms=169.16 since_start=3288.7 family='Microsoft YaHei Mono' style='Regular'
-[perf] font_group_ms group=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' fallback=false total_ms=3108.21 since_start=3332.8
-[perf] font_ms=0 family='Microsoft YaHei Mono' style='Regular' used_style='Regular' cached=false ms=3158.1 since_start=3382.7
-[perf] font_group_begin_ms group=1 family='Microsoft YaHei Mono' style='Bold' since_start=3428.3
-[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold' since_start=3451.2
-[perf] font_group_ms group=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' fallback=false total_ms=193.34 since_start=3621.7
-[perf] font_ms=1 family='Microsoft YaHei Mono' style='Bold' used_style='Bold' cached=true ms=255.2 since_start=3683.6
-[perf] font_group_begin_ms group=2 family='Microsoft YaHei Mono' style='Italic' since_start=3726.9
-[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Italic' since_start=3751.9
-[perf] font_group_ms group=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' fallback=false total_ms=182.37 since_start=3909.3
-[perf] font_ms=2 family='Microsoft YaHei Mono' style='Italic' used_style='Italic' cached=true ms=221.7 since_start=3948.6
-[perf] font_group_begin_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' since_start=3997.9
-[perf] font_lookup_begin_ms family='Microsoft YaHei Mono' style='Bold Italic' since_start=4023.9
-[perf] font_group_ms group=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' fallback=false total_ms=206.81 since_start=4204.7
-[perf] font_ms=3 family='Microsoft YaHei Mono' style='Bold Italic' used_style='Bold Italic' cached=true ms=248.1 since_start=4246.0
-[perf] cpu_groups_ms=4213.8 since_start=4318.6
 hinting: fontdue 不支持 hinting，已解析未生效（unsupported）
-[perf] cpu_renderer_ready_ms=4253.4 since_start=4341.9
-[perf] cpu_state_ms=0.01 since_start=4359.4
-[perf] pre_window_ms=4292.3 since_start=4380.8
-[perf] window_ms=51.9 since_start=4451.8
-[perf] ime_ms=5.21 since_start=4484.8
-[perf] renderer_build_ms=0.0 since_start=4509.7 backend=cpu
-[perf] renderer_ready_ms=4536.8 since_start=4536.8
-[perf] surface_ms=0.8 since_start=4554.4
-[perf] vt_new_ms=1.17 since_start=4573.3
-[perf] pty_spawn_ms=23.0 since_start=4619.3
-[perf] writer_thread_ms=0.00 since_start=4649.1 enabled=true
-[perf] first_pty_byte_ms=4703 since_start=4703
-[perf] pre_first_submit_ms=4733 since_start=4733
-[perf] first_frame_ms=4794
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
 copy primary: clipboard error: primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）
-[perf] bg_fonts_ms=7905 count=3

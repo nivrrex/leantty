@@ -1,25 +1,25 @@
-# cols=80 rows=24 wide=0 spacer=0 alternate=false
-d-----         2026/11/8     19:54                winapi-x86_64-pc-windows-gnu-
-                                                  43ea3c1a30c81d92
-d-----         2026/11/8     19:54                winapi-x86_64-pc-windows-gnu-
-                                                  ea0c11aa47998b7d
-d-----         2026/11/9      2:49                windows-link-33c6888038906e64
-d-----         2026/11/9      0:36                windows-link-998475ad3a6299c1
-d-----         2026/11/9      2:49                windows-sys-0ee959d79ff80f3b
-d-----         2026/11/9      2:49                windows-sys-14da80ad399bf281
-d-----         2026/11/9      0:36                windows-sys-522b74172819c882
-d-----         2026/11/9      0:37                windows-sys-6836a9a162a0e935
-d-----        2026/11/12      7:29                windows-sys-87e27e03c6fda9f1
-d-----        2026/11/12      7:54                windows-sys-9418040126f024fd
-d-----         2026/11/9      0:36                windows-targets-4d49292c6350c
-                                                  41a
-d-----         2026/11/9      2:49                windows-targets-bb483b8424791
-                                                  e4a
-d-----         2026/11/9      0:36                windows_x86_64_gnu-42ef9d6766
-                                                  9d3db2
-d-----         2026/11/9      0:36                windows_x86_64_gnu-6996b3ec11
-                                                  3ad92d
-d-----         2026/11/9      0:36                windows_x86_64_gnu-854ba83bce
+# cols=80 rows=24 wide=2 spacer=2 alternate=false
+
+
+    目录: C:\dev\tty\scripts\windows\e2e\cfg
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        2026/11/13     18:16           3494 backend-auto.toml
+-a----        2026/11/13     18:16           3493 backend-gpu.toml
+-a----        2026/11/12     10:22           2513 clip-win.toml
+-a----        2026/11/12     18:49           2501 consolas-win.toml
+-a----        2026/11/14      0:30           2512 control-green.toml
+-a----        2026/11/15      4:19           3076 ctrlshift-default.toml
+-a----        2026/11/14      7:28           2513 cursor-magenta.toml
+-a----        2026/11/13     21:42           2512 inverse-dark.toml
+-a----        2026/11/13     18:19           2611 pad12.toml
+-a----        2026/11/12     10:22            382 pastesel.toml
+-a----        2026/11/12     16:55           2513 pos60.toml
+-a----        2026/11/12     10:22           2520 ps-win.toml
+-a----        2026/11/12     18:42           2514 pwsh-win.toml
+-a----        2026/11/12     14:15           3065 scroll-win.toml
 PS C:\Users\Admin> echo CCCDONE
 CCCDONE
 PS C:\Users\Admin>
