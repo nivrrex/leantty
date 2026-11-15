@@ -647,3 +647,30 @@ fn t6_resolve_program_windows() {
 }
 
 use std::path::Path;
+
+/// 3O：部署自检。只断言形态判定，不启动任何进程。
+/// 用临时目录构造三种组合，结束后删除目录（只动自己建的临时子目录）。
+#[test]
+fn conpty_pair_detection_needs_both_files() {
+    use pty::windows::conpty_pair_incomplete;
+    use std::fs;
+    let base = std::env::temp_dir().join(format!("pty-pair-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&base);
+    let both = base.join("both");
+    let dll_only = base.join("dll_only");
+    let exe_only = base.join("exe_only");
+    let none = base.join("none");
+    for d in [&both, &dll_only, &exe_only, &none] {
+        fs::create_dir_all(d).expect("create temp dir");
+    }
+    fs::write(both.join("conpty.dll"), b"x").unwrap();
+    fs::write(both.join("OpenConsole.exe"), b"x").unwrap();
+    fs::write(dll_only.join("conpty.dll"), b"x").unwrap();
+    fs::write(exe_only.join("OpenConsole.exe"), b"x").unwrap();
+
+    assert!(!conpty_pair_incomplete(&both), "both files present must not warn");
+    assert!(conpty_pair_incomplete(&dll_only), "conpty.dll without OpenConsole.exe must warn");
+    assert!(!conpty_pair_incomplete(&exe_only), "OpenConsole.exe alone is not the warned shape");
+    assert!(!conpty_pair_incomplete(&none), "empty directory must not warn");
+    let _ = fs::remove_dir_all(&base);
+}

@@ -51,6 +51,30 @@ fn map_ctrl_handler_result(rc: i32) -> Result<(), Error> {
 /// 读线程 join 超时上限。禁止无界 join。
 pub const READER_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
 
+
+/// 部署自检：程序目录里"有 conpty.dll 但缺 OpenConsole.exe"。
+///
+/// 背景（阶段 3L/3M 实测）：两个文件必须放在 app.exe 同目录；只剩 conpty.dll 时
+/// 进程仍会正常启动，但 pty 宿主会静默换成系统 `C:\Windows\system32\conhost.exe`
+/// ——折行会被物化、`ESC[7m` 被改写，用户看不到任何提示。这里只做**默认可见**
+/// 的 stderr 警告，不改变任何行为。
+pub fn conpty_pair_incomplete(dir: &std::path::Path) -> bool {
+    dir.join("conpty.dll").exists() && !dir.join("OpenConsole.exe").exists()
+}
+
+/// 在 spawn 前做一次部署自检并打印警告（警告文本固定，便于脚本断言）。
+fn warn_if_conpty_pair_incomplete() {
+    let dir = match std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        Some(d) => d,
+        None => return,
+    };
+    if conpty_pair_incomplete(&dir) {
+        eprintln!(
+            "[pty] 警告：程序目录存在 conpty.dll 但缺少 OpenConsole.exe——两文件必须成对部署；本次将改用系统 conhost（折行会被物化、ESC[7m 会被改写）。"
+        );
+    }
+}
+
 /// portable-pty 的 Windows (ConPTY) 实现。
 pub struct WindowsPty {
     master: Option<Box<dyn MasterPty + Send>>,
@@ -182,6 +206,8 @@ impl Pty for WindowsPty {
         // 实验 X：创建子进程前清除本进程可能继承的"忽略 Ctrl 事件"状态；
         // 失败路径返回 Error（不 unwrap、不忽略）。
         clear_console_ctrl_ignore()?;
+        // 部署自检（3O）：只打警告，不改变启动路径
+        warn_if_conpty_pair_incomplete();
         let system = native_pty_system();
         let PtyPair { master, slave } = system.openpty(PtySize {
             rows,
