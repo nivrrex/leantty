@@ -529,7 +529,7 @@ pub enum RendererBackend {
     Cpu(Box<CpuRenderer>),
     /// GPU（wgpu/Vulkan，仅 Linux；渲染到 winit 窗口 surface，不回读）。
     /// 用 Box 装箱：GpuRenderer 远大于 CpuRenderer，避免枚举整体膨胀。
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     Gpu(Box<render::gpu::GpuRenderer>),
 }
 
@@ -538,7 +538,7 @@ impl RendererBackend {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Cpu(_) => "cpu",
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(_) => "gpu",
         }
     }
@@ -547,7 +547,7 @@ impl RendererBackend {
     pub fn is_gpu(&self) -> bool {
         match self {
             Self::Cpu(_) => false,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(_) => true,
         }
     }
@@ -556,7 +556,7 @@ impl RendererBackend {
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
         match self {
             Self::Cpu(r) => r.cell_metrics(scale),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.cell_metrics(scale),
         }
     }
@@ -565,7 +565,7 @@ impl RendererBackend {
     pub fn set_scale_factor(&mut self, scale: f64) {
         match self {
             Self::Cpu(r) => r.set_scale_factor(scale),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_scale_factor(scale),
         }
     }
@@ -574,7 +574,7 @@ impl RendererBackend {
     pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
         match self {
             Self::Cpu(r) => r.add_background_fonts(fonts),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.add_background_fonts(fonts),
         }
     }
@@ -583,7 +583,7 @@ impl RendererBackend {
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         match self {
             Self::Cpu(r) => r.set_selection(region),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_selection(region),
         }
     }
@@ -592,7 +592,7 @@ impl RendererBackend {
     pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
         match self {
             Self::Cpu(r) => r.set_scrollbar(geom),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_scrollbar(geom),
         }
     }
@@ -601,7 +601,7 @@ impl RendererBackend {
     pub fn set_preedit(&mut self, overlay: Option<render::PreeditOverlay>) {
         match self {
             Self::Cpu(r) => r.set_preedit(overlay),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_preedit(overlay),
         }
     }
@@ -615,7 +615,7 @@ impl RendererBackend {
     ) -> Result<(), render::Error> {
         match self {
             Self::Cpu(r) => r.render(frame, pixel_width, pixel_height),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.render_surface(frame, pixel_width, pixel_height),
         }
     }
@@ -625,7 +625,7 @@ impl RendererBackend {
         match self {
             Self::Cpu(r) => r.damage(),
             // GPU 后端每帧整帧提交，没有"脏区"概念（surface 纹理内容不保留）。
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(_) => &[],
         }
     }
@@ -634,7 +634,7 @@ impl RendererBackend {
     pub fn framebuffer(&self) -> &[u32] {
         match self {
             Self::Cpu(r) => r.framebuffer(),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(_) => &[],
         }
     }
@@ -643,7 +643,7 @@ impl RendererBackend {
     pub fn framebuffer_size(&self) -> (u32, u32) {
         match self {
             Self::Cpu(r) => r.framebuffer_size(),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.pixel_size(),
         }
     }
@@ -652,7 +652,7 @@ impl RendererBackend {
     pub fn as_cpu(&self) -> Option<&CpuRenderer> {
         match self {
             Self::Cpu(r) => Some(r),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(_) => None,
         }
     }
@@ -665,7 +665,7 @@ impl RendererBackend {
         let _ = (width, height);
         match self {
             Self::Cpu(_) => {}
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.resize_surface(width, height),
         }
     }
@@ -703,6 +703,14 @@ pub fn create_renderer(
     match requested {
         config::Backend::Cpu => build_cpu(scale, existing),
         config::Backend::Auto => {
+            // 阶段 4P t2c：Windows 的 auto **仍直接走 CPU**——GPU 路径（Vulkan/DX12）尚未在
+            // 真实 Windows GPU 上验证 present 行为，默认保持不变；Linux 的 auto 语义不变
+            //（先试 GPU，失败回落 CPU）。
+            #[cfg(target_os = "windows")]
+            {
+                eperf!("[perf] backend=auto → cpu（Windows 上 auto 不尝试 GPU，见 DECISIONS）");
+                build_cpu(scale, existing)
+            }
             #[cfg(target_os = "linux")]
             {
                 let t = std::time::Instant::now();
@@ -725,13 +733,15 @@ pub fn create_renderer(
                     }
                 }
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(any(target_os = "linux", target_os = "windows")))]
             {
                 build_cpu(scale, existing)
             }
         }
         config::Backend::Gpu => {
-            #[cfg(target_os = "linux")]
+            // 阶段 4P：Windows 与 Linux 一致——强制 gpu 且失败时返回错误（调用方非零退出），
+            // 不再"回退 CPU 并警告"。
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
@@ -746,17 +756,18 @@ pub fn create_renderer(
                 );
                 Ok(gpu)
             }
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(any(target_os = "linux", target_os = "windows")))]
             {
-                eprintln!("[renderer] backend=gpu 在当前平台不可用，回退 cpu");
-                build_cpu(scale, existing)
+                Err(Error::App(
+                    "renderer.backend=gpu 在当前平台不可用（仅 Linux/Windows 提供）".to_string(),
+                ))
             }
         }
     }
 }
 
 /// 用 winit 窗口的 raw handle 创建 GPU surface 渲染器（仅 Linux）。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn build_gpu(
     font_settings: &render::FontSettings,
     options: render::RenderOptions,
@@ -2605,7 +2616,7 @@ impl AppHandler {
             Some(RendererBackend::Cpu(c)) => c.cache_stats(),
             // GPU 后端不回读帧缓冲：字形缓存复用同一份 Font 链，缓存规模不可直接取。
             // （Gpu 变体仅 Linux 存在，此处按平台门控，保证 Windows 目标可编译。）
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             Some(RendererBackend::Gpu(_)) => (0, 0),
             None => (0, 0),
         };

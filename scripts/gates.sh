@@ -59,10 +59,12 @@ sh scripts/e2e/run_all.sh >/tmp/gates_e2e.log 2>&1 || { tail -40 /tmp/gates_e2e.
 grep -E "e2e 汇总" /tmp/gates_e2e.log | tail -1
 grep -E "^FAIL" /tmp/gates_e2e.log && fail "e2e 有 FAIL 项"
 
-step "6/7 Windows 依赖树（wgpu/pollster 必须为 0）"
-HITS=$(cargo tree --target x86_64-pc-windows-gnu -e normal 2>/dev/null | grep -cE "wgpu|pollster" || true)
-echo "命中数=$HITS"
-[ "${HITS:-1}" -eq 0 ] || fail "Windows 目标依赖树出现 wgpu/pollster（$HITS 条）"
+step "6/7 Windows 依赖树（wgpu 必须为 30.0.2）"
+# 阶段 4P：Windows 目标已启用 wgpu（Vulkan+DX12），不再要求 wgpu 命中为 0；
+# 改为断言版本精确等于 30.0.2（本项目硬性锁定，不升级）。
+WV=$(cargo tree --target x86_64-pc-windows-gnu -e normal 2>/dev/null | grep -oE "wgpu v[0-9.]+" | sort -u | tr '\n' ' ')
+echo "Windows 目标 wgpu: ${WV:-<missing>}"
+[ "$(echo "$WV" | tr -d ' ')" = "wgpuv30.0.2" ] || fail "Windows 目标 wgpu 版本不是 30.0.2（实测：${WV:-无}）"
 
 step "7/7 Windows 目标检查"
 cargo check --target x86_64-pc-windows-gnu --workspace --tests >/tmp/gates_win.log 2>&1 \

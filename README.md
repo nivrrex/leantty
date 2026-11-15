@@ -58,6 +58,32 @@ Windows 默认使用系统 conhost（旧版 ConPTY）作为 pty 宿主；本项�
 - **启用门槛**：`PHASE3K-WIN.md` §3.10 的判定（a/d/e/h/i 无新增失败且 b 或 c 至少一项优于
   S）已满足，故采用。
 
+## Windows GPU 后端（实验性）
+
+Windows 目标现在也能编译并使用 wgpu 的 GPU 后端（Vulkan + DX12），但**只在配置显式写
+`backend = "gpu"` 时启用**：
+
+- `backend = "cpu"`：CPU 渲染（默认）。
+- `backend = "auto"`：**Windows 上仍直接走 CPU**（不尝试 GPU）。Linux 的 `auto` 语义不变
+  （先试 GPU，不可用回落 CPU）。
+- `backend = "gpu"`：尝试 GPU；无可用适配器或初始化失败时**非零退出并打印错误**
+  （与 Linux 一致，不再静默回退 CPU）。
+
+诊断（全部用标准环境变量与已有开关，不新增配置项）：
+
+| 用途 | 变量 |
+|---|---|
+| 打印 GPU 诊断（适配器清单/选中项/backend/surface 格式与 present mode） | `APP_PERF_FRAMES=1` |
+| 指定后端（如 `dx12`、`vulkan`） | `WGPU_BACKEND`（未设置时 Linux=Vulkan，Windows=Vulkan+DX12） |
+| 指定适配器（名字子串，不区分大小写） | `WGPU_ADAPTER_NAME`（未匹配会给出可用列表并报错） |
+
+选适配器时先排除软件实现（`DeviceType::Cpu`，含 Windows 的 WARP/Basic Render Driver），
+再按 Discrete > Integrated > 其他 的类型优先级选择（同级保持枚举顺序）。
+
+**已知未验证项**（截至阶段 4P）：真实 Windows GPU 上的 present 行为；DX12 与 Vulkan 在
+Windows 上的差异；无 GPU 的 Windows 机器上 `backend="gpu"` 的实际退出路径（Linux 端已用
+"无 ICD" 场景覆盖）。
+
 ## 诊断输出（默认关闭）
 
 启动与运行期的 `[perf] …` 性能/诊断行**默认不打印**（每次启动 30+ 行，且在小体积重定向

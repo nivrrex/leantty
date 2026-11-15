@@ -95,7 +95,7 @@ fn cursor_pixels_absent_after_scroll_up_and_back_after_bottom() {
 }
 
 /// GPU 侧同样断言（无适配器显式 SKIP 并计数）。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn cursor_pixels_absent_after_scroll_up_gpu() {
     use render::gpu::GpuRenderer;

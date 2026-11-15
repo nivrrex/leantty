@@ -19,7 +19,7 @@
 
 pub mod decide;
 pub mod preedit;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 pub mod gpu;
 
 /// 进程启动锚点（阶段 3A 任务 2：启动分段耗时日志；app 在 main 首行调用）。

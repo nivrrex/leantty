@@ -140,7 +140,7 @@ fn palette_values_are_distinguishable() {
 }
 
 /// GPU 侧同一语义（无适配器时显式 SKIP 并计数）。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn inverse_default_color_semantics_gpu() {
     use render::Error;

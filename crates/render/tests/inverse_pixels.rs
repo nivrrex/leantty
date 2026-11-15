@@ -178,7 +178,7 @@ fn cursor_block_on_inverse_cell_keeps_glyph_visible() {
 }
 
 /// 5) GPU 侧同样的绝对断言（无适配器显式 SKIP 并计数）。
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn inverse_cell_gpu_absolute_pixels() {
     use render::gpu::GpuRenderer;
