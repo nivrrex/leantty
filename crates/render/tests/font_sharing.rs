@@ -54,16 +54,51 @@ fn unique_instances(groups: &Arc<Vec<Vec<Arc<render::Font>>>>) -> usize {
     ptrs.len()
 }
 
+/// 四个样式在本机实际解析出的**唯一 face 数**（不写死 4：换机器/换字体会不同）。
+fn expected_unique_faces() -> Option<usize> {
+    let mut db = fontdb::Database::new();
+    db.load_system_fonts();
+    let mut ids: Vec<fontdb::ID> = Vec::new();
+    for style in ["Regular", "Bold", "Italic", "Bold Italic"] {
+        let (w, s) = match style {
+            "Bold" => (fontdb::Weight::BOLD, fontdb::Style::Normal),
+            "Italic" => (fontdb::Weight::NORMAL, fontdb::Style::Italic),
+            "Bold Italic" => (fontdb::Weight::BOLD, fontdb::Style::Italic),
+            _ => (fontdb::Weight::NORMAL, fontdb::Style::Normal),
+        };
+        let q = fontdb::Query {
+            families: &[
+                fontdb::Family::Name("DejaVu Sans Mono"),
+                fontdb::Family::Monospace,
+            ],
+            weight: w,
+            style: s,
+            ..Default::default()
+        };
+        if let Some(id) = db.query(&q) {
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+    }
+    if ids.is_empty() { None } else { Some(ids.len()) }
+}
+
 #[test]
 fn same_face_is_shared_not_cloned() {
+    let Some(expected) = expected_unique_faces() else {
+        println!("SKIP: 本机没有 DejaVu Sans Mono / Monospace 族（无法建立字体链）");
+        return;
+    };
     let r = CpuRenderer::new(&settings(Vec::new()), RenderOptions::default(), palette())
         .expect("CpuRenderer::new");
     let groups = r.font_groups();
     let before = unique_instances(&groups);
-    // DejaVu Sans Mono 的四个样式是四个不同 face（Regular/Bold/Italic/Bold Italic）
+    // 唯一实例数应等于"四个样式实际解析出的唯一 face 数"（本机 DejaVu 四样式为 4）
     assert_eq!(
-        before, 4,
-        "四个不同样式应是 4 个唯一实例（实测 {before}）；若小于 4 说明多个样式共用了同一 face"
+        before, expected,
+        "唯一实例数应等于唯一 face 数（实测 {before}，按 fontdb 推得 {expected}）；\
+         若大于 expected 说明同一 face 被复制了多份"
     );
 
     // 每个组里同一字体面必须指向同一实例
