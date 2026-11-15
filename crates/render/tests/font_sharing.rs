@@ -75,10 +75,10 @@ fn expected_unique_faces() -> Option<usize> {
             style: s,
             ..Default::default()
         };
-        if let Some(id) = db.query(&q) {
-            if !ids.contains(&id) {
-                ids.push(id);
-            }
+        if let Some(id) = db.query(&q)
+            && !ids.contains(&id)
+        {
+            ids.push(id);
         }
     }
     if ids.is_empty() { None } else { Some(ids.len()) }
