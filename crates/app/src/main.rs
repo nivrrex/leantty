@@ -7,6 +7,20 @@
 //! - 字段级问题（类型错误、颜色非法、数值越界、未知字段）：stderr 警告，
 //!   该字段回落默认，配置整体仍可用
 
+
+/// 与库内一致：`[perf]` 诊断行受 `APP_PERF_FRAMES` 门控（阶段 4O t3）。
+fn perf_on() -> bool {
+    std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty())
+}
+
+macro_rules! eperf {
+    ($($arg:tt)*) => {
+        if perf_on() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 use std::path::PathBuf;
 
 fn main() -> Result<(), app::Error> {
@@ -29,17 +43,17 @@ fn main() -> Result<(), app::Error> {
         }
     }
     if let (Some(p), Some(t0)) = (proc_start, app::start_time()) {
-        eprintln!(
+        eperf!(
             "[perf] main_ms={:.1} since_start={:.1}",
             t0.duration_since(p).as_secs_f64() * 1000.0,
             t0.elapsed().as_secs_f64() * 1000.0
         );
     } else {
-        eprintln!("[perf] main_ms=unknown（无法读取进程启动时刻）");
+        eperf!("[perf] main_ms=unknown（无法读取进程启动时刻）");
     }
     let t_cfg = std::time::Instant::now();
     let config = load_config(cli_config, cli_font, cli_font_size);
-    eprintln!(
+    eperf!(
         "[perf] config_ms={:.1} since_start={:.1}",
         t_cfg.elapsed().as_secs_f64() * 1000.0,
         app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
@@ -47,7 +61,7 @@ fn main() -> Result<(), app::Error> {
     let t_app = std::time::Instant::now();
     let app = app::App::new(config);
     // 阶段 4H t2：App::new（配置归一化 + 字体设置解析 + 事件循环句柄）到 run 之间的分段点。
-    eprintln!(
+    eperf!(
         "[perf] app_new_ms={:.1} since_start={:.1}",
         t_app.elapsed().as_secs_f64() * 1000.0,
         app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)

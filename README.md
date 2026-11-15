@@ -58,6 +58,21 @@ Windows 默认使用系统 conhost（旧版 ConPTY）作为 pty 宿主；本项�
 - **启用门槛**：`PHASE3K-WIN.md` §3.10 的判定（a/d/e/h/i 无新增失败且 b 或 c 至少一项优于
   S）已满足，故采用。
 
+## 诊断输出（默认关闭）
+
+启动与运行期的 `[perf] …` 性能/诊断行**默认不打印**（每次启动 30+ 行，且在小体积重定向
+宿主下单行写入可达毫秒级）。需要时设置已有环境变量 `APP_PERF_FRAMES=1` 即恢复，例如：
+
+```sh
+APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
+```
+
+- 打开后会打印启动分段（`main_ms`/`config_ms`/`event_loop_ms`/`fontdb_ms`/`font_steps_us`/
+  `first_frame_ms` 等）与每 50 帧的耗时统计。
+- **面向用户的警告与错误不受影响**（配置告警、`hinting` 不支持、backend 回落、resize 说明等
+  始终输出）。
+- 其它诊断钩子（`APP_DUMP_SNAPSHOT`、`APP_FRAME_HASH`、`APP_TEST_PASTE` 等）仅 debug 构建存在。
+
 ## 已知平台限制
 
 以下均为已在本仓库报告中实测证实的事实，不是推测：

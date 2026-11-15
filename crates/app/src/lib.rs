@@ -15,6 +15,26 @@
 //!
 //! 渲染尺寸取缓存（resumed/Resized 更新），窗口销毁后不再查询 X11 geometry。
 
+
+/// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
+///
+/// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
+/// 设置环境变量 `APP_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
+/// 面向用户的警告/错误（配置告警、hinting 不支持、backend 回落等）不受此开关影响。
+fn perf_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
+}
+
+/// 受 `perf_on()` 门控的 eprintln（仅用于 `[perf]` 诊断行）。
+macro_rules! eperf {
+    ($($arg:tt)*) => {
+        if perf_on() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 use std::rc::Rc;
 use std::sync::OnceLock;
 use std::sync::mpsc;
@@ -280,7 +300,7 @@ impl PerfFrames {
         let feed_rate = elapsed_s
             .map(|s| self.feed_bytes as f64 / s)
             .unwrap_or(0.0);
-        eprintln!(
+        eperf!(
             "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
             Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
             feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000,
@@ -355,7 +375,7 @@ impl App {
             .map_err(|e| Error::App(format!("EventLoop::new: {}", e)))?;
         // 阶段 4H t2：EventLoop::new（X11/socket 连接、平台后端初始化）此前无打点。
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] event_loop_ms={:.1} since_start={:.1}",
                 t_loop.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -692,7 +712,7 @@ pub fn create_renderer(
                 });
                 match build_gpu(font_settings, options, palette, window, scale, reuse) {
                     Ok((gpu, adapter)) => {
-                        eprintln!(
+                        eperf!(
                             "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
                             t.elapsed().as_secs_f64() * 1000.0,
                             adapter
@@ -719,7 +739,7 @@ pub fn create_renderer(
                     _ => None,
                 });
                 let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale, reuse)?;
-                eprintln!(
+                eperf!(
                     "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
                     t.elapsed().as_secs_f64() * 1000.0,
                     adapter
@@ -968,7 +988,7 @@ impl ApplicationHandler for AppHandler {
             f64::from(config.rows) * f64::from(init_ch) + 2.0 * f64::from(config.pad_y),
         )));
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] pre_window_ms={:.1} since_start={:.1}",
                 t_resumed.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -994,7 +1014,7 @@ impl ApplicationHandler for AppHandler {
         }
         // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] window_ms={:.1} since_start={:.1}",
                 t_window.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1006,7 +1026,7 @@ impl ApplicationHandler for AppHandler {
         window.set_ime_allowed(true);
         // 阶段 4H t2：窗口创建完成到 renderer_ready 之间的逐段打点。
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] ime_ms={:.2} since_start={:.1}",
                 t_ime.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1025,7 +1045,7 @@ impl ApplicationHandler for AppHandler {
         ) {
             Ok(r) => {
                 if r.name() != "cpu" {
-                    eprintln!(
+                    eperf!(
                         "[perf] backend={}（窗口创建后切换，首个 present 之前）",
                         r.name()
                     );
@@ -1042,7 +1062,7 @@ impl ApplicationHandler for AppHandler {
         };
         let gpu_backend = renderer.is_gpu();
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] renderer_build_ms={:.1} since_start={:.1} backend={}",
                 t_renderer.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0,
@@ -1051,7 +1071,7 @@ impl ApplicationHandler for AppHandler {
         }
         // 阶段 4C t3 启动打点：渲染器与其字形缓存初始化完成。
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] renderer_ready_ms={:.1} since_start={:.1}",
                 t0.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1094,7 +1114,7 @@ impl ApplicationHandler for AppHandler {
             self.last_size = Some((init_size.width, init_size.height));
         }
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] surface_ms={:.1} since_start={:.1}",
                 t_surface.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1113,7 +1133,7 @@ impl ApplicationHandler for AppHandler {
             }
         };
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] vt_new_ms={:.2} since_start={:.1}",
                 t_vt.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1126,7 +1146,7 @@ impl ApplicationHandler for AppHandler {
             return;
         }
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] pty_spawn_ms={:.1} since_start={:.1}",
                 t_spawn.elapsed().as_secs_f64() * 1000.0,
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -1137,7 +1157,7 @@ impl ApplicationHandler for AppHandler {
         // （Windows 默认实现返回 None）则继续用同步写路径。
         self.writer = pty.take_writer().map(writer::PtyWriter::spawn);
         if let Some(t0) = crate::start_time() {
-            eprintln!(
+            eperf!(
                 "[perf] writer_thread_ms={:.2} since_start={:.1} enabled={}",
                 0.0,
                 t0.elapsed().as_secs_f64() * 1000.0,
@@ -1167,7 +1187,14 @@ impl ApplicationHandler for AppHandler {
         let (bg_tx, bg_rx) = mpsc::channel::<Vec<render::Font>>();
         let bg_specs = config.font_settings.fallback.clone();
         std::thread::spawn(move || {
+            let t_bg = std::time::Instant::now();
             let fonts = render::load_font_list(&bg_specs);
+            // 阶段 4O t4：后台字体加载整体耗时（与各 font_steps_us(kind=background) 之和对照）
+            eperf!(
+                "[perf] bg_font_list_us={} count={}",
+                t_bg.elapsed().as_micros(),
+                fonts.len()
+            );
             let _ = bg_tx.send(fonts);
             if let Some(proxy) = bg_proxy {
                 let _ = proxy.send_event(());
@@ -1251,7 +1278,7 @@ impl ApplicationHandler for AppHandler {
             {
                 self.test_preedit_clear_at =
                     Some(std::time::Instant::now() + std::time::Duration::from_millis(ms));
-                eprintln!("[perf] test_preedit_clear_scheduled ms={ms}");
+                eperf!("[perf] test_preedit_clear_scheduled ms={ms}");
             }
         }
         // 测试钩子（debug 专有）：延迟触发一次同步粘贴，用于验证"粘贴后主动排帧"。
@@ -1304,7 +1331,7 @@ impl ApplicationHandler for AppHandler {
                 {
                     self.os_redraw_count += 1;
                     if self.os_redraw_count <= 3 {
-                        eprintln!("[perf] os_redraw #{}", self.os_redraw_count);
+                        eperf!("[perf] os_redraw #{}", self.os_redraw_count);
                     }
                 }
                 self.os_redraw_pending = true;
@@ -1429,7 +1456,7 @@ impl ApplicationHandler for AppHandler {
                     pad_y,
                 ) else {
                     #[cfg(debug_assertions)]
-                    eprintln!(
+                    eperf!(
                         "[perf] resize_ignored {}x{}（小于一个字符格）",
                         physical_size.width, physical_size.height
                     );
@@ -1490,7 +1517,7 @@ impl ApplicationHandler for AppHandler {
             }
             self.last_loop_at = Some(Instant::now());
             self.loop_report_at = None;
-            eprintln!("[perf] window_reset");
+            eperf!("[perf] window_reset");
         }
         // 阶段 4G t2a 观测：两次事件循环迭代的最大间隔（主线程停顿的直接度量）。
         // 仅在 APP_PERF_FRAMES 开启时统计（默认关闭，代价一次 Option 判空）。
@@ -1519,7 +1546,7 @@ impl ApplicationHandler for AppHandler {
                     .as_ref()
                     .map(|p| (p.feed_ms_max, p.feed_bytes_max, p.writer_queued_max))
                     .unwrap_or((0.0, 0, 0));
-                eprintln!(
+                eperf!(
                     "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq}"
                 );
                 if let Some(pf) = self.perf_frames.as_mut() {
@@ -1535,7 +1562,7 @@ impl ApplicationHandler for AppHandler {
             if std::time::Instant::now() >= t {
                 self.test_paste_at = None;
                 if let Some(text) = self.test_paste_text.take() {
-                    eprintln!("[perf] test_paste_fired");
+                    eperf!("[perf] test_paste_fired");
                     self.paste_from_text(&text);
                     self.test_paste_fired = Some(std::time::Instant::now());
                     // 停顿统计从"粘贴已入队"这一刻重新起算，避免把启动期的空闲
@@ -1555,7 +1582,7 @@ impl ApplicationHandler for AppHandler {
             if std::time::Instant::now() >= t {
                 self.test_preedit = None;
                 self.test_preedit_clear_at = None;
-                eprintln!("[perf] test_preedit_cleared");
+                eperf!("[perf] test_preedit_cleared");
                 self.urgent_render = true;
                 if let Some(w) = self.window.as_ref() {
                     w.request_redraw();
@@ -1632,7 +1659,7 @@ impl ApplicationHandler for AppHandler {
             // perf 钩子（任务 2C.5）：后台字体（CJK fallback）到位时刻，
             // 与首帧耗时同口径（相对进程启动），仅打印一次。
             if let Some(t0) = crate::start_time() {
-                eprintln!(
+                eperf!(
                     "[perf] bg_fonts_ms={} count={}",
                     t0.elapsed().as_millis(),
                     fonts.len()
@@ -1652,7 +1679,7 @@ impl ApplicationHandler for AppHandler {
                 if !self.first_pty_byte_logged {
                     self.first_pty_byte_logged = true;
                     if let Some(t0) = crate::start_time() {
-                        eprintln!(
+                        eperf!(
                             "[perf] first_pty_byte_ms={} since_start={}",
                             t0.elapsed().as_millis(),
                             t0.elapsed().as_millis()
@@ -1870,7 +1897,7 @@ impl ApplicationHandler for AppHandler {
                         && let Some(t0) = crate::start_time()
                     {
                         self.pre_first_submit_logged = true;
-                        eprintln!(
+                        eperf!(
                             "[perf] pre_first_submit_ms={} since_start={}",
                             t0.elapsed().as_millis(),
                             t0.elapsed().as_millis()
@@ -1902,7 +1929,7 @@ impl ApplicationHandler for AppHandler {
                         if !self.first_frame_logged {
                             self.first_frame_logged = true;
                             if let Some(t0) = crate::start_time() {
-                                eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                                eperf!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                             }
                         }
                         self.update_ime_cursor_area();
@@ -1923,7 +1950,7 @@ impl ApplicationHandler for AppHandler {
                         if !self.first_frame_logged {
                             self.first_frame_logged = true;
                             if let Some(t0) = crate::start_time() {
-                                eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                                eperf!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                             }
                         }
                         self.update_ime_cursor_area();
@@ -1991,7 +2018,7 @@ impl ApplicationHandler for AppHandler {
                                 if samples.len() >= 20 {
                                     let mut v = samples.clone();
                                     v.sort_unstable();
-                                    eprintln!(
+                                    eperf!(
                                         "[perf] present_us n=20 full={} median={} p95={}",
                                         full_flag,
                                         v[v.len() / 2],
@@ -2010,13 +2037,13 @@ impl ApplicationHandler for AppHandler {
                             if !self.first_frame_logged {
                                 self.first_frame_logged = true;
                                 if let Some(t0) = crate::start_time() {
-                                    eprintln!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
+                                    eperf!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                                 }
                             }
                             // 测试钩子：粘贴后的首帧延迟与是否走 urgent 路径
                             #[cfg(debug_assertions)]
                             if let Some(fired) = self.test_paste_fired.take() {
-                                eprintln!(
+                                eperf!(
                                     "[perf] test_paste_first_frame latency_ms={} urgent={}",
                                     fired.elapsed().as_millis(),
                                     was_urgent
@@ -2684,7 +2711,7 @@ impl AppHandler {
         }
         // 单条粘贴本身超过上限与"积压已满"分开标出，便于排查
         let oversized = bytes_len > crate::paste::PASTE_BACKLOG_CAP;
-        eprintln!(
+        eperf!(
             "[perf] paste_rejected bytes={bytes_len} backlog={backlog} cap={} oversized={oversized}",
             crate::paste::PASTE_BACKLOG_CAP
         );

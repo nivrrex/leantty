@@ -11,6 +11,7 @@
 
 #![cfg(target_os = "linux")]
 
+use crate::eperf;
 use std::collections::HashMap;
 
 use vt::{Cell, FrameSnapshot, Underline};
@@ -205,10 +206,18 @@ impl GpuRenderer {
     /// 并入后台字体（CJK fallback）。
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
         // 阶段 4N t3：与 CPU 渲染器一致——每个回退字体只包一次 Arc，四组共享。
+        let t_merge = std::time::Instant::now();
         let shared: Vec<std::sync::Arc<Font>> = fonts.into_iter().map(std::sync::Arc::new).collect();
         for g in std::sync::Arc::make_mut(&mut self.groups) {
             g.extend(shared.iter().cloned());
         }
+        crate::eperf!(
+            "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
+            shared.len(),
+            self.groups.len(),
+            shared.iter().map(std::sync::Arc::strong_count).collect::<Vec<_>>(),
+            t_merge.elapsed().as_micros()
+        );
         self.char_font.clear();
     }
 
@@ -661,7 +670,7 @@ impl GpuRenderer {
             height,
         } = surface;
         // 阶段 4H t2：GPU 侧入口点（内部实例/适配器/设备三段已有打点，不重复）。
-        eprintln!(
+        eperf!(
             "[perf] gpu_begin_ms=0.0 since_start={:.1} reuse_groups={}",
             crate::since_start_ms(),
             reuse_groups.is_some()
@@ -673,7 +682,7 @@ impl GpuRenderer {
         };
         let t_atlas = std::time::Instant::now();
         let atlas = GlyphAtlas::new(&gpu.device, &gpu.queue, gpu.max_texture, atlas::INITIAL_SIZE);
-        eprintln!(
+        eperf!(
             "[perf] gpu_atlas_ms={:.1} since_start={:.1}",
             t_atlas.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms()
@@ -710,7 +719,7 @@ impl GpuRenderer {
             color_space: wgpu::SurfaceColorSpace::Auto,
         };
         surface.configure(&gpu.device, &config);
-        eprintln!(
+        eperf!(
             "[perf] gpu_surface_ms={:.1} since_start={:.1} fmt={:?}",
             t_atlas.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
@@ -718,7 +727,7 @@ impl GpuRenderer {
         );
         let t_pipe = std::time::Instant::now();
         let pipelines = Pipelines::new(&gpu.device, &atlas, config.format);
-        eprintln!(
+        eperf!(
             "[perf] gpu_pipeline_ms={:.1} since_start={:.1}",
             t_pipe.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms()
@@ -748,7 +757,7 @@ impl GpuRenderer {
             char_font: HashMap::new(),
             pixel: (width.max(1), height.max(1)),
         });
-        eprintln!(
+        eperf!(
             "[perf] gpu_state_ms={:.2} since_start={:.1}",
             t_state.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms()
@@ -1005,7 +1014,7 @@ impl Gpu {
             display: None,
         });
         let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::VULKAN));
-        eprintln!(
+        eperf!(
             "[perf] gpu_instance_ms={:.1} since_start={:.1} count={}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
@@ -1031,7 +1040,7 @@ impl Gpu {
         })?;
         let info = adapter.get_info();
         let limits = adapter.limits();
-        eprintln!(
+        eperf!(
             "[perf] gpu_adapter_ms={:.1} since_start={:.1} name='{}'",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms(),
@@ -1056,7 +1065,7 @@ impl Gpu {
                 trace: wgpu::Trace::Off,
             }))
             .map_err(|e| Error::Backend(format!("request_device: {e}")))?;
-        eprintln!(
+        eperf!(
             "[perf] gpu_device_ms={:.1} since_start={:.1}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
             crate::since_start_ms()

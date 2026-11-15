@@ -5,9 +5,23 @@
 //! 该测试不依赖 X、不依赖输入时序，因此跨构建可比对（用于 4N t3 前后"逐字节相同"）。
 //!
 //! 哈希用 FNV-1a 64，覆盖全部像素（ARGB u32）。
+//!
+//! ## 可移植性（阶段 4O t2）
+//! 黄金哈希依赖**本机实际选中的字体**。为了让该测试在其它机器上不误报，测试先计算
+//! "字体环境指纹"（主字体文件名、字节数、前 4KB 哈希、渲染器实测 cell 尺寸）：
+//! - 指纹等于记录值 → 真正断言黄金哈希（Linux 本机必须走到这一步）；
+//! - 指纹不符 → **SKIP** 并打印"指纹 X，期望 Y"与本机当前哈希，供人工更新；
+//! - `TEST_FONT_FILE=<路径>` 指定外部字体时同样 SKIP（渲染器按族名加载，指纹不可比）。
+//!
+//! 字体来源一律按族名经 fontdb 查询（或用 `TEST_FONT_FILE`），**不含任何绝对路径**。
 
 use render::{CpuRenderer, FontSettings, FontSpec, Palette, RenderOptions, Renderer};
 use vt::{Rgb, VtPalette, VtTerminal};
+
+/// 主字体族名（与 settings() 一致；按族名经 fontdb 解析，不写死路径）。
+const MAIN_FAMILY: &str = "DejaVu Sans Mono";
+/// 记录下来的字体环境指纹（Linux 本机，4N t3 之后的代码 + DejaVu Sans Mono）。
+const GOLDEN_FINGERPRINT: &str = "DejaVuSansMono.ttf:343140:c69b:8x16";
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -86,6 +100,12 @@ wide: \xe4\xb8\xad\xe6\x96\x87 wide2: \xef\xbc\xa1\xef\xbc\xa2\r\n\
 \x1b[31mred\x1b[32mgreen\x1b[33myellow\x1b[0m\r\n\
 \x1b[5;10Hpositioned";
 
+/// 渲染器实测 cell 尺寸（随字体与字号变化，纳入指纹）。
+fn cell_metrics() -> (u32, u32) {
+    let r = CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
+    r.cell_metrics(1.0)
+}
+
 fn render_hash() -> (u64, u32, u32) {
     let mut t = VtTerminal::new_with_palette(40, 12, &vt_palette()).expect("VtTerminal");
     t.feed(SCRIPT);
@@ -103,14 +123,85 @@ fn render_hash() -> (u64, u32, u32) {
     (fnv1a64(&bytes), pw, ph)
 }
 
+/// 字体环境指纹：`文件名:字节数:前4KB的FNV哈希低16位:cell宽x高`。
+///
+/// `TEST_FONT_FILE` 存在时用它（外部字体 → 与渲染器实际加载的族名无关，测试将 SKIP）。
+fn font_fingerprint(cw: u32, ch: u32) -> String {
+    if let Ok(p) = std::env::var("TEST_FONT_FILE") {
+        let path = std::path::PathBuf::from(&p);
+        let bytes = std::fs::read(&path).unwrap_or_default();
+        let head = &bytes[..bytes.len().min(4096)];
+        return format!(
+            "{}:{}:{:04x}:{}x{}",
+            path.file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_else(|| "<env>".to_string()),
+            bytes.len(),
+            fnv1a64(head) & 0xFFFF,
+            cw,
+            ch
+        );
+    }
+    let mut db = fontdb::Database::new();
+    db.load_system_fonts();
+    let q = fontdb::Query {
+        families: &[fontdb::Family::Name(MAIN_FAMILY)],
+        ..Default::default()
+    };
+    let Some(id) = db.query(&q) else {
+        return "<no-font>".to_string();
+    };
+    let Some(face) = db.face(id) else {
+        return "<no-face>".to_string();
+    };
+    let (name, bytes) = match &face.source {
+        fontdb::Source::File(p) => (
+            p.file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            std::fs::read(p).unwrap_or_default(),
+        ),
+        fontdb::Source::Binary(d) => ("<binary>".to_string(), d.as_ref().as_ref().to_vec()),
+        fontdb::Source::SharedFile(p, d) => (
+            p.file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            d.as_ref().as_ref().to_vec(),
+        ),
+    };
+    let head = &bytes[..bytes.len().min(4096)];
+    format!(
+        "{name}:{}:{:04x}:{cw}x{ch}",
+        bytes.len(),
+        fnv1a64(head) & 0xFFFF
+    )
+}
+
 #[test]
 fn deterministic_frame_hash_is_stable() {
     let (h1, w, h) = render_hash();
     let (h2, _, _) = render_hash();
     assert_eq!(h1, h2, "同一进程内两次渲染应完全一致");
-    println!("frame_hash={h1:016x} dims={w}x{h}");
+    let (cw, ch) = cell_metrics();
+    let fp = font_fingerprint(cw, ch);
+    println!("frame_hash={h1:016x} dims={w}x{h} fingerprint={fp}");
+
+    if std::env::var("TEST_FONT_FILE").is_ok() {
+        println!(
+            "SKIP: TEST_FONT_FILE 指定了外部字体（指纹 {fp}），渲染器按族名加载，指纹不可比；\
+             本机当前哈希 {h1:016x}"
+        );
+        return;
+    }
+    if fp != GOLDEN_FINGERPRINT {
+        println!(
+            "SKIP: 字体环境指纹不符——实测 {fp}，期望 {GOLDEN_FINGERPRINT}；\
+             本机当前哈希 {h1:016x}（确认无误后可更新 GOLDEN/GOLDEN_FINGERPRINT）"
+        );
+        return;
+    }
+    // 指纹匹配（Linux 本机基准环境）：真正断言黄金哈希。
     // 黄金值：4N t3（Arc 共享）与改前（深拷贝）逐字节相同，均为该值。
-    // 若此断言失败，说明渲染输出发生了变化——先确认是否有意为之。
     assert_eq!(
         h1, GOLDEN,
         "渲染输出与黄金值不一致（若为有意变更，请更新 GOLDEN 并在报告中说明）"

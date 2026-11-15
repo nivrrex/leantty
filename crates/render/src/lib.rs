@@ -41,6 +41,27 @@ fn since_start_ms() -> f64 {
 pub use decide::{decide, CellDecision, DecideCtx};
 pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
 
+
+/// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
+///
+/// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
+/// 设置环境变量 `APP_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
+/// 面向用户的警告/错误（配置告警、hinting 不支持、backend 回落等）不受此开关影响。
+fn perf_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
+}
+
+/// 受 `perf_on()` 门控的 eprintln（仅用于 `[perf]` 诊断行）。
+macro_rules! eperf {
+    ($($arg:tt)*) => {
+        if crate::perf_on() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+pub(crate) use eperf;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -265,24 +286,100 @@ const GROUP_BOLD_ITALIC: usize = 3;
 /// 返回按序字体列表。线程安全：仅 owned 数据（FontSpec/Font）经 channel 传递；
 /// Database 在调用线程内自建（fontdb Database 非共享设计）。
 pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
+    // 打点自身的开销（把 eperf 的耗时累加进来，使"各步之和"能与总时长对齐）
+    let mut prints_us: u128 = 0;
+    let t_new = std::time::Instant::now();
     let mut db = Database::new();
+    {
+        let tp = std::time::Instant::now();
+        eperf!("[perf] bg_db_new_us={}", t_new.elapsed().as_micros());
+        prints_us += tp.elapsed().as_micros();
+    }
+    // 阶段 4O t4：fontdb 扫描单独成点（这是后台加载里的固定大头，约 300ms 量级）
+    let t_db = std::time::Instant::now();
     db.load_system_fonts();
+    {
+        let tp = std::time::Instant::now();
+        eperf!("[perf] bg_fontdb_us={}", t_db.elapsed().as_micros());
+        prints_us += tp.elapsed().as_micros();
+    }
     let mut fonts = Vec::new();
+    // 阶段 4O t4：后台（回退）字体走与主字体**同一条**加载+打点函数（label=background），
+    // 因而每个回退面都会打印一行 `font_steps_us ... kind=background`。
+    let mut cache: std::collections::HashMap<fontdb::ID, Arc<Font>> =
+        std::collections::HashMap::new();
+    let t_specs = std::time::Instant::now();
     for fs in fallbacks {
-        match load_font_with_fallback(&db, &fs.family, &fs.style) {
-            Ok(f) => fonts.push(f),
+        let t_face = std::time::Instant::now();
+        match load_font_with_fallback_cached(&db, &fs.family, &fs.style, &mut cache, "background") {
+            Ok((f, cached, used_style)) => {
+                let tp = std::time::Instant::now();
+                eperf!(
+                    "[perf] bg_font_face_us family='{}' style='{}' used_style='{}' cached={} fallback={} total_us={}",
+                    fs.family,
+                    fs.style,
+                    used_style,
+                    cached,
+                    used_style != fs.style,
+                    t_face.elapsed().as_micros()
+                );
+                prints_us += tp.elapsed().as_micros();
+                // 阶段 4O t4：`load_font_list` 返回 `Vec<Font>`（公共签名未变），
+                // 因此这里仍有一次**深拷贝**——实测 CJK 面约 140ms，单独成点。
+                let t_clone = std::time::Instant::now();
+                fonts.push((*f).clone());
+                let tp = std::time::Instant::now();
+                eperf!(
+                    "[perf] bg_font_clone_us family='{}' deep_copy_us={}",
+                    fs.family,
+                    t_clone.elapsed().as_micros()
+                );
+                prints_us += tp.elapsed().as_micros();
+            }
             Err(e) => eprintln!(
                 "font fallback '{}' '{}' load failed: {}; skipped",
                 fs.family, fs.style, e
             ),
         }
     }
+    {
+        let tp = std::time::Instant::now();
+        eperf!("[perf] bg_specs_loop_us={}", t_specs.elapsed().as_micros());
+        prints_us += tp.elapsed().as_micros();
+    }
+    let t_gen_loop = std::time::Instant::now();
     for fam in [Family::Monospace, Family::SansSerif] {
+        let t_gen = std::time::Instant::now();
         match load_font_generic(&db, fam) {
-            Ok(f) => fonts.push(f),
+            Ok(f) => {
+                let tp = std::time::Instant::now();
+                eperf!(
+                    "[perf] bg_font_face_us family='{:?}' generic=true total_us={}",
+                    fam,
+                    t_gen.elapsed().as_micros()
+                );
+                prints_us += tp.elapsed().as_micros();
+                fonts.push(f);
+            }
             Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
         }
     }
+    {
+        let tp = std::time::Instant::now();
+        eperf!("[perf] bg_generic_loop_us={}", t_gen_loop.elapsed().as_micros());
+        prints_us += tp.elapsed().as_micros();
+    }
+    // 阶段 4O t4：`load_font_list` 返回 Vec<Font>（公共签名未变），所以每个回退面既被
+    // 深拷贝一次、原实例随后被释放——释放 300MB 级的 CJK 实例本身要几毫秒到十几毫秒，
+    // 单独成点才能把"各步之和"与 `bg_font_list_us` 对齐。
+    let t_free = std::time::Instant::now();
+    drop(cache);
+    drop(db);
+    eperf!(
+        "[perf] bg_font_free_us={}",
+        t_free.elapsed().as_micros()
+    );
+    eperf!("[perf] bg_print_us={}", prints_us);
     fonts
 }
 
@@ -296,7 +393,7 @@ pub(crate) fn build_font_groups(
     let mut db = Database::new();
     let t_db = std::time::Instant::now();
     db.load_system_fonts();
-    eprintln!(
+    eperf!(
         "[perf] fontdb_ms={:.1} since_start={:.1}",
         t_db.elapsed().as_secs_f64() * 1000.0,
         since_start_ms()
@@ -315,7 +412,7 @@ pub(crate) fn build_font_groups(
     for (gi, spec) in specs.iter().enumerate() {
         let t_font = std::time::Instant::now();
         // 阶段 4J t4：每组起止点（Windows 上 4 组合计约 400ms，是首帧最大单项）。
-        eprintln!(
+        eperf!(
             "[perf] font_group_begin_ms group={} family='{}' style='{}' since_start={:.1}",
             gi,
             spec.family,
@@ -327,7 +424,7 @@ pub(crate) fn build_font_groups(
         let t_before_load = std::time::Instant::now();
         let pre_load_us = t_before_load.duration_since(t_font).as_micros();
         let load_result =
-            load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache);
+            load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache, "group");
         let load_us = t_before_load.elapsed().as_micros();
         let main = match load_result
         {
@@ -335,8 +432,8 @@ pub(crate) fn build_font_groups(
                 // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
                 // "主字体面" 与 "回退字体面" 的成本。
                 let tail_us = t_before_load.elapsed().as_micros().saturating_sub(load_us);
-                eprintln!(
-                    "[perf] font_group_us group={} family='{}' style='{}' pre_load_us={} load_us={} tail_us={} total_us={} fallback={}",
+                eperf!(
+                    "[perf] font_group_us group={} family='{}' style='{}' pre_load_us={} load_us={} tail_us={} total_us={} fallback={} cache_hit={}",
                     gi,
                     spec.family,
                     spec.style,
@@ -344,9 +441,10 @@ pub(crate) fn build_font_groups(
                     load_us,
                     tail_us,
                     t_font.elapsed().as_micros(),
-                    used_style != spec.style
+                    used_style != spec.style,
+                    cached
                 );
-                eprintln!(
+                eperf!(
                     "[perf] font_group_ms group={} family='{}' style='{}' used_style='{}' fallback={} total_ms={:.2} since_start={:.1}",
                     gi,
                     spec.family,
@@ -356,7 +454,7 @@ pub(crate) fn build_font_groups(
                     t_font.elapsed().as_secs_f64() * 1000.0,
                     since_start_ms()
                 );
-                eprintln!(
+                eperf!(
                     "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
                     gi,
                     spec.family,
@@ -438,14 +536,14 @@ impl CpuRenderer {
         let t_ctor = std::time::Instant::now();
         // 阶段 4H t2：CpuRenderer 内部逐段打点（Windows 首帧 781ms 中这段此前无观测）。
         // 入口先报一次 since_start，便于判断"进入 new 之前"是否已耗时。
-        eprintln!(
+        eperf!(
             "[perf] cpu_new_begin_ms={:.1} since_start={:.1}",
             0.0,
             since_start_ms()
         );
         let t_groups = std::time::Instant::now();
         let groups = std::sync::Arc::new(build_font_groups(settings)?);
-        eprintln!(
+        eperf!(
             "[perf] cpu_groups_ms={:.1} since_start={:.1}",
             t_groups.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -454,7 +552,7 @@ impl CpuRenderer {
             eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
         }
         // 阶段 4E t2：字体加载完成 → 字形缓存/帧缓冲等结构就绪的打点
-        eprintln!(
+        eperf!(
             "[perf] cpu_renderer_ready_ms={:.1} since_start={:.1}",
             t_ctor.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -483,7 +581,7 @@ impl CpuRenderer {
             band_backup: None,
             damage: Vec::new(),
         });
-        eprintln!(
+        eperf!(
             "[perf] cpu_state_ms={:.2} since_start={:.1}",
             t_state.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
@@ -615,10 +713,21 @@ impl CpuRenderer {
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
         // 阶段 4N t3：每个回退字体只包一次 Arc，四个样式组共享同一份实例
         // （此前 `cloned()` 会把每个回退字体深拷贝 4 份，每个 CJK 面 ≈300MB）。
+        let t_merge = std::time::Instant::now();
         let shared: Vec<Arc<Font>> = fonts.into_iter().map(Arc::new).collect();
         for g in Arc::make_mut(&mut self.groups) {
             g.extend(shared.iter().cloned());
         }
+        // 阶段 4O t4：并入四组的观测——`instances` 是本次新增的字体面数，
+        // `strong_refs` 是每个实例的强引用计数（1 份本地 + 4 个样式组 = 5；
+        // 4N 之前这里是 4 份独立实例，强引用计数各为 1）。
+        eperf!(
+            "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
+            shared.len(),
+            self.groups.len(),
+            shared.iter().map(Arc::strong_count).collect::<Vec<_>>(),
+            t_merge.elapsed().as_micros()
+        );
         self.char_font.clear();
         self.glyph_cache.clear();
         // 字形集变化：整屏重绘。
@@ -1565,31 +1674,6 @@ fn style_query(style: &str) -> (Weight, DbStyle) {
     }
 }
 
-/// 按 family + style 精确加载字体（Name 精确优先，Monospace generic 兜底；阶段1 决策：family 精确查找，generic 链仅兜底）。
-fn load_font_styled(db: &Database, family: &str, style: &str) -> Result<Font, Error> {
-    let (w, s) = style_query(style);
-    let query = Query {
-        families: &[Family::Name(family), Family::Monospace],
-        weight: w,
-        style: s,
-        ..Default::default()
-    };
-    let id = db
-        .query(&query)
-        .ok_or_else(|| Error::Font(format!("family '{}' style '{}' not found", family, style)))?;
-    let face = db
-        .face(id)
-        .ok_or_else(|| Error::Font("face not found".to_string()))?;
-    let bytes: Vec<u8> = match &face.source {
-        Source::File(path) => std::fs::read(path)
-            .map_err(|e| Error::Font(format!("read font file: {}", e)))?,
-        Source::Binary(data) => data.as_ref().as_ref().to_vec(),
-        Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
-    };
-    Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
-        .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))
-}
-
 /// 带缓存的 face 加载（阶段 3A 任务 2）：同一 fontdb face（同一文件/同一 style
 /// 回落目标）只读取+解析一次，后续复用已解析 Font。
 ///
@@ -1600,6 +1684,7 @@ fn load_font_styled_cached(
     family: &str,
     style: &str,
     cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
+    label: &str,
 ) -> Result<(Arc<Font>, bool), Error> {
     let (w, s) = style_query(style);
     let query = Query {
@@ -1609,7 +1694,7 @@ fn load_font_styled_cached(
         ..Default::default()
     };
     // 阶段 4H t2：查找入口（此前从上一段到这里约有 20ms 无标注，实测为 fontdb face 查询）。
-    eprintln!(
+    eperf!(
         "[perf] font_lookup_begin_ms family='{}' style='{}' since_start={:.1}",
         family,
         style,
@@ -1684,10 +1769,11 @@ fn load_font_styled_cached(
     let insert_us = t_insert.elapsed().as_micros();
 
     let steps_us = query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
-    eprintln!(
-        "[perf] font_steps_us family='{}' style='{}' kind={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
+    eperf!(
+        "[perf] font_steps_us family='{}' style='{}' kind={} src={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} arc_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
         family,
         style,
+        label,
         source_kind,
         bytes.len(),
         meta_len.map(|v| v as i64).unwrap_or(-1),
@@ -1698,6 +1784,7 @@ fn load_font_styled_cached(
         read_us,
         settings_us,
         parse_us,
+        clone_us, // arc_us 的同值别名（4N 起该步即 Arc::new；保留旧字段名以免破坏既有解析脚本）
         clone_us,
         insert_us,
         steps_us,
@@ -1712,6 +1799,7 @@ fn load_font_with_fallback_cached(
     family: &str,
     style: &str,
     cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
+    label: &str,
 ) -> Result<(Arc<Font>, bool, String), Error> {
     let mut candidates = vec![
         style.to_string(),
@@ -1722,7 +1810,7 @@ fn load_font_with_fallback_cached(
     candidates.dedup();
     let mut last_err = None;
     for s in &candidates {
-        match load_font_styled_cached(db, family, s, cache) {
+        match load_font_styled_cached(db, family, s, cache, label) {
             Ok((f, cached)) => {
                 if s != style {
                     eprintln!("font style fallback: '{}' '{}' → '{}'", family, style, s);
@@ -1735,30 +1823,6 @@ fn load_font_with_fallback_cached(
     Err(last_err.unwrap_or_else(|| Error::Font(format!("family '{}' not found", family))))
 }
 
-/// 按 family 加载字体，style 缺失依次回落 Bold→Italic→Regular（规格任务 3.1），
-/// 回落时记日志；不合成粗体/斜体。
-fn load_font_with_fallback(db: &Database, family: &str, style: &str) -> Result<Font, Error> {
-    let mut candidates = vec![
-        style.to_string(),
-        "Bold".to_string(),
-        "Italic".to_string(),
-        "Regular".to_string(),
-    ];
-    candidates.dedup();
-    let mut last_err = None;
-    for s in &candidates {
-        match load_font_styled(db, family, s) {
-            Ok(f) => {
-                if s != style {
-                    eprintln!("font style fallback: '{}' '{}' → '{}'", family, style, s);
-                }
-                return Ok(f);
-            }
-            Err(e) => last_err = Some(e),
-        }
-    }
-    Err(last_err.unwrap_or_else(|| Error::Font(format!("family '{}' not found", family))))
-}
 
 /// 系统 generic 字体加载（回退链末档）。
 fn load_font_generic(db: &Database, family: Family) -> Result<Font, Error> {
