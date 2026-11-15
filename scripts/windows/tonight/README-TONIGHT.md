@@ -38,10 +38,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File run-tonight.ps1 -SkipSoak
 | P0 | 环境采集（含 dxdiag，最长 90 s） | 1–2 分钟 |
 | P1 | CPU 基线：5 次启动、固定内容截图、30 s 空闲内存、两次吞吐（30 万行）、20 次缩放、最小化/遮挡恢复 | 6–10 分钟 |
 | P2 | GPU（本构建在 Windows 上没有 GPU 后端 → 自动记 N/A） | ≈0（若为 GPU 构建：3–8 分钟） |
-| P3 | 浸泡（默认 5 分钟/后端，每 30 s 采样 + 输出/缩放/1 MB 粘贴） | 6 分钟 |
+| P3 | 浸泡（默认 5 分钟/后端，每 30 s 采样 + 输出/缩放/1 MB 粘贴；**阶段时限 = 后端数 × 分钟 × 60 + 180 秒**，后端数 = 1（仅 CPU）或 2（CPU + GPU）） | 6–11 分钟 |
 | P4 | 汇总与打包 | <10 秒 |
 
 合计：**默认参数约 15–20 分钟**；`-Quick` 约 3–5 分钟。
+
+## 已知限制（本构建）
+
+- **`WGPU_BACKEND` 当前无效**：wgpu 30.0.2 以 `default-features = false` 编译，未启用 `std`，
+  `Backends::from_env()` 恒返回 `None`（探针实测 + 源码 `wgpu-types/src/backend.rs:156` 与
+  `env.rs` 需要 `std`）。因此 P2 的 dx12/vulkan 两个变体会以"请求的后端与实际后端不一致"
+  判 FAIL——这是产品侧问题，不是本机环境问题，测量仍会继续执行并记录 `backends=` 实际值。
+- DPI 相关截图由 `shot.ps1` 在**新进程第一条语句**里设置 PerMonitorV2 后完成；本进程内的
+  设置会失败（已定型）。
+- ZIP 用 `System.IO.Compression.ZipArchive` 流式写出（先写 `.partial` 再改名）；单个文件超过
+  50 MB 时只压缩末尾 5 MB 并在 summary 里标注；主路径失败时产出最小 zip。
 
 ## 规则（脚本已遵守）
 

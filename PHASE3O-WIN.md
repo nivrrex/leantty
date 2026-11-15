@@ -135,4 +135,11 @@
 
 ## 8. 推送与 tag（ls-remote 实际输出）
 
-见文末补记。
+| 引用 | hash |
+|---|---|
+| `refs/heads/win` | `b3c07a41ecb707a29341b04a369bbb53f3c24a4e` |
+| `refs/tags/phase3o-win-done`（tag 对象） | `d2e5b456c4dc24cb8611acb8cadf9fa6398eca5e` |
+| `refs/tags/phase3o-win-done^{}`（解引用 commit） | `b3c07a41ecb707a29341b04a369bbb53f3c24a4e` |
+
+- 两个提交：`fd52b80`（`win: pty 层…成对部署警告`，仅 `crates/pty/src/windows.rs` + `tests/pty_windows.rs`）与 `b3c07a4`（合并 4P + kit v2 + 报告 + WIN-NOTES + 3O 取证日志）。`git push origin win`：`55166c6..b3c07a4`；tag 新建后 push（`* [new tag]`）。未 force、未移动已有 tag。
+- 未入库：`tonight-kit-v2.zip`、`tonight-kit-v1.zip`、所有 `.exe/.dll/.zip/.png`（提交前检查命中 0；两张早前阶段的 `c3-*.png` 因 e2e 复跑被修改，未纳入本次提交）。
