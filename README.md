@@ -118,6 +118,10 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   `first_frame_ms` 等）与每 50 帧的耗时统计。
 - **面向用户的警告与错误不受影响**（配置告警、`hinting` 不支持、backend 回落、resize 说明等
   始终输出）。
+- **`APP_FORCE_LIVENESS_POLL=1`**（release 可用）：让非 Windows 平台也走"存活检查唤醒"
+  分支（Windows 恒开启该分支，因为 ConPTY 输出管道不会因 shell 退出而 EOF，退出检测只能靠
+  轮询 `try_wait`）。仅用于在 Linux 上复现/验证 Windows 的"子进程退出后窗口不关闭"问题，
+  会带来每秒一次的空闲唤醒，**不用于日常运行**（`PHASE4V-LINUX.md` §2）。
 - 其它诊断钩子（`APP_DUMP_SNAPSHOT`、`APP_FRAME_HASH`、`APP_TEST_PASTE` 等）仅 debug 构建存在。
 - **wgpu 自身的 `WGPU_*` 环境变量在本构建中不生效**：本项目以 `default-features = false` 引入
   wgpu 30.0.2，未启用其 `std` 特性，而 wgpu-types 的 `env::var` 在无 `std` 时恒返回 `None`
@@ -125,7 +129,8 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   `WGPU_DX12_*`、`WGPU_GLES_MINOR_VERSION` 等一律无效。
   本项目**只识别以下由自身解析的变量**：`WGPU_BACKEND`（本项目自己解析，逗号列表，大小写不敏感、
   允许空白，无法识别的记号会报错）、`WGPU_ADAPTER_NAME`（名字子串匹配）、
-  `APP_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`APP_PERF_FRAMES`（诊断日志开关）。
+  `APP_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`APP_PERF_FRAMES`（诊断日志开关）、
+  `APP_FORCE_LIVENESS_POLL`（诊断：非 Windows 也启用存活轮询）。
 
 ## 已知平台限制
 

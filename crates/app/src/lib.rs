@@ -25,6 +25,24 @@ fn perf_on() -> bool {
     *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
 }
 
+/// 诊断开关 `APP_FORCE_LIVENESS_POLL`（阶段 4V t1）：非 Windows 平台也走"存活检查
+/// 唤醒"分支。仅用于在 Linux 上复现 Windows 的"子进程退出后窗口不关闭"问题，
+/// 不改变任何生产行为（默认关闭）。
+fn force_liveness_poll() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| {
+        std::env::var("APP_FORCE_LIVENESS_POLL")
+            .map(|v| v.trim() == "1")
+            .unwrap_or(false)
+    })
+}
+
+/// 是否启用"存活检查唤醒"：Windows 恒开启（ConPTY 不 EOF，只能轮询）；
+/// 其他平台仅在诊断开关打开时启用。
+fn liveness_poll_wanted() -> bool {
+    cfg!(target_os = "windows") || force_liveness_poll()
+}
+
 /// 受 `perf_on()` 门控的 eprintln（仅用于 `[perf]` 诊断行）。
 macro_rules! eperf {
     ($($arg:tt)*) => {
@@ -2258,11 +2276,12 @@ impl ApplicationHandler for AppHandler {
         if will_render {
             self.update_ime_cursor_area();
         }
-        // 阶段 4T t3（仅 Windows）：ConPTY 输出管道不会因 shell 退出而 EOF，读线程没有
-        // 唤醒源，而退出检测依赖 about_to_wait 里轮询 try_wait。这里以 1 秒间隔安排一次
+        // 阶段 4T t3：ConPTY 输出管道不会因 shell 退出而 EOF，读线程没有唤醒源，
+        // 而退出检测依赖 about_to_wait 里轮询 try_wait。这里以 1 秒间隔安排一次
         // 低频唤醒；Linux 保持纯事件驱动（不进入该分支）。
-        #[cfg(target_os = "windows")]
-        if !self.wait_scheduled
+        // 阶段 4V t1：`APP_FORCE_LIVENESS_POLL=1` 让非 Windows 也走本分支（诊断）。
+        if liveness_poll_wanted()
+            && !self.wait_scheduled
             && self.pty.is_some()
             && let Some(t) = next_liveness_wake(
                 Instant::now(),
