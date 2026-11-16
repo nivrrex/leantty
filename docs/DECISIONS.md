@@ -420,3 +420,4 @@
 - 阶段 4V t3 限制（已验证事实）：**case52 在 Linux 上不具备区分力**——杀会话首进程会让 pty 必然挂断（内核在会话首进程退出时发挂断，即使其它进程仍持有从端），读线程必被唤醒 → 回退后 case52 仍绿（161ms 退出）。尝试用 `sh -c "sleep 25 & exec sleep 25"` 让背景进程继续持有 pty 也无法规避（同为 154ms 退出）。故回归检测由 case51 承担，case52 只证"退出路径 ≤3s"。
 - 阶段 4V t3d 无开关基线（已验证事实）：不设 `APP_FORCE_LIVENESS_POLL` 时 case50 仍 2/2（空闲 12s 新增统计行 0、CPU tick 0、ctx 增量 0），`idle_repaint_matrix nvidia cpu` 空闲 10s 新增统计行 0 —— Linux 空闲零唤醒的既有保证未被削弱。
 - 阶段 4V Windows 侧是否修好（待验证假设，置信度中高）：Windows 上根因是同一处（存活唤醒登记被提前 return 跳过），本次改动对 Windows 同样生效；但**未在 Windows 实测**，且 Windows 的 ConPTY 是否有别的路径仍需实测确认。推翻条件：Windows 侧用同一份代码跑"子 shell 退出后窗口关闭"仍 >3s，说明还有第二个唤醒缺失点。
+- 阶段 4V t3 追加缺陷（已验证事实）：统一出口第一版把提前 return 的 `timer_at` 传 `None`，覆盖了 debug 钩子块设置的 `WaitUntil` → case30/32/39 三例变红（`bytes=0/7280000`、`frames 6→6`，钩子根本不触发）。修法：`finish_wake` 内部再合并 `pending_timer_at()`；修复后 `APP_TEST_PASTE_AT_MS=2500` 的钩子重新触发，gates e2e **110/110**。

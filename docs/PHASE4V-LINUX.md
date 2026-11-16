@@ -11,7 +11,7 @@ DISPLAY=:99），**Windows 侧结论一律标注为待验证假设**。
 | t2 修复 | 收敛到唯一出口 `finish_wake` + 纯函数 `next_wake`（5 条单测）；193 测试全过、黄金哈希不变 |
 | t3 门禁 | 新增 case51（三后端 1 次/秒）与 case52（≤3s 退出）；回退验证 case51 变红；无开关基线未退化 |
 | t4 文档 | README 诊断开关、DECISIONS 7 条、本文件 |
-| t5 收尾 | `scripts/gates.sh` 全过，tag `phase4v-t1`/`phase4v-done`，push main + tags |
+| t5 收尾 | `scripts/gates.sh` 9 步全过（e2e **110/110**，含新增两项），tag `phase4v-t1`/`phase4v-done`，push main + tags |
 
 ## 1. t1a `about_to_wait` 的提前 return 清单（修复前，行号对应 `76e0b6a`）
 
@@ -74,19 +74,21 @@ DISPLAY=:99），**Windows 侧结论一律标注为待验证假设**。
 - **case52**：同一开关下 `SIGKILL` app 的直接子进程（只按 `pgrep -P $APP_PID` 记录的 PID），
   断言 app 在 **≤3000ms** 内退出（用 `ps -o stat=` 判僵尸/消失，避免 `kill -0` 对僵尸恒真）。
 
-首轮实测（修复版）：
+最终实测（`scripts/gates.sh` 全过那一轮，`/tmp/gates_e2e.log`）：
 
 ```
-  [c51 cpu] 空闲 15s：统计行=3 loops=[1 13 5 5] wake_timer=[0 11 5 5] 稳态越界=0
-  [c51 gpu] 空闲 15s：统计行=3 loops=[1 8 5 5] wake_timer=[0 6 5 5] 稳态越界=0
-  [c51 lavapipe] 空闲 15s：统计行=3 loops=[1 9 5 5] wake_timer=[0 7 5 5] 稳态越界=0
-  [c52 cpu] 杀子 shell 后 35ms 退出（判据 ≤3000ms）
-  [c52 gpu] 杀子 shell 后 154ms 退出
-  [c52 lavapipe] 杀子 shell 后 157ms 退出
+  [c51 cpu] 空闲 15s：统计行=3 loops=[13 5 5] wake_timer=[11 5 5] 稳态越界=0
+  [c51 gpu] 空闲 15s：统计行=3 loops=[8 5 5] wake_timer=[6 5 5] 稳态越界=0
+  [c51 lavapipe] 空闲 15s：统计行=3 loops=[8 5 5] wake_timer=[6 5 5] 稳态越界=0
+PASS case51-liveness-wake (3/3)
+  [c52 cpu] 杀子 shell 后 32ms 退出（判据 ≤3000ms）
+  [c52 gpu] 杀子 shell 后 151ms 退出（判据 ≤3000ms）
+  [c52 lavapipe] 杀子 shell 后 39ms 退出（判据 ≤3000ms）
+PASS case52-liveness-exit (3/3)
 ```
 
 （首轮 case51 因判据把"进入窗口前的那一行"也算进去而误判 FAIL，已改为先按内容过滤再按行号跳过，
-并只断言稳态两行；上述数值即修正后判据下的取值。）
+并只断言稳态两行；窗口首行的 `13/11`、`8/6` 就是"横跨进入前时间"的那一行。）
 
 ### 4.2 回退验证（临时补丁，未提交）
 
@@ -112,6 +114,20 @@ case51 承担**，case52 只证"退出路径 ≤3s"。
 - `idle_repaint_matrix.sh nvidia cpu`：空闲 10 秒新增统计行 **0**（与 4R/4S 基线一致）。
 - 即：诊断开关关闭时 Linux 仍为纯事件驱动、空闲零唤醒。
 
+### 4.4 修复过程中发现的第二个缺陷（已修，`0ec1d35`）
+
+统一出口第一版把 7 处提前 return 的 `timer_at` 传成 `None`，**覆盖掉了 debug 钩子块刚设置的
+`WaitUntil`** → 首轮 gates 里 case30（预编辑清除）、case32（粘贴紧急帧）、case39（10MB 粘贴）
+全部变红（`bytes=0/7280000`、`frames 6→6`），因为钩子定时被吞、钩子从不触发。
+
+修法：`finish_wake` 内部再合并一次 `pending_timer_at()`（debug 钩子的 `test_paste_at` /
+`test_preedit_clear_at` 取最早），尾部调用简化为 `finish_wake(event_loop, None)`。
+验证：`APP_TEST_PASTE_AT_MS=2500` 的 debug 构建重新出现 `test_paste_fired` 与
+`test_paste_first_frame` 各 1 条；随后 gates e2e **110/110**（含 case51 3/3、case52 3/3）。
+
+（该缺陷是"注入确实生效"这条规则的直接例证：钩子没触发时日志里只有 `bytes=0`，若不追查就会
+被误当成"粘贴本身坏了"。）
+
 ## 5. t4 文档
 
 - README「诊断输出」新增 `APP_FORCE_LIVENESS_POLL=1`（release 可用，仅诊断，会带来每秒一次空闲唤醒），
@@ -120,6 +136,8 @@ case51 承担**，case52 只证"退出路径 ≤3s"。
 
 ## 6. 未解决 / 待验证
 
+0. 交付提交：`phase4v-t1` → 诊断开关与复现；修复与门禁在同一段连续提交（`068017c` 主改动、
+   `7525f46` 格式化、`0ec1d35` 钩子定时修复）→ `phase4v-done`。window 侧无 `crates/` 改动。
 1. **Windows 侧未实测**（待验证假设，置信度中高）：根因与本机同一处，改动应同样生效；但需 Windows
    侧用本 tag 复跑"子 shell 退出后窗口关闭"。推翻条件：仍 >3s 则存在第二个唤醒缺失点。
 2. case51 的 1 秒间隔与 4–6 判据是基于 Linux 实测；Windows 上定时器精度较差时可能需要放宽（未验证）。
