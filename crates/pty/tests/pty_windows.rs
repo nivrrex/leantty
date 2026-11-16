@@ -614,11 +614,12 @@ fn t4_e12_cmd_sort_full_data() {
     join_thread_timeout(handle, Duration::from_secs(5)).expect("join");
 }
 
-/// T6 探针：从 C:\dev\tty 为 cwd 起 spawn("cmd.exe")，复现 app 启动环境。
+/// T6 探针：从仓库根目录为 cwd 起 spawn("cmd.exe")，复现 app 启动环境。
 #[test]
 fn t6_probe_spawn_from_devtty_cwd() {
     let saved = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(r"C:\dev\tty").expect("chdir to C:\\dev\\tty");
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    std::env::set_current_dir(&repo_root).expect("chdir to repo root");
     let r = spawn_collect("cmd.exe");
     let (mut pty, rx, handle) = r;
     {
