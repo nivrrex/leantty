@@ -155,3 +155,14 @@
 - render 共享测试切片 bug 待 Linux 侧修复后 Windows 转绿。
 - app 事件循环无运行级自动化测试（与 Linux 段同限制）；GUI 行为列 PHASE1-WIN.md 手动清单。
 - ConPTY 主端 reader 在子进程退出后 EOF 延迟（验证期 W5 数据约 83s）；close 契约顺序已按此设计。
+
+## 阶段 3S（2026-11-16）结论
+
+- 合并 Linux 4T（`phase4t-done` = `8132ade`，轻量 tag）到 win，合并提交 `b926a01`，0 冲突；Windows 专属文件整体 sha256 合并前后一致（`8540f797…`）。状态=已验证事实。
+- Windows 门禁（合并后）：debug/release 0 告警、clippy `-D warnings` dev/release 均 0、`cargo test --workspace` 211 passed / 0 failed、`wgpu 30.0.2`、`gpu_parity` + `APP_GPU_ALLOW_SOFTWARE=1`（DX12 WARP）10/10 通过。状态=已验证事实。
+- `t6_probe_spawn_from_devtty_cwd` 硬编码 `C:\dev\tty`（仓库已迁到 E:）：未建等价目录时必失败；本轮以 `mklink /J C:\dev\tty E:\dev\tty` 复原环境后全绿。属测试硬编码，未改。状态=已验证事实。
+- **Windows shell 退出检测（A=4r / B=4s / C=4t，各 12 组合 × 3 次）**：A 全部在子进程退出后 3.1–4.3 s 内退出；B 与 C 全部 15 s 内不退出（cpu 后端、系统 conhost 与随附 ConPTY 两种部署、cmd 与 pwsh 一致）。直接杀 shell 子进程：A 107–127 ms 退出，B/C 均不退出。状态=已验证事实。
+- 因此 Linux 4T 对"4S 空闲静默引入退出检测回归"的判断在 Windows 成立；但 4T 的 1 秒存活检查在 Windows 上**未生效**（C 与 B 同表现），触发 3S 任务书停止条件（未改 crates/）。状态=已验证事实（表现）+ 工程判断（归因）。
+- 定位证据（C）：子 shell 存活 30 s 无输出时 13 s 内仅 1 条 5 秒统计行（`loops=1`）→ 1 秒唤醒从未发生；杀 shell 后 4 s 不退出，随后一次窗口最小化/还原事件即立即退出 → `try_wait` 有效、缺的只是定时唤醒。状态=已验证事实。
+- 待验证假设：存活唤醒块在空闲那次 `about_to_wait` 中被提前 `return` 跳过，或 `wait_scheduled` 残留为真；两者需在 crates 内加计数/日志区分（本任务不允许改）。推翻条件：加一行日志即可判定。状态=待验证假设。
+- 上轮（3R）回报中的 keygen / SQLite / `send-keys --hex` / `tonight.sh` / `F7a`·`F7b` / `watchdog` 在仓库历史与工作区**均无命中**；`APP_VT` 不存在（仅 3R 自建脚本使用，app 不读取）；`process_group` 只出现在 ConPTY Ctrl 事件测试的进程组参数里。状态=已验证事实。

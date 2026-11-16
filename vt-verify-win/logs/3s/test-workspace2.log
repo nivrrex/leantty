@@ -1,0 +1,477 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.04s
+     Running unittests src\lib.rs (target\debug\deps\app-8b63fdede8c6b1a7.exe)
+
+running 72 tests
+test binding_tests::find_binding_later_overrides_and_mods_matter ... ok
+test binding_tests::find_key_binding_matches_key_and_mods ... ok
+test follow::tests::alternate_screen_keeps_behaviour ... ok
+test binding_tests::default_bindings_shape ... ok
+test clipboard::tests::inject_get_set_roundtrip ... ok
+test binding_tests::key_matches_is_case_insensitive_for_single_chars ... ok
+test binding_tests::key_string_named_and_character ... ok
+test follow::tests::mouse_reporting_keeps_behaviour ... ok
+test follow::tests::non_pty_interactions_never_follow ... ok
+test follow::tests::paste_entry_returns_to_bottom_only_when_accepted_and_nonempty ... ok
+test follow::tests::pty_input_follows_on_primary_screen ... ok
+test follow::tests::sends_bytes_only_for_input_class ... ok
+test framepace::tests::ema_converges_and_reacts ... ok
+test framepace::tests::interval_clamped_to_bounds ... ok
+test framepace::tests::interval_from_ema_sequence ... ok
+test ime::tests::normalize_ime_commit_newlines ... ok
+test ime::tests::preedit_display_empty_and_clamp ... ok
+test ime_cursor_tests::no_preedit_follows_terminal_cursor ... ok
+test ime::tests::preedit_display_none_cursor ... ok
+test ime_cursor_tests::preedit_cleared_keeps_cursor ... ok
+test ime_cursor_tests::preedit_end_position ... ok
+test ime_cursor_tests::preedit_wraps_at_right_edge ... ok
+test ime_event_tests::commit_clears_preedit ... ok
+test ime_event_tests::disabled_clears_preedit ... ok
+test ime_event_tests::preedit_sets_text_and_cursor ... ok
+test ime_event_tests::enabled_keeps_state ... ok
+test liveness_tests::never_more_than_one_wake_per_interval ... ok
+test liveness_tests::returns_none_when_child_exited ... ok
+test liveness_tests::schedules_immediately_when_never_checked ... ok
+test liveness_tests::waits_for_interval_when_just_checked ... ok
+test liveness_tests::wakes_now_when_interval_already_elapsed ... ok
+test paste::backlog_tests::accepts_when_it_fits_exactly ... ok
+test paste::backlog_tests::rejects_single_paste_larger_than_cap ... ok
+test paste::backlog_tests::rejects_when_backlog_already_full ... ok
+test paste::backlog_tests::rejects_when_one_byte_too_large ... ok
+test paste::backlog_tests::whole_reject_keeps_wrapper_intact_by_construction ... ok
+test paste::drain_tests::budget_limits_work_and_reports_more_needed ... ok
+test paste::drain_tests::drains_all_in_order ... ok
+test paste::drain_tests::empty_queue_is_noop ... ok
+test paste::drain_tests::fatal_error_drops_and_marks_failed ... ok
+test paste::drain_tests::partial_write_keeps_remainder ... ok
+test paste::drain_tests::would_block_stops_without_spinning_and_keeps_data ... ok
+test paste::drain_to_writer_tests::drain_to_writer_consumes_whole_chunk_when_room ... ok
+test paste::tests::normalize_paste_newlines_and_bracketed ... ok
+test scrollbar::tests::geometry_none_when_no_scrollback ... ok
+test scrollbar::tests::geometry_offset_clamped ... ok
+test scrollbar::tests::geometry_thumb_proportional ... ok
+test scrollbar::tests::track_y_to_offset_inverse ... ok
+test selection::auto_scroll_tests::auto_scroll_step_direction_and_clamp ... ok
+test selection::offset_tests::selection_region_clamps_to_viewport ... ok
+test selection::offset_tests::viewport_abs_roundtrip ... ok
+test selection::tests::color_fields_compile ... ok
+test selection::tests::extract_text_empty_line_preserved ... ok
+test selection::tests::extract_text_hard_wrap_inserts_newline ... ok
+test selection::tests::extract_text_mixed_soft_and_hard_wrap ... ok
+test selection::tests::extract_text_skips_spacer_tail_and_trims ... ok
+test selection::tests::extract_text_soft_wrap_joins_without_separator ... ok
+test selection::tests::extract_text_trailing_whitespace_trimmed ... ok
+test selection::tests::extract_text_wide_char_across_wrap_boundary ... ok
+test selection::tests::region_normalizes_and_contains ... ok
+test selection::tests::word_region_respects_escape_chars ... ok
+test writer::tests::close_flushes_then_releases ... ok
+test writer::tests::no_restore_when_no_paste_started ... ok
+test writer::tests::ctrl_c_drops_pending_paste_but_keeps_typed ... ok
+test paste::tests::paste_chunks_splits_at_boundary ... ok
+test paste::drain_to_writer_tests::drain_to_writer_stops_when_queue_full_and_keeps_remainder ... ok
+test writer::tests::paste_queue_respects_cap ... ok
+test writer::tests::ctrl_c_restores_paste_end_when_start_already_writing ... ok
+test writer::tests::no_restore_when_in_flight_chunk_ends_with_marker ... ok
+test writer::tests::order_is_preserved ... ok
+test writer::tests::write_error_sets_failed_without_panic ... ok
+test writer::tests::restore_once_for_multiple_dropped_pastes ... ok
+
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src\main.rs (target\debug\deps\app-9d308f32a55c7f27.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\keyboard.rs (target\debug\deps\keyboard-cc31f15ec26f01cf.exe)
+
+running 5 tests
+test resize_target_is_stable_for_restored_size ... ok
+test resize_target_rejects_zero_and_sub_cell_sizes ... ok
+test encoded_key_bytes ... ok
+test route_key_text_priority_and_modifier_fallback ... ok
+test waker_wakes_on_every_data_arrival ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\reader.rs (target\debug\deps\reader-7e285e359d90c89a.exe)
+
+running 4 tests
+test eof_wakes_event_loop_before_exit ... ok
+test loop_closed_no_report_and_reader_exits ... ok
+test other_error_reported_and_reader_exits ... ok
+test full_channel_retries_and_delivers_all_without_deadlock ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running unittests src\lib.rs (target\debug\deps\config-51382afeea81487b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\config.rs (target\debug\deps\config-05800edd338b0c36.exe)
+
+running 13 tests
+test action_and_mouse_parsing ... ok
+test defaults_are_sane ... ok
+test path_priority_cli_env_default ... ok
+test bad_color_falls_back_with_warning ... ok
+test invalid_binding_skipped_with_warning ... ok
+test bindings_parsed_with_mods ... ok
+test out_of_range_and_type_errors_fall_back ... ok
+test renderer_backend_defaults_to_auto ... ok
+test renderer_backend_accepts_all_values ... ok
+test renderer_backend_invalid_value_warns_and_falls_back ... ok
+test rgb_rejects_bad_formats ... ok
+test unknown_fields_warn_with_path ... ok
+test examples_load_without_warnings ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src\lib.rs (target\debug\deps\pty-96401f19e8982cbe.exe)
+
+running 2 tests
+test windows::tests::clear_console_ctrl_ignore_returns_ok ... ok
+test windows::tests::ctrl_handler_zero_maps_to_error ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pty_unix.rs (target\debug\deps\pty_unix-ce149f2083fc3e47.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\pty_windows.rs (target\debug\deps\pty_windows-16ca16ff2df71510.exe)
+
+running 22 tests
+test key_encoder_ctrl_c_maps_to_0x03 ... ok
+test conpty_pair_detection_needs_both_files ... ok
+test pty_on_pty_write_dsr_response ... ok
+test pty_default_shell_is_cmd ... ok
+test pty_cmd_echo_cn_resize_close ... ok
+test pty_powershell_echo_cn ... ok
+test ctrl_c_probe_powershell_ping ... ok
+test ctrl_c_probe_cmd_ping_twice ... ok
+test ctrl_c_probe_cmd_sort ... ok
+test t4_e11_powershell_testconnection_ctrl_c ... ok
+test t4_e1_cmd_prompt_ctrl_c ... ok
+test t4_e12_cmd_sort_full_data ... ok
+test t4_e2_cmd_ping_ctrl_c ... ok
+test t6_probe_spawn_from_devtty_cwd ... ok
+test t6_resolve_program_windows ... ok
+test t4_e3_cmd_ping_finite_ctrl_c ... ok
+test t4_e4_cmd_ping_ctrl_c_cr ... ok
+test t4_e9_cmd_timeout_ctrl_c ... ok
+test t4_e5_powershell_ping_ctrl_c ... ok
+test t4_e7_cmd_ping_ctrl_c_spaced ... ok
+test t4_e8_ffi_ctrl_c_to_ping ... ok
+test t4_e6_cmd_ping_ctrl_break ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.88s
+
+     Running unittests src\lib.rs (target\debug\deps\render-7c99b78a1ebe5ff4.exe)
+
+running 19 tests
+test decide::tests::inverse_swaps_blend_background ... ok
+test decide::tests::selection_overrides_inverse ... ok
+test decide::tests::normal_cell_unchanged ... ok
+test blit_tests::blit_clips_negative_offset_and_oversize_width_to_cell ... ok
+test blit_tests::blit_clips_oversize_height_to_cell ... ok
+test preedit::tests::ascii_layout_at_cursor ... ok
+test preedit::tests::empty_text_gives_no_layout ... ok
+test preedit::tests::end_position_after_preedit ... ok
+test gpu::backends_spec_tests::parses_single_names_case_insensitively ... ok
+test gpu::backends_spec_tests::parses_comma_list_with_spaces ... ok
+test gpu::backends_spec_tests::trims_surrounding_whitespace ... ok
+test gpu::backends_spec_tests::rejects_empty_or_blank ... ok
+test gpu::backends_spec_tests::accepts_all_supported_names ... ok
+test gpu::backends_spec_tests::rejects_literal_quotes_from_shell_typos ... ok
+test gpu::backends_spec_tests::rejects_unknown_token_with_original_value ... ok
+test preedit::tests::overflow_at_bottom_shifts_visible ... ok
+test preedit::tests::wide_char_takes_two_cells ... ok
+test preedit::tests::overflow_wraps_to_next_line ... ok
+test preedit::tests::wider_than_line_is_truncated ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\background_load.rs (target\debug\deps\background_load-cd9024318d8d2529.exe)
+
+running 2 tests
+test add_empty_background_fonts_is_noop ... ok
+test background_load_sequence_placeholder_then_glyph ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.42s
+
+     Running tests\baseline_alignment.rs (target\debug\deps\baseline_alignment-aed990c705c4ec1f.exe)
+
+running 2 tests
+test baseline_alignment_gpu ... ok
+test baseline_alignment_font_matrix ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.98s
+
+     Running tests\bench_frame.rs (target\debug\deps\bench_frame-d17c2bfb8b1f19b7.exe)
+
+running 1 test
+test bench_frame ... ignored, 性能基准，手动运行
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cell_metrics.rs (target\debug\deps\cell_metrics-9f7e42a3857f3851.exe)
+
+running 1 test
+test cell_metrics_scales_with_size_and_scale_factor ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests\cursor_viewport_pixels.rs (target\debug\deps\cursor_viewport_pixels-f7b98d53b8c4e7e1.exe)
+
+running 2 tests
+test cursor_pixels_absent_after_scroll_up_gpu ... ok
+test cursor_pixels_absent_after_scroll_up_and_back_after_bottom ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.03s
+
+     Running tests\fallback_chain.rs (target\debug\deps\fallback_chain-9455e7b03cb5ef9b.exe)
+
+running 3 tests
+test style_fallback_bold_italic_logs_not_panic ... ok
+test wide_char_spans_two_cells_and_tail_not_drawn ... ok
+test fallback_chain_ascii_main_cjk_fallback ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.41s
+
+     Running tests\font_load_time.rs (target\debug\deps\font_load_time-4358056471adec28.exe)
+
+running 1 test
+test font_load_time_probe ... ignored, 依赖本机字体，手动运行
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\font_memory.rs (target\debug\deps\font_memory-73d6c5238d49b78a.exe)
+
+running 1 test
+test measure_font_instance_and_clone_cost ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.90s
+
+     Running tests\font_sharing.rs (target\debug\deps\font_sharing-8ea3d429606b587d.exe)
+
+running 1 test
+test same_face_is_shared_not_cloned ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s
+
+     Running tests\frame_bytes_identical.rs (target\debug\deps\frame_bytes_identical-0ae2d8d473f24f23.exe)
+
+running 1 test
+test deterministic_frame_hash_is_stable ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.27s
+
+     Running tests\glyph_clip.rs (target\debug\deps\glyph_clip-400841e786fdca0c.exe)
+
+running 2 tests
+test glyph_top_not_clipped_gpu ... ok
+test glyph_fits_in_cell_font_matrix ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 38.62s
+
+     Running tests\gpu_parity.rs (target\debug\deps\gpu_parity-4705e21e71972322.exe)
+
+running 10 tests
+test gpu_parity_minimal_inverse_char ... ok
+test gpu_parity_200x60_1x ... ok
+test gpu_parity_120x30_1x ... ok
+test gpu_parity_cursor_styles ... ok
+test gpu_parity_120x30_2x ... ok
+test gpu_atlas_rebuild_with_thousands_of_cjk has been running for over 60 seconds
+test gpu_parity_200x60_2x has been running for over 60 seconds
+test gpu_parity_preedit_overlay has been running for over 60 seconds
+test gpu_parity_preedit_overlay ... ok
+test gpu_parity_scrollbar_at_bottom_80x24 has been running for over 60 seconds
+test gpu_parity_200x60_2x ... ok
+test gpu_parity_scrollbar_mid_scroll_80x24 has been running for over 60 seconds
+test gpu_atlas_rebuild_with_thousands_of_cjk ... ok
+test gpu_parity_scrollbar_at_bottom_80x24 ... ok
+test gpu_parity_scrollbar_mid_scroll_80x24 ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 111.17s
+
+     Running tests\incremental.rs (target\debug\deps\incremental-dc38a4a996a85de9.exe)
+
+running 3 tests
+test scroll_sequence_matches_full ... ok
+test incremental_matches_full_pixel_exact ... ok
+test incremental_random_sequence_3000_steps ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 41.46s
+
+     Running tests\inverse_default_color.rs (target\debug\deps\inverse_default_color-c9fe69708ec885b6.exe)
+
+running 4 tests
+test palette_values_are_distinguishable ... ok
+test inverse_default_color_semantics_gpu ... ok
+test inverse_with_explicit_37_uses_normal7_as_background ... ok
+test inverse_without_explicit_color_uses_primary_foreground_as_background ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.30s
+
+     Running tests\inverse_pixels.rs (target\debug\deps\inverse_pixels-865f5b2be8cb2562.exe)
+
+running 5 tests
+test inverse_cell_gpu_absolute_pixels ... ok
+test cursor_block_on_inverse_cell_keeps_glyph_visible ... ok
+test selection_keeps_inverse_style_correct ... ok
+test inverse_cell_swaps_colored_fg_and_bg ... ok
+test inverse_cell_renders_white_background_black_glyph ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
+
+     Running tests\palette_config_render.rs (target\debug\deps\palette_config_render-64f375a5f062619f.exe)
+
+running 3 tests
+test inverse_default_cell_uses_configured_colors ... ok
+test indexed_fg_cell_uses_configured_palette_color ... ok
+test bold_with_bright_maps_normal_to_bright_only_when_enabled ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.15s
+
+     Running tests\preedit_ghost.rs (target\debug\deps\preedit_ghost-c6f8a41defca1cb2.exe)
+
+running 2 tests
+test preedit_clear_repaints_all_spanned_rows ... ok
+test preedit_move_clears_old_position ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.26s
+
+     Running tests\render_pixels.rs (target\debug\deps\render_pixels-2597dae5bc188a74.exe)
+
+running 5 tests
+test render_char_cell_differs_from_bg ... ok
+test render_selection_inverts_selected_cell ... ok
+test render_bold_maps_to_bright_color ... ok
+test render_options_change_pixels ... ok
+test render_cursor_styles_draw ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.26s
+
+     Running tests\wide_glyph.rs (target\debug\deps\wide_glyph-399d466a419e5ad5.exe)
+
+running 4 tests
+test cjk_wide_glyph_spans_two_cells ... ok
+test cjk_wide_glyph_200x60_scale2 ... ok
+test cjk_as_primary_font_spans_two_cells ... ok
+test manual_wide_cell_spans_two_cells ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.89s
+
+     Running unittests src\lib.rs (target\debug\deps\vt-62abf92ffbb4c168.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cursor_viewport.rs (target\debug\deps\cursor_viewport-b41f08cf10b00c82.exe)
+
+running 4 tests
+test cursor_hidden_mode_wins_over_viewport ... ok
+test cursor_visible_on_alternate_screen ... ok
+test cursor_hidden_when_viewport_scrolled_above_cursor ... ok
+test cursor_position_follows_viewport_offset_when_still_visible ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\dirty_probe.rs (target\debug\deps\dirty_probe-4319807d70465bbc.exe)
+
+running 1 test
+test dirty_semantics_probe ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests\palette_config.rs (target\debug\deps\palette_config-9d4259a5eb7dc61a.exe)
+
+running 6 tests
+test ansi_bright_colors_follow_configured_palette ... ok
+test default_inverse_uses_configured_or_marked_defaults ... ok
+test ansi_basic_colors_follow_configured_palette ... ok
+test osc_overrides_then_resets_back_to_configured_palette ... ok
+test ansi_background_colors_follow_configured_palette ... ok
+test truecolor_and_256_cube_are_not_affected ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\rows_text.rs (target\debug\deps\rows_text-79451ad3d761ef40.exe)
+
+running 1 test
+test rows_text_reads_history_without_moving_viewport ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\scroll_probe.rs (target\debug\deps\scroll_probe-9e873bb13c971b6d.exe)
+
+running 2 tests
+test scroll_up_then_feed_stays_or_follows ... ok
+test scroll_bottom_restores ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests\v4_grid.rs (target\debug\deps\v4_grid-753812451905813b.exe)
+
+running 6 tests
+test v4b_sgr_red ... ok
+test v4c_clear_screen ... ok
+test v4a_plain_text ... ok
+test v4e_wide_chars ... ok
+test v4f_alternate_screen ... ok
+test v4d_scrollback ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests\v8_snapshot.rs (target\debug\deps\v8_snapshot-f498f76044282052.exe)
+
+running 1 test
+test v8_owned_snapshot ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\wrap_probe.rs (target\debug\deps\wrap_probe-615b988762bda4a0.exe)
+
+running 2 tests
+test wrapped_flags_probe ... ok
+test wrapped_flags_probe_80col ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+   Doc-tests app
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests config
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests pty
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

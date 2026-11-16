@@ -1,0 +1,17 @@
+    Finished `release` profile [optimized] target(s) in 0.67s
+     Running tests\gpu_parity.rs (target\release\deps\gpu_parity-4f92aa188bedacc1.exe)
+
+running 10 tests
+test gpu_atlas_rebuild_with_thousands_of_cjk ... ok
+test gpu_parity_200x60_2x ... ok
+test gpu_parity_120x30_2x ... ok
+test gpu_parity_200x60_1x ... ok
+test gpu_parity_120x30_1x ... ok
+test gpu_parity_cursor_styles ... ok
+test gpu_parity_minimal_inverse_char ... ok
+test gpu_parity_preedit_overlay ... ok
+test gpu_parity_scrollbar_at_bottom_80x24 ... ok
+test gpu_parity_scrollbar_mid_scroll_80x24 ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 42.09s
+

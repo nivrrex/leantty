@@ -1,0 +1,6 @@
+   Compiling libghostty-vt-sys v0.2.1 (E:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt-sys)
+   Compiling libghostty-vt v0.2.1 (E:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt)
+   Compiling vt v0.1.0 (E:\dev\tty\crates\vt)
+   Compiling render v0.1.0 (E:\dev\tty\crates\render)
+   Compiling app v0.1.0 (E:\dev\tty\crates\app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3m 07s
