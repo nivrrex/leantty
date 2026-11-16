@@ -2283,8 +2283,7 @@ impl ApplicationHandler for AppHandler {
         // 合并取最早者，再决定控制流；所有提前 return 都经 `finish_wake` 走同一逻辑。
         // 迁此之前，存活唤醒登记只在函数末尾，任一提前 return（GPU 空闲跳过、CPU 无脏区
         // 跳过 present 等）都会跳过它 → 子进程退出后不再有唤醒（Windows 3S 现象）。
-        let timer_at = self.pending_timer_at();
-        self.finish_wake(event_loop, timer_at);
+        self.finish_wake(event_loop, None);
     }
 }
 
@@ -2325,7 +2324,11 @@ impl AppHandler {
     ) {
         let now = Instant::now();
         let liveness_at = self.liveness_deadline(now);
-        match next_wake(now, liveness_at, timer_at, None) {
+        // debug 钩子的定时待办在这里再合并一次：提前 return 的路径传 `timer_at = None`，
+        // 若不在内部补上，会把上面钩子块设置的 WaitUntil 覆盖成无限 Wait（4V 实测：
+        // case30/32/39 的钩子定时全丢，粘贴/预编辑钩子不再触发）。
+        let hook_at = self.pending_timer_at();
+        match next_wake(now, liveness_at, timer_at, hook_at) {
             Some(t) => {
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
             }
