@@ -2434,13 +2434,22 @@ else
         sleep 1.0
         x11 xdotool type --window "$WID" "seq 1 40"
         x11 xdotool key --window "$WID" Return
-        sleep 12          # 输出结束 + 收尾（覆盖两个 5 秒窗口）
-        IDLE49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
+        # 判定口径（阶段 4S t2 之后）：完全空闲意味着事件循环不再被唤醒，
+        # 也就不会再产生 5 秒统计行。因此"空闲/缩放收尾后 10 秒内无新增统计行"即等价于
+        # "0 帧、无定时唤醒"——比统计帧数更强的判据。
+        sleep 8            # 输出结束 + 尾沿收尾
+        N1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        sleep 10
+        N2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        IDLE49=$(( ${N2:-0} - ${N1:-0} ))
         x11 xdotool windowsize "$WID" 700 420
-        sleep 12
-        AFTER49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
-        echo "  [c49 $variant] 空闲窗口帧数=${IDLE49:-NA} 缩放后窗口帧数=${AFTER49:-NA}（判据 ≤3）"
-        if [ "${IDLE49:-999}" -le 3 ] && [ "${AFTER49:-999}" -le 3 ]; then
+        sleep 3            # 缩放后收尾（应 1 秒内停止）
+        M1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        sleep 10
+        M2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        AFTER49=$(( ${M2:-0} - ${M1:-0} ))
+        echo "  [c49 $variant] 空闲 10s 新增统计行=$IDLE49（应 0） 缩放后 10s 新增=$AFTER49（应 0）"
+        if [ "$IDLE49" -eq 0 ] && [ "$AFTER49" -eq 0 ]; then
             OK49=$((OK49+1))
         fi
         stop_app
