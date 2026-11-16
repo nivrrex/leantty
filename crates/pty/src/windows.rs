@@ -51,7 +51,6 @@ fn map_ctrl_handler_result(rc: i32) -> Result<(), Error> {
 /// 读线程 join 超时上限。禁止无界 join。
 pub const READER_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
 
-
 /// 部署自检：程序目录里"有 conpty.dll 但缺 OpenConsole.exe"。
 ///
 /// 背景（阶段 3L/3M 实测）：两个文件必须放在 app.exe 同目录；只剩 conpty.dll 时
@@ -64,7 +63,10 @@ pub fn conpty_pair_incomplete(dir: &std::path::Path) -> bool {
 
 /// 在 spawn 前做一次部署自检并打印警告（警告文本固定，便于脚本断言）。
 fn warn_if_conpty_pair_incomplete() {
-    let dir = match std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+    let dir = match std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+    {
         Some(d) => d,
         None => return,
     };
@@ -130,10 +132,7 @@ impl WindowsPty {
         if path.is_absolute() && path.is_file() {
             return shell.to_owned();
         }
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(shell);
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or(shell);
         let has_ext = name.contains('.');
         let mut exts: Vec<String> = Vec::new();
         if has_ext {
@@ -196,7 +195,11 @@ impl Pty for WindowsPty {
             return Err(Error::AlreadySpawned);
         }
         // 默认启动 cmd.exe（任务契约）；调用方传空时回落 cmd.exe。
-        let shell = if shell.trim().is_empty() { "cmd.exe" } else { shell };
+        let shell = if shell.trim().is_empty() {
+            "cmd.exe"
+        } else {
+            shell
+        };
         if cols == 0 || rows == 0 {
             return Err(Error::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -294,7 +297,8 @@ pub fn join_thread_timeout(
         let _ = handle.join();
         let _ = tx.send(());
     });
-    rx.recv_timeout(timeout).map_err(|_| Error::ReaderJoinTimeout)?;
+    rx.recv_timeout(timeout)
+        .map_err(|_| Error::ReaderJoinTimeout)?;
     Ok(())
 }
 
