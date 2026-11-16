@@ -6,7 +6,7 @@
 #        m4 shift-click extend.
 param([string]$AppBin = '')
 $ErrorActionPreference = 'Continue'
-$ROOT = 'C:\dev\tty'
+$ROOT = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\app.exe' }
 if (-not (Test-Path $AppBin)) { Write-Host "FATAL: no app binary"; exit 2 }
 $OUT = Join-Path $ROOT 'vt-verify-win\logs\phase2b-win'
