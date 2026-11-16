@@ -452,6 +452,8 @@ impl App {
             wake_counts: (0, 0, 0, 0),
             got_event: false,
             got_pty: false,
+            last_liveness_check: None,
+            wait_scheduled: false,
             last_sel_clamp_log: None,
             last_geom_drawn: None,
             frames_window: (0, 0, 0, 0),
@@ -864,6 +866,10 @@ struct AppHandler {
     /// 本轮迭代是否由窗口事件/PTY 唤醒（用于区分"定时唤醒"）
     got_event: bool,
     got_pty: bool,
+    /// 上次调用 try_wait 做存活检查的时刻（阶段 4T t3；仅 Windows 用于安排低频唤醒）。
+    last_liveness_check: Option<Instant>,
+    /// 本帧是否已经安排过 WaitUntil（避免存活检查覆盖更早的渲染唤醒）。
+    wait_scheduled: bool,
     /// 上次打印"选区被 scrollback 截断"警告的时刻（阶段 4S t2 限速）。
     last_sel_clamp_log: Option<Instant>,
     /// 上次真正画到屏幕上的滚动条几何（阶段 4Q t3 空闲判定用）。
@@ -1571,6 +1577,7 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+        self.wait_scheduled = false;
         // 阶段 4I t3：观测窗口重置（APP_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -1855,6 +1862,7 @@ impl ApplicationHandler for AppHandler {
         }
         // 6. 子进程退出 → 关闭窗口
         if let Some(pty) = self.pty.as_mut() {
+            self.last_liveness_check = Some(Instant::now());
             match pty.try_wait() {
                 Ok(Some(_status)) => event_loop.exit(),
                 Ok(None) => {}
@@ -1904,6 +1912,7 @@ impl ApplicationHandler for AppHandler {
                     t + self.frame_interval
                 };
                 event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
+                self.wait_scheduled = true;
             }
             return;
         }
@@ -2238,6 +2247,21 @@ impl ApplicationHandler for AppHandler {
         };
         if will_render {
             self.update_ime_cursor_area();
+        }
+        // 阶段 4T t3（仅 Windows）：ConPTY 输出管道不会因 shell 退出而 EOF，读线程没有
+        // 唤醒源，而退出检测依赖 about_to_wait 里轮询 try_wait。这里以 1 秒间隔安排一次
+        // 低频唤醒；Linux 保持纯事件驱动（不进入该分支）。
+        #[cfg(target_os = "windows")]
+        if !self.wait_scheduled
+            && self.pty.is_some()
+            && let Some(t) = next_liveness_wake(
+                Instant::now(),
+                true,
+                self.last_liveness_check,
+                Duration::from_secs(1),
+            )
+        {
+            event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
         }
         // 钩子待触发时必须保持定时唤醒：渲染路径在"到期渲染"后不设 ControlFlow，
         // 事件循环会进入无限 Wait，导致 APP_TEST_PASTE_AT_MS 永远不触发（实测）。
@@ -2923,6 +2947,33 @@ impl AppHandler {
     }
 }
 
+/// Windows 子进程存活检查的下一次唤醒时刻（阶段 4T t3，纯函数）。
+///
+/// 背景：子进程退出检测是 `about_to_wait` 里轮询 `Pty::try_wait`（事件驱动）。Linux 上
+/// 读端在子进程退出时返回 EOF/EIO，读线程会 `wake()` 唤醒主线程，因此轮询会被触发；
+/// 而 Windows 的 ConPTY **输出管道不会因子进程退出而 EOF**，没有唤醒源，轮询就不会发生
+/// → 窗口不会关闭。故 Windows 下按固定间隔安排低频存活检查。
+///
+/// 返回 `None` 表示无需唤醒（子进程已退出，退出路径已接管）。子进程存活期间最多每
+/// `interval` 唤醒一次；距上次检查已超过 `interval` 时立即唤醒一次。
+pub fn next_liveness_wake(
+    now: std::time::Instant,
+    child_alive: bool,
+    last_check: Option<std::time::Instant>,
+    interval: std::time::Duration,
+) -> Option<std::time::Instant> {
+    if !child_alive {
+        return None;
+    }
+    match last_check {
+        None => Some(now),
+        Some(t) => {
+            let due = t + interval;
+            Some(if due <= now { now } else { due })
+        }
+    }
+}
+
 /// 由窗口物理像素尺寸反算网格行列（纯函数，便于单测）。
 ///
 /// 返回 `None` 表示该尺寸**无法容纳任何完整字符格**，调用方必须保持原网格不变：
@@ -3529,5 +3580,62 @@ mod ime_event_tests {
     fn enabled_keeps_state() {
         let (changed, _, _) = ime_preedit_update(&Ime::Enabled);
         assert!(!changed, "Enabled 不改动组合态（仅重定位候选窗）");
+    }
+}
+
+#[cfg(test)]
+mod liveness_tests {
+    use super::next_liveness_wake;
+    use std::time::{Duration, Instant};
+
+    const INTERVAL: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn schedules_immediately_when_never_checked() {
+        let now = Instant::now();
+        assert_eq!(
+            next_liveness_wake(now, true, None, INTERVAL),
+            Some(now),
+            "从未检查过时应立即唤醒一次"
+        );
+    }
+
+    #[test]
+    fn returns_none_when_child_exited() {
+        let now = Instant::now();
+        assert_eq!(
+            next_liveness_wake(now, false, Some(now), INTERVAL),
+            None,
+            "子进程已退出时无需再安排（退出路径已接管）"
+        );
+        assert_eq!(next_liveness_wake(now, false, None, INTERVAL), None);
+    }
+
+    #[test]
+    fn waits_for_interval_when_just_checked() {
+        let now = Instant::now();
+        let wake = next_liveness_wake(now, true, Some(now), INTERVAL).expect("应安排一次");
+        assert_eq!(wake, now + INTERVAL, "刚检查过应等满一个间隔");
+    }
+
+    #[test]
+    fn wakes_now_when_interval_already_elapsed() {
+        let now = Instant::now();
+        let last = now - Duration::from_millis(2500);
+        assert_eq!(
+            next_liveness_wake(now, true, Some(last), INTERVAL),
+            Some(now),
+            "距上次检查已超过间隔时应立即唤醒"
+        );
+    }
+
+    #[test]
+    fn never_more_than_one_wake_per_interval() {
+        // 连续两轮：第一轮立即唤醒，第二轮必须等满间隔（即 ≤1 次/秒）
+        let t0 = Instant::now();
+        let w1 = next_liveness_wake(t0, true, None, INTERVAL).unwrap();
+        assert_eq!(w1, t0);
+        let w2 = next_liveness_wake(w1, true, Some(w1), INTERVAL).unwrap();
+        assert_eq!(w2, w1 + INTERVAL);
     }
 }
