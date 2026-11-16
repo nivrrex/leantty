@@ -1914,6 +1914,49 @@ impl ApplicationHandler for AppHandler {
         #[cfg(debug_assertions)]
         let was_urgent = self.urgent_render;
         self.urgent_render = false;
+        // 阶段 4T t2c：**每帧维护工作前移**。以下两段（OSC 标题跟随、拖选自动滚动推进）
+        // 原先位于渲染块之后，而"GPU 空闲跳过"与"CPU 空 damage 提前返回"都会 return，
+        // 把它们一并跳过——实测 GPU 后端上拖选自动滚动完全不推进、OSC 0 标题也不更新。
+        // 前移到渲染之前后，无论本帧是否真正绘制，维护逻辑都会执行。
+        // 窗口标题（任务 2C.4）：dynamic_title=true 时跟随 OSC 0/2；
+        // false 时保持二进制名（resumed 已设，后续不再更新）。
+        let dynamic_title = self
+            .config
+            .as_ref()
+            .map(|c| c.config.window.dynamic_title)
+            .unwrap_or(false);
+        if dynamic_title
+            && let (Some(vt), Some(window)) = (self.vt.as_ref(), self.window.as_ref())
+            && let Ok(Some(title)) = vt.title()
+            && self.last_title.as_deref() != Some(title.as_str())
+        {
+            window.set_title(&title);
+            self.last_title = Some(title);
+        }
+        // 拖选自动滚动：每帧按方向推进 offset 并扩展 focus 到新视口边界行
+        // （任务 2C.3；释放后 auto_scroll=0 自然停止）。
+        if self.mouse_down && self.auto_scroll != 0 {
+            let sb = self.sb_rows();
+            let (new_offset, focus_abs) =
+                auto_scroll_step(self.offset_from_top, self.auto_scroll, sb, self.rows);
+            self.offset_from_top = new_offset;
+            self.follow_bottom = new_offset >= sb;
+            if let Some(sel) = self.selection.as_mut() {
+                sel.set_focus(CellPos {
+                    col: sel.focus.col,
+                    row: focus_abs as u16,
+                });
+            }
+            if let Some(vt) = self.vt.as_mut() {
+                vt.scroll_viewport(ScrollViewport::Row(new_offset));
+            }
+            // 事件循环无事件时会阻塞在 epoll（about_to_wait 不再触发），
+            // 主动请求重绘驱动下一帧，使自动滚动持续到释放。
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
+            }
+        }
+
         let t_render_start = Instant::now();
         // 阶段 4K t2：内存观测在借用 vt/renderer/surface 之前取一次。
         let mem = self.mem_summary();
@@ -2185,44 +2228,6 @@ impl ApplicationHandler for AppHandler {
                     }
                 }
                 Err(e) => eprintln!("snapshot: {}", e),
-            }
-        }
-        // 窗口标题（任务 2C.4）：dynamic_title=true 时跟随 OSC 0/2；
-        // false 时保持二进制名（resumed 已设，后续不再更新）。
-        let dynamic_title = self
-            .config
-            .as_ref()
-            .map(|c| c.config.window.dynamic_title)
-            .unwrap_or(false);
-        if dynamic_title
-            && let (Some(vt), Some(window)) = (self.vt.as_ref(), self.window.as_ref())
-            && let Ok(Some(title)) = vt.title()
-            && self.last_title.as_deref() != Some(title.as_str())
-        {
-            window.set_title(&title);
-            self.last_title = Some(title);
-        }
-        // 拖选自动滚动：每帧按方向推进 offset 并扩展 focus 到新视口边界行
-        // （任务 2C.3；释放后 auto_scroll=0 自然停止）。
-        if self.mouse_down && self.auto_scroll != 0 {
-            let sb = self.sb_rows();
-            let (new_offset, focus_abs) =
-                auto_scroll_step(self.offset_from_top, self.auto_scroll, sb, self.rows);
-            self.offset_from_top = new_offset;
-            self.follow_bottom = new_offset >= sb;
-            if let Some(sel) = self.selection.as_mut() {
-                sel.set_focus(CellPos {
-                    col: sel.focus.col,
-                    row: focus_abs as u16,
-                });
-            }
-            if let Some(vt) = self.vt.as_mut() {
-                vt.scroll_viewport(ScrollViewport::Row(new_offset));
-            }
-            // 事件循环无事件时会阻塞在 epoll（about_to_wait 不再触发），
-            // 主动请求重绘驱动下一帧，使自动滚动持续到释放。
-            if let Some(w) = self.window.as_ref() {
-                w.request_redraw();
             }
         }
         // IME 光标区跟随快照光标；该调用内部会取快照，故仅在本次确实要渲染时执行
