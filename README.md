@@ -52,9 +52,14 @@ Windows 默认使用系统 conhost（旧版 ConPTY）作为 pty 宿主；本项�
 - **对照结论**（S=系统 conhost、N=官方 1.25.261109001，§3.2/§3.3）：
   折行不再被物化为 CRLF（200 字符单行 S 为 `80/80/43` 分段并出现 CRLF，N 为单段 200 字符）；
   `ESC[7m` 原样到达（S 改写为 `ESC[30m`+`ESC[47m`）；`OSC 104` 可达（S 与 WezTerm 侧载均丢弃）。
-- **代价**（同机对照，§3.6/§3.7）：启动 `first_frame` 中位 1673ms → 1787ms（**+约 110ms**）；
-  2M 行吞吐 330s → 355s（**约慢 7%**）。关闭耗时、粘贴精确送达、`take_writer` 停顿
-  （86ms < 100ms）无劣化（§3.5/§3.8/§3.9）。
+- **代价**（同机对照，**直接句柄重定向**、n=10）：启动 `first_frame` 中位 419ms（系统 conhost）
+  → 524ms（官方 ConPTY），即 **约 +105ms**（`PHASE3M-WIN.md` §4.1）；2M 行吞吐 330s → 355s
+  （**约慢 7%**）。关闭耗时、粘贴精确送达、`take_writer` 停顿（86ms < 100ms）无劣化
+  （3K §3.5/§3.8/§3.9）。
+- **关于旧的"首帧 1.6–1.9 秒 / +110ms"绝对数字**：3K 及更早的 Windows 启动数据是用 PowerShell
+  `Start-Process -RedirectStandardError` 采集的，该方式下每次写 stderr 约 6.8ms，会把首帧绝对值
+  抬高约 4 倍（同机 bash 直接重定向下 419ms 对 1772ms），**只能横向比较、不能当作真实启动耗时**
+  （`PHASE3L-WIN.md` §2.1 与 `PHASE3M-WIN.md` §4.2）。
 - **启用门槛**：`PHASE3K-WIN.md` §3.10 的判定（a/d/e/h/i 无新增失败且 b 或 c 至少一项优于
   S）已满足，故采用。
 
@@ -80,6 +85,12 @@ Windows 目标现在也能编译并使用 wgpu 的 GPU 后端（Vulkan + DX12）
 选适配器时先排除软件实现（`DeviceType::Cpu`，含 Windows 的 WARP/Basic Render Driver），
 再按 Discrete > Integrated > 其他 的类型优先级选择（同级保持枚举顺序）。
 
+**已实测（2026-11-15，一次真实 GPU 机器）**：AMD Ryzen 5 5600U 核显，Vulkan 与 DX12 均可见，
+选中 Vulkan 适配器；GPU init 140–191ms；GPU 与 CPU 在共有文字行上**逐像素最大差 1 LSB**；
+首帧 GPU 325–356ms、CPU 359ms；浸泡稳定（无 panic/无泄漏）。**DX12 尚未在真实硬件上验证**，
+仅在 WARP（DX12 的软件适配器）上验证过。Windows 的 `backend = "auto"` **恒为 CPU**，`gpu` 是显式
+实验开关（见上）。
+
 **软件适配器诊断开关**（阶段 4Q）：`APP_GPU_ALLOW_SOFTWARE=1` 允许选中软件 GPU 适配器
 （Linux 的 lavapipe、Windows 的 WARP / Basic Render Driver），**仅当 `backend = "gpu"` 时生效**；
 `backend = "auto"` 永远忽略该变量。选中软件适配器时会默认打印一行用户可见警告
@@ -100,11 +111,21 @@ Windows 上的差异；无 GPU 的 Windows 机器上 `backend="gpu"` 的实际�
 APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
 ```
 
+- **采集 `[perf]` 日志请用直接句柄重定向**（如 `2>perf.log`）。不要用 PowerShell 的
+  `Start-Process -RedirectStandardError`：实测该方式每次写约 6.8ms，会把首帧抬高约 4 倍并发
+  （`PHASE3L-WIN.md` §2.1）。
 - 打开后会打印启动分段（`main_ms`/`config_ms`/`event_loop_ms`/`fontdb_ms`/`font_steps_us`/
   `first_frame_ms` 等）与每 50 帧的耗时统计。
 - **面向用户的警告与错误不受影响**（配置告警、`hinting` 不支持、backend 回落、resize 说明等
   始终输出）。
 - 其它诊断钩子（`APP_DUMP_SNAPSHOT`、`APP_FRAME_HASH`、`APP_TEST_PASTE` 等）仅 debug 构建存在。
+- **wgpu 自身的 `WGPU_*` 环境变量在本构建中不生效**：本项目以 `default-features = false` 引入
+  wgpu 30.0.2，未启用其 `std` 特性，而 wgpu-types 的 `env::var` 在无 `std` 时恒返回 `None`
+  （`wgpu-types-30.0.2/src/env.rs`），因此 `WGPU_BACKEND`（wgpu 侧）、`WGPU_POWER_PREF`、
+  `WGPU_DX12_*`、`WGPU_GLES_MINOR_VERSION` 等一律无效。
+  本项目**只识别以下由自身解析的变量**：`WGPU_BACKEND`（本项目自己解析，逗号列表，大小写不敏感、
+  允许空白，无法识别的记号会报错）、`WGPU_ADAPTER_NAME`（名字子串匹配）、
+  `APP_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`APP_PERF_FRAMES`（诊断日志开关）。
 
 ## 已知平台限制
 

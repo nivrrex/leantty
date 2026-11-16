@@ -449,6 +449,10 @@ impl App {
             first_pty_byte_logged: false,
             pre_first_submit_logged: false,
             writer: None,
+            wake_counts: (0, 0, 0, 0),
+            got_event: false,
+            got_pty: false,
+            last_sel_clamp_log: None,
             last_geom_drawn: None,
             frames_window: (0, 0, 0, 0),
             next_frame_origin: 0,
@@ -855,6 +859,13 @@ struct AppHandler {
     /// 本窗口（5 秒）内渲染的帧数与按来源分类（阶段 4Q t3 观测）：
     /// (总数, OS 重绘触发, 缩放/尺寸事件触发, 其它/自驱动)。
     frames_window: (u32, u32, u32, u32),
+    /// 空闲唤醒来源计数（阶段 4S t2）：(loops, wake_timer, wake_event, wake_pty)
+    wake_counts: (u32, u32, u32, u32),
+    /// 本轮迭代是否由窗口事件/PTY 唤醒（用于区分"定时唤醒"）
+    got_event: bool,
+    got_pty: bool,
+    /// 上次打印"选区被 scrollback 截断"警告的时刻（阶段 4S t2 限速）。
+    last_sel_clamp_log: Option<Instant>,
     /// 上次真正画到屏幕上的滚动条几何（阶段 4Q t3 空闲判定用）。
     last_geom_drawn: Option<(u32, u32)>,
     /// 待归属的"下一个渲染帧来源"：1=OS 重绘, 2=缩放/尺寸, 0=其它。
@@ -1347,6 +1358,7 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
+        self.got_pty = true;
         // 唤醒：读线程来数据后经 proxy 发来；about_to_wait 将消费 channel。
     }
 
@@ -1356,6 +1368,7 @@ impl ApplicationHandler for AppHandler {
         _window_id: winit::window::WindowId,
         event: WindowEvent,
     ) {
+        self.got_event = true;
         match event {
             // winit 0.30 把 X11 的 Expose（以及遮挡恢复、窗口首次映射）都映射为
             // RedrawRequested；本 app 的自驱动重绘走 about_to_wait 的节流逻辑，
@@ -1541,6 +1554,23 @@ impl ApplicationHandler for AppHandler {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // 阶段 4S t2：唤醒来源计数（loops / 定时 / 事件 / PTY）
+        self.wake_counts.0 = self.wake_counts.0.saturating_add(1);
+        if self.got_event {
+            self.wake_counts.2 = self.wake_counts.2.saturating_add(1);
+        } else if self.got_pty {
+            self.wake_counts.3 = self.wake_counts.3.saturating_add(1);
+        } else {
+            self.wake_counts.1 = self.wake_counts.1.saturating_add(1);
+        }
+        self.got_event = false;
+        self.got_pty = false;
+        // 阶段 4S t2：**默认进入无限等待**。此前不重置控制流，上一轮设置的
+        // WaitUntil（其时刻往往已过去）会被保留，winit 立刻返回 → about_to_wait
+        // 再跑一轮 → 又渲染/再次返回，形成"每几毫秒一次"的空转（实测 cpu 空闲
+        // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
+        // 待办工作时再升级为 WaitUntil。
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
         // 阶段 4I t3：观测窗口重置（APP_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -1599,10 +1629,12 @@ impl ApplicationHandler for AppHandler {
                     }
                     _ => String::new(),
                 };
+                let (loops, wt, we, wp) = self.wake_counts;
                 eperf!(
-                    "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq} frames_window={fw} frames_os={fos} frames_resize={frs} frames_other={fot}{acq}"
+                    "[perf] loop_gap_ms={ms} feed_ms_max={fms:.1} feed_bytes_max={fb} writer_queued_max={wq} frames_window={fw} frames_os={fos} frames_resize={frs} frames_other={fot} loops={loops} wake_timer={wt} wake_event={we} wake_pty={wp}{acq}"
                 );
                 self.frames_window = (0, 0, 0, 0);
+                self.wake_counts = (0, 0, 0, 0);
                 if let Some(pf) = self.perf_frames.as_mut() {
                     pf.loop_gap_max_us = 0;
                 }
@@ -1790,10 +1822,20 @@ impl ApplicationHandler for AppHandler {
             let sb = self.sb_rows();
             let visible_max = sb + self.rows as usize;
             if max_abs as usize > visible_max {
-                eprintln!(
-                    "[selection] scrollback 截断：选区末行 {} 超出可见历史边界 {}，clamp",
-                    max_abs, visible_max
-                );
+                // 阶段 4S t2：**限速**。拖选 + 持续输出时该分支每帧成立，实测 6 分钟
+                // soak 里打印 17.5 万行（490 行/秒），stderr 写入本身把主线程拖出
+                // 1708ms 的停顿（loop_gap 观测）。语义不变，只把同一警告限到 1 秒一次。
+                let now = Instant::now();
+                let should_log = self
+                    .last_sel_clamp_log
+                    .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(1));
+                if should_log {
+                    self.last_sel_clamp_log = Some(now);
+                    eprintln!(
+                        "[selection] scrollback 截断：选区末行 {} 超出可见历史边界 {}，clamp（同一警告每秒最多一条）",
+                        max_abs, visible_max
+                    );
+                }
                 self.selection = Some(Selection {
                     anchor: sel.anchor,
                     focus: CellPos {

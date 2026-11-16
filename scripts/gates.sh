@@ -36,39 +36,56 @@ if [ -n "$(git status --porcelain)" ]; then
     fail "工作区不干净（先提交或 stash）"
 fi
 
-step "1/7 cargo test --workspace"
+step "1/8 cargo test --workspace"
 cargo test --workspace >/tmp/gates_test.log 2>&1 || { tail -30 /tmp/gates_test.log; fail "cargo test"; }
 grep -E "^test result:" /tmp/gates_test.log | tail -3
 
-step "2/7 clippy (debug, -D warnings)"
+step "2/8 clippy (debug, -D warnings)"
 cargo clippy --workspace --all-targets -- -D warnings >/tmp/gates_clippy_dbg.log 2>&1 \
     || { tail -30 /tmp/gates_clippy_dbg.log; fail "clippy debug"; }
 
-step "3/7 clippy (release, -D warnings)"
+step "3/8 clippy (release, -D warnings)"
 cargo clippy --release --workspace --all-targets -- -D warnings >/tmp/gates_clippy_rel.log 2>&1 \
     || { tail -30 /tmp/gates_clippy_rel.log; fail "clippy release"; }
 
-step "4/7 cargo build --release（告警必须为 0）"
+step "4/8 cargo build --release（告警必须为 0）"
 cargo build --release >/tmp/gates_build.log 2>&1 || { tail -30 /tmp/gates_build.log; fail "release build"; }
 WARN=$(grep -cE "^warning" /tmp/gates_build.log || true)
 echo "release 告警数=$WARN"
 [ "${WARN:-1}" -eq 0 ] || fail "release 构建有 $WARN 条告警"
 
-step "5/7 scripts/e2e/run_all.sh"
+step "5/8 scripts/e2e/run_all.sh"
 sh scripts/e2e/run_all.sh >/tmp/gates_e2e.log 2>&1 || { tail -40 /tmp/gates_e2e.log; fail "e2e"; }
 grep -E "e2e 汇总" /tmp/gates_e2e.log | tail -1
 grep -E "^FAIL" /tmp/gates_e2e.log && fail "e2e 有 FAIL 项"
 
-step "6/7 Windows 依赖树（wgpu 必须为 30.0.2）"
+step "6/8 Windows 依赖树（wgpu 必须为 30.0.2）"
 # 阶段 4P：Windows 目标已启用 wgpu（Vulkan+DX12），不再要求 wgpu 命中为 0；
 # 改为断言版本精确等于 30.0.2（本项目硬性锁定，不升级）。
 WV=$(cargo tree --target x86_64-pc-windows-gnu -e normal 2>/dev/null | grep -oE "wgpu v[0-9.]+" | sort -u | tr '\n' ' ')
 echo "Windows 目标 wgpu: ${WV:-<missing>}"
 [ "$(echo "$WV" | tr -d ' ')" = "wgpuv30.0.2" ] || fail "Windows 目标 wgpu 版本不是 30.0.2（实测：${WV:-无}）"
 
-step "7/7 Windows 目标检查"
+step "7/8 Windows 目标检查"
 cargo check --target x86_64-pc-windows-gnu --workspace --tests >/tmp/gates_win.log 2>&1 \
     || { tail -30 /tmp/gates_win.log; fail "windows-gnu 目标检查"; }
+
+step "8/8 wgpu 环境变量与特性防护"
+# 阶段 4R t3：wgpu-types 的 env::var 在未启用 std 特性时恒返回 None，因此 wgpu 自己的
+# `*::from_env()` 在本构建里全部失效。仓库内不得调用它们（否则是"看起来支持、实际不生效"
+# 的陷阱）；且 wgpu-types 不得被启用 std 特性——若将来有人启用，必须同时重新审查
+# 环境变量行为（见 PHASE4R-LINUX.md §3）。
+BAD_ENV=$(grep -rnE "\b(Backends|InstanceFlags|Dx12Compiler|Gles3MinorVersion|PowerPreference|BackendOptions)::from_env|wgpu::[A-Za-z_]+::from_env" crates/ --include=*.rs 2>/dev/null || true)
+if [ -n "$BAD_ENV" ]; then
+    echo "$BAD_ENV"
+    fail "crates/ 出现对 wgpu 的 from_env 调用（本构建下恒返回 None；请改用自有解析器）"
+fi
+STDFEAT=$(cargo tree -e features 2>/dev/null | grep -E 'wgpu-types feature "std"' || true)
+if [ -n "$STDFEAT" ]; then
+    echo "$STDFEAT"
+    fail "wgpu-types 启用了 std 特性——需要同时审查环境变量行为（WGPU_* 会突然生效）"
+fi
+echo "crates/ 无 wgpu from_env 调用；wgpu-types 未启用 std"
 
 # 再次确认工作区干净（run_all 不应修改受版本控制的文件）
 [ -z "$(git status --porcelain)" ] || { git status --porcelain | head -5; fail "门禁过程中工作区变脏"; }

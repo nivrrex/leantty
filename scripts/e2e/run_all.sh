@@ -2434,13 +2434,22 @@ else
         sleep 1.0
         x11 xdotool type --window "$WID" "seq 1 40"
         x11 xdotool key --window "$WID" Return
-        sleep 12          # 输出结束 + 收尾（覆盖两个 5 秒窗口）
-        IDLE49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
+        # 判定口径（阶段 4S t2 之后）：完全空闲意味着事件循环不再被唤醒，
+        # 也就不会再产生 5 秒统计行。因此"空闲/缩放收尾后 10 秒内无新增统计行"即等价于
+        # "0 帧、无定时唤醒"——比统计帧数更强的判据。
+        sleep 8            # 输出结束 + 尾沿收尾
+        N1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        sleep 10
+        N2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        IDLE49=$(( ${N2:-0} - ${N1:-0} ))
         x11 xdotool windowsize "$WID" 700 420
-        sleep 12
-        AFTER49=$(grep -oE "frames_window=[0-9]+" "$L49" | tail -1 | cut -d= -f2)
-        echo "  [c49 $variant] 空闲窗口帧数=${IDLE49:-NA} 缩放后窗口帧数=${AFTER49:-NA}（判据 ≤3）"
-        if [ "${IDLE49:-999}" -le 3 ] && [ "${AFTER49:-999}" -le 3 ]; then
+        sleep 3            # 缩放后收尾（应 1 秒内停止）
+        M1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        sleep 10
+        M2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
+        AFTER49=$(( ${M2:-0} - ${M1:-0} ))
+        echo "  [c49 $variant] 空闲 10s 新增统计行=$IDLE49（应 0） 缩放后 10s 新增=$AFTER49（应 0）"
+        if [ "$IDLE49" -eq 0 ] && [ "$AFTER49" -eq 0 ]; then
             OK49=$((OK49+1))
         fi
         stop_app
@@ -2449,6 +2458,57 @@ else
         echo "PASS case49-gpu-idle-no-spin ($OK49/$TOT49)"; PASS=$((PASS+1))
     else
         echo "FAIL case49-gpu-idle-no-spin ($OK49/$TOT49)"; FAIL=$((FAIL+1))
+    fi
+fi
+
+# 用例 50（4S-t2）：空闲时事件循环不得被定时唤醒（cpu 与 gpu 各一轮，release）。
+#   背景（4R t2 实测）：cpu 后端空闲 20 秒 utime+stime +267 tick（≈13% 单核）、
+#   voluntary ctx 2490、frames_window=623/5s；根因是 about_to_wait 不重置控制流，
+#   上一轮设置的 WaitUntil（时刻多已过去）被保留 → winit 立即返回 → 每几毫秒空转一次。
+#   修复：about_to_wait 入口默认 ControlFlow::Wait，只有确有代办工作才升级为 WaitUntil。
+#   判据：输出停止并收尾后，连续 12 秒内不得出现新的 5 秒统计行（即 loops=0），
+#   且这段时间 CPU tick 增量 ≤24（≈2% 单核）、voluntary ctx 增量 <150。
+APP_REL="${APP_REL:-$ROOT/target/release/app}"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case50-idle-no-timer-wake (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OK50=0; TOT50=0
+    for b50 in cpu gpu; do
+        TOT50=$((TOT50+1))
+        CFG50="$OUT/case50-$b50.toml"
+        L50="$OUT/case50-$b50.log"
+        printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$b50" > "$CFG50"
+        APP_CONFIG="$CFG50" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L50" 2>&1 &
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case50-idle-no-timer-wake-$b50 (窗口未出现)"; continue
+        fi
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.0
+        x11 xdotool type --window "$WID" "seq 1 40"
+        x11 xdotool key --window "$WID" Return
+        sleep 8                      # 输出结束 + 尾沿收尾
+        N1=$(grep -c "loop_gap_ms=" "$L50" 2>/dev/null || true)
+        read -r U1 S1 < <(awk '{print $14, $15}' "/proc/$APP_PID/stat")
+        V1=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$APP_PID/status")
+        sleep 12
+        N2=$(grep -c "loop_gap_ms=" "$L50" 2>/dev/null || true)
+        read -r U2 S2 < <(awk '{print $14, $15}' "/proc/$APP_PID/stat")
+        V2=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$APP_PID/status")
+        TICK=$(( (U2 + S2) - (U1 + S1) ))
+        VDELTA=$(( V2 - V1 ))
+        NEW=$(( ${N2:-0} - ${N1:-0} ))
+        echo "  [c50 $b50] 空闲 12s：新增统计行=$NEW（应 0，即 loops=0）CPU tick=$TICK（≤24）ctx增量=$VDELTA（<150）"
+        if [ "$NEW" -eq 0 ] && [ "$TICK" -le 24 ] && [ "$VDELTA" -lt 150 ]; then
+            OK50=$((OK50+1))
+        fi
+        stop_app
+    done
+    if [ "$OK50" -eq "$TOT50" ] && [ "$TOT50" -eq 2 ]; then
+        echo "PASS case50-idle-no-timer-wake ($OK50/$TOT50)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case50-idle-no-timer-wake ($OK50/$TOT50)"; FAIL=$((FAIL+1))
     fi
 fi
 
