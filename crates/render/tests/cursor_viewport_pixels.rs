@@ -2,8 +2,8 @@
 //!
 //! 光标色取与背景/文字显著不同的值，统计整窗该色像素：上滚后应为 0，回底后 > 0。
 
-use vt::ScrollViewport;
 use render::{CpuRenderer, FontSettings, FontSpec, RenderOptions, Renderer};
+use vt::ScrollViewport;
 use vt::{Rgb, VtPalette, VtTerminal};
 
 fn settings() -> FontSettings {
@@ -22,16 +22,28 @@ fn settings() -> FontSettings {
 }
 
 /// 光标色取醒目的品红，与默认前景(白)/背景(黑)都不同。
-const CURSOR: Rgb = Rgb { r: 0xFF, g: 0x00, b: 0xFF };
+const CURSOR: Rgb = Rgb {
+    r: 0xFF,
+    g: 0x00,
+    b: 0xFF,
+};
 
 fn palette() -> render::Palette {
     render::Palette {
         primary_bg: Rgb { r: 0, g: 0, b: 0 },
-        primary_fg: Rgb { r: 0xFF, g: 0xFF, b: 0xFF },
+        primary_fg: Rgb {
+            r: 0xFF,
+            g: 0xFF,
+            b: 0xFF,
+        },
         cursor_text: Rgb { r: 0, g: 0, b: 0 },
         cursor: CURSOR,
         normal: [Rgb { r: 0, g: 0, b: 0 }; 8],
-        bright: [Rgb { r: 0xFF, g: 0xFF, b: 0xFF }; 8],
+        bright: [Rgb {
+            r: 0xFF,
+            g: 0xFF,
+            b: 0xFF,
+        }; 8],
     }
 }
 
@@ -58,12 +70,16 @@ fn term() -> VtTerminal {
 
 /// 统计帧缓冲中等于光标块的像素数（块光标整格填充）。
 fn cursor_pixels(fb: &[u32]) -> usize {
-    let target = 0xFF00_0000 | (u32::from(CURSOR.r) << 16) | (u32::from(CURSOR.g) << 8) | u32::from(CURSOR.b);
+    let target = 0xFF00_0000
+        | (u32::from(CURSOR.r) << 16)
+        | (u32::from(CURSOR.g) << 8)
+        | u32::from(CURSOR.b);
     fb.iter().filter(|&&p| p == target).count()
 }
 
 fn render_cursor_pixels(mut t: &mut VtTerminal) -> (usize, bool) {
-    let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
+    let mut r =
+        CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
     let snap = t.snapshot().expect("snapshot");
     let (cw, ch) = r.cell_metrics(1.0);
     let pw = u32::from(snap.cols) * cw;
@@ -98,8 +114,8 @@ fn cursor_pixels_absent_after_scroll_up_and_back_after_bottom() {
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn cursor_pixels_absent_after_scroll_up_gpu() {
-    use render::gpu::GpuRenderer;
     use render::Error;
+    use render::gpu::GpuRenderer;
 
     let mut gpu = match GpuRenderer::new_offscreen(
         &settings(),

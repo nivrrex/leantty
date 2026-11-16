@@ -42,7 +42,10 @@ impl InputEvent {
     pub fn sends_bytes(self) -> bool {
         matches!(
             self,
-            InputEvent::Printable | InputEvent::EncodedKey | InputEvent::Paste | InputEvent::ImeCommit
+            InputEvent::Printable
+                | InputEvent::EncodedKey
+                | InputEvent::Paste
+                | InputEvent::ImeCommit
         )
     }
 }
@@ -111,7 +114,10 @@ mod tests {
             InputEvent::Paste,
             InputEvent::ImeCommit,
         ] {
-            assert!(!should_follow(ev, ALT, NO_MOUSE), "备用屏内 {ev:?} 不应触发回底");
+            assert!(
+                !should_follow(ev, ALT, NO_MOUSE),
+                "备用屏内 {ev:?} 不应触发回底"
+            );
         }
     }
 
@@ -125,7 +131,10 @@ mod tests {
             InputEvent::ImeCommit,
             InputEvent::Scroll,
         ] {
-            assert!(!should_follow(ev, MAIN, MOUSE), "鼠标上报模式下 {ev:?} 不应回底");
+            assert!(
+                !should_follow(ev, MAIN, MOUSE),
+                "鼠标上报模式下 {ev:?} 不应回底"
+            );
         }
     }
 

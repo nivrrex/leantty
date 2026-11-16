@@ -48,7 +48,11 @@ fn cursor_hidden_when_viewport_scrolled_above_cursor() {
     let snap = t.snapshot().expect("snapshot after scroll back");
     assert!(snap.cursor.visible, "滚回底部后光标应恢复可见");
     // 光标在最后一行的提示符之后：x = "prompt$ " 的长度 8，y = 9
-    assert_eq!((snap.cursor.x, snap.cursor.y), (8, 9), "回底后光标位置应正确");
+    assert_eq!(
+        (snap.cursor.x, snap.cursor.y),
+        (8, 9),
+        "回底后光标位置应正确"
+    );
 }
 
 /// 上滚 1 行：光标仍在视口内时，其**视口内** y 应比活动区坐标大 1。
@@ -95,7 +99,11 @@ fn cursor_visible_on_alternate_screen() {
     let snap = t.snapshot().expect("snapshot");
     assert!(snap.alternate_screen, "应在备用屏");
     assert!(snap.cursor.visible, "备用屏光标应可见");
-    assert_eq!((snap.cursor.x, snap.cursor.y), (4, 2), "备用屏光标位置应为活动区坐标");
+    assert_eq!(
+        (snap.cursor.x, snap.cursor.y),
+        (4, 2),
+        "备用屏光标位置应为活动区坐标"
+    );
 }
 
 /// 光标自身被隐藏（ESC[?25l）：无论视口位置都应不可见。

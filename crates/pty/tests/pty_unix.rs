@@ -34,7 +34,9 @@ fn pty_echo_cn_resize_close() {
     // 键盘写 → shell echo
     {
         let writer = pty.writer().expect("writer");
-        writer.write_all("echo 你好\n".as_bytes()).expect("write echo");
+        writer
+            .write_all("echo 你好\n".as_bytes())
+            .expect("write echo");
         writer.flush().expect("flush");
     }
 

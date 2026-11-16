@@ -19,14 +19,24 @@ fn rows_text_reads_history_without_moving_viewport() {
     let rows = vt.rows_text(0, 5, 20).expect("rows_text");
     assert_eq!(rows.len(), 6, "请求 6 行应返回 6 行");
     let text_of = |cells: &[vt::Cell]| cells.iter().map(|c| c.chars.as_str()).collect::<String>();
-    assert_eq!(text_of(&rows[0].0).trim_end(), "H000", "scrollback 顶行可读（视口外）");
+    assert_eq!(
+        text_of(&rows[0].0).trim_end(),
+        "H000",
+        "scrollback 顶行可读（视口外）"
+    );
     assert_eq!(text_of(&rows[5].0).trim_end(), "H005");
     // 视口不变（rows_text 只读）
     let snap_after = vt.snapshot().expect("snap");
     let first_after = snap_after.cells.first().cloned().unwrap_or_default();
     assert_eq!(
-        first_before.iter().map(|c| c.chars.clone()).collect::<Vec<_>>(),
-        first_after.iter().map(|c| c.chars.clone()).collect::<Vec<_>>(),
+        first_before
+            .iter()
+            .map(|c| c.chars.clone())
+            .collect::<Vec<_>>(),
+        first_after
+            .iter()
+            .map(|c| c.chars.clone())
+            .collect::<Vec<_>>(),
         "rows_text 不改变视口"
     );
     // 软折标记：20 列下 40 字符串行软折 2 行（上行 wrapped=true）

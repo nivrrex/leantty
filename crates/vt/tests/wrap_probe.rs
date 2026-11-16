@@ -37,7 +37,13 @@ fn wrapped_flags_probe_80col() {
     for (i, w) in snap.wrapped.iter().enumerate() {
         let t = row_text(&snap, i);
         if !t.is_empty() || i < 6 {
-            println!("row {}: wrapped={} text=[{}] len={}", i, w, t, t.chars().count());
+            println!(
+                "row {}: wrapped={} text=[{}] len={}",
+                i,
+                w,
+                t,
+                t.chars().count()
+            );
         }
     }
     // 提取断言在 app 侧 selection.rs 单测（vt 探针只验证标记填充）。

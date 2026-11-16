@@ -21,28 +21,42 @@ fn examples_load_without_warnings() {
         assert_eq!(c.window.opacity, 1.0);
         assert_eq!(c.scrolling.history, 10000);
         assert_eq!(c.scrolling.multiplier, 10.0);
-        assert!(c.scrolling.alt_screen_scroll, "默认 true（备用屏滚轮→方向键）");
+        assert!(
+            c.scrolling.alt_screen_scroll,
+            "默认 true（备用屏滚轮→方向键）"
+        );
         assert!(c.selection.save_to_clipboard);
         assert!(c.colors.draw_bold_text_with_bright_colors);
         assert_eq!(c.font.fallback.len(), 1);
         assert_eq!(c.mouse.bindings.len(), 2);
         assert_eq!(c.keyboard.bindings.len(), 2);
         if *name == "windows" {
-            assert_eq!(
-                c.terminal.shell.as_ref().unwrap().program,
-                "pwsh.exe"
-            );
+            assert_eq!(c.terminal.shell.as_ref().unwrap().program, "pwsh.exe");
             // 阶段 3A 任务 1：Windows 样例主字体改为小体积等宽西文 Consolas，
             // 大体积 CJK 字体（微软雅黑）放 fallback（主字体同步加载，大字体拖慢首帧）。
             assert_eq!(c.font.normal.family, "Consolas");
             assert_eq!(c.font.bold.family, "Consolas");
             assert_eq!(c.font.bold_italic.family, "Consolas");
             assert_eq!(c.font.fallback[0].family, "Microsoft YaHei");
-            assert_eq!(c.colors.primary.background, Rgb { r: 0xfc, g: 0xfc, b: 0xfc });
+            assert_eq!(
+                c.colors.primary.background,
+                Rgb {
+                    r: 0xfc,
+                    g: 0xfc,
+                    b: 0xfc
+                }
+            );
         } else {
             assert_eq!(c.font.normal.family, "Consolas");
             assert_eq!(c.font.fallback[0].family, "黑体");
-            assert_eq!(c.colors.primary.background, Rgb { r: 0xf3, g: 0xf1, b: 0xe9 });
+            assert_eq!(
+                c.colors.primary.background,
+                Rgb {
+                    r: 0xf3,
+                    g: 0xf1,
+                    b: 0xe9
+                }
+            );
         }
     }
 }
@@ -95,14 +109,18 @@ fn bindings_parsed_with_mods() {
 
 #[test]
 fn invalid_binding_skipped_with_warning() {
-    let (c, w) = config::parse("[[mouse.bindings]]\nmouse = \"Wheel\"\naction = \"Copy\"\n").unwrap();
+    let (c, w) =
+        config::parse("[[mouse.bindings]]\nmouse = \"Wheel\"\naction = \"Copy\"\n").unwrap();
     assert!(c.mouse.bindings.is_empty());
     assert!(w.iter().any(|x| x.contains("mouse")), "{w:?}");
 }
 
 #[test]
 fn action_and_mouse_parsing() {
-    assert_eq!(Action::from_str("PasteSelection"), Ok(Action::PasteSelection));
+    assert_eq!(
+        Action::from_str("PasteSelection"),
+        Ok(Action::PasteSelection)
+    );
     assert_eq!(Action::from_str("None"), Ok(Action::None));
     assert_eq!(Action::from_str("Bogus"), Err(()));
     assert_eq!(Mouse::from_str("Middle"), Ok(Mouse::Middle));
@@ -140,7 +158,10 @@ fn path_priority_cli_env_default() {
     assert_eq!(p, cli);
     unsafe {
         let env_path = tmp.join("app-config-test.toml");
-        std::env::set_var("APP_CONFIG", env_path.to_str().expect("temp 路径应为 UTF-8"));
+        std::env::set_var(
+            "APP_CONFIG",
+            env_path.to_str().expect("temp 路径应为 UTF-8"),
+        );
         let p = config::resolve_config_path(None).unwrap();
         assert_eq!(p, env_path);
         std::env::remove_var("APP_CONFIG");
@@ -168,12 +189,12 @@ fn path_priority_cli_env_default() {
         #[cfg(not(windows))]
         {
             let xdg = tmp.join("xdg-test");
-            std::env::set_var("XDG_CONFIG_HOME", xdg.to_str().expect("temp 路径应为 UTF-8"));
-            let p = config::default_config_path().unwrap();
-            assert!(
-                p.starts_with(&xdg),
-                "path {p:?} should start with {xdg:?}"
+            std::env::set_var(
+                "XDG_CONFIG_HOME",
+                xdg.to_str().expect("temp 路径应为 UTF-8"),
             );
+            let p = config::default_config_path().unwrap();
+            assert!(p.starts_with(&xdg), "path {p:?} should start with {xdg:?}");
             assert!(
                 p.ends_with(std::path::Path::new(&name).join(format!("{name}.toml"))),
                 "path {p:?} should end with {name}/<bin>.toml"

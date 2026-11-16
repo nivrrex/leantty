@@ -2,7 +2,7 @@
 use std::io::Read;
 use std::sync::mpsc;
 
-use app::{reader_body, Error, Wake};
+use app::{Error, Wake, reader_body};
 
 /// 模拟事件循环已关闭的 waker。
 struct LoopClosedWaker;
@@ -38,7 +38,9 @@ fn loop_closed_no_report_and_reader_exits() {
     let mut reported: Vec<String> = Vec::new();
     let mut reader = InfiniteReader;
     let waker = LoopClosedWaker;
-    reader_body(&mut reader, &tx, &waker, &mut |m| reported.push(m.to_string()));
+    reader_body(&mut reader, &tx, &waker, &mut |m| {
+        reported.push(m.to_string())
+    });
     assert!(
         reported.is_empty(),
         "EventLoopClosed 不应上报，实测: {:?}",
@@ -52,7 +54,9 @@ fn other_error_reported_and_reader_exits() {
     let mut reported: Vec<String> = Vec::new();
     let mut reader = InfiniteReader;
     let waker = OtherErrWaker;
-    reader_body(&mut reader, &tx, &waker, &mut |m| reported.push(m.to_string()));
+    reader_body(&mut reader, &tx, &waker, &mut |m| {
+        reported.push(m.to_string())
+    });
     assert_eq!(reported.len(), 1, "其他错误应上报一次");
     assert!(
         reported[0].contains("proxy down"),
@@ -77,7 +81,8 @@ struct CountingWaker {
 
 impl Wake for CountingWaker {
     fn wake(&self) -> Result<(), Error> {
-        self.count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 }
@@ -126,10 +131,7 @@ fn full_channel_retries_and_delivers_all_without_deadlock() {
     let waker = CountingWaker {
         count: std::sync::atomic::AtomicUsize::new(0),
     };
-    let mut reader = LimitedReader {
-        left: 200,
-        next: 0,
-    };
+    let mut reader = LimitedReader { left: 200, next: 0 };
     // 消费者线程：每次取一条，模拟主线程稍慢（触发通道满 → 读线程重试路径）。
     let consumer = std::thread::spawn(move || {
         let mut got: Vec<u8> = Vec::new();
@@ -145,7 +147,9 @@ fn full_channel_retries_and_delivers_all_without_deadlock() {
         got
     });
     let mut reported: Vec<String> = Vec::new();
-    reader_body(&mut reader, &tx, &waker, &mut |m| reported.push(m.to_string()));
+    reader_body(&mut reader, &tx, &waker, &mut |m| {
+        reported.push(m.to_string())
+    });
     drop(tx);
     let got = consumer.join().expect("consumer");
     assert!(reported.is_empty(), "不应上报错误：{reported:?}");

@@ -62,12 +62,7 @@ pub struct GlyphAtlas {
 }
 
 impl GlyphAtlas {
-    pub fn new(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        max_texture: u32,
-        initial: u32,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, max_texture: u32, initial: u32) -> Self {
         let size = initial.min(max_texture).max(64);
         let (texture, view) = create_texture(device, size);
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -217,8 +212,7 @@ impl GlyphAtlas {
                 for gy in 0..h {
                     let src = (gy * w) as usize;
                     let dst = ((y0 + gy) * self.size + x0) as usize;
-                    self.pixels[dst..dst + w as usize]
-                        .copy_from_slice(&px[src..src + w as usize]);
+                    self.pixels[dst..dst + w as usize].copy_from_slice(&px[src..src + w as usize]);
                 }
                 self.map.insert(
                     k,

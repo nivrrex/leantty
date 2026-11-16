@@ -51,7 +51,9 @@ fn new_renderer() -> Option<CpuRenderer> {
 fn synth(cols: u16, rows: u16, seed: u64) -> FrameSnapshot {
     let mut st = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
     let mut next = || {
-        st = st.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        st = st
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (st >> 33) as u32
     };
     let mut cells: Vec<Vec<Cell>> = Vec::new();
@@ -64,7 +66,11 @@ fn synth(cols: u16, rows: u16, seed: u64) -> FrameSnapshot {
                 let ch = ['中', '文', '宽', '字'][(v as usize / 7) % 4];
                 line.push(Cell {
                     chars: ch.to_string(),
-                    fg: Some(Rgb { r: (v % 256) as u8, g: 100, b: 200 }),
+                    fg: Some(Rgb {
+                        r: (v % 256) as u8,
+                        g: 100,
+                        b: 200,
+                    }),
                     wide: CellWide::Wide,
                     ..Default::default()
                 });
@@ -79,12 +85,20 @@ fn synth(cols: u16, rows: u16, seed: u64) -> FrameSnapshot {
             line.push(Cell {
                 chars: ((b'a' + (v % 26) as u8) as char).to_string(),
                 fg: if v % 5 == 0 {
-                    Some(Rgb { r: 200, g: 30, b: 30 })
+                    Some(Rgb {
+                        r: 200,
+                        g: 30,
+                        b: 30,
+                    })
                 } else {
                     None
                 },
                 bg: if v % 7 == 0 {
-                    Some(Rgb { r: 30, g: 40, b: 60 })
+                    Some(Rgb {
+                        r: 30,
+                        g: 40,
+                        b: 60,
+                    })
                 } else {
                     None
                 },
@@ -144,7 +158,13 @@ impl Harness {
     }
 
     /// 同步两个渲染器的静态外观状态（选区/滚动条/预编辑）。
-    fn sync_appearance(&mut self, snap: &FrameSnapshot, sel: Option<(u16, u16, u16, u16)>, sb: Option<(u32, u32)>, pre: Option<PreeditOverlay>) {
+    fn sync_appearance(
+        &mut self,
+        snap: &FrameSnapshot,
+        sel: Option<(u16, u16, u16, u16)>,
+        sb: Option<(u32, u32)>,
+        pre: Option<PreeditOverlay>,
+    ) {
         for r in [&mut self.incr, &mut self.full] {
             r.set_selection(sel);
             r.set_scrollbar(sb);
@@ -159,11 +179,17 @@ impl Harness {
         // 同一快照强制全量渲染（full_redraw 清脏后与增量路径应产出相同像素）
         let mut full_snap = snap.clone();
         full_snap.full_redraw = true;
-        self.full.render(&full_snap, self.pw, self.ph).expect("全量渲染");
+        self.full
+            .render(&full_snap, self.pw, self.ph)
+            .expect("全量渲染");
         let a = self.incr.framebuffer();
         let b = self.full.framebuffer();
         if a.len() != b.len() {
-            return Err(format!("[{label}] 帧缓冲长度不同 {} vs {}", a.len(), b.len()));
+            return Err(format!(
+                "[{label}] 帧缓冲长度不同 {} vs {}",
+                a.len(),
+                b.len()
+            ));
         }
         let w = self.pw as usize;
         for (i, (pa, pb)) in a.iter().zip(b.iter()).enumerate() {
@@ -188,12 +214,15 @@ impl Harness {
 
 #[test]
 fn incremental_matches_full_pixel_exact() {
-    let Some(mut h) = Harness::new(40, 12) else { return; };
+    let Some(mut h) = Harness::new(40, 12) else {
+        return;
+    };
     h.sync_appearance(&synth(40, 12, 1), None, None, None);
     let mut snap = synth(40, 12, 1);
 
     // 1) 初始整屏
-    h.step(&mut snap, "初始整屏").unwrap_or_else(|e| panic!("{e}"));
+    h.step(&mut snap, "初始整屏")
+        .unwrap_or_else(|e| panic!("{e}"));
 
     // 2) 逐行修改：每步改一行，只有该行脏
     for y in 0..snap.rows {
@@ -204,7 +233,8 @@ fn incremental_matches_full_pixel_exact() {
             }
         }
         snap.mark_row_dirty(y);
-        h.step(&mut snap, &format!("修改行 {y}")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut snap, &format!("修改行 {y}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
 
     // 3) 光标移动（含反转、隐藏）
@@ -214,10 +244,21 @@ fn incremental_matches_full_pixel_exact() {
         (7, 4, false, CursorStyle::Underline),
         (0, 0, true, CursorStyle::Bar),
     ] {
-        snap.cursor = Cursor { x, y, visible: vis, style };
-        h.step(&mut snap, &format!("光标 ({x},{y}) visible={vis}")).unwrap_or_else(|e| panic!("{e}"));
+        snap.cursor = Cursor {
+            x,
+            y,
+            visible: vis,
+            style,
+        };
+        h.step(&mut snap, &format!("光标 ({x},{y}) visible={vis}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
-    snap.cursor = Cursor { x: 2, y: 1, visible: true, style: CursorStyle::Block };
+    snap.cursor = Cursor {
+        x: 2,
+        y: 1,
+        visible: true,
+        style: CursorStyle::Block,
+    };
 
     // 4) 选区变化（app 侧会标脏涉及行；这里模拟该行为）
     let mut last_sel: Option<(u16, u16, u16, u16)> = None;
@@ -241,7 +282,8 @@ fn incremental_matches_full_pixel_exact() {
             }
             last_sel = sel;
         }
-        h.step(&mut snap, &format!("选区 {i}")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut snap, &format!("选区 {i}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
 
     // 5) 滚动条变化（含出现/移动/消失）
@@ -256,7 +298,8 @@ fn incremental_matches_full_pixel_exact() {
     .enumerate()
     {
         h.sync_appearance(&snap, None, sb, None);
-        h.step(&mut snap, &format!("滚动条 {i}")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut snap, &format!("滚动条 {i}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
 
     // 6) Preedit 出现/变化/消失（render 内部按布局变化标脏）
@@ -270,7 +313,8 @@ fn incremental_matches_full_pixel_exact() {
     .enumerate()
     {
         h.sync_appearance(&snap, None, None, pre);
-        h.step(&mut snap, &format!("预编辑 {i}")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut snap, &format!("预编辑 {i}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
 
     // 7) 宽字符行/反显行整行变化
@@ -280,11 +324,11 @@ fn incremental_matches_full_pixel_exact() {
             c.inverse = !c.inverse;
         }
         snap.mark_row_dirty(y);
-        h.step(&mut snap, &format!("反显翻转行 {y}")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut snap, &format!("反显翻转行 {y}"))
+            .unwrap_or_else(|e| panic!("{e}"));
     }
     println!("incremental vs full：全部步骤逐像素一致");
 }
-
 
 /// 固定种子伪随机操作序列：写文本、清屏、滚动、resize、缩放、选区、光标、preedit，
 /// 每步比较增量与全量帧缓冲；不一致即失败并打印种子与首个差异坐标。
@@ -308,7 +352,9 @@ fn incremental_random_sequence_3000_steps() {
 
     let mut cols: u16 = 40;
     let mut rows: u16 = 12;
-    let Some(mut h) = Harness::new(cols, rows) else { return; };
+    let Some(mut h) = Harness::new(cols, rows) else {
+        return;
+    };
     let mut snap = synth(cols, rows, seed);
     let mut sel: Option<(u16, u16, u16, u16)> = None;
     let mut sb: Option<(u32, u32)> = None;
@@ -324,16 +370,16 @@ fn incremental_random_sequence_3000_steps() {
         // 权重（阶段 3B 任务 3）：滚动类占比提高——0..3 写文本、3..6 滚动、
         // 其余为清屏/resize/缩放/选区/光标/preedit。
         let op = match rnd() % 16 {
-            0..=5 => 0u32,  // 写文本
-            6..=11 => 2,    // 滚动（重点）
-            12 => 1,        // 清屏
-            13 => 3,        // resize
-            14 => 4,        // 缩放
-            _ => 5,         // 选区
+            0..=5 => 0u32, // 写文本
+            6..=11 => 2,   // 滚动（重点）
+            12 => 1,       // 清屏
+            13 => 3,       // resize
+            14 => 4,       // 缩放
+            _ => 5,        // 选区
         };
         let op2 = match rnd() % 8 {
-            0 => 6,         // 光标
-            _ => 7,         // preedit
+            0 => 6, // 光标
+            _ => 7, // preedit
         };
         let chosen = if rnd() % 4 == 0 { op2 } else { op };
         match chosen {
@@ -353,7 +399,11 @@ fn incremental_random_sequence_3000_steps() {
                 // 清屏：全部行换成背景
                 for row in snap.cells.iter_mut() {
                     for c in row.iter_mut() {
-                        c.chars = if c.wide == CellWide::Narrow { " ".to_string() } else { String::new() };
+                        c.chars = if c.wide == CellWide::Narrow {
+                            " ".to_string()
+                        } else {
+                            String::new()
+                        };
                         c.fg = None;
                         c.bg = None;
                         c.inverse = false;
@@ -464,7 +514,9 @@ fn incremental_random_sequence_3000_steps() {
 /// （阶段 3C 任务 6 已删除位移复用实现，本用例继续覆盖滚动场景的增量正确性。）
 #[test]
 fn scroll_sequence_matches_full() {
-    let Some(mut h) = Harness::new(40, 12) else { return; };
+    let Some(mut h) = Harness::new(40, 12) else {
+        return;
+    };
     let mut base = synth(40, 12, 7);
     // 稳定内容：每行用行号文本，便于构造整体位移
     for (y, row) in base.cells.iter_mut().enumerate() {
@@ -493,7 +545,8 @@ fn scroll_sequence_matches_full() {
         }
         next.dirty_rows.iter_mut().for_each(|d| *d = true);
         next.full_redraw = false;
-        h.step(&mut next, &format!("上滚 {shift} 行")).unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut next, &format!("上滚 {shift} 行"))
+            .unwrap_or_else(|e| panic!("{e}"));
         cur = next;
     }
 
@@ -510,7 +563,8 @@ fn scroll_sequence_matches_full() {
         }
         next.dirty_rows.iter_mut().for_each(|d| *d = true);
         next.full_redraw = false;
-        h.step(&mut next, "下滚 5 行").unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut next, "下滚 5 行")
+            .unwrap_or_else(|e| panic!("{e}"));
         cur = next;
     }
 
@@ -526,7 +580,8 @@ fn scroll_sequence_matches_full() {
         }
         next.dirty_rows.iter_mut().for_each(|d| *d = true);
         next.full_redraw = false;
-        h.step(&mut next, "滚动+改行").unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut next, "滚动+改行")
+            .unwrap_or_else(|e| panic!("{e}"));
         cur = next;
     }
 
@@ -547,7 +602,8 @@ fn scroll_sequence_matches_full() {
         h.sync_appearance(&next, sel, None, None);
         // 模拟 app 侧选区脏
         next.mark_rows_dirty(2, 6);
-        h.step(&mut next, "滚动+选区变化").unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut next, "滚动+选区变化")
+            .unwrap_or_else(|e| panic!("{e}"));
         cur = next;
         h.sync_appearance(&cur, None, None, None);
     }
@@ -563,10 +619,16 @@ fn scroll_sequence_matches_full() {
                 }
             }
         }
-        next.cursor = Cursor { x: 5, y: 7, visible: true, style: CursorStyle::Block };
+        next.cursor = Cursor {
+            x: 5,
+            y: 7,
+            visible: true,
+            style: CursorStyle::Block,
+        };
         next.dirty_rows.iter_mut().for_each(|d| *d = true);
         next.full_redraw = false;
-        h.step(&mut next, "滚动+光标移动").unwrap_or_else(|e| panic!("{e}"));
+        h.step(&mut next, "滚动+光标移动")
+            .unwrap_or_else(|e| panic!("{e}"));
     }
     println!("滚动序列：全部场景与强制全量逐像素一致");
 }

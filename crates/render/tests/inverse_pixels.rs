@@ -83,7 +83,8 @@ fn count_color(fb: &[u32], pw: u32, cw: u32, ch: u32, idx: u32, c: Rgb) -> usize
 }
 
 fn render_one(cells: Vec<Cell>, palette: Palette) -> (Vec<u32>, u32, u32, u32, u32) {
-    let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), palette).expect("CpuRenderer");
+    let mut r =
+        CpuRenderer::new(&settings(), RenderOptions::default(), palette).expect("CpuRenderer");
     let (cw, ch) = r.cell_metrics(1.0);
     let snap = snap_of(cells);
     let pw = cw * snap.cols as u32;
@@ -114,8 +115,16 @@ fn inverse_cell_renders_white_background_black_glyph() {
 #[test]
 fn inverse_cell_swaps_colored_fg_and_bg() {
     let p = Palette::default();
-    let fg = Rgb { r: 0x20, g: 0x80, b: 0x40 }; // 绿
-    let bg = Rgb { r: 0xC0, g: 0x40, b: 0x20 }; // 橙
+    let fg = Rgb {
+        r: 0x20,
+        g: 0x80,
+        b: 0x40,
+    }; // 绿
+    let bg = Rgb {
+        r: 0xC0,
+        g: 0x40,
+        b: 0x20,
+    }; // 橙
     let mut c = cell('H');
     c.fg = Some(fg);
     c.bg = Some(bg);
@@ -138,8 +147,7 @@ fn selection_keeps_inverse_style_correct() {
     let p = Palette::default();
     let mut c = cell('H');
     c.inverse = true;
-    let mut r =
-        CpuRenderer::new(&settings(), RenderOptions::default(), p).expect("CpuRenderer");
+    let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), p).expect("CpuRenderer");
     r.set_selection(Some((0, 0, 0, 0)));
     let (cw, ch) = r.cell_metrics(1.0);
     let snap = snap_of(vec![c]);
@@ -151,7 +159,10 @@ fn selection_keeps_inverse_style_correct() {
     let black = count_color(&fb, pw, cw, ch, 0, p.primary_bg);
     let total = (cw * ch) as usize;
     eprintln!("选区 + inverse 'H': 白={white} 黑={black} 总={total}");
-    assert!(white * 2 > total, "选区反色应为白底（实测白 {white}/{total}）");
+    assert!(
+        white * 2 > total,
+        "选区反色应为白底（实测白 {white}/{total}）"
+    );
     assert!(black > 0, "选区反色应有黑字");
 }
 
@@ -181,8 +192,8 @@ fn cursor_block_on_inverse_cell_keeps_glyph_visible() {
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 #[test]
 fn inverse_cell_gpu_absolute_pixels() {
-    use render::gpu::GpuRenderer;
     use render::Error;
+    use render::gpu::GpuRenderer;
 
     let p = Palette::default();
     let mut gpu = match GpuRenderer::new_offscreen(
@@ -209,7 +220,8 @@ fn inverse_cell_gpu_absolute_pixels() {
     for y in 0..ch {
         for x in 0..cw {
             let i = ((y * pw + x) * 4) as usize;
-            let px = (u32::from(rgba[i]) << 16) | (u32::from(rgba[i + 1]) << 8) | u32::from(rgba[i + 2]);
+            let px =
+                (u32::from(rgba[i]) << 16) | (u32::from(rgba[i + 1]) << 8) | u32::from(rgba[i + 2]);
             if eq_rgb(px, p.primary_fg) {
                 white += 1;
             } else if eq_rgb(px, p.primary_bg) {

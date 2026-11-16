@@ -6,7 +6,12 @@
 use fontdb::{Database, Family, Query, Source, Weight};
 
 /// 依次尝试的等宽字体族（覆盖 Linux / Windows 常见系统字体）。
-const CANDIDATES: &[&str] = &["DejaVu Sans Mono", "Consolas", "Courier New", "Liberation Mono"];
+const CANDIDATES: &[&str] = &[
+    "DejaVu Sans Mono",
+    "Consolas",
+    "Courier New",
+    "Liberation Mono",
+];
 
 /// 按族名查询并返回字体字节（找不到返回 None）。
 fn load_mono_font_bytes() -> Option<Vec<u8>> {
@@ -33,14 +38,11 @@ fn load_mono_font_bytes() -> Option<Vec<u8>> {
 #[test]
 fn cell_metrics_scales_with_size_and_scale_factor() {
     let Some(data) = load_mono_font_bytes() else {
-        eprintln!(
-            "SKIP: 系统中找不到任何候选等宽字体（{:?}）",
-            CANDIDATES
-        );
+        eprintln!("SKIP: 系统中找不到任何候选等宽字体（{:?}）", CANDIDATES);
         return;
     };
-    let font = fontdue::Font::from_bytes(data.as_slice(), Default::default())
-        .expect("测试字体应可解析");
+    let font =
+        fontdue::Font::from_bytes(data.as_slice(), Default::default()).expect("测试字体应可解析");
     let (w1, h1) = render::cell_metrics(&font, 13.0, 1.0);
     let (w2, h2) = render::cell_metrics(&font, 26.0, 1.0);
     assert!(w2 > w1, "字号翻倍宽应增大: {w1} -> {w2}");

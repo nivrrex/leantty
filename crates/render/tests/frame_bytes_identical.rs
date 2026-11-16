@@ -109,7 +109,8 @@ fn cell_metrics() -> (u32, u32) {
 fn render_hash() -> (u64, u32, u32) {
     let mut t = VtTerminal::new_with_palette(40, 12, &vt_palette()).expect("VtTerminal");
     t.feed(SCRIPT);
-    let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
+    let mut r =
+        CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
     let (cw, ch) = r.cell_metrics(1.0);
     let snap = t.snapshot().expect("snapshot");
     let pw = u32::from(snap.cols) * cw;

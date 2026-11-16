@@ -29,9 +29,21 @@ fn settings() -> FontSettings {
 }
 
 /// 默认前景（primary.foreground）与 normal[7] 取不同值，便于区分两条语义。
-const PRIMARY_FG: Rgb = Rgb { r: 0x11, g: 0x22, b: 0x33 };
-const NORMAL7: Rgb = Rgb { r: 0xAB, g: 0xCD, b: 0xEF };
-const BG: Rgb = Rgb { r: 0x00, g: 0x00, b: 0x00 };
+const PRIMARY_FG: Rgb = Rgb {
+    r: 0x11,
+    g: 0x22,
+    b: 0x33,
+};
+const NORMAL7: Rgb = Rgb {
+    r: 0xAB,
+    g: 0xCD,
+    b: 0xEF,
+};
+const BG: Rgb = Rgb {
+    r: 0x00,
+    g: 0x00,
+    b: 0x00,
+};
 
 fn palette() -> Palette {
     let mut normal = [Rgb { r: 0, g: 0, b: 0 }; 8];
@@ -88,7 +100,8 @@ fn pixel_at_cpu(r: &CpuRenderer, col: u32, row: u32, cw: u32, ch: u32) -> u32 {
 }
 
 fn render_cpu(t: &mut VtTerminal) -> (CpuRenderer, u32, u32) {
-    let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
+    let mut r =
+        CpuRenderer::new(&settings(), RenderOptions::default(), palette()).expect("renderer");
     let (cw, ch) = r.cell_metrics(1.0);
     let snap = t.snapshot().expect("snapshot");
     let pw = u32::from(snap.cols) * cw;
@@ -134,7 +147,10 @@ fn inverse_without_explicit_color_uses_primary_foreground_as_background() {
 /// 两个取值必须不同，否则上面的两个测试无法区分语义。
 #[test]
 fn palette_values_are_distinguishable() {
-    assert_ne!(NORMAL7, PRIMARY_FG, "normal[7] 与 primary.foreground 必须不同");
+    assert_ne!(
+        NORMAL7, PRIMARY_FG,
+        "normal[7] 与 primary.foreground 必须不同"
+    );
     assert_ne!(NORMAL7, BG);
     assert_ne!(PRIMARY_FG, BG);
 }

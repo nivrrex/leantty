@@ -7,7 +7,6 @@
 //! - 字段级问题（类型错误、颜色非法、数值越界、未知字段）：stderr 警告，
 //!   该字段回落默认，配置整体仍可用
 
-
 /// 与库内一致：`[perf]` 诊断行受 `APP_PERF_FRAMES` 门控（阶段 4O t3）。
 fn perf_on() -> bool {
     std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty())
@@ -56,7 +55,9 @@ fn main() -> Result<(), app::Error> {
     eperf!(
         "[perf] config_ms={:.1} since_start={:.1}",
         t_cfg.elapsed().as_secs_f64() * 1000.0,
-        app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
+        app::start_time()
+            .map(|t| t.elapsed().as_secs_f64() * 1000.0)
+            .unwrap_or(0.0)
     );
     let t_app = std::time::Instant::now();
     let app = app::App::new(config);
@@ -64,7 +65,9 @@ fn main() -> Result<(), app::Error> {
     eperf!(
         "[perf] app_new_ms={:.1} since_start={:.1}",
         t_app.elapsed().as_secs_f64() * 1000.0,
-        app::start_time().map(|t| t.elapsed().as_secs_f64() * 1000.0).unwrap_or(0.0)
+        app::start_time()
+            .map(|t| t.elapsed().as_secs_f64() * 1000.0)
+            .unwrap_or(0.0)
     );
     app.run()
 }

@@ -6,7 +6,9 @@
 //! 与 e2e case30 的分工：e2e 通过截图验证"清除后无残影"，但 shell 回显会覆盖
 //! 预编辑所在行，无法单独证伪跨行标脏；本测试在渲染层直接对拍（无 shell 干扰）。
 
-use render::{CpuRenderer, FontSettings, FontSpec, Palette, PreeditOverlay, RenderOptions, Renderer};
+use render::{
+    CpuRenderer, FontSettings, FontSpec, Palette, PreeditOverlay, RenderOptions, Renderer,
+};
 use vt::{Cursor, CursorStyle, FrameSnapshot};
 
 fn settings() -> FontSettings {
@@ -44,7 +46,9 @@ fn blank_frame(cols: u16, rows: u16) -> FrameSnapshot {
     FrameSnapshot {
         cols,
         rows,
-        cells: (0..rows).map(|_| (0..cols).map(|_| cell()).collect()).collect(),
+        cells: (0..rows)
+            .map(|_| (0..cols).map(|_| cell()).collect())
+            .collect(),
         cursor: Cursor {
             x: 0,
             y: 0,
@@ -60,7 +64,8 @@ fn blank_frame(cols: u16, rows: u16) -> FrameSnapshot {
 }
 
 fn new_renderer() -> CpuRenderer {
-    CpuRenderer::new(&settings(), RenderOptions::default(), Palette::default()).expect("CpuRenderer")
+    CpuRenderer::new(&settings(), RenderOptions::default(), Palette::default())
+        .expect("CpuRenderer")
 }
 
 #[test]
@@ -113,7 +118,10 @@ fn preedit_clear_repaints_all_spanned_rows() {
     if !residual.is_empty() {
         let pw_usize = pw as usize;
         let rows_hit: Vec<usize> = {
-            let mut v: Vec<usize> = residual.iter().map(|i| i / pw_usize / ch as usize).collect();
+            let mut v: Vec<usize> = residual
+                .iter()
+                .map(|i| i / pw_usize / ch as usize)
+                .collect();
             v.sort_unstable();
             v.dedup();
             v

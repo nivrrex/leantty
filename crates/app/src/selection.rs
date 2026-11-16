@@ -124,7 +124,9 @@ pub fn extract_rows(rows: &[(&[Cell], bool)], min_col: u16, max_col: u16) -> Str
     for (cells, wrapped) in rows {
         let mut seg = String::new();
         for col in min_col..=max_col {
-            let Some(cell) = cells.get(col as usize) else { continue };
+            let Some(cell) = cells.get(col as usize) else {
+                continue;
+            };
             if cell.wide == CellWide::SpacerTail || cell.wide == CellWide::SpacerHead {
                 continue;
             }
@@ -234,86 +236,105 @@ mod tests {
         let _ = Rgb { r: 0, g: 0, b: 0 };
         let _ = Underline::Single;
     }
-/// 多行合成快照（含每行软折行标记）。
-fn snap_multi(rows: Vec<(Vec<Cell>, bool)>) -> FrameSnapshot {
-    let rows_n = rows.len() as u16;
-    let cols = rows.iter().map(|(c, _)| c.len()).max().unwrap_or(0) as u16;
-    let mut cells = Vec::with_capacity(rows_n as usize);
-    let mut wrapped = Vec::with_capacity(rows_n as usize);
-    for (c, w) in rows {
-        cells.push(c);
-        wrapped.push(w);
+    /// 多行合成快照（含每行软折行标记）。
+    fn snap_multi(rows: Vec<(Vec<Cell>, bool)>) -> FrameSnapshot {
+        let rows_n = rows.len() as u16;
+        let cols = rows.iter().map(|(c, _)| c.len()).max().unwrap_or(0) as u16;
+        let mut cells = Vec::with_capacity(rows_n as usize);
+        let mut wrapped = Vec::with_capacity(rows_n as usize);
+        for (c, w) in rows {
+            cells.push(c);
+            wrapped.push(w);
+        }
+        FrameSnapshot {
+            cols,
+            rows: rows_n,
+            cells,
+            cursor: Cursor {
+                x: 0,
+                y: 0,
+                visible: false,
+                style: CursorStyle::Block,
+            },
+            scrollback_rows: 0,
+            alternate_screen: false,
+            wrapped,
+            dirty_rows: vec![true; rows_n as usize],
+            full_redraw: true,
+        }
     }
-    FrameSnapshot {
-        cols,
-        rows: rows_n,
-        cells,
-        cursor: Cursor {
-            x: 0,
-            y: 0,
-            visible: false,
-            style: CursorStyle::Block,
-        },
-        scrollback_rows: 0,
-        alternate_screen: false,
-        wrapped,
-        dirty_rows: vec![true; rows_n as usize],
-        full_redraw: true,
+
+    #[test]
+    fn extract_text_soft_wrap_joins_without_separator() {
+        // 行 0 软折行（wrapped=true）→与行 1 拼接无分隔。
+        let snap = snap_multi(vec![
+            (vec![cell("AB", CellWide::Narrow)], true),
+            (vec![cell("CD", CellWide::Narrow)], false),
+        ]);
+        assert_eq!(
+            extract_text(&snap, (0, 0, 0, 1)),
+            "ABCD",
+            "软折行处不插分隔"
+        );
     }
-}
 
-#[test]
-fn extract_text_soft_wrap_joins_without_separator() {
-    // 行 0 软折行（wrapped=true）→与行 1 拼接无分隔。
-    let snap = snap_multi(vec![
-        (vec![cell("AB", CellWide::Narrow)], true),
-        (vec![cell("CD", CellWide::Narrow)], false),
-    ]);
-    assert_eq!(extract_text(&snap, (0, 0, 0, 1)), "ABCD", "软折行处不插分隔");
-}
+    #[test]
+    fn extract_text_hard_wrap_inserts_newline() {
+        // 行 0 非 wrapped→逻辑行结束，行 1 间插 \n。
+        let snap = snap_multi(vec![
+            (vec![cell("AB", CellWide::Narrow)], false),
+            (vec![cell("CD", CellWide::Narrow)], false),
+        ]);
+        assert_eq!(extract_text(&snap, (0, 0, 0, 1)), "AB\nCD", "硬换行插 \\n");
+    }
 
-#[test]
-fn extract_text_hard_wrap_inserts_newline() {
-    // 行 0 非 wrapped→逻辑行结束，行 1 间插 \n。
-    let snap = snap_multi(vec![
-        (vec![cell("AB", CellWide::Narrow)], false),
-        (vec![cell("CD", CellWide::Narrow)], false),
-    ]);
-    assert_eq!(extract_text(&snap, (0, 0, 0, 1)), "AB\nCD", "硬换行插 \\n");
-}
+    #[test]
+    fn extract_text_mixed_soft_and_hard_wrap() {
+        // 软折（A→B）+硬换行（B|C）+硬换行（C|D）混合。
+        let snap = snap_multi(vec![
+            (vec![cell("A", CellWide::Narrow)], true),
+            (vec![cell("B", CellWide::Narrow)], false),
+            (vec![cell("C", CellWide::Narrow)], false),
+            (vec![cell("D", CellWide::Narrow)], false),
+        ]);
+        assert_eq!(
+            extract_text(&snap, (0, 0, 0, 3)),
+            "AB\nC\nD",
+            "软折拼接+硬换行分隔"
+        );
+    }
 
-#[test]
-fn extract_text_mixed_soft_and_hard_wrap() {
-    // 软折（A→B）+硬换行（B|C）+硬换行（C|D）混合。
-    let snap = snap_multi(vec![
-        (vec![cell("A", CellWide::Narrow)], true),
-        (vec![cell("B", CellWide::Narrow)], false),
-        (vec![cell("C", CellWide::Narrow)], false),
-        (vec![cell("D", CellWide::Narrow)], false),
-    ]);
-    assert_eq!(extract_text(&snap, (0, 0, 0, 3)), "AB\nC\nD", "软折拼接+硬换行分隔");
-}
+    #[test]
+    fn extract_text_wide_char_across_wrap_boundary() {
+        // 宽字符跨软折行边界：Wide+SpacerTail 不重复，拼接无分隔。
+        let snap = snap_multi(vec![
+            (
+                vec![cell("你", CellWide::Wide), cell("", CellWide::SpacerTail)],
+                true,
+            ),
+            (vec![cell("好", CellWide::Narrow)], false),
+        ]);
+        assert_eq!(
+            extract_text(&snap, (0, 0, 1, 1)),
+            "你好",
+            "宽字符续格不重复+软折拼接"
+        );
+    }
 
-#[test]
-fn extract_text_wide_char_across_wrap_boundary() {
-    // 宽字符跨软折行边界：Wide+SpacerTail 不重复，拼接无分隔。
-    let snap = snap_multi(vec![
-        (vec![cell("你", CellWide::Wide), cell("", CellWide::SpacerTail)], true),
-        (vec![cell("好", CellWide::Narrow)], false),
-    ]);
-    assert_eq!(extract_text(&snap, (0, 0, 1, 1)), "你好", "宽字符续格不重复+软折拼接");
-}
-
-#[test]
-fn extract_text_empty_line_preserved() {
-    // 空逻辑行保留（输出中占一行）。
-    let snap = snap_multi(vec![
-        (vec![cell("A", CellWide::Narrow)], false),
-        (vec![], false),
-        (vec![cell("B", CellWide::Narrow)], false),
-    ]);
-    assert_eq!(extract_text(&snap, (0, 0, 0, 2)), "A\n\nB", "空行保留为连续 \\n");
-}
+    #[test]
+    fn extract_text_empty_line_preserved() {
+        // 空逻辑行保留（输出中占一行）。
+        let snap = snap_multi(vec![
+            (vec![cell("A", CellWide::Narrow)], false),
+            (vec![], false),
+            (vec![cell("B", CellWide::Narrow)], false),
+        ]);
+        assert_eq!(
+            extract_text(&snap, (0, 0, 0, 2)),
+            "A\n\nB",
+            "空行保留为连续 \\n"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -325,10 +346,22 @@ mod offset_tests {
         // offset=40（上滚 40 行）：视口行 0=绝对行 40。
         assert_eq!(viewport_to_abs(0, 40), 40);
         assert_eq!(viewport_to_abs(5, 40), 45);
-        assert_eq!(abs_to_viewport(40, 40, 24), Some(0), "绝对行=offset→视口行 0");
+        assert_eq!(
+            abs_to_viewport(40, 40, 24),
+            Some(0),
+            "绝对行=offset→视口行 0"
+        );
         assert_eq!(abs_to_viewport(45, 40, 24), Some(5));
-        assert_eq!(abs_to_viewport(39, 40, 24), None, "视口上方（历史区外）返 None");
-        assert_eq!(abs_to_viewport(64, 40, 24), None, "视口下方返 None（24 行视口：40..63）");
+        assert_eq!(
+            abs_to_viewport(39, 40, 24),
+            None,
+            "视口上方（历史区外）返 None"
+        );
+        assert_eq!(
+            abs_to_viewport(64, 40, 24),
+            None,
+            "视口下方返 None（24 行视口：40..63）"
+        );
     }
 
     #[test]
@@ -353,7 +386,11 @@ mod auto_scroll_tests {
         // offset=40 sb=100 viewport=24：下沿方向→offset+1=41，focus=视口底绝对行
         let (o, f) = auto_scroll_step(40, 1, 100, 24);
         assert_eq!(o, 41, "下沿方向 offset+1");
-        assert_eq!(f, 41 + 23, "focus=新视口最后可见行（offset+viewport-1，行号合法）");
+        assert_eq!(
+            f,
+            41 + 23,
+            "focus=新视口最后可见行（offset+viewport-1，行号合法）"
+        );
         // 上沿方向→offset-1，focus=视口顶行
         let (o, f) = auto_scroll_step(40, -1, 100, 24);
         assert_eq!(o, 39);

@@ -15,7 +15,6 @@
 //!
 //! 渲染尺寸取缓存（resumed/Resized 更新），窗口销毁后不再查询 X11 geometry。
 
-
 /// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
 ///
 /// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
@@ -40,29 +39,25 @@ use std::sync::OnceLock;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use config::{Action as ConfigAction, Mods as ConfigMods, Mouse as ConfigMouse};
 use pty::{NativePty, Pty};
 use render::{CpuRenderer, Renderer};
+use std::collections::VecDeque;
+use vt::ScrollViewport;
 use vt::{Action, Cell, Mods, VtTerminal};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
+use winit::event::{MouseButton, MouseScrollDelta};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 use winit::window::{Window, WindowAttributes};
-use winit::event::{MouseButton, MouseScrollDelta};
-use std::collections::VecDeque;
-use config::{Action as ConfigAction, Mods as ConfigMods, Mouse as ConfigMouse};
-use vt::ScrollViewport;
 
 /// 字体渲染配置与网格尺寸由字体度量算出（见 render::cell_metrics），无固定常量。
 /// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
 ///
 /// Windows 回落 cmd.exe，其他平台回落 /bin/sh。
 pub fn default_shell() -> &'static str {
-    if cfg!(windows) {
-        "cmd.exe"
-    } else {
-        "/bin/sh"
-    }
+    if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }
 }
 
 /// 按键输入路由（纯函数输出）。
@@ -149,7 +144,9 @@ impl Wake for ProxyWaker {
     fn wake(&self) -> Result<(), Error> {
         // send_event 失败仅一种形态：事件循环已销毁（EventLoopClosed）。
         // 归入 Error::EventLoopClosed，由调用方按正常关闭处理。
-        self.proxy.send_event(()).map_err(|_| Error::EventLoopClosed)
+        self.proxy
+            .send_event(())
+            .map_err(|_| Error::EventLoopClosed)
     }
 }
 
@@ -231,23 +228,24 @@ pub fn reader_body_with_depth<R: std::io::Read>(
 
 mod clipboard;
 mod follow;
-mod paste;
 mod framepace;
 mod ime;
+mod paste;
 mod scrollbar;
-mod writer;
 mod selection;
+mod writer;
 
 pub use clipboard::{ArboardClipboard, Clipboard, ClipboardKind, InjectClipboard};
-pub use framepace::{next_ema, target_interval, PACE_EMA_ALPHA, PACE_K, PACE_MAX_MS, PACE_MIN_MS};
+pub use framepace::{PACE_EMA_ALPHA, PACE_K, PACE_MAX_MS, PACE_MIN_MS, next_ema, target_interval};
 pub use ime::{normalize_ime_commit, preedit_display};
 pub use paste::{
-    drain_pending, drain_to_writer, normalize_paste, paste_chunks, DrainBudget, DrainReport, PASTE_CHUNK,
+    DrainBudget, DrainReport, PASTE_CHUNK, drain_pending, drain_to_writer, normalize_paste,
+    paste_chunks,
 };
-pub use scrollbar::{scrollbar_geometry, track_y_to_offset, ScrollbarGeom};
+pub use scrollbar::{ScrollbarGeom, scrollbar_geometry, track_y_to_offset};
 pub use selection::{
-    abs_to_viewport, auto_scroll_step, extract_rows, extract_text, selection_viewport_region,
-    viewport_to_abs, word_region, CellPos, Selection,
+    CellPos, Selection, abs_to_viewport, auto_scroll_step, extract_rows, extract_text,
+    selection_viewport_region, viewport_to_abs, word_region,
 };
 
 /// 帧耗时诊断统计（APP_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
@@ -297,14 +295,24 @@ impl PerfFrames {
             .window_start
             .map(|t| t.elapsed().as_secs_f64())
             .filter(|s| *s > 0.0);
-        let feed_rate = elapsed_s
-            .map(|s| self.feed_bytes as f64 / s)
-            .unwrap_or(0.0);
+        let feed_rate = elapsed_s.map(|s| self.feed_bytes as f64 / s).unwrap_or(0.0);
         eperf!(
             "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
-            Self::N, r_med, r_p95, p_med, p_p95, self.coalesced, self.interval_ms, fps,
-            feed_rate, self.chan_depth_max, self.loop_gap_max_us / 1000,
-            self.feed_ms_max, self.feed_bytes_max, self.writer_queued_max, mem
+            Self::N,
+            r_med,
+            r_p95,
+            p_med,
+            p_p95,
+            self.coalesced,
+            self.interval_ms,
+            fps,
+            feed_rate,
+            self.chan_depth_max,
+            self.loop_gap_max_us / 1000,
+            self.feed_ms_max,
+            self.feed_bytes_max,
+            self.writer_queued_max,
+            mem
         );
         self.coalesced = 0;
         self.loop_gap_max_us = 0;
@@ -321,8 +329,7 @@ impl PerfFrames {
 /// 即约 8ms 一帧；交互事件（键盘/鼠标/IME/resize）走 urgent 低延迟路径不受此限。
 const RENDER_MIN_INTERVAL: Duration = Duration::from_millis(8);
 
-type SoftSurface =
-    softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
+type SoftSurface = softbuffer::Surface<winit::event_loop::OwnedDisplayHandle, Rc<Window>>;
 
 /// 应用程序配置。
 pub struct App {
@@ -371,8 +378,8 @@ impl App {
     /// 运行事件循环（含上述六条接线）。
     pub fn run(self) -> Result<(), Error> {
         let t_loop = Instant::now();
-        let event_loop = EventLoop::new()
-            .map_err(|e| Error::App(format!("EventLoop::new: {}", e)))?;
+        let event_loop =
+            EventLoop::new().map_err(|e| Error::App(format!("EventLoop::new: {}", e)))?;
         // 阶段 4H t2：EventLoop::new（X11/socket 连接、平台后端初始化）此前无打点。
         if let Some(t0) = crate::start_time() {
             eperf!(
@@ -494,8 +501,7 @@ impl App {
             pty.close()?;
         }
         if let Some(thread) = handler.reader_thread.take() {
-            pty::unix::join_thread_timeout(thread, Duration::from_secs(5))
-                .map_err(Error::from)?;
+            pty::unix::join_thread_timeout(thread, Duration::from_secs(5)).map_err(Error::from)?;
         }
         Ok(())
     }
@@ -693,17 +699,18 @@ pub fn create_renderer(
     existing: Option<RendererBackend>,
 ) -> Result<RendererBackend, Error> {
     let requested = cfg.renderer.backend;
-    let build_cpu = |scale: f64, existing: Option<RendererBackend>| -> Result<RendererBackend, Error> {
-        // 复用窗口创建前已建好的 CPU 渲染器：debug 构建下 fontdb 扫描 + 四组
-        // 主字体解析约 400-600ms，重建一次会明显推迟首帧与后台字体到位时间。
-        if let Some(mut r) = existing {
+    let build_cpu =
+        |scale: f64, existing: Option<RendererBackend>| -> Result<RendererBackend, Error> {
+            // 复用窗口创建前已建好的 CPU 渲染器：debug 构建下 fontdb 扫描 + 四组
+            // 主字体解析约 400-600ms，重建一次会明显推迟首帧与后台字体到位时间。
+            if let Some(mut r) = existing {
+                r.set_scale_factor(scale);
+                return Ok(r);
+            }
+            let mut r = CpuRenderer::new(font_settings, options, palette)?;
             r.set_scale_factor(scale);
-            return Ok(r);
-        }
-        let mut r = CpuRenderer::new(font_settings, options, palette)?;
-        r.set_scale_factor(scale);
-        Ok(RendererBackend::Cpu(Box::new(r)))
-    };
+            Ok(RendererBackend::Cpu(Box::new(r)))
+        };
     // 没有窗口时（仅用于窗口创建前估算格子尺寸）只能先用 CPU。
     let Some(window) = window else {
         return build_cpu(1.0, existing);
@@ -759,7 +766,8 @@ pub fn create_renderer(
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(true)); // 显式 gpu 才可能允许
-                let (gpu, adapter) = build_gpu(font_settings, options, palette, window, scale, reuse)?;
+                let (gpu, adapter) =
+                    build_gpu(font_settings, options, palette, window, scale, reuse)?;
                 eperf!(
                     "[perf] gpu_init_ms={:.1} backend=gpu adapter='{}'",
                     t.elapsed().as_secs_f64() * 1000.0,
@@ -796,7 +804,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>
+    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
@@ -985,10 +993,7 @@ struct AppHandler {
 impl ApplicationHandler for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let t_resumed = Instant::now();
-        let config = self
-            .config
-            .take()
-            .expect("resumed 只能调用一次");
+        let config = self.config.take().expect("resumed 只能调用一次");
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
         // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
         // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
@@ -1026,10 +1031,8 @@ impl ApplicationHandler for AppHandler {
         // 初始位置（逻辑像素；Wayland 下合成器可能忽略——记录日志，不视为错误；
         // 越出屏幕范围交给窗口管理器处理，不自行钳制）。
         if let Some(pos) = config.config.window.position {
-            attrs = attrs.with_position(winit::dpi::LogicalPosition::new(
-                pos.x as f64,
-                pos.y as f64,
-            ));
+            attrs =
+                attrs.with_position(winit::dpi::LogicalPosition::new(pos.x as f64, pos.y as f64));
             if std::env::var_os("WAYLAND_DISPLAY").is_some() {
                 eprintln!(
                     "window.position: Wayland 会话下合成器可能忽略初始位置（({}, {})）",
@@ -1061,10 +1064,7 @@ impl ApplicationHandler for AppHandler {
         // （只在映射后经 set_outer_position 生效），因此创建后显式设置一次。
         // Wayland 下合成器可能忽略（已有提示日志）；越界交给窗口管理器。
         if let Some(pos) = config.config.window.position {
-            window.set_outer_position(winit::dpi::LogicalPosition::new(
-                pos.x as f64,
-                pos.y as f64,
-            ));
+            window.set_outer_position(winit::dpi::LogicalPosition::new(pos.x as f64, pos.y as f64));
         }
         // 启动分段计时（阶段 3A 任务 2）：窗口创建与 surface 初始化。
         if let Some(t0) = crate::start_time() {
@@ -1156,8 +1156,7 @@ impl ApplicationHandler for AppHandler {
             if let (Some(w), Some(h)) = (
                 std::num::NonZeroU32::new(init_size.width),
                 std::num::NonZeroU32::new(init_size.height),
-            )
-                && let Err(e) = s.resize(w, h)
+            ) && let Err(e) = s.resize(w, h)
             {
                 eprintln!("surface initial resize: {}", e);
                 return;
@@ -1285,10 +1284,8 @@ impl ApplicationHandler for AppHandler {
             let (cw, ch) = renderer.cell_metrics(scale);
             if window
                 .request_inner_size(winit::dpi::LogicalSize::new(
-                    f64::from(config.cols) * f64::from(cw) / scale
-                        + 2.0 * f64::from(config.pad_x),
-                    f64::from(config.rows) * f64::from(ch) / scale
-                        + 2.0 * f64::from(config.pad_y),
+                    f64::from(config.cols) * f64::from(cw) / scale + 2.0 * f64::from(config.pad_x),
+                    f64::from(config.rows) * f64::from(ch) / scale + 2.0 * f64::from(config.pad_y),
                 ))
                 .is_none()
             {
@@ -1405,7 +1402,8 @@ impl ApplicationHandler for AppHandler {
                 // HiDPI：重算格子物理尺寸 → InnerSizeWriter 保持 dimensions 行列数
                 // （逻辑尺寸 = 行列*逻辑格子 + 2*padding）；随后 Resized 走统一路径
                 // 重排网格并 resize vt/pty。字形位图缓存整体失效（set_scale_factor）。
-                let (Some(renderer), Some(app_cfg)) = (self.renderer.as_mut(), self.config.as_ref())
+                let (Some(renderer), Some(app_cfg)) =
+                    (self.renderer.as_mut(), self.config.as_ref())
                 else {
                     return;
                 };
@@ -1459,44 +1457,50 @@ impl ApplicationHandler for AppHandler {
                     if let Some(action) = bound {
                         self.run_action(action);
                     } else {
-                    let mods = vt_mods_from(&self.mods_state);
-                    let mapped = map_logical_key(&event.logical_key);
-                    let route = route_key(event.text.as_deref(), mapped, mods);
-                    match route {
-                        KeyRoute::Text(s) => {
-                            self.follow_viewport_before_input(follow::InputEvent::Printable);
-                            if let Some(pty) = self.pty.as_mut() {
-                                write_pty(pty, self.writer.as_ref(), s.as_bytes());
+                        let mods = vt_mods_from(&self.mods_state);
+                        let mapped = map_logical_key(&event.logical_key);
+                        let route = route_key(event.text.as_deref(), mapped, mods);
+                        match route {
+                            KeyRoute::Text(s) => {
+                                self.follow_viewport_before_input(follow::InputEvent::Printable);
+                                if let Some(pty) = self.pty.as_mut() {
+                                    write_pty(pty, self.writer.as_ref(), s.as_bytes());
+                                }
                             }
-                        }
-                        KeyRoute::Encoded { key, mods } => {
-                            if let (Some(key), Some(vt)) = (key, self.vt.as_mut()) {
-                                match vt.key_encoder() {
-                                    Ok(mut enc) => match enc.encode_key(key, mods, Action::Press) {
-                                        Ok(bytes) => {
-                                            // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
-                                            // 写线程只能丢弃"已在队列里"的块（并补发括号
-                                            // 粘贴结束标记），但 app 侧的 pending_paste
-                                            // 会在下一帧继续回灌，粘贴实际没停（实测：
-                                            // 首次 Ctrl-C 后仍持续写入，第二次 Ctrl-C 又丢
-                                            // 1MiB）。中断语义要求粘贴整体作废，故此处清空。
-                                            if bytes.contains(&0x03) {
-                                                self.pending_paste.clear();
-                                            }
-                                            self.follow_viewport_before_input(
-                                                follow::InputEvent::EncodedKey,
-                                            );
-                                            if let Some(pty) = self.pty.as_mut() {
-                                                write_pty(pty, self.writer.as_ref(), &bytes);
+                            KeyRoute::Encoded { key, mods } => {
+                                if let (Some(key), Some(vt)) = (key, self.vt.as_mut()) {
+                                    match vt.key_encoder() {
+                                        Ok(mut enc) => {
+                                            match enc.encode_key(key, mods, Action::Press) {
+                                                Ok(bytes) => {
+                                                    // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
+                                                    // 写线程只能丢弃"已在队列里"的块（并补发括号
+                                                    // 粘贴结束标记），但 app 侧的 pending_paste
+                                                    // 会在下一帧继续回灌，粘贴实际没停（实测：
+                                                    // 首次 Ctrl-C 后仍持续写入，第二次 Ctrl-C 又丢
+                                                    // 1MiB）。中断语义要求粘贴整体作废，故此处清空。
+                                                    if bytes.contains(&0x03) {
+                                                        self.pending_paste.clear();
+                                                    }
+                                                    self.follow_viewport_before_input(
+                                                        follow::InputEvent::EncodedKey,
+                                                    );
+                                                    if let Some(pty) = self.pty.as_mut() {
+                                                        write_pty(
+                                                            pty,
+                                                            self.writer.as_ref(),
+                                                            &bytes,
+                                                        );
+                                                    }
+                                                }
+                                                Err(e) => eprintln!("encode: {}", e),
                                             }
                                         }
-                                        Err(e) => eprintln!("encode: {}", e),
-                                    },
-                                    Err(e) => eprintln!("key_encoder: {}", e),
+                                        Err(e) => eprintln!("key_encoder: {}", e),
+                                    }
                                 }
                             }
                         }
-                    }
                     }
                 }
             }
@@ -1519,7 +1523,8 @@ impl ApplicationHandler for AppHandler {
                     #[cfg(debug_assertions)]
                     eperf!(
                         "[perf] resize_ignored {}x{}（小于一个字符格）",
-                        physical_size.width, physical_size.height
+                        physical_size.width,
+                        physical_size.height
                     );
                     return;
                 };
@@ -1718,7 +1723,11 @@ impl ApplicationHandler for AppHandler {
                         }
                     }
                     Err(e) => {
-                        eprintln!("paste drain: pty writer 不可用（{}），丢弃剩余 {} 块", e, self.pending_paste.len());
+                        eprintln!(
+                            "paste drain: pty writer 不可用（{}），丢弃剩余 {} 块",
+                            e,
+                            self.pending_paste.len()
+                        );
                         pty_gone = true;
                     }
                 },
@@ -2093,8 +2102,7 @@ impl ApplicationHandler for AppHandler {
                     self.render_ema_ms = Some(next_ema(self.render_ema_ms, render_ms));
                     self.frame_interval = target_interval(self.render_ema_ms.unwrap_or(render_ms));
                     if let Some(pf) = self.perf_frames.as_mut() {
-                        pf.render_us
-                            .push((render_ms * 1000.0) as u128);
+                        pf.render_us.push((render_ms * 1000.0) as u128);
                     }
                     // GPU 后端：render() 已把这一帧直接 present 到窗口 surface，
                     // 没有脏区拷贝步骤（surface 纹理内容不保留，每帧整帧重绘）。
@@ -2144,8 +2152,7 @@ impl ApplicationHandler for AppHandler {
                             let t_present = Instant::now();
                             // 拷贝：damage 覆盖整屏时整缓冲拷贝，否则按矩形逐行拷贝。
                             let full_cover = force_full_present
-                                || damage.len() == 1
-                                    && damage[0] == (0, 0, pw, ph);
+                                || damage.len() == 1 && damage[0] == (0, 0, pw, ph);
                             if full_cover {
                                 for (i, px) in fb.iter().enumerate() {
                                     if i < buffer.len() {
@@ -2156,7 +2163,8 @@ impl ApplicationHandler for AppHandler {
                                 for &(x, y, w, h) in &damage {
                                     for row in y..(y + h).min(ph) {
                                         let src_start = (row * fb_w + x) as usize;
-                                        let src_end = (row * fb_w + x + w).min((row + 1) * fb_w) as usize;
+                                        let src_end =
+                                            (row * fb_w + x + w).min((row + 1) * fb_w) as usize;
                                         let dst_start = (row * pw + x) as usize;
                                         if src_end <= src_start || dst_start >= buffer.len() {
                                             continue;
@@ -2242,7 +2250,9 @@ impl ApplicationHandler for AppHandler {
         // IME 光标区跟随快照光标；该调用内部会取快照，故仅在本次确实要渲染时执行
         // （高频输出下每帧多一次全量快照会显著拖慢 channel 排空）。
         let will_render = match self.last_render {
-            Some(t) => self.urgent_render || Instant::now().duration_since(t) >= RENDER_MIN_INTERVAL,
+            Some(t) => {
+                self.urgent_render || Instant::now().duration_since(t) >= RENDER_MIN_INTERVAL
+            }
             None => true,
         };
         if will_render {
@@ -2275,10 +2285,13 @@ impl ApplicationHandler for AppHandler {
 impl AppHandler {
     /// 鼠标是否命中滚动条条带（右缘 4px；条带判定优先于选区坐标转换）。
     fn hit_scrollbar(&self, position: Option<winit::dpi::PhysicalPosition<f64>>) -> bool {
-        let Some(pos) = position else { return false; };
-        let Some((w, _h)) = self.last_size else { return false; };
-        pos.x >= w.saturating_sub(render::SCROLLBAR_WIDTH) as f64
-            && w > render::SCROLLBAR_WIDTH
+        let Some(pos) = position else {
+            return false;
+        };
+        let Some((w, _h)) = self.last_size else {
+            return false;
+        };
+        pos.x >= w.saturating_sub(render::SCROLLBAR_WIDTH) as f64 && w > render::SCROLLBAR_WIDTH
     }
 
     /// 物理像素坐标 → 网格坐标（含 padding；cell_w/h 已含 scale，越界返 None）。
@@ -2290,19 +2303,30 @@ impl AppHandler {
         if col < 0 || row < 0 || col >= i64::from(self.cols) || row >= i64::from(self.rows) {
             return None;
         }
-        Some(CellPos { col: col as u16, row: row as u16 })
+        Some(CellPos {
+            col: col as u16,
+            row: row as u16,
+        })
     }
 
     /// 鼠标按钮事件：上报优先（非 Shift 且 vt 开跟踪→编码写 PTY）；
     /// 否则走选区（左键）与绑定（中/右键）。Shift 绕过上报。
     fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         let shift = self.mods_state.shift_key();
-        if !shift && self.vt.as_ref().is_some_and(|v| v.is_mouse_tracking().unwrap_or(false)) {
+        if !shift
+            && self
+                .vt
+                .as_ref()
+                .is_some_and(|v| v.is_mouse_tracking().unwrap_or(false))
+        {
             // 位置先算（避免与下方 vt/pty 可变借用冲突）。
             let pos = self
                 .last_mouse_pos
                 .and_then(|p| self.pixel_to_cell(p))
-                .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                .map(|c| vt::Position {
+                    x: f32::from(c.col),
+                    y: f32::from(c.row),
+                })
                 .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
             let mods = vt_mods_from(&self.mods_state);
             let action = match state {
@@ -2345,12 +2369,8 @@ impl AppHandler {
                     if let Some(y) = self.last_mouse_pos.map(|p| p.y) {
                         let track_h = self.last_size.map(|(_, h)| h).unwrap_or(0);
                         let sb = self.sb_rows();
-                        self.offset_from_top = track_y_to_offset(
-                            y as u32,
-                            track_h,
-                            sb as u64,
-                        )
-                        .min(sb);
+                        self.offset_from_top =
+                            track_y_to_offset(y as u32, track_h, sb as u64).min(sb);
                         self.follow_bottom = self.offset_from_top >= sb;
                         if let Some(vt) = self.vt.as_mut() {
                             vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
@@ -2395,8 +2415,7 @@ impl AppHandler {
         if self.scrollbar_drag {
             let track_h = self.last_size.map(|(_, h)| h).unwrap_or(0);
             let sb = self.sb_rows();
-            self.offset_from_top =
-                track_y_to_offset(position.y as u32, track_h, sb as u64).min(sb);
+            self.offset_from_top = track_y_to_offset(position.y as u32, track_h, sb as u64).min(sb);
             self.follow_bottom = self.offset_from_top >= sb;
             if let Some(vt) = self.vt.as_mut() {
                 vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
@@ -2416,11 +2435,17 @@ impl AppHandler {
         }
         if !self.mods_state.shift_key()
             && self.mouse_down
-            && self.vt.as_ref().is_some_and(|v| v.is_mouse_tracking().unwrap_or(false))
+            && self
+                .vt
+                .as_ref()
+                .is_some_and(|v| v.is_mouse_tracking().unwrap_or(false))
         {
             let pos = self
                 .pixel_to_cell(position)
-                .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                .map(|c| vt::Position {
+                    x: f32::from(c.col),
+                    y: f32::from(c.row),
+                })
                 .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
             let mods = vt_mods_from(&self.mods_state);
             if let Some(vt) = self.vt.as_mut()
@@ -2460,7 +2485,9 @@ impl AppHandler {
         let (Some(window), Some(vt)) = (self.window.as_ref(), self.vt.as_ref()) else {
             return;
         };
-        let Ok(snap) = vt.snapshot() else { return; };
+        let Ok(snap) = vt.snapshot() else {
+            return;
+        };
         // Preedit 期间 IME 候选窗跟随组合末尾（任务 2C.3），否则跟随终端光标。
         let (cy_cell, cx_cell) = ime_cursor_cell(
             &self.ime_preedit,
@@ -2484,9 +2511,7 @@ impl AppHandler {
     fn on_mouse_scroll(&mut self, delta: MouseScrollDelta) {
         let lines = match delta {
             MouseScrollDelta::LineDelta(_x, y) => y as isize,
-            MouseScrollDelta::PixelDelta(pos) => {
-                (pos.y / f64::from(self.cell_h.max(1))) as isize
-            }
+            MouseScrollDelta::PixelDelta(pos) => (pos.y / f64::from(self.cell_h.max(1))) as isize,
         };
         if lines == 0 {
             return;
@@ -2508,12 +2533,16 @@ impl AppHandler {
                 let pos = self
                     .last_mouse_pos
                     .and_then(|p| self.pixel_to_cell(p))
-                    .map(|c| vt::Position { x: f32::from(c.col), y: f32::from(c.row) })
+                    .map(|c| vt::Position {
+                        x: f32::from(c.col),
+                        y: f32::from(c.row),
+                    })
                     .unwrap_or(vt::Position { x: 0.0, y: 0.0 });
                 let mods = vt_mods_from(&self.mods_state);
                 if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
                     && let Ok(mut enc) = vt.mouse_encoder()
-                    && let Ok(bytes) = enc.encode_button(vt::MouseAction::Press, Some(btn), mods, pos)
+                    && let Ok(bytes) =
+                        enc.encode_button(vt::MouseAction::Press, Some(btn), mods, pos)
                 {
                     write_pty(pty, self.writer.as_ref(), &bytes);
                 }
@@ -2537,7 +2566,11 @@ impl AppHandler {
                     .unwrap_or(false)
             })
             .unwrap_or(false);
-        if alternate && self.config.as_ref().is_some_and(|c| c.config.scrolling.alt_screen_scroll)
+        if alternate
+            && self
+                .config
+                .as_ref()
+                .is_some_and(|c| c.config.scrolling.alt_screen_scroll)
         {
             let mult = self
                 .config
@@ -2545,7 +2578,11 @@ impl AppHandler {
                 .map(|c| c.config.scrolling.multiplier)
                 .unwrap_or(3.0)
                 .max(1.0) as isize;
-            let key = if lines > 0 { vt::Key::ArrowUp } else { vt::Key::ArrowDown };
+            let key = if lines > 0 {
+                vt::Key::ArrowUp
+            } else {
+                vt::Key::ArrowDown
+            };
             let n = lines.unsigned_abs() as isize * mult;
             for _ in 0..n {
                 if let (Some(vt), Some(pty)) = (self.vt.as_mut(), self.pty.as_mut())
@@ -2608,13 +2645,27 @@ impl AppHandler {
         self.last_click = Some((now, abs_pos));
         self.mouse_down = true;
         let region = match count {
-            2 => self.word_region_at(pos.row, pos.col).map(|(sc, ec)| Selection {
-                anchor: CellPos { col: sc, row: abs_pos.row },
-                focus: CellPos { col: ec, row: abs_pos.row },
-            }),
+            2 => self
+                .word_region_at(pos.row, pos.col)
+                .map(|(sc, ec)| Selection {
+                    anchor: CellPos {
+                        col: sc,
+                        row: abs_pos.row,
+                    },
+                    focus: CellPos {
+                        col: ec,
+                        row: abs_pos.row,
+                    },
+                }),
             3 => Some(Selection {
-                anchor: CellPos { col: 0, row: abs_pos.row },
-                focus: CellPos { col: self.cols.saturating_sub(1), row: abs_pos.row },
+                anchor: CellPos {
+                    col: 0,
+                    row: abs_pos.row,
+                },
+                focus: CellPos {
+                    col: self.cols.saturating_sub(1),
+                    row: abs_pos.row,
+                },
             }),
             _ => Some(Selection::new(abs_pos)),
         };
@@ -2643,7 +2694,10 @@ impl AppHandler {
         let mut line = String::new();
         if let Some(cells) = snap.cells.get(row as usize) {
             for cell in cells {
-                if matches!(cell.wide, vt::CellWide::SpacerTail | vt::CellWide::SpacerHead) {
+                if matches!(
+                    cell.wide,
+                    vt::CellWide::SpacerTail | vt::CellWide::SpacerHead
+                ) {
                     continue;
                 }
                 line.push_str(&cell.chars);
@@ -2654,9 +2708,15 @@ impl AppHandler {
 
     /// 选区定型/复制：提取文本写 PRIMARY；save_to_clipboard 时兼写 CLIPBOARD。
     fn commit_selection(&mut self) {
-        let Some(sel) = self.selection else { return; };
-        let Some(vt) = self.vt.as_ref() else { return; };
-        let Ok(snap) = vt.snapshot() else { return; };
+        let Some(sel) = self.selection else {
+            return;
+        };
+        let Some(vt) = self.vt.as_ref() else {
+            return;
+        };
+        let Ok(snap) = vt.snapshot() else {
+            return;
+        };
         // 绝对行→视口行（视口内走 snapshot；跨视口走 rows_text 只读读历史，
         // 同语义提取 extract_rows，不改变视口）。
         let (c0, a0, c1, a1) = sel.region();
@@ -2670,10 +2730,8 @@ impl AppHandler {
         } else {
             match vt.rows_text(a0 as usize, a1 as usize, self.cols) {
                 Ok(history) => {
-                    let rows_ref: Vec<(&[Cell], bool)> = history
-                        .iter()
-                        .map(|(cs, w)| (cs.as_slice(), *w))
-                        .collect();
+                    let rows_ref: Vec<(&[Cell], bool)> =
+                        history.iter().map(|(cs, w)| (cs.as_slice(), *w)).collect();
                     extract_rows(&rows_ref, c0, c1)
                 }
                 Err(e) => {
@@ -2685,7 +2743,9 @@ impl AppHandler {
         if text.is_empty() {
             return;
         }
-        let Some(clip) = self.clipboard.as_mut() else { return; };
+        let Some(clip) = self.clipboard.as_mut() else {
+            return;
+        };
         if let Err(e) = clip.set(ClipboardKind::Primary, &text) {
             eprintln!("copy primary: {}", e);
         }
@@ -2723,7 +2783,10 @@ impl AppHandler {
             ConfigAction::PasteSelection => self.do_paste(ClipboardKind::Primary),
             ConfigAction::ScrollPageUp => {
                 let sb = self.sb_rows();
-                self.offset_from_top = self.offset_from_top.saturating_sub(self.rows as usize).min(sb);
+                self.offset_from_top = self
+                    .offset_from_top
+                    .saturating_sub(self.rows as usize)
+                    .min(sb);
                 self.follow_bottom = false;
                 if let Some(vt) = self.vt.as_mut() {
                     vt.scroll_viewport(ScrollViewport::Row(self.offset_from_top));
@@ -2760,7 +2823,11 @@ impl AppHandler {
     ///
     /// 全部为只读取数、无分配以外副作用；release 可用。
     fn mem_summary(&self) -> String {
-        let sb_rows = self.vt.as_ref().map(|v| v.scrollback_rows().unwrap_or(0)).unwrap_or(0);
+        let sb_rows = self
+            .vt
+            .as_ref()
+            .map(|v| v.scrollback_rows().unwrap_or(0))
+            .unwrap_or(0);
         let (glyphs, fb_bytes) = match self.renderer.as_ref() {
             Some(RendererBackend::Cpu(c)) => c.cache_stats(),
             // GPU 后端不回读帧缓冲：字形缓存复用同一份 Font 链，缓存规模不可直接取。
@@ -3000,14 +3067,15 @@ pub fn resize_target(
     if cols == 0 || rows == 0 {
         return None;
     }
-    Some((cols.min(u16::MAX as u32) as u16, rows.min(u16::MAX as u32) as u16))
+    Some((
+        cols.min(u16::MAX as u32) as u16,
+        rows.min(u16::MAX as u32) as u16,
+    ))
 }
 
 /// IME 事件对预编辑状态的更新（纯函数，便于单测）：
 /// 返回 (是否改动, 新文本, 新光标范围)。Enabled 不改动（仅重新定位候选窗）。
-pub fn ime_preedit_update(
-    event: &winit::event::Ime,
-) -> (bool, String, Option<(usize, usize)>) {
+pub fn ime_preedit_update(event: &winit::event::Ime) -> (bool, String, Option<(usize, usize)>) {
     use winit::event::Ime;
     match event {
         Ime::Enabled => (false, String::new(), None),
@@ -3189,7 +3257,9 @@ fn write_pty(pty: &mut NativePty, writer: Option<&writer::PtyWriter>, bytes: &[u
 /// 定位首个出现像素差异的帧与差异行范围（阶段 3C 任务 6）。
 #[cfg(debug_assertions)]
 fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
-    let Ok(path) = std::env::var("APP_FRAME_HASH") else { return; };
+    let Ok(path) = std::env::var("APP_FRAME_HASH") else {
+        return;
+    };
     use std::sync::atomic::{AtomicU64, Ordering};
     static N: AtomicU64 = AtomicU64::new(0);
     let n = N.fetch_add(1, Ordering::Relaxed);
@@ -3210,10 +3280,17 @@ fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
         }
         rows.push(format!("{hr:016x}"));
     }
-    let line = format!("frame={n} all={all:016x} rows={}
-", rows.join(","));
+    let line = format!(
+        "frame={n} all={all:016x} rows={}
+",
+        rows.join(",")
+    );
     use std::io::Write;
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
         let _ = f.write_all(line.as_bytes());
     }
 }
@@ -3225,7 +3302,9 @@ fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
 /// 供 e2e 断言而不依赖 OCR。release 构建中本函数与钩子字符串均不存在。
 #[cfg(debug_assertions)]
 fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render::CpuRenderer>) {
-    let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else { return; };
+    let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else {
+        return;
+    };
     let mut text = String::new();
     let mut wide = 0usize;
     let mut spacer = 0usize;
@@ -3246,7 +3325,13 @@ fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render
     if let Some(r) = renderer {
         for line in r.font_indices(snap) {
             text.push_str("# font: ");
-            text.push_str(&line.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(" "));
+            text.push_str(
+                &line
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            );
             text.push('\n');
         }
     }
@@ -3260,15 +3345,45 @@ fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render
 }
 
 const LETTERS: [vt::Key; 26] = [
-    vt::Key::A, vt::Key::B, vt::Key::C, vt::Key::D, vt::Key::E, vt::Key::F, vt::Key::G, vt::Key::H,
-    vt::Key::I, vt::Key::J, vt::Key::K, vt::Key::L, vt::Key::M, vt::Key::N, vt::Key::O, vt::Key::P,
-    vt::Key::Q, vt::Key::R, vt::Key::S, vt::Key::T, vt::Key::U, vt::Key::V, vt::Key::W, vt::Key::X,
-    vt::Key::Y, vt::Key::Z,
+    vt::Key::A,
+    vt::Key::B,
+    vt::Key::C,
+    vt::Key::D,
+    vt::Key::E,
+    vt::Key::F,
+    vt::Key::G,
+    vt::Key::H,
+    vt::Key::I,
+    vt::Key::J,
+    vt::Key::K,
+    vt::Key::L,
+    vt::Key::M,
+    vt::Key::N,
+    vt::Key::O,
+    vt::Key::P,
+    vt::Key::Q,
+    vt::Key::R,
+    vt::Key::S,
+    vt::Key::T,
+    vt::Key::U,
+    vt::Key::V,
+    vt::Key::W,
+    vt::Key::X,
+    vt::Key::Y,
+    vt::Key::Z,
 ];
 
 const DIGITS: [vt::Key; 10] = [
-    vt::Key::Digit0, vt::Key::Digit1, vt::Key::Digit2, vt::Key::Digit3, vt::Key::Digit4,
-    vt::Key::Digit5, vt::Key::Digit6, vt::Key::Digit7, vt::Key::Digit8, vt::Key::Digit9,
+    vt::Key::Digit0,
+    vt::Key::Digit1,
+    vt::Key::Digit2,
+    vt::Key::Digit3,
+    vt::Key::Digit4,
+    vt::Key::Digit5,
+    vt::Key::Digit6,
+    vt::Key::Digit7,
+    vt::Key::Digit8,
+    vt::Key::Digit9,
 ];
 
 /// winit 逻辑键 → vt::Key（阶段1 子集：命名键 + ASCII 字母数字）。
@@ -3340,7 +3455,11 @@ fn render_options(config: &config::Config) -> render::RenderOptions {
 /// config colors → render::Palette（config::Rgb 与 vt::Rgb 字段同名转换）。
 /// 配置 `[colors]` → VT 层调色板（阶段 4F t2：让 ANSI 索引色/默认反色解析出配置色）。
 fn vt_palette(colors: &config::Colors) -> vt::VtPalette {
-    let c = |c: config::Rgb| vt::Rgb { r: c.r, g: c.g, b: c.b };
+    let c = |c: config::Rgb| vt::Rgb {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+    };
     vt::VtPalette {
         foreground: c(colors.primary.foreground),
         background: c(colors.primary.background),
@@ -3369,7 +3488,11 @@ fn vt_palette(colors: &config::Colors) -> vt::VtPalette {
 }
 
 fn render_palette(colors: &config::Colors) -> render::Palette {
-    let c = |c: config::Rgb| vt::Rgb { r: c.r, g: c.g, b: c.b };
+    let c = |c: config::Rgb| vt::Rgb {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+    };
     render::Palette {
         primary_bg: c(colors.primary.background),
         primary_fg: c(colors.primary.foreground),
@@ -3455,7 +3578,10 @@ mod binding_tests {
             mods: mods(control, false),
             action,
         };
-        let bindings = vec![b("c", true, ConfigAction::Copy), b("v", true, ConfigAction::Paste)];
+        let bindings = vec![
+            b("c", true, ConfigAction::Copy),
+            b("v", true, ConfigAction::Paste),
+        ];
         assert_eq!(
             find_key_binding(&bindings, "c", &mods(true, false)),
             Some(ConfigAction::Copy)
@@ -3523,7 +3649,11 @@ mod ime_cursor_tests {
 
     #[test]
     fn no_preedit_follows_terminal_cursor() {
-        assert_eq!(ime_cursor_cell("", 5, 3, 80, 24), (3, 5), "无 Preedit 跟随光标（row,col）");
+        assert_eq!(
+            ime_cursor_cell("", 5, 3, 80, 24),
+            (3, 5),
+            "无 Preedit 跟随光标（row,col）"
+        );
     }
 
     #[test]
@@ -3542,7 +3672,11 @@ mod ime_cursor_tests {
 
     #[test]
     fn preedit_cleared_keeps_cursor() {
-        assert_eq!(ime_cursor_cell("", 0, 23, 80, 24), (23, 0), "清空后回到光标格");
+        assert_eq!(
+            ime_cursor_cell("", 0, 23, 80, 24),
+            (23, 0),
+            "清空后回到光标格"
+        );
     }
 }
 

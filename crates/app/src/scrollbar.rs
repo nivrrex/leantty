@@ -29,8 +29,8 @@ pub fn scrollbar_geometry(
     let total = scrollback_rows + viewport_rows;
     let thumb_h = ((track_h as u64 * viewport_rows) / total).max(1) as u32;
     // 拇指顶 clamp 到 track_h-thumb_h（拇指不越轨道底；thumb_h≤track_h 恒成立）。
-    let thumb_y = ((track_h as u64 * offset) / scrollback_rows)
-        .min(track_h as u64 - thumb_h as u64) as u32;
+    let thumb_y =
+        ((track_h as u64 * offset) / scrollback_rows).min(track_h as u64 - thumb_h as u64) as u32;
     Some(ScrollbarGeom { thumb_y, thumb_h })
 }
 
@@ -48,7 +48,11 @@ mod tests {
 
     #[test]
     fn geometry_none_when_no_scrollback() {
-        assert_eq!(scrollbar_geometry(0, 24, 0, 300), None, "无 scrollback 不绘制");
+        assert_eq!(
+            scrollbar_geometry(0, 24, 0, 300),
+            None,
+            "无 scrollback 不绘制"
+        );
         assert_eq!(scrollbar_geometry(100, 24, 0, 0), None, "track_h=0 防御");
         assert_eq!(scrollbar_geometry(100, 0, 0, 300), None, "viewport=0 防御");
     }

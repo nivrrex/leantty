@@ -16,7 +16,10 @@ fn v4a_plain_text() {
     let mut term = new_term();
     term.feed(b"hello");
     let snap = grid(&term);
-    let first: String = snap.cells[0][0..5].iter().map(|c| c.chars.clone()).collect();
+    let first: String = snap.cells[0][0..5]
+        .iter()
+        .map(|c| c.chars.clone())
+        .collect();
     assert_eq!(first, "hello", "首行前 5 格应为 hello，实际 {:?}", first);
 }
 
@@ -32,7 +35,10 @@ fn v4b_sgr_red() {
         assert!(
             fg.r > 150 && fg.r > fg.g + 50 && fg.r > fg.b + 50,
             "第 {} 格应为红色，实际 rgb=({},{},{})",
-            i, fg.r, fg.g, fg.b
+            i,
+            fg.r,
+            fg.g,
+            fg.b
         );
     }
     // \x1b[0m 之后的格子恢复默认前景
@@ -99,10 +105,18 @@ fn v4e_wide_chars() {
     let row = &snap.cells[0];
     assert_eq!(row[0].chars, "你", "第 1 格应为 你");
     assert_eq!(row[0].wide, CellWide::Wide, "你 应占 2 格");
-    assert_eq!(row[1].wide, CellWide::SpacerTail, "第 2 格应为宽字符续格标记");
+    assert_eq!(
+        row[1].wide,
+        CellWide::SpacerTail,
+        "第 2 格应为宽字符续格标记"
+    );
     assert_eq!(row[2].chars, "好", "第 3 格应为 好");
     assert_eq!(row[2].wide, CellWide::Wide, "好 应占 2 格");
-    assert_eq!(row[3].wide, CellWide::SpacerTail, "第 4 格应为宽字符续格标记");
+    assert_eq!(
+        row[3].wide,
+        CellWide::SpacerTail,
+        "第 4 格应为宽字符续格标记"
+    );
     assert_eq!(row[4].chars, "a", "第 5 格应为 a");
     assert_eq!(row[5].chars, "b", "第 6 格应为 b");
     assert_eq!(row[6].chars, "c", "第 7 格应为 c");

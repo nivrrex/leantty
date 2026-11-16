@@ -122,7 +122,12 @@ impl PtyWriter {
             return;
         }
         if bytes.contains(&0x03) {
-            let dropped: usize = st.items.iter().filter(|it| it.paste).map(|it| it.bytes.len()).sum();
+            let dropped: usize = st
+                .items
+                .iter()
+                .filter(|it| it.paste)
+                .map(|it| it.bytes.len())
+                .sum();
             st.items.retain(|it| !it.paste);
             st.queued = st.items.iter().map(|it| it.bytes.len()).sum();
             // 阶段 4I t2 取证：Ctrl-C 时确实丢弃了"尚未写出"的粘贴数据。
@@ -469,7 +474,10 @@ mod tests {
             .flat_map(|i| i.bytes.clone())
             .collect();
         assert_eq!(paste_left, 0, "Ctrl-C 后队列中不应再有粘贴数据");
-        assert!(typed.ends_with(&[0x03]), "0x03 应已入队且位于末尾：{typed:?}");
+        assert!(
+            typed.ends_with(&[0x03]),
+            "0x03 应已入队且位于末尾：{typed:?}"
+        );
         assert!(
             typed.starts_with(b"typed-before"),
             "键入数据应保留：queue={:?}",

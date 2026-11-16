@@ -91,8 +91,11 @@ fn ink_rows(fb: &[u32], pw: u32, cell: (u32, u32), idx: u32, ch_h: u32) -> Optio
 
 /// 对一种字体跑绝对基线断言，返回是否通过（并打印度量与落点）。
 fn check_font(family: &str, size: f32) -> bool {
-    let mut r = match CpuRenderer::new(&settings(family, size), RenderOptions::default(), Palette::default())
-    {
+    let mut r = match CpuRenderer::new(
+        &settings(family, size),
+        RenderOptions::default(),
+        Palette::default(),
+    ) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("SKIP: 字体 '{family}' 不可用（{e}）");
@@ -126,7 +129,11 @@ fn check_font(family: &str, size: f32) -> bool {
         Some(face) => format!(
             "post_script='{}' families={:?}",
             face.post_script_name,
-            face.families.iter().map(|(n, _)| n.as_str()).take(2).collect::<Vec<_>>()
+            face.families
+                .iter()
+                .map(|(n, _)| n.as_str())
+                .take(2)
+                .collect::<Vec<_>>()
         ),
         None => "<未找到>".to_string(),
     };
@@ -148,7 +155,8 @@ fn check_font(family: &str, size: f32) -> bool {
                 Source::Binary(d) => d.as_ref().as_ref().to_vec(),
                 Source::SharedFile(_, d) => d.as_ref().as_ref().to_vec(),
             };
-            if let Ok(f) = render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
+            if let Ok(f) =
+                render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
                 && let Some(l) = f.horizontal_line_metrics(size)
             {
                 let descent_px = (-l.descent).ceil().max(0.0);
@@ -216,9 +224,10 @@ fn check_font(family: &str, size: f32) -> bool {
         }
     }
     // 3) H 顶边不低于 x 顶边
-    if let (Some((h_top, _)), Some((x_top, _))) =
-        (rows.get(&'H').and_then(|v| *v), rows.get(&'x').and_then(|v| *v))
-    {
+    if let (Some((h_top, _)), Some((x_top, _))) = (
+        rows.get(&'H').and_then(|v| *v),
+        rows.get(&'x').and_then(|v| *v),
+    ) {
         eprintln!("  [{family}] 'H' 顶边 {h_top} vs 'x' 顶边 {x_top}");
         if h_top > x_top {
             eprintln!("  FAIL: [{family}] 'H' 顶边 {h_top} 低于 'x' 顶边 {x_top}");
@@ -246,9 +255,7 @@ fn baseline_alignment_font_matrix() {
             families.push("__external__");
         }
     } else {
-        eprintln!(
-            "提示：设置 TEST_FONT_FILE=<本地 Consolas 字体文件路径> 可把 Consolas 纳入矩阵"
-        );
+        eprintln!("提示：设置 TEST_FONT_FILE=<本地 Consolas 字体文件路径> 可把 Consolas 纳入矩阵");
     }
 
     let mut failed = Vec::new();
@@ -411,9 +418,10 @@ fn baseline_alignment_gpu() {
             assert!(bottom > x_bottom, "GPU '{desc}' 未下行");
         }
     }
-    if let (Some((h_top, _)), Some((x_top, _))) =
-        (rows.get(&'H').and_then(|v| *v), rows.get(&'x').and_then(|v| *v))
-    {
+    if let (Some((h_top, _)), Some((x_top, _))) = (
+        rows.get(&'H').and_then(|v| *v),
+        rows.get(&'x').and_then(|v| *v),
+    ) {
         eprintln!("  [gpu] 'H' 顶边 {h_top} vs 'x' 顶边 {x_top}");
         assert!(h_top <= x_top, "GPU 'H' 顶边低于 'x'");
     }

@@ -157,15 +157,25 @@ fn render_bold_maps_to_bright_color() {
     r_off.render(&snap, 16, 24).expect("render off");
     let on = r_on.framebuffer();
     let off = r_off.framebuffer();
-    assert_ne!(on, off, "draw_bold_with_bright 开/关像素应不同（bright 映射）");
+    assert_ne!(
+        on, off,
+        "draw_bold_with_bright 开/关像素应不同（bright 映射）"
+    );
     // 开：字形像素应为 bright 红 (255,0,0)（alpha=255 处）
-    let has_bright_red = on.iter().any(|&p| (p >> 16 & 0xFF) == 255 && (p & 0xFF) == 0 && (p >> 8 & 0xFF) == 0);
+    let has_bright_red = on
+        .iter()
+        .any(|&p| (p >> 16 & 0xFF) == 255 && (p & 0xFF) == 0 && (p >> 8 & 0xFF) == 0);
     assert!(has_bright_red, "粗体应使用 bright 红");
 }
 
 #[test]
 fn render_cursor_styles_draw() {
-    for style in [CursorStyle::Block, CursorStyle::HollowBlock, CursorStyle::Underline, CursorStyle::Bar] {
+    for style in [
+        CursorStyle::Block,
+        CursorStyle::HollowBlock,
+        CursorStyle::Underline,
+        CursorStyle::Bar,
+    ] {
         let mut renderer = match CpuRenderer::new(&settings(), opts(false), palette()) {
             Ok(r) => r,
             Err(Error::Font(msg)) => {
@@ -178,7 +188,12 @@ fn render_cursor_styles_draw() {
             cols: 1,
             rows: 1,
             cells: vec![vec![Cell::default()]],
-            cursor: Cursor { x: 0, y: 0, visible: true, style },
+            cursor: Cursor {
+                x: 0,
+                y: 0,
+                visible: true,
+                style,
+            },
             scrollback_rows: 0,
             alternate_screen: false,
             wrapped: Vec::new(),
@@ -191,7 +206,11 @@ fn render_cursor_styles_draw() {
         // 改用 cursor 色为蓝的 palette 断言光标像素存在：
         let pal = Palette {
             cursor: Rgb { r: 0, g: 0, b: 255 },
-            cursor_text: Rgb { r: 255, g: 255, b: 255 },
+            cursor_text: Rgb {
+                r: 255,
+                g: 255,
+                b: 255,
+            },
             ..Palette::default()
         };
         let mut r2 = CpuRenderer::new(&settings(), opts(false), pal).expect("renderer2");
@@ -269,9 +288,7 @@ fn render_selection_inverts_selected_cell() {
     let black = 0xFF00_0000u32;
 
     // B 格：背景=字色红（整格填充），字形像素=原背景黑。
-    let b_bg_red = (w..2 * w).any(|x| {
-        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red)
-    });
+    let b_bg_red = (w..2 * w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red));
     if !b_bg_red {
         let mut sample = std::collections::HashMap::new();
         for x in w..2 * w {
@@ -282,18 +299,14 @@ fn render_selection_inverts_selected_cell() {
         eprintln!("B 格像素分布: {sample:x?}");
     }
     assert!(b_bg_red, "选区格背景应为字色红");
-    let b_glyph_black = (w..2 * w).any(|x| {
-        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black)
-    });
+    let b_glyph_black = (w..2 * w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black));
     assert!(b_glyph_black, "选区格字形应为原背景黑");
 
     // A 格（未选、反显）：阶段 4C t4 起，反显格的**底色也用原前景色**（红），
     // 字形用原背景色（蓝）——此前是"黑底红字 + 底色不变"，属于 P1 反色缺陷。
     let a_bg_red = (0..w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == red));
     assert!(a_bg_red, "反显格底色应为原前景色（红）");
-    let a_glyph_blue = (0..w).any(|x| {
-        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == 0xFF00_00EE)
-    });
+    let a_glyph_blue = (0..w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == 0xFF00_00EE));
     assert!(a_glyph_blue, "反显格字形应为原背景色（蓝）");
 
     // 清除选区后恢复原背景（B 格 bg=默认黑；字形本身是红色，断言背景黑像素
@@ -301,8 +314,6 @@ fn render_selection_inverts_selected_cell() {
     renderer.set_selection(None);
     renderer.render(&snap, 48, 24).expect("render");
     let fb = renderer.framebuffer();
-    let b_bg_black = (w..2 * w).any(|x| {
-        (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black)
-    });
+    let b_bg_black = (w..2 * w).any(|x| (0..24u32).any(|y| fb[(y * 48 + x) as usize] == black));
     assert!(b_bg_black, "清除选区后 B 格背景应恢复默认黑");
 }
