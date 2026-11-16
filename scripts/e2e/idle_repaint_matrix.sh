@@ -1,7 +1,7 @@
 #!/bin/sh
 # idle_repaint_matrix.sh —— 阶段 4R t2：GPU 空闲跳过（4Q t3）的回归矩阵。
 #
-# 用法：sh scripts/e2e/idle_repaint_matrix.sh [nvidia|lavapipe]
+# 用法：sh scripts/e2e/idle_repaint_matrix.sh [nvidia|lavapipe] [cpu|gpu]
 #
 # 目的：4Q t3 让 GPU 后端在"快照干净 + 无 urgent + 滚动条几何未变"时跳过整帧渲染，
 # 空闲帧数从 205/5s 降到 0。风险是**不改变 VT 快照却可见的变化**被漏画。本脚本对每一项
@@ -14,6 +14,7 @@
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 MODE="${1:-nvidia}"
+BACKEND="${2:-gpu}"
 OUT="$ROOT/scripts/e2e/out/matrix"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
@@ -34,8 +35,8 @@ trap 'kill_own "${APP_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}";
 e2e_start_wm "$OUT/wm.log"
 
 CFG="$OUT/cfg-$MODE.toml"
-printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' >"$CFG"
-LOG="$OUT/app-$MODE.log"
+printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$BACKEND" >"$CFG"
+LOG="$OUT/app-$MODE-$BACKEND.log"
 APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
 APP_PID=$!
 i=0
@@ -67,13 +68,13 @@ x11 xdotool type --window "$WID" "seq 1 80"
 x11 xdotool key --window "$WID" Return
 sleep 2.0
 
-snap() { x11 import -window "$WID" "$OUT/$MODE-$1.png" 2>/dev/null; }
-ae() { compare -metric AE "$OUT/$MODE-$1.png" "$OUT/$MODE-$2.png" null: 2>&1 | head -1; }
+snap() { x11 import -window "$WID" "$OUT/$MODE-$BACKEND-$1.png" 2>/dev/null; }
+ae() { compare -metric AE "$OUT/$MODE-$BACKEND-$1.png" "$OUT/$MODE-$BACKEND-$2.png" null: 2>&1 | head -1; }
 row() { # $1=项 $2=AE $3=判定
     printf '  %-22s AE=%-8s %s\n' "$1" "${2:-NA}" "${3:-}"
 }
 
-echo "=== 回归矩阵（$MODE）==="
+echo "=== 回归矩阵（$MODE / $BACKEND）==="
 snap base
 
 # 1) 选区：拖选 → 高亮；再点空白清除
@@ -141,11 +142,13 @@ snap resized
 A=$(ae cursorbar resized)
 row "8 窗口缩放" "$A" "$([ "${A:-0}" -gt 1000 ] && echo OK || echo FAIL)"
 
-# 空闲检查：最后两个 5 秒窗口应 ≤3 帧
-sleep 11
-# 只取最后一个窗口（缩放收尾会占用前一个窗口的前几十帧）
-IDLE=$(grep -oE "frames_window=[0-9]+" "$LOG" | tail -1 | cut -d= -f2)
-row "空闲窗口帧数" "${IDLE:-NA}" "$([ "${IDLE:-999}" -le 3 ] && echo OK || echo FAIL)"
+# 空闲检查（4S t2 之后）：事件循环应完全不再被定时唤醒 ⇒ 10 秒内不产生新的统计行
+sleep 6
+N1=$(grep -c "loop_gap_ms=" "$LOG" 2>/dev/null || true)
+sleep 10
+N2=$(grep -c "loop_gap_ms=" "$LOG" 2>/dev/null || true)
+NEW=$(( ${N2:-0} - ${N1:-0} ))
+row "空闲 10s 新增统计行" "$NEW" "$([ "$NEW" -eq 0 ] && echo OK || echo FAIL)"
 
 echo "--- 说明：项 2（预编辑）需 debug 二进制（APP_TEST_PREEDIT 为 debug 专有），由 case30 覆盖；"
 echo "    项 4（焦点光标样式）本实现无此行为；项 5（Expose）由 case31 覆盖；项 9（反色/粗体等纯快照变化）"
