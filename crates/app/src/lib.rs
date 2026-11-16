@@ -2298,12 +2298,7 @@ impl AppHandler {
         if !liveness_poll_wanted() || self.pty.is_none() {
             return None;
         }
-        next_liveness_wake(
-            now,
-            true,
-            self.last_liveness_check,
-            Duration::from_secs(1),
-        )
+        next_liveness_wake(now, true, self.last_liveness_check, Duration::from_secs(1))
     }
 
     /// 本帧仍需保持的定时唤醒（debug 钩子；release 恒为 `None`）。
