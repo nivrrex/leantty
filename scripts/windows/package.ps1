@@ -166,8 +166,9 @@ without a licence file in this archive.
 '@
     $readme | Set-Content -Path (Join-Path $stage 'README.md') -Encoding UTF8
 
-    # 7) manifest (sha256 + size of every payload file)
-    $lines = @('# name  bytes  sha256')
+    # 7) manifest (sha256 + size of every payload file; ConPTY 版本单列一行)
+    $conptyVer = (Get-Item (Join-Path $stage 'OpenConsole.exe')).VersionInfo.FileVersion
+    $lines = @("# conpty: OpenConsole.exe FileVersion $conptyVer", '# name  bytes  sha256')
     foreach ($f in Get-ChildItem -Path $stage -File | Sort-Object Name) {
         $lines += ('{0}  {1}  {2}' -f $f.Name, $f.Length, (Get-Sha256 $f.FullName))
     }

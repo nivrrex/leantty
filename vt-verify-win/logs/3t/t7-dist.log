@@ -1,0 +1,12 @@
+extracted=app.exe,config.example.toml,conpty.dll,LICENSE-ConPTY.txt,MANIFEST.txt,NOTICE.md,OpenConsole.exe,README.md
+使用“2”个参数调用“Save”时发生异常:“路径中具有非法字符。”
+所在位置 E:\dev\3t\t7.ps1:53 字符: 1
++ $bmp.Save($shot, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dis ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : ArgumentException
+ 
+app_pid=2492 window=960x480 marker=False shot=E:\devt	7-dist.png bundled_OpenConsole=1
+oc_before=10212:E:\Compiler\WezTerm\OpenConsole.exe;11780:E:\Compiler\WezTerm\OpenConsole.exe
+oc_after =10212:E:\Compiler\WezTerm\OpenConsole.exe;11780:E:\Compiler\WezTerm\OpenConsole.exe
+oc_unchanged=True
