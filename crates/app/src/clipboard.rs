@@ -4,9 +4,9 @@
 //! 所有权语义要求 set 后持有者存活至进程退出）——所有方法仅限主线程调用；
 //! trait 不加 Send 约束，调用方（app 事件循环）保证单线程。
 
+use crate::Error;
 #[cfg(unix)]
 use arboard::{GetExtLinux, SetExtLinux};
-use crate::Error;
 
 /// 剪贴板种类（X11 CLIPBOARD / PRIMARY）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -75,7 +75,8 @@ fn primary_get(clip: &mut arboard::Clipboard) -> Result<String, Error> {
 #[cfg(not(unix))]
 fn primary_get(_clip: &mut arboard::Clipboard) -> Result<String, Error> {
     Err(Error::Clipboard(
-        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
+        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）"
+            .to_string(),
     ))
 }
 
@@ -92,7 +93,8 @@ fn primary_set(clip: &mut arboard::Clipboard, text: &str) -> Result<(), Error> {
 #[cfg(not(unix))]
 fn primary_set(_clip: &mut arboard::Clipboard, _text: &str) -> Result<(), Error> {
     Err(Error::Clipboard(
-        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）".to_string(),
+        "primary selection unavailable: Windows 无 PRIMARY（arboard Windows 仅 CLIPBOARD）"
+            .to_string(),
     ))
 }
 
@@ -141,7 +143,10 @@ mod tests {
     #[test]
     fn inject_get_set_roundtrip() {
         let mut c = InjectClipboard::new();
-        assert!(c.get(ClipboardKind::Clipboard).is_err(), "未 set 前 get 应 Err");
+        assert!(
+            c.get(ClipboardKind::Clipboard).is_err(),
+            "未 set 前 get 应 Err"
+        );
         c.set(ClipboardKind::Clipboard, "a").unwrap();
         c.set(ClipboardKind::Primary, "b").unwrap();
         assert_eq!(c.get(ClipboardKind::Clipboard).unwrap(), "a");
