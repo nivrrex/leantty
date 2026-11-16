@@ -478,7 +478,6 @@ impl App {
             got_event: false,
             got_pty: false,
             last_liveness_check: None,
-            wait_scheduled: false,
             last_sel_clamp_log: None,
             last_geom_drawn: None,
             frames_window: (0, 0, 0, 0),
@@ -894,8 +893,6 @@ struct AppHandler {
     got_pty: bool,
     /// 上次调用 try_wait 做存活检查的时刻（阶段 4T t3；仅 Windows 用于安排低频唤醒）。
     last_liveness_check: Option<Instant>,
-    /// 本帧是否已经安排过 WaitUntil（避免存活检查覆盖更早的渲染唤醒）。
-    wait_scheduled: bool,
     /// 上次打印"选区被 scrollback 截断"警告的时刻（阶段 4S t2 限速）。
     last_sel_clamp_log: Option<Instant>,
     /// 上次真正画到屏幕上的滚动条几何（阶段 4Q t3 空闲判定用）。
@@ -1600,7 +1597,6 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
-        self.wait_scheduled = false;
         // 阶段 4I t3：观测窗口重置（APP_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -1905,6 +1901,7 @@ impl ApplicationHandler for AppHandler {
         // 避免画面停更。
         #[cfg(debug_assertions)]
         if self.no_render {
+            self.finish_wake(event_loop, None);
             return;
         }
         #[cfg(debug_assertions)]
@@ -1938,8 +1935,9 @@ impl ApplicationHandler for AppHandler {
                 } else {
                     t + self.frame_interval
                 };
-                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(target));
-                self.wait_scheduled = true;
+                self.finish_wake(event_loop, Some(target));
+            } else {
+                self.finish_wake(event_loop, None);
             }
             return;
         }
@@ -2003,6 +2001,7 @@ impl ApplicationHandler for AppHandler {
             let is_gpu = renderer.is_gpu();
             let mut surface_guard = if is_gpu { None } else { self.surface.as_mut() };
             if !is_gpu && surface_guard.is_none() {
+                self.finish_wake(event_loop, None);
                 return;
             }
             match vt.snapshot_incremental() {
@@ -2062,6 +2061,7 @@ impl ApplicationHandler for AppHandler {
                         && geom_now == self.last_geom_drawn
                     {
                         self.update_ime_cursor_area();
+                        self.finish_wake(event_loop, None);
                         return;
                     }
                     // debug-only 强制全量（e2e 对拍用；release 不含该分支）
@@ -2142,6 +2142,7 @@ impl ApplicationHandler for AppHandler {
                             }
                         }
                         self.update_ime_cursor_area();
+                        self.finish_wake(event_loop, None);
                         return;
                     }
                     // 本帧脏区（阶段 3A 任务 3）：只拷贝并提交脏区；
@@ -2150,6 +2151,7 @@ impl ApplicationHandler for AppHandler {
                     let fb = renderer.framebuffer();
                     let fb_w = pw;
                     let Some(surface) = surface_guard.as_mut() else {
+                        self.finish_wake(event_loop, None);
                         return;
                     };
                     // APP_PRESENT_FULL=1 时强制整缓冲提交（诊断用，release 亦可用）。
@@ -2163,6 +2165,7 @@ impl ApplicationHandler for AppHandler {
                             }
                         }
                         self.update_ime_cursor_area();
+                        self.finish_wake(event_loop, None);
                         return;
                     }
                     match surface.buffer_mut() {
@@ -2276,32 +2279,67 @@ impl ApplicationHandler for AppHandler {
         if will_render {
             self.update_ime_cursor_area();
         }
-        // 阶段 4T t3：ConPTY 输出管道不会因 shell 退出而 EOF，读线程没有唤醒源，
-        // 而退出检测依赖 about_to_wait 里轮询 try_wait。这里以 1 秒间隔安排一次
-        // 低频唤醒；Linux 保持纯事件驱动（不进入该分支）。
-        // 阶段 4V t1：`APP_FORCE_LIVENESS_POLL=1` 让非 Windows 也走本分支（诊断）。
-        if liveness_poll_wanted()
-            && !self.wait_scheduled
-            && self.pty.is_some()
-            && let Some(t) = next_liveness_wake(
-                Instant::now(),
-                true,
-                self.last_liveness_check,
-                Duration::from_secs(1),
-            )
-        {
-            event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
-        }
-        // 钩子待触发时必须保持定时唤醒：渲染路径在"到期渲染"后不设 ControlFlow，
-        // 事件循环会进入无限 Wait，导致 APP_TEST_PASTE_AT_MS 永远不触发（实测）。
-        #[cfg(debug_assertions)]
-        if let Some(t) = self.test_paste_at {
-            event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
-        }
+        // 阶段 4V t2：**唯一出口**。存活检查、渲染节流、debug 钩子定时的到期时刻在这里
+        // 合并取最早者，再决定控制流；所有提前 return 都经 `finish_wake` 走同一逻辑。
+        // 迁此之前，存活唤醒登记只在函数末尾，任一提前 return（GPU 空闲跳过、CPU 无脏区
+        // 跳过 present 等）都会跳过它 → 子进程退出后不再有唤醒（Windows 3S 现象）。
+        let timer_at = self.pending_timer_at();
+        self.finish_wake(event_loop, timer_at);
     }
 }
 
 impl AppHandler {
+    /// 存活检查的下一次到期时刻（阶段 4V t2，无副作用）。
+    ///
+    /// Windows 恒启用（ConPTY 输出管道不会因 shell 退出而 EOF，只能轮询 `try_wait`）；
+    /// 其他平台仅在诊断开关 `APP_FORCE_LIVENESS_POLL=1` 打开时启用，默认 `None`，
+    /// 即保持纯事件驱动、空闲零唤醒。
+    fn liveness_deadline(&self, now: Instant) -> Option<Instant> {
+        if !liveness_poll_wanted() || self.pty.is_none() {
+            return None;
+        }
+        next_liveness_wake(
+            now,
+            true,
+            self.last_liveness_check,
+            Duration::from_secs(1),
+        )
+    }
+
+    /// 本帧仍需保持的定时唤醒（debug 钩子；release 恒为 `None`）。
+    fn pending_timer_at(&self) -> Option<Instant> {
+        #[cfg(debug_assertions)]
+        {
+            [self.test_paste_at, self.test_preedit_clear_at]
+                .into_iter()
+                .flatten()
+                .min()
+        }
+        #[cfg(not(debug_assertions))]
+        None
+    }
+
+    /// 唤醒决策的唯一出口（阶段 4V t2）：合并"存活检查"与"其它定时待办"，取最早者。
+    ///
+    /// `timer_at` 为本帧已确定的其它定时到期时刻（渲染节流目标、debug 钩子）；存活检查
+    /// 到期时刻在此处按当前时间重新计算，避免用到陈旧的过期值。
+    fn finish_wake(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        timer_at: Option<Instant>,
+    ) {
+        let now = Instant::now();
+        let liveness_at = self.liveness_deadline(now);
+        match next_wake(now, liveness_at, timer_at, None) {
+            Some(t) => {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+            }
+            None => {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+            }
+        }
+    }
+
     /// 鼠标是否命中滚动条条带（右缘 4px；条带判定优先于选区坐标转换）。
     fn hit_scrollbar(&self, position: Option<winit::dpi::PhysicalPosition<f64>>) -> bool {
         let Some(pos) = position else {
@@ -3033,6 +3071,28 @@ impl AppHandler {
     }
 }
 
+/// 合并各项"到期时刻"，得出下一次唤醒（阶段 4V t2，纯函数、无 I/O）。
+///
+/// 输入为三类候选：
+/// - `liveness`：存活检查的下一次轮询时刻（Windows 恒有；其他平台仅诊断开关打开时）；
+/// - `render`：渲染节流的下一次到期时刻；
+/// - `paste`：粘贴排空等其它定时待办。
+///
+/// 返回 `None` 表示无需唤醒（事件循环进入无限 `Wait`，保持纯事件驱动）；否则返回其中
+/// **最早**的时刻；已经过去的时刻归一化为 `now`（立即唤醒一次，避免忙等重试）。
+pub fn next_wake(
+    now: std::time::Instant,
+    liveness: Option<std::time::Instant>,
+    render: Option<std::time::Instant>,
+    paste: Option<std::time::Instant>,
+) -> Option<std::time::Instant> {
+    [liveness, render, paste]
+        .into_iter()
+        .flatten()
+        .min()
+        .map(|t| if t <= now { now } else { t })
+}
+
 /// Windows 子进程存活检查的下一次唤醒时刻（阶段 4T t3，纯函数）。
 ///
 /// 背景：子进程退出检测是 `about_to_wait` 里轮询 `Pty::try_wait`（事件驱动）。Linux 上
@@ -3733,6 +3793,72 @@ mod ime_event_tests {
     fn enabled_keeps_state() {
         let (changed, _, _) = ime_preedit_update(&Ime::Enabled);
         assert!(!changed, "Enabled 不改动组合态（仅重定位候选窗）");
+    }
+}
+
+#[cfg(test)]
+mod wake_tests {
+    use super::next_wake;
+    use std::time::{Duration, Instant};
+
+    const INTERVAL: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn only_liveness_returns_that_instant() {
+        let now = Instant::now();
+        let live = now + INTERVAL;
+        assert_eq!(
+            next_wake(now, Some(live), None, None),
+            Some(live),
+            "只有存活检查时，下一次唤醒就是它的到期时刻"
+        );
+    }
+
+    #[test]
+    fn liveness_and_render_takes_earliest() {
+        let now = Instant::now();
+        let live = now + INTERVAL;
+        let render = now + Duration::from_millis(8);
+        assert_eq!(
+            next_wake(now, Some(live), Some(render), None),
+            Some(render),
+            "渲染到期更早时按渲染唤醒（存活检查顺延到下一次迭代）"
+        );
+        let render_late = now + Duration::from_millis(3000);
+        assert_eq!(
+            next_wake(now, Some(live), Some(render_late), None),
+            Some(live),
+            "渲染更晚时不能被它拖住存活检查"
+        );
+    }
+
+    #[test]
+    fn liveness_and_paste_takes_earliest() {
+        let now = Instant::now();
+        let live = now + INTERVAL;
+        let paste = now + Duration::from_millis(2);
+        assert_eq!(
+            next_wake(now, Some(live), None, Some(paste)),
+            Some(paste),
+            "粘贴排空更早时按它唤醒"
+        );
+    }
+
+    #[test]
+    fn none_when_no_pending_work() {
+        let now = Instant::now();
+        assert_eq!(next_wake(now, None, None, None), None, "无待办时应无限等待");
+    }
+
+    #[test]
+    fn elapsed_deadlines_collapse_to_now() {
+        let now = Instant::now();
+        let past = now - Duration::from_millis(500);
+        assert_eq!(
+            next_wake(now, Some(past), None, None),
+            Some(now),
+            "已过期的到期时刻应归一化为 now（立即唤醒一次，不忙等重试）"
+        );
     }
 }
 
