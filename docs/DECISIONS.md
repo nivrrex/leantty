@@ -421,3 +421,12 @@
 - 阶段 4V t3d 无开关基线（已验证事实）：不设 `APP_FORCE_LIVENESS_POLL` 时 case50 仍 2/2（空闲 12s 新增统计行 0、CPU tick 0、ctx 增量 0），`idle_repaint_matrix nvidia cpu` 空闲 10s 新增统计行 0 —— Linux 空闲零唤醒的既有保证未被削弱。
 - 阶段 4V Windows 侧是否修好（待验证假设，置信度中高）：Windows 上根因是同一处（存活唤醒登记被提前 return 跳过），本次改动对 Windows 同样生效；但**未在 Windows 实测**，且 Windows 的 ConPTY 是否有别的路径仍需实测确认。推翻条件：Windows 侧用同一份代码跑"子 shell 退出后窗口关闭"仍 >3s，说明还有第二个唤醒缺失点。
 - 阶段 4V t3 追加缺陷（已验证事实）：统一出口第一版把提前 return 的 `timer_at` 传 `None`，覆盖了 debug 钩子块设置的 `WaitUntil` → case30/32/39 三例变红（`bytes=0/7280000`、`frames 6→6`，钩子根本不触发）。修法：`finish_wake` 内部再合并 `pending_timer_at()`；修复后 `APP_TEST_PASTE_AT_MS=2500` 的钩子重新触发，gates e2e **110/110**。
+
+- 阶段 3T t1（已验证事实）：`phase4v-done` = `d71879b`（轻量 tag，解引用同值），`--no-ff` 合并为 `44c1ac8`，0 冲突；带 4U 的 rustfmt。
+- 阶段 3T t2（已验证事实）：Windows 退出检测 A/B/C′ 各 12 组合——A 12/12 关（78–434 ms）、B 0/12、C′ 12/12 关（1.46–1.98 s，≤5 s）；杀子 shell：A 4/4、B 1/4、C′ 4/4。4V 的 `finish_wake` 在 Windows 生效。
+- 阶段 3T t2 限制（已验证事实）：A 构建 20 次中 1 次不关闭（5%），与既有"ConPTY reader EOF 延迟"现象一致，非 4V 引入。
+- 阶段 3T t3（已验证事实）：OSC 0 标题在 cpu 与 WARP 上均在 12 ms 内生效；拖选 auto-scroll 在两种后端各被一种捕获方式证实"按住持续滚动、松开停止"，但 PrintWindow 与屏幕捕获互为不稳（待验证假设：DX12 合成下 PrintWindow 陈旧）。
+- 阶段 3T t4（已验证事实）：C′ 空闲 38 s，cpu 9 条 / WARP 8 条统计行，`wake_timer=5`/5 s（=1 次/秒），符合存活检查预期。
+- 阶段 3T t5（已验证事实，推翻 4S §3 归因）：960×480、同内容，cpu vs WARP 差异 1.0304%（>32 为 1.0234%），其中滚动条列仅 9 px（0.156%），列外字形区 4739 px（≈1.03%）；1.46% 的"滚动条列"归因在本对比中不成立。
+- 阶段 3T t6（已验证事实）：`pty_windows.rs` 去 `C:\dev\tty` 后改用 `env!("CARGO_MANIFEST_DIR")`，测试通过；`wb2_lib.ps1` 的 `$ROOT` 由 `$PSScriptRoot` 推导，`C:\` 与仓库内两 cwd 均解析一致；两文件 `rustfmt --check` 干净。
+- 阶段 3T t7（已验证事实）：RC1 zip 6 604 572 B / sha256 `4b7a720c…`；MANIFEST 首行记录 ConPTY `FileVersion 1.25.2611.09001`；中文+空格路径解压、异目录启动、随附 OpenConsole 生效、系统 OpenConsole 集合不变。
