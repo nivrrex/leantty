@@ -444,3 +444,99 @@ fn gpu_parity_preedit_overlay() {
         gpu.set_preedit(None);
     }
 }
+
+/// 滚动条列对拍（阶段 4S t3）：把滚动条几何设成两种真实形态——
+/// (1) 回溯行数多、视口在底部（拇指贴底）；(2) 视口上滚到中段（拇指居中）。
+/// 只比较**滚动条列**（右缘 `SCROLLBAR_WIDTH` 像素）内 CPU 与 GPU 的像素，
+/// 阈值沿用既有背景区口径（最大通道差 ≤1、差异占比 ≤0.5%）。
+fn parity_scrollbar(rows_sb: u64, at_bottom: bool) {
+    use render::SCROLLBAR_WIDTH;
+    let _guard = serial();
+    let (cols, rows) = (80u16, 24u16);
+    let scale = 1.0;
+    let (Some(mut cpu), Some(mut gpu)) = (make_cpu(scale), make_gpu(scale)) else {
+        return;
+    };
+    let mut snap = frame(cols, rows, "scrollback overview\nline two\n中文行\n");
+    snap.full_redraw = true;
+    // 与 app 相同的几何公式：拇指高度按"可见行 / 总行"比例，底部时贴底。
+    let (cw, ch) = cpu.cell_metrics(scale);
+    let ph = u32::from(rows) * ch;
+    let _ = cw;
+    let total = rows_sb + u64::from(rows);
+    let thumb_h = ((u64::from(ph) * u64::from(rows)) / total).max(24) as u32;
+    let thumb_h = thumb_h.min(ph);
+    let thumb_y = if at_bottom { ph - thumb_h } else { (ph - thumb_h) / 2 };
+    cpu.set_scrollbar(Some((thumb_y, thumb_h)));
+    gpu.set_scrollbar(Some((thumb_y, thumb_h)));
+    let pw = u32::from(cols) * cpu.cell_metrics(scale).0;
+    cpu.render(&snap, pw, ph).expect("cpu render");
+    gpu.render(&snap, pw, ph).expect("gpu render");
+    let fb = cpu.framebuffer();
+    let rgba = gpu.framebuffer_rgba();
+    let x0 = pw.saturating_sub(SCROLLBAR_WIDTH);
+    let mut diff = 0u64;
+    let mut total_px = 0u64;
+    let mut max_d = 0u32;
+    let mut outside_diff = 0u64;
+    let mut outside_total = 0u64;
+    for y in 0..ph {
+        for x in 0..pw {
+            let i = (y * pw + x) as usize;
+            let c = fb[i];
+            let (cr, cg, cb) = (((c >> 16) & 0xFF) as i32, ((c >> 8) & 0xFF) as i32, (c & 0xFF) as i32);
+            let (gr, gg, gb) = (
+                rgba[i * 4] as i32,
+                rgba[i * 4 + 1] as i32,
+                rgba[i * 4 + 2] as i32,
+            );
+            let d = (cr - gr)
+                .unsigned_abs()
+                .max((cg - gg).unsigned_abs())
+                .max((cb - gb).unsigned_abs());
+            if x >= x0 {
+                total_px += 1;
+                if d > 0 {
+                    diff += 1;
+                    max_d = max_d.max(d);
+                }
+            } else {
+                outside_total += 1;
+                if d > 0 {
+                    outside_diff += 1;
+                }
+            }
+        }
+    }
+    let ratio = diff as f64 / total_px.max(1) as f64;
+    let outside_ratio = outside_diff as f64 / outside_total.max(1) as f64;
+    let inside_share_of_all = diff as f64 / (total_px + outside_total).max(1) as f64;
+    eprintln!(
+        "滚动条列 rows_sb={rows_sb} at_bottom={at_bottom}: 列内差异 {diff}/{total_px}（{:.3}%）max={max_d}；\
+         列外差异占比 {:.3}%；列内像素占全图 {:.3}%、列内差异占全图 {:.3}%",
+        ratio * 100.0,
+        outside_ratio * 100.0,
+        total_px as f64 / (total_px + outside_total) as f64 * 100.0,
+        inside_share_of_all * 100.0
+    );
+    assert!(
+        max_d <= 1,
+        "滚动条列最大通道差应 ≤1 LSB（实测 {max_d}）"
+    );
+    assert!(
+        ratio <= BG_DIFF_RATIO_LIMIT,
+        "滚动条列差异占比应 ≤{:.1}%（实测 {:.3}%）",
+        BG_DIFF_RATIO_LIMIT * 100.0,
+        ratio * 100.0
+    );
+}
+
+#[test]
+fn gpu_parity_scrollbar_at_bottom_80x24() {
+    parity_scrollbar(2000, true);
+}
+
+#[test]
+fn gpu_parity_scrollbar_mid_scroll_80x24() {
+    parity_scrollbar(2000, false);
+}
