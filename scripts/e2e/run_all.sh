@@ -2512,6 +2512,113 @@ else
     fi
 fi
 
+# case51/case52（阶段 4V t2/t3）：存活检查唤醒。用诊断开关 APP_FORCE_LIVENESS_POLL=1
+# 让 Linux 也走 Windows 的"每秒轮询 try_wait"分支，从而在本机验证：
+#   51. 空闲时按 ~1 次/秒定时唤醒（每 5 秒一条统计行，loops/wake_timer ≈ 5）；
+#   52. 子进程被杀后 ≤3 秒退出窗口。
+# 注意：Linux 上**杀会话首进程必然导致 pty 挂断**（内核在会话首进程退出时发送挂断，
+# 即使其它进程仍持有从端），读线程必被唤醒 → case52 在 Linux 上"修复前也是绿的"，
+# 它只用来验证退出路径 ≤3s；回归检测由 case51（空闲唤醒数）承担，回退时 case51 变红。
+# 三个后端都覆盖：cpu / gpu(NVIDIA) / lavapipe(软件 Vulkan，需 APP_GPU_ALLOW_SOFTWARE=1)。
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case51-liveness-wake (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OK51=0; TOT51=0
+    for b51 in cpu gpu lavapipe; do
+        TOT51=$((TOT51+1))
+        CFG51="$OUT/case51-$b51.toml"
+        L51="$OUT/case51-$b51.log"
+        printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG51"
+        [ "$b51" = "cpu" ] && printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG51"
+        # lavapipe：显式 gpu 后端 + 允许软件适配器 + 指定软件 ICD
+        if [ "$b51" = "lavapipe" ]; then
+            APP_CONFIG="$CFG51" APP_PERF_FRAMES=1 APP_FORCE_LIVENESS_POLL=1 \
+                APP_GPU_ALLOW_SOFTWARE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
+                SHELL=/bin/sh "$APP_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+        else
+            APP_CONFIG="$CFG51" APP_PERF_FRAMES=1 APP_FORCE_LIVENESS_POLL=1 \
+                SHELL=/bin/sh "$APP_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+        fi
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case51-liveness-wake-$b51 (窗口未出现)"; stop_app; continue
+        fi
+        sleep 2
+        N1=$(grep -c "loop_gap_ms=" "$L51" 2>/dev/null || true)
+        sleep 15
+        N2=$(grep -c "loop_gap_ms=" "$L51" 2>/dev/null || true)
+        NEW=$(( ${N2:-0} - ${N1:-0} ))
+        # 每行统计口：loops / wake_timer（5 秒窗口，1 次/秒 → 期望 5；允许 4–6）
+        # 只取"进入空闲窗口之后的统计行"：先按内容过滤再按行号跳过，不能混用（日志里
+        # 还有帧计时行等非统计行）。窗口首行可能横跨进入前的时间，故只断言最后两行。
+        LOOPS=$(awk '/loop_gap_ms=/' "$L51" | sed -n "$(( ${N1:-0} + 1 )),\$p" | grep -oE "loops=[0-9]+" | cut -d= -f2 | tr '\n' ' ')
+        TIMERS=$(awk '/loop_gap_ms=/' "$L51" | sed -n "$(( ${N1:-0} + 1 )),\$p" | grep -oE "wake_timer=[0-9]+" | cut -d= -f2 | tr '\n' ' ')
+        SET_LOOPS=$(echo "$LOOPS" | tr ' ' '\n' | grep -v '^$' | tail -2 | tr '\n' ' ')
+        SET_TIMERS=$(echo "$TIMERS" | tr ' ' '\n' | grep -v '^$' | tail -2 | tr '\n' ' ')
+        BAD=0
+        for v in $SET_LOOPS $SET_TIMERS; do
+            [ "$v" -ge 4 ] && [ "$v" -le 6 ] || BAD=$((BAD+1))
+        done
+        echo "  [c51 $b51] 空闲 15s：统计行=$NEW（期望 2-4，5 秒一条）loops=[$LOOPS] wake_timer=[$TIMERS] 稳态越界=$BAD"
+        if [ "$NEW" -ge 2 ] && [ "$NEW" -le 4 ] && [ "$BAD" -eq 0 ]; then
+            OK51=$((OK51+1))
+        fi
+        stop_app
+    done
+    if [ "$OK51" -eq "$TOT51" ] && [ "$TOT51" -eq 3 ]; then
+        echo "PASS case51-liveness-wake ($OK51/$TOT51)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case51-liveness-wake ($OK51/$TOT51)"; FAIL=$((FAIL+1))
+    fi
+
+    OK52=0; TOT52=0
+    for b52 in cpu gpu lavapipe; do
+        TOT52=$((TOT52+1))
+        CFG52="$OUT/case52-$b52.toml"
+        L52="$OUT/case52-$b52.log"
+        printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' > "$CFG52"
+        if [ "$b52" != "cpu" ]; then
+            printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' > "$CFG52"
+        fi
+        if [ "$b52" = "lavapipe" ]; then
+            APP_CONFIG="$CFG52" APP_FORCE_LIVENESS_POLL=1 APP_GPU_ALLOW_SOFTWARE=1 \
+                VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
+                SHELL=/bin/sh "$APP_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
+        else
+            APP_CONFIG="$CFG52" APP_FORCE_LIVENESS_POLL=1 SHELL=/bin/sh \
+                "$APP_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
+        fi
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case52-liveness-exit-$b52 (窗口未出现)"; stop_app; continue
+        fi
+        sleep 2
+        # 只用记录的 PID：子进程（/bin/sh）是 app 的直接子进程
+        SPID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+        if [ -z "$SPID" ]; then
+            echo "FAIL case52-liveness-exit-$b52 (找不到子进程)"; stop_app; continue
+        fi
+        kill -KILL "$SPID" 2>/dev/null
+        T0=$(date +%s%N); i=0; GONE=""
+        while [ $i -le 30 ]; do
+            ST=$(ps -o stat= -p "$APP_PID" 2>/dev/null | tr -d ' ')
+            case "$ST" in ""|Z*) GONE=1; break;; esac
+            sleep 0.1; i=$((i+1))
+        done
+        T1=$(date +%s%N); MS=$(( (T1-T0)/1000000 ))
+        echo "  [c52 $b52] 杀子 shell 后 ${MS}ms 退出（判据 ≤3000ms）"
+        if [ -n "$GONE" ] && [ "$MS" -le 3000 ]; then
+            OK52=$((OK52+1))
+        fi
+        stop_app
+    done
+    if [ "$OK52" -eq "$TOT52" ] && [ "$TOT52" -eq 3 ]; then
+        echo "PASS case52-liveness-exit ($OK52/$TOT52)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case52-liveness-exit ($OK52/$TOT52)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

@@ -51,7 +51,11 @@ fn synth(cols: u16, rows: u16) -> FrameSnapshot {
         Some(Rgb { r: 205, g: 0, b: 0 }),
         Some(Rgb { r: 0, g: 135, b: 0 }),
         Some(Rgb { r: 0, g: 0, b: 238 }),
-        Some(Rgb { r: 220, g: 160, b: 0 }),
+        Some(Rgb {
+            r: 220,
+            g: 160,
+            b: 0,
+        }),
     ];
     let mut cells: Vec<Vec<Cell>> = Vec::with_capacity(rows as usize);
     let cjk = ['中', '文', '宽', '字'];
@@ -82,7 +86,11 @@ fn synth(cols: u16, rows: u16) -> FrameSnapshot {
                 chars: (code as char).to_string(),
                 fg: colors[(x as usize + y as usize) % colors.len()],
                 bg: if (x / 10 + y / 5).is_multiple_of(7) {
-                    Some(Rgb { r: 40, g: 40, b: 60 })
+                    Some(Rgb {
+                        r: 40,
+                        g: 40,
+                        b: 60,
+                    })
                 } else {
                     None
                 },
@@ -126,9 +134,7 @@ fn stats(label: &str, mut samples: Vec<Duration>) {
     let p95 = samples[(n * 95 / 100).min(n - 1)].as_secs_f64() * 1000.0;
     let max = samples[n - 1].as_secs_f64() * 1000.0;
     let min = samples[0].as_secs_f64() * 1000.0;
-    println!(
-        "{label}: median={median:.2}ms p95={p95:.2}ms max={max:.2}ms min={min:.2}ms (n={n})"
-    );
+    println!("{label}: median={median:.2}ms p95={p95:.2}ms max={max:.2}ms min={min:.2}ms (n={n})");
 }
 
 /// 单配置基准：冷帧（新 renderer 首帧）+ 热帧（预热 20 后采样 200）。
@@ -164,10 +170,7 @@ fn bench_case(cols: u16, rows: u16, scale: f64) {
         renderer.render(&snap, pw, ph).expect("render");
         samples.push(t.elapsed());
     }
-    stats(
-        &format!("{cols}x{rows}@{scale}x full-frame hot"),
-        samples,
-    );
+    stats(&format!("{cols}x{rows}@{scale}x full-frame hot"), samples);
     println!(
         "  {cols}x{rows}@{scale}x cold first frame: {:.2}ms（px={}x{}，cell={}x{}）",
         cold.as_secs_f64() * 1000.0,
@@ -350,7 +353,10 @@ fn bench_incremental(cols: u16, rows: u16, scale: f64) {
         r.render(&s_scroll, pw, ph).expect("render");
         samples.push(t.elapsed());
     }
-    stats(&format!("{cols}x{rows}@{scale}x [scrolling-all-rows]"), samples);
+    stats(
+        &format!("{cols}x{rows}@{scale}x [scrolling-all-rows]"),
+        samples,
+    );
 }
 
 #[test]

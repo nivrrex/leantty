@@ -38,10 +38,8 @@ pub struct FrameInstances {
     pub tail_n: u32,
 }
 
-pub use crate::decide::{decide, CellDecision, DecideCtx};
 pub(crate) use crate::decide::rgb_to_u32;
-
-
+pub use crate::decide::{CellDecision, DecideCtx, decide};
 
 /// 字体组选择（与 `crate::group_for` 一致）。
 pub(crate) fn group_for(cell: &Cell) -> u8 {
@@ -212,7 +210,8 @@ impl GpuRenderer {
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
         // 阶段 4N t3：与 CPU 渲染器一致——每个回退字体只包一次 Arc，四组共享。
         let t_merge = std::time::Instant::now();
-        let shared: Vec<std::sync::Arc<Font>> = fonts.into_iter().map(std::sync::Arc::new).collect();
+        let shared: Vec<std::sync::Arc<Font>> =
+            fonts.into_iter().map(std::sync::Arc::new).collect();
         for g in std::sync::Arc::make_mut(&mut self.groups) {
             g.extend(shared.iter().cloned());
         }
@@ -220,7 +219,10 @@ impl GpuRenderer {
             "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
             shared.len(),
             self.groups.len(),
-            shared.iter().map(std::sync::Arc::strong_count).collect::<Vec<_>>(),
+            shared
+                .iter()
+                .map(std::sync::Arc::strong_count)
+                .collect::<Vec<_>>(),
             t_merge.elapsed().as_micros()
         );
         self.char_font.clear();
@@ -285,7 +287,13 @@ impl GpuRenderer {
     }
 
     /// 光栅化（None → 组首字体画 U+25A1 占位方块，与 CPU 一致）。
-    fn rasterize(&self, group: u8, idx: Option<usize>, ch: char, px: f32) -> (fontdue::Metrics, Vec<u8>) {
+    fn rasterize(
+        &self,
+        group: u8,
+        idx: Option<usize>,
+        ch: char,
+        px: f32,
+    ) -> (fontdue::Metrics, Vec<u8>) {
         let chain = &self.groups[group as usize];
         match idx {
             Some(i) => chain[i].rasterize(ch, px),
@@ -349,9 +357,11 @@ impl GpuRenderer {
                 if d.is_tail || cell.chars.is_empty() || cell.invisible {
                     continue;
                 }
-                let ch = cell.chars.chars().next().ok_or_else(|| {
-                    Error::Backend("空字符单元意外进入字形构建".to_string())
-                })?;
+                let ch = cell
+                    .chars
+                    .chars()
+                    .next()
+                    .ok_or_else(|| Error::Backend("空字符单元意外进入字形构建".to_string()))?;
                 let group = group_for(cell);
                 let font_idx = self.font_index_for(group, ch);
                 let (m, bitmap) = self.rasterize(group, font_idx, ch, px);
@@ -389,9 +399,9 @@ impl GpuRenderer {
                     scale_bits: self.scale.to_bits(),
                 };
                 // 图集可能增长/重建：返回该字形的 uv。
-                let Some(uv) = self
-                    .atlas
-                    .get_or_insert(&self.gpu.device, &self.gpu.queue, key, gw, gh, &data)
+                let Some(uv) =
+                    self.atlas
+                        .get_or_insert(&self.gpu.device, &self.gpu.queue, key, gw, gh, &data)
                 else {
                     continue;
                 };
@@ -447,9 +457,11 @@ impl GpuRenderer {
                         .and_then(|r| r.get(cur.x as usize))
                         && !cell.chars.is_empty()
                     {
-                        let ch = cell.chars.chars().next().ok_or_else(|| {
-                            Error::Backend("光标格字符为空".to_string())
-                        })?;
+                        let ch = cell
+                            .chars
+                            .chars()
+                            .next()
+                            .ok_or_else(|| Error::Backend("光标格字符为空".to_string()))?;
                         let group = group_for(cell);
                         let font_idx = self.font_index_for(group, ch);
                         let (m, bitmap) = self.rasterize(group, font_idx, ch, px);
@@ -470,18 +482,13 @@ impl GpuRenderer {
                                 gh,
                                 &bitmap,
                             ) {
-                                let cshift = crate::glyph_shift(
-                                    baseline,
-                                    m.ymin,
-                                    m.height as i32,
-                                    cell_h,
-                                );
+                                let cshift =
+                                    crate::glyph_shift(baseline, m.ymin, m.height as i32, cell_h);
                                 glyphs.push(GlyphInstance {
                                     rect: [
                                         (cx as i32 + m.xmin) as f32,
-                                        (cy as i32 + baseline - m.ymin
-                                            - m.height as i32
-                                            + cshift) as f32,
+                                        (cy as i32 + baseline - m.ymin - m.height as i32 + cshift)
+                                            as f32,
                                         gw as f32,
                                         gh as f32,
                                     ],
@@ -517,22 +524,32 @@ impl GpuRenderer {
             && thumb_h > 0
             && pixel_w >= crate::SCROLLBAR_WIDTH
         {
-                let track_x = pixel_w - crate::SCROLLBAR_WIDTH;
-                let fg = rgb_to_u32(self.palette.primary_fg);
-                let bg = rgb_to_u32(self.palette.primary_bg);
-                let avg = |a: u32, b: u32| (a + b) / 2;
-                let track = (avg((fg >> 16) & 0xFF, (bg >> 16) & 0xFF) << 16)
-                    | (avg((fg >> 8) & 0xFF, (bg >> 8) & 0xFF) << 8)
-                    | avg(fg & 0xFF, bg & 0xFF);
-                quads.push(BgInstance {
-                    rect: [track_x as f32, 0.0, crate::SCROLLBAR_WIDTH as f32, pixel_h as f32],
-                    color: unpack3(track),
-                    _pad: 0.0,
-                });
+            let track_x = pixel_w - crate::SCROLLBAR_WIDTH;
+            let fg = rgb_to_u32(self.palette.primary_fg);
+            let bg = rgb_to_u32(self.palette.primary_bg);
+            let avg = |a: u32, b: u32| (a + b) / 2;
+            let track = (avg((fg >> 16) & 0xFF, (bg >> 16) & 0xFF) << 16)
+                | (avg((fg >> 8) & 0xFF, (bg >> 8) & 0xFF) << 8)
+                | avg(fg & 0xFF, bg & 0xFF);
+            quads.push(BgInstance {
+                rect: [
+                    track_x as f32,
+                    0.0,
+                    crate::SCROLLBAR_WIDTH as f32,
+                    pixel_h as f32,
+                ],
+                color: unpack3(track),
+                _pad: 0.0,
+            });
             let th = thumb_h.min(pixel_h);
             let ty = thumb_y.min(pixel_h.saturating_sub(th));
             quads.push(BgInstance {
-                rect: [track_x as f32, ty as f32, crate::SCROLLBAR_WIDTH as f32, th as f32],
+                rect: [
+                    track_x as f32,
+                    ty as f32,
+                    crate::SCROLLBAR_WIDTH as f32,
+                    th as f32,
+                ],
                 color: unpack3(fg),
                 _pad: 0.0,
             });
@@ -688,7 +705,12 @@ impl GpuRenderer {
             None => std::sync::Arc::new(crate::build_font_groups(settings)?),
         };
         let t_atlas = std::time::Instant::now();
-        let atlas = GlyphAtlas::new(&gpu.device, &gpu.queue, gpu.max_texture, atlas::INITIAL_SIZE);
+        let atlas = GlyphAtlas::new(
+            &gpu.device,
+            &gpu.queue,
+            gpu.max_texture,
+            atlas::INITIAL_SIZE,
+        );
         eperf!(
             "[perf] gpu_atlas_ms={:.1} since_start={:.1}",
             t_atlas.elapsed().as_secs_f64() * 1000.0,
@@ -802,9 +824,13 @@ impl GpuRenderer {
         let view = tex
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
         self.pipelines
-            .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
+            .write_screen(&self.gpu.queue, pixel_w, pixel_h);
+        self.pipelines.ensure_capacity(
+            &self.gpu.device,
+            inst.quads.len(),
+            inst.glyphs.len().max(1),
+        );
         let clear = self.clear_color();
         self.pipelines.submit(
             &self.gpu.device,
@@ -891,7 +917,9 @@ impl GpuRenderer {
                 }
             }
         }
-        Err(Error::Backend("surface 获取纹理失败（重试耗尽）".to_string()))
+        Err(Error::Backend(
+            "surface 获取纹理失败（重试耗尽）".to_string(),
+        ))
     }
 
     /// 渲染一帧到离屏纹理并回读（t3；t4 改为 surface present）。
@@ -902,11 +930,8 @@ impl GpuRenderer {
         pixel_h: u32,
     ) -> Result<(), Error> {
         if self.pixel != (pixel_w, pixel_h) {
-            self.target = Target::Offscreen(OffscreenTarget::new(
-                &self.gpu.device,
-                pixel_w,
-                pixel_h,
-            ));
+            self.target =
+                Target::Offscreen(OffscreenTarget::new(&self.gpu.device, pixel_w, pixel_h));
             self.pixel = (pixel_w, pixel_h);
         }
         let inst = self.build_instances(frame, pixel_w, pixel_h)?;
@@ -915,9 +940,13 @@ impl GpuRenderer {
                 "render_offscreen 只能用于离屏目标（当前为 surface）".to_string(),
             ));
         };
+        self.pipelines.ensure_capacity(
+            &self.gpu.device,
+            inst.quads.len(),
+            inst.glyphs.len().max(1),
+        );
         self.pipelines
-            .ensure_capacity(&self.gpu.device, inst.quads.len(), inst.glyphs.len().max(1));
-        self.pipelines.write_screen(&self.gpu.queue, pixel_w, pixel_h);
+            .write_screen(&self.gpu.queue, pixel_w, pixel_h);
         let clear = self.clear_color();
         self.pipelines.submit(
             &self.gpu.device,
@@ -930,7 +959,6 @@ impl GpuRenderer {
         self.rgba = target.read_back(&self.gpu.device, &self.gpu.queue)?;
         Ok(())
     }
-
 }
 
 impl Renderer for GpuRenderer {
@@ -1196,9 +1224,9 @@ impl Gpu {
         let adapter = match std::env::var("WGPU_ADAPTER_NAME") {
             Ok(want) if !want.is_empty() => {
                 let want_lc = want.to_lowercase();
-                let idx = real.iter().position(|a| {
-                    a.get_info().name.to_lowercase().contains(&want_lc)
-                });
+                let idx = real
+                    .iter()
+                    .position(|a| a.get_info().name.to_lowercase().contains(&want_lc));
                 match idx {
                     Some(i) => real.swap_remove(i),
                     None => {
@@ -1251,18 +1279,18 @@ impl Gpu {
         required.max_texture_dimension_2d = limits.max_texture_dimension_2d;
         // 回读缓冲在 4000x1920 下约 31MB，留足余量到 64MB。
         required.max_buffer_size = (64u64 << 20).min(limits.max_buffer_size);
-        required.max_storage_buffer_binding_size =
-            required.max_storage_buffer_binding_size.min(limits.max_storage_buffer_binding_size);
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("tty-gpu-renderer"),
-                required_features: wgpu::Features::empty(),
-                required_limits: required,
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
-            }))
-            .map_err(|e| Error::Backend(format!("request_device: {e}")))?;
+        required.max_storage_buffer_binding_size = required
+            .max_storage_buffer_binding_size
+            .min(limits.max_storage_buffer_binding_size);
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("tty-gpu-renderer"),
+            required_features: wgpu::Features::empty(),
+            required_limits: required,
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
+        }))
+        .map_err(|e| Error::Backend(format!("request_device: {e}")))?;
         eperf!(
             "[perf] gpu_device_ms={:.1} since_start={:.1}",
             t_instance.elapsed().as_secs_f64() * 1000.0,
@@ -1736,7 +1764,10 @@ mod backends_spec_tests {
     fn parses_single_names_case_insensitively() {
         assert_eq!(parse_backends_spec("dx12").unwrap(), wgpu::Backends::DX12);
         assert_eq!(parse_backends_spec("DX12").unwrap(), wgpu::Backends::DX12);
-        assert_eq!(parse_backends_spec("vulkan").unwrap(), wgpu::Backends::VULKAN);
+        assert_eq!(
+            parse_backends_spec("vulkan").unwrap(),
+            wgpu::Backends::VULKAN
+        );
         assert_eq!(parse_backends_spec("vK").unwrap(), wgpu::Backends::VULKAN);
         assert_eq!(parse_backends_spec("d3d12").unwrap(), wgpu::Backends::DX12);
     }
@@ -1745,8 +1776,14 @@ mod backends_spec_tests {
     fn trims_surrounding_whitespace() {
         // 这正是 Windows 上 `set X=dx12 && app` 会产生的尾随空格
         assert_eq!(parse_backends_spec("dx12 ").unwrap(), wgpu::Backends::DX12);
-        assert_eq!(parse_backends_spec(" vulkan").unwrap(), wgpu::Backends::VULKAN);
-        assert_eq!(parse_backends_spec("\tdx12\n").unwrap(), wgpu::Backends::DX12);
+        assert_eq!(
+            parse_backends_spec(" vulkan").unwrap(),
+            wgpu::Backends::VULKAN
+        );
+        assert_eq!(
+            parse_backends_spec("\tdx12\n").unwrap(),
+            wgpu::Backends::DX12
+        );
     }
 
     #[test]

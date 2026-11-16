@@ -65,7 +65,10 @@ mod tests {
         for _ in 0..50 {
             ema = Some(next_ema(ema, 10.0));
         }
-        assert!((ema.unwrap() - 10.0).abs() < 0.1, "应收敛到 10，实际 {ema:?}");
+        assert!(
+            (ema.unwrap() - 10.0).abs() < 0.1,
+            "应收敛到 10，实际 {ema:?}"
+        );
     }
 
     #[test]
@@ -74,7 +77,10 @@ mod tests {
         let mut ema = next_ema(None, 5.0);
         assert_eq!(target_interval(ema).as_millis(), 15);
         ema = next_ema(Some(ema), 40.0);
-        assert!(target_interval(ema).as_millis() > 15, "渲染变慢后间隔应增大");
+        assert!(
+            target_interval(ema).as_millis() > 15,
+            "渲染变慢后间隔应增大"
+        );
         assert!(target_interval(ema).as_millis() < 100, "且不超过上限");
         // 输出停止（渲染耗时回落）时间隔收敛回下限附近
         for _ in 0..60 {

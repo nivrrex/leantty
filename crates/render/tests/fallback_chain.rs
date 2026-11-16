@@ -60,7 +60,10 @@ fn fallback_chain_ascii_main_cjk_fallback() {
     };
     // ASCII 格用主字体（组内索引 0）；汉字走回退（索引 > 0）。
     // 懒加载：后台字体未到位时汉字索引 0（占位语义）；add_background_fonts 到位后断言 > 0。
-    let snap = snap_of(vec![mk_cell("A", CellWide::Narrow), mk_cell("你", CellWide::Narrow)]);
+    let snap = snap_of(vec![
+        mk_cell("A", CellWide::Narrow),
+        mk_cell("你", CellWide::Narrow),
+    ]);
     let before = renderer.font_indices(&snap);
     assert_eq!(before[0][0], 0, "ASCII 'A' 应用主字体（索引 0）");
     let fonts = render::load_font_list(&settings("黑体").fallback);
@@ -99,10 +102,12 @@ fn wide_char_spans_two_cells_and_tail_not_drawn() {
     let h = 24u32;
     let bg = fb[0];
     let cell_has_fg = |x0: u32| {
-        (x0..x0 + w).any(|x| (0..h).any(|y| {
-            let p = fb[(y * 48 + x) as usize];
-            p != bg
-        }))
+        (x0..x0 + w).any(|x| {
+            (0..h).any(|y| {
+                let p = fb[(y * 48 + x) as usize];
+                p != bg
+            })
+        })
     };
     assert!(cell_has_fg(0), "宽字符格应有前景像素");
     assert!(

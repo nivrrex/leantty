@@ -35,7 +35,10 @@ fn scroll_up_then_feed_stays_or_follows() {
     feed_lines(&mut vt, 3, "B");
     let after = first_visible(&mut vt);
     println!("BEFORE={} SCOOLED={} AFTER={}", before, scrolled, after);
-    println!("scrollback_rows={}", vt.snapshot().map(|s| s.scrollback_rows).unwrap_or(0));
+    println!(
+        "scrollback_rows={}",
+        vt.snapshot().map(|s| s.scrollback_rows).unwrap_or(0)
+    );
     // 断言视口内容变化可观测（上滚生效）
     assert_ne!(before, scrolled, "上滚后首行应变化（视口移动生效）");
     // 关键结论：新输出后视口是否自动回底（AFTER 首行=滚动前的底部行或 B 标签行）

@@ -385,11 +385,7 @@ impl Default for Config {
             colors: Colors {
                 draw_bold_text_with_bright_colors: false,
                 primary: PrimaryColors {
-                    background: Rgb {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                    },
+                    background: Rgb { r: 0, g: 0, b: 0 },
                     foreground: Rgb {
                         r: 255,
                         g: 255,
@@ -402,20 +398,28 @@ impl Default for Config {
                         g: 255,
                         b: 255,
                     },
-                    cursor: Rgb {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                    },
+                    cursor: Rgb { r: 0, g: 0, b: 0 },
                 },
                 normal: Ansi8 {
                     black: Rgb { r: 0, g: 0, b: 0 },
                     red: Rgb { r: 205, g: 0, b: 0 },
                     green: Rgb { r: 0, g: 205, b: 0 },
-                    yellow: Rgb { r: 205, g: 205, b: 0 },
+                    yellow: Rgb {
+                        r: 205,
+                        g: 205,
+                        b: 0,
+                    },
                     blue: Rgb { r: 0, g: 0, b: 238 },
-                    magenta: Rgb { r: 215, g: 0, b: 159 },
-                    cyan: Rgb { r: 0, g: 205, b: 205 },
+                    magenta: Rgb {
+                        r: 215,
+                        g: 0,
+                        b: 159,
+                    },
+                    cyan: Rgb {
+                        r: 0,
+                        g: 205,
+                        b: 205,
+                    },
                     white: Rgb {
                         r: 229,
                         g: 229,
@@ -430,10 +434,26 @@ impl Default for Config {
                     },
                     red: Rgb { r: 255, g: 0, b: 0 },
                     green: Rgb { r: 0, g: 255, b: 0 },
-                    yellow: Rgb { r: 255, g: 255, b: 0 },
-                    blue: Rgb { r: 92, g: 92, b: 255 },
-                    magenta: Rgb { r: 255, g: 0, b: 255 },
-                    cyan: Rgb { r: 0, g: 255, b: 255 },
+                    yellow: Rgb {
+                        r: 255,
+                        g: 255,
+                        b: 0,
+                    },
+                    blue: Rgb {
+                        r: 92,
+                        g: 92,
+                        b: 255,
+                    },
+                    magenta: Rgb {
+                        r: 255,
+                        g: 0,
+                        b: 255,
+                    },
+                    cyan: Rgb {
+                        r: 0,
+                        g: 255,
+                        b: 255,
+                    },
                     white: Rgb {
                         r: 255,
                         g: 255,
@@ -685,13 +705,22 @@ fn string_field(t: &Table, key: &str, path: &str, w: &mut Warnings) -> Option<St
     }
 }
 
-fn u64_field(t: &Table, key: &str, path: &str, min: u64, max: u64, w: &mut Warnings) -> Option<u64> {
+fn u64_field(
+    t: &Table,
+    key: &str,
+    path: &str,
+    min: u64,
+    max: u64,
+    w: &mut Warnings,
+) -> Option<u64> {
     match t.get(key) {
         None => None,
         Some(v) => match v.as_integer() {
             Some(n) if n >= min as i64 && n <= max as i64 => Some(n as u64),
             _ => {
-                w.push(format!("{path}.{key}: expected integer {min}..={max}, ignored"));
+                w.push(format!(
+                    "{path}.{key}: expected integer {min}..={max}, ignored"
+                ));
                 None
             }
         },
@@ -713,14 +742,18 @@ fn f32_field(
                 toml::Value::Float(f) => *f,
                 toml::Value::Integer(i) => *i as f64,
                 _ => {
-                    w.push(format!("{path}.{key}: expected float {min}..={max}, ignored"));
+                    w.push(format!(
+                        "{path}.{key}: expected float {min}..={max}, ignored"
+                    ));
                     return None;
                 }
             };
             if n >= min && n <= max {
                 Some(n as f32)
             } else {
-                w.push(format!("{path}.{key}: expected float {min}..={max}, ignored"));
+                w.push(format!(
+                    "{path}.{key}: expected float {min}..={max}, ignored"
+                ));
                 None
             }
         }
@@ -783,14 +816,7 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
             }
         }
         if let Some(d) = table(t, "dimensions", "window", w) {
-            let cols = u64_field(
-                d,
-                "columns",
-                "window.dimensions",
-                1,
-                1000,
-                w,
-            );
+            let cols = u64_field(d, "columns", "window.dimensions", 1, 1000, w);
             let lines = u64_field(d, "lines", "window.dimensions", 1, 1000, w);
             if let (Some(cols), Some(lines)) = (cols, lines) {
                 c.window.dimensions = Dimensions {
@@ -937,12 +963,7 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
     }
 
     if let Some(t) = table(root, "colors", "root", w) {
-        if let Some(b) = bool_field(
-            t,
-            "draw_bold_text_with_bright_colors",
-            "colors",
-            w,
-        ) {
+        if let Some(b) = bool_field(t, "draw_bold_text_with_bright_colors", "colors", w) {
             c.colors.draw_bold_text_with_bright_colors = b;
         }
         if let Some(p) = table(t, "primary", "colors", w) {
@@ -1064,11 +1085,16 @@ fn parse_bindings(t: &Table, path: &str, expect_mouse: bool, w: &mut Warnings) -
                 continue;
             }
         };
-        let action = match tt.get("action").and_then(|v| v.as_str()).and_then(|s| s.parse().ok())
+        let action = match tt
+            .get("action")
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse().ok())
         {
             Some(a) => a,
             _ => {
-                w.push(format!("{item_path}.action: required valid action, binding skipped"));
+                w.push(format!(
+                    "{item_path}.action: required valid action, binding skipped"
+                ));
                 continue;
             }
         };
@@ -1080,7 +1106,9 @@ fn parse_bindings(t: &Table, path: &str, expect_mouse: bool, w: &mut Warnings) -
             {
                 Some(m) => Some(m),
                 None => {
-                    w.push(format!("{item_path}.mouse: required valid mouse button, binding skipped"));
+                    w.push(format!(
+                        "{item_path}.mouse: required valid mouse button, binding skipped"
+                    ));
                     continue;
                 }
             }
@@ -1091,7 +1119,9 @@ fn parse_bindings(t: &Table, path: &str, expect_mouse: bool, w: &mut Warnings) -
             match tt.get("key").and_then(|v| v.as_str()) {
                 Some(k) if !k.is_empty() => Some(k.to_string()),
                 _ => {
-                    w.push(format!("{item_path}.key: required non-empty key, binding skipped"));
+                    w.push(format!(
+                        "{item_path}.key: required non-empty key, binding skipped"
+                    ));
                     continue;
                 }
             }

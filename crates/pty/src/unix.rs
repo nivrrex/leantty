@@ -3,7 +3,9 @@
 //! close 顺序：先释放 PTY 主端（drop writer 与 master），再 kill + wait
 //! 回收子进程；遵守模块级契约，避免先等子进程退出导致主端 EOF 延迟。
 
-use portable_pty::{Child, CommandBuilder, ExitStatus, MasterPty, PtyPair, PtySize, native_pty_system};
+use portable_pty::{
+    Child, CommandBuilder, ExitStatus, MasterPty, PtyPair, PtySize, native_pty_system,
+};
 use std::io::{Read, Write};
 use std::time::Duration;
 
@@ -117,6 +119,7 @@ pub fn join_thread_timeout(
         let _ = handle.join();
         let _ = tx.send(());
     });
-    rx.recv_timeout(timeout).map_err(|_| Error::ReaderJoinTimeout)?;
+    rx.recv_timeout(timeout)
+        .map_err(|_| Error::ReaderJoinTimeout)?;
     Ok(())
 }

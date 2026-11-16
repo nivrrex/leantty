@@ -30,7 +30,6 @@ fn settings(family: &str, size: f32) -> FontSettings {
     }
 }
 
-
 /// 字体链加载（主字体 + 系统 CJK 兜底），与 app 的一致性由 `load_font_list` 保证。
 fn load_chain(primary: &str) -> Option<Vec<Font>> {
     use fontdb::{Database, Family, Query, Source, Style as DbStyle, Weight};
@@ -56,7 +55,11 @@ fn load_chain(primary: &str) -> Option<Vec<Font>> {
     if !chain[0].has_glyph('中') {
         let mut candidates: Vec<_> = db
             .faces()
-            .filter(|f| f.families.iter().any(|(n, _)| n.to_lowercase().contains("cjk")))
+            .filter(|f| {
+                f.families
+                    .iter()
+                    .any(|(n, _)| n.to_lowercase().contains("cjk"))
+            })
             .collect();
         candidates.sort_by_key(|f| {
             let name = match &f.source {
@@ -163,7 +166,10 @@ fn analyze(chain: &[Font], size: f32, label: &str) -> Option<Vec<FontReport>> {
             }
         }
         reports.push(FontReport {
-            name: format!("{label}#{fi} {}", if fi == 0 { "primary" } else { "fallback" }),
+            name: format!(
+                "{label}#{fi} {}",
+                if fi == 0 { "primary" } else { "fallback" }
+            ),
             ascent: lm.ascent,
             descent: lm.descent,
             line_gap: lm.line_gap,
@@ -186,8 +192,16 @@ fn print_reports(reports: &[FontReport]) {
     for r in reports {
         eprintln!(
             "[clip] {}: ascent={:.2} descent={:.2} line_gap={:.2} cell_h={} baseline={} | min_top={} (char '{}') max_bottom={} (char '{}')",
-            r.name, r.ascent, r.descent, r.line_gap, r.cell_h, r.baseline,
-            r.min_top, r.min_top_char, r.max_bottom, r.max_bottom_char
+            r.name,
+            r.ascent,
+            r.descent,
+            r.line_gap,
+            r.cell_h,
+            r.baseline,
+            r.min_top,
+            r.min_top_char,
+            r.max_bottom,
+            r.max_bottom_char
         );
         eprintln!(
             "[clip]   越界字符数={} 被裁墨迹行数(合计)={}（其中顶部被裁={}，字形高于格={}）",
@@ -261,7 +275,11 @@ fn glyph_fits_in_cell_font_matrix() {
                 }
             }
         };
-        let label = if *fam == "__external__" { "external" } else { fam };
+        let label = if *fam == "__external__" {
+            "external"
+        } else {
+            fam
+        };
         if let Some(reports) = analyze(&chain, 13.0, label) {
             print_reports(&reports);
             let bad: usize = reports.iter().map(|r| r.top_clipped).sum();
@@ -304,7 +322,11 @@ fn glyph_top_not_clipped_gpu() {
     };
     // 用系统 CJK 兜底字体（与 app 相同来源）
     if let Some(sys) = load_chain("monospace") {
-        let cjk: Vec<Font> = sys.into_iter().skip(1).filter(|f| f.has_glyph('中')).collect();
+        let cjk: Vec<Font> = sys
+            .into_iter()
+            .skip(1)
+            .filter(|f| f.has_glyph('中'))
+            .collect();
         if !cjk.is_empty() {
             gpu.add_background_fonts(cjk);
         }

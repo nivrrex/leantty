@@ -78,10 +78,22 @@ fn measure_font_instance_and_clone_cost() {
     // 与产品一致的 FontSettings（只为让编译期常量使用；本测试不用渲染器）
     let _ = FontSettings {
         size: 13.0,
-        normal: FontSpec { family: "monospace".into(), style: "Regular".into() },
-        bold: FontSpec { family: "monospace".into(), style: "Bold".into() },
-        italic: FontSpec { family: "monospace".into(), style: "Italic".into() },
-        bold_italic: FontSpec { family: "monospace".into(), style: "Bold Italic".into() },
+        normal: FontSpec {
+            family: "monospace".into(),
+            style: "Regular".into(),
+        },
+        bold: FontSpec {
+            family: "monospace".into(),
+            style: "Bold".into(),
+        },
+        italic: FontSpec {
+            family: "monospace".into(),
+            style: "Italic".into(),
+        },
+        bold_italic: FontSpec {
+            family: "monospace".into(),
+            style: "Bold Italic".into(),
+        },
         fallback: Vec::new(),
     };
     let _ = Rgb { r: 0, g: 0, b: 0 };
@@ -89,8 +101,16 @@ fn measure_font_instance_and_clone_cost() {
     // (显示名, 族名, 样式)
     let cases = [
         ("DejaVu Sans Mono (小字体)", "DejaVu Sans Mono", "Regular"),
-        ("Noto Sans CJK (fallback 候选)", "Noto Sans CJK SC", "Regular"),
-        ("Noto Sans CJK JP (同一 .ttc 的另一面)", "Noto Sans CJK JP", "Regular"),
+        (
+            "Noto Sans CJK (fallback 候选)",
+            "Noto Sans CJK SC",
+            "Regular",
+        ),
+        (
+            "Noto Sans CJK JP (同一 .ttc 的另一面)",
+            "Noto Sans CJK JP",
+            "Regular",
+        ),
     ];
 
     println!("| 字体面 | 文件字节 | 实例 MB | clone 增量 MB | clone/实例 |");
@@ -101,13 +121,14 @@ fn measure_font_instance_and_clone_cost() {
             continue;
         };
         let before = live_mb();
-        let font = match fontdue::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default()) {
-            Ok(f) => f,
-            Err(e) => {
-                println!("| {label} | {} | 解析失败: {e} | - | - |", bytes.len());
-                continue;
-            }
-        };
+        let font =
+            match fontdue::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default()) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("| {label} | {} | 解析失败: {e} | - | - |", bytes.len());
+                    continue;
+                }
+            };
         let after_load = live_mb();
         let cloned = font.clone();
         let after_clone = live_mb();

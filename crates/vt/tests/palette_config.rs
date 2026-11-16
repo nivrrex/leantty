@@ -86,7 +86,13 @@ fn ansi_bright_colors_follow_configured_palette() {
     t.feed(b"\x1b[0m");
     for i in 0..8usize {
         let (fg, _) = cell_colors(&t, i);
-        assert_eq!(fg, Some(p.bright[i]), "ESC[{}m 应使用配置的 bright[{}]", 90 + i, i);
+        assert_eq!(
+            fg,
+            Some(p.bright[i]),
+            "ESC[{}m 应使用配置的 bright[{}]",
+            90 + i,
+            i
+        );
     }
 }
 
@@ -105,11 +111,23 @@ fn ansi_background_colors_follow_configured_palette() {
     t.feed(b"\x1b[0m");
     for i in 0..8usize {
         let (_, bg) = cell_colors(&t, i);
-        assert_eq!(bg, Some(p.normal[i]), "ESC[{}m 背景应为配置 normal[{}]", 40 + i, i);
+        assert_eq!(
+            bg,
+            Some(p.normal[i]),
+            "ESC[{}m 背景应为配置 normal[{}]",
+            40 + i,
+            i
+        );
     }
     for i in 0..8usize {
         let (_, bg) = cell_colors(&t, 8 + i);
-        assert_eq!(bg, Some(p.bright[i]), "ESC[{}m 背景应为配置 bright[{}]", 100 + i, i);
+        assert_eq!(
+            bg,
+            Some(p.bright[i]),
+            "ESC[{}m 背景应为配置 bright[{}]",
+            100 + i,
+            i
+        );
     }
 }
 
@@ -148,7 +166,11 @@ fn osc_overrides_then_resets_back_to_configured_palette() {
     let (fg_override, _) = cell_colors(&t, 0);
     assert_eq!(
         fg_override,
-        Some(Rgb { r: 0xaa, g: 0xbb, b: 0xcc }),
+        Some(Rgb {
+            r: 0xaa,
+            g: 0xbb,
+            b: 0xcc
+        }),
         "OSC 4 改色后 ESC[31m 应使用新色（实测 {:?}）",
         fg_override
     );
@@ -177,14 +199,34 @@ fn truecolor_and_256_cube_are_not_affected() {
     t.feed(b"\x1b[0m");
     let snap = t.snapshot().expect("snapshot");
     let fg = |i: usize| snap.cells[0][i].fg;
-    assert_eq!(fg(0), Some(Rgb { r: 12, g: 34, b: 56 }), "真彩色应原样保留");
+    assert_eq!(
+        fg(0),
+        Some(Rgb {
+            r: 12,
+            g: 34,
+            b: 56
+        }),
+        "真彩色应原样保留"
+    );
     // 16..255 是标准 xterm 立方/灰阶：用内置默认的同一索引作为期望值
     let builtin = libghostty_vt::style::Palette::default();
     let builtin_rgb = |i: usize| {
         let c = builtin.0[i];
-        Rgb { r: c.r, g: c.g, b: c.b }
+        Rgb {
+            r: c.r,
+            g: c.g,
+            b: c.b,
+        }
     };
     assert_eq!(fg(1), Some(builtin_rgb(16)), "256 色索引 16 不应被配置覆盖");
-    assert_eq!(fg(2), Some(builtin_rgb(196)), "256 色索引 196 不应被配置覆盖");
-    assert_eq!(fg(3), Some(builtin_rgb(232)), "256 色索引 232 不应被配置覆盖");
+    assert_eq!(
+        fg(2),
+        Some(builtin_rgb(196)),
+        "256 色索引 196 不应被配置覆盖"
+    );
+    assert_eq!(
+        fg(3),
+        Some(builtin_rgb(232)),
+        "256 色索引 232 不应被配置覆盖"
+    );
 }

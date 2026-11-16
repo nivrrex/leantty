@@ -31,7 +31,7 @@ pub struct VtPalette {
     pub bright: [crate::Rgb; 8],
 }
 
-use libghostty_vt::render::{CellIterator, RowIterator, RenderState};
+use libghostty_vt::render::{CellIterator, RenderState, RowIterator};
 use libghostty_vt::screen::{CellWide as VtCellWide, Screen};
 use libghostty_vt::style::RgbColor;
 use libghostty_vt::terminal::Terminal;
@@ -59,11 +59,7 @@ impl VtTerminal {
     }
 
     /// 用配置调色板初始化终端（阶段 4F t2）。
-    pub fn new_with_palette(
-        cols: u16,
-        rows: u16,
-        palette: &VtPalette,
-    ) -> Result<Self, Error> {
+    pub fn new_with_palette(cols: u16, rows: u16, palette: &VtPalette) -> Result<Self, Error> {
         let mut term = Terminal::new(cols, rows)?;
         // 1) 16 个 ANSI 索引色：覆盖 libghostty 内置调色板的前 16 项，
         //    16..255（xterm 立方/灰阶）保持内置值（t2 要求不受配置影响）。
@@ -168,7 +164,10 @@ impl VtTerminal {
             // 软折行标记：render state RowData 无 WRAP 变体，走 grid_ref(Viewport)
             // 逐行查 screen::Row::is_wrapped（GridRef 借 terminal，与迭代器借
             // 并存均为不可变借，编译期安全）。
-            let coord = libghostty_vt::terminal::PointCoordinate { x: 0, y: cells.len() as u32 - 1 };
+            let coord = libghostty_vt::terminal::PointCoordinate {
+                x: 0,
+                y: cells.len() as u32 - 1,
+            };
             let is_wrapped = self
                 .inner
                 .grid_ref(libghostty_vt::terminal::Point::Viewport(coord))
@@ -299,14 +298,20 @@ impl VtTerminal {
     ) -> Result<Vec<(Vec<Cell>, bool)>, Error> {
         let mut out = Vec::with_capacity(abs_end - abs_start + 1);
         for abs in abs_start..=abs_end {
-            let coord = libghostty_vt::terminal::PointCoordinate { x: 0, y: abs as u32 };
+            let coord = libghostty_vt::terminal::PointCoordinate {
+                x: 0,
+                y: abs as u32,
+            };
             let grid = self
                 .inner
                 .grid_ref(libghostty_vt::terminal::Point::Screen(coord))?;
             let wrapped = grid.row()?.is_wrapped().unwrap_or(false);
             let mut line = Vec::with_capacity(cols as usize);
             for col in 0..cols {
-                let coord = libghostty_vt::terminal::PointCoordinate { x: col, y: abs as u32 };
+                let coord = libghostty_vt::terminal::PointCoordinate {
+                    x: col,
+                    y: abs as u32,
+                };
                 let cell_grid = self
                     .inner
                     .grid_ref(libghostty_vt::terminal::Point::Screen(coord))?;
@@ -337,7 +342,11 @@ impl VtTerminal {
 }
 
 fn vt_rgb_to_rgb(c: RgbColor) -> Rgb {
-    Rgb { r: c.r, g: c.g, b: c.b }
+    Rgb {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+    }
 }
 
 fn map_underline(u: libghostty_vt::style::Underline) -> Underline {

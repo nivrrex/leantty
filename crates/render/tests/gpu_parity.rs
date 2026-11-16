@@ -45,7 +45,11 @@ fn cjk_fonts() -> Vec<render::Font> {
     db.load_system_fonts();
     let mut faces: Vec<_> = db
         .faces()
-        .filter(|f| f.families.iter().any(|(n, _)| n.to_lowercase().contains("cjk")))
+        .filter(|f| {
+            f.families
+                .iter()
+                .any(|(n, _)| n.to_lowercase().contains("cjk"))
+        })
         .collect();
     faces.sort_by_key(|f| {
         let name = match &f.source {
@@ -74,7 +78,12 @@ fn cjk_fonts() -> Vec<render::Font> {
 }
 
 fn make_cpu(scale: f64) -> Option<CpuRenderer> {
-    let mut r = CpuRenderer::new(&settings(16.0), RenderOptions::default(), Palette::default()).ok()?;
+    let mut r = CpuRenderer::new(
+        &settings(16.0),
+        RenderOptions::default(),
+        Palette::default(),
+    )
+    .ok()?;
     r.set_scale_factor(scale);
     let fonts = cjk_fonts();
     if fonts.is_empty() {
@@ -156,13 +165,20 @@ fn compare(cpu: &[u32], gpu_rgba: &[u8], w: u32, h: u32) -> Diff {
     };
     for i in 0..n.min(cpu.len()).min(gpu_rgba.len() / 4) {
         let c = cpu[i];
-        let (cr, cg, cb) = (((c >> 16) & 0xFF) as i32, ((c >> 8) & 0xFF) as i32, (c & 0xFF) as i32);
+        let (cr, cg, cb) = (
+            ((c >> 16) & 0xFF) as i32,
+            ((c >> 8) & 0xFF) as i32,
+            (c & 0xFF) as i32,
+        );
         let (gr, gg, gb) = (
             gpu_rgba[i * 4] as i32,
             gpu_rgba[i * 4 + 1] as i32,
             gpu_rgba[i * 4 + 2] as i32,
         );
-        let maxd = (cr - gr).unsigned_abs().max((cg - gg).unsigned_abs()).max((cb - gb).unsigned_abs());
+        let maxd = (cr - gr)
+            .unsigned_abs()
+            .max((cg - gg).unsigned_abs())
+            .max((cb - gb).unsigned_abs());
         d.all_max = d.all_max.max(maxd);
         let is_bg = (c & 0x00FF_FFFF) == bg_u32;
         if is_bg {
@@ -226,11 +242,7 @@ fn parity(cols: u16, rows: u16, scale: f64, text: &str) {
         d.glyph_max,
         d.all_max
     );
-    assert!(
-        d.glyph_max <= 1,
-        "字形区最大通道差 {} > 1 LSB",
-        d.glyph_max
-    );
+    assert!(d.glyph_max <= 1, "字形区最大通道差 {} > 1 LSB", d.glyph_max);
     assert!(
         bg_ratio <= BG_DIFF_RATIO_LIMIT,
         "背景区差异占比 {:.3}% 超过 {:.1}%",
@@ -288,7 +300,10 @@ fn gpu_parity_cursor_styles() {
         cpu.render(&snap, pw, ph).expect("cpu");
         gpu.render(&snap, pw, ph).expect("gpu");
         let d = compare(cpu.framebuffer(), gpu.framebuffer_rgba(), pw, ph);
-        eprintln!("  cursor {style:?}: glyph_max={} all_max={}", d.glyph_max, d.all_max);
+        eprintln!(
+            "  cursor {style:?}: glyph_max={} all_max={}",
+            d.glyph_max, d.all_max
+        );
         assert!(d.all_max <= 1, "光标 {style:?} 差异 {} > 1 LSB", d.all_max);
     }
 }
@@ -341,9 +356,17 @@ fn gpu_atlas_rebuild_with_thousands_of_cjk() {
     let ratio = d.glyph_diff as f64 / d.glyph_total.max(1) as f64;
     eprintln!(
         "  CJK 压力: bg_diff={} glyph_diff={}/{} ({:.2}%) glyph_max={}",
-        d.bg_diff, d.glyph_diff, d.glyph_total, ratio * 100.0, d.glyph_max
+        d.bg_diff,
+        d.glyph_diff,
+        d.glyph_total,
+        ratio * 100.0,
+        d.glyph_max
     );
-    assert!(d.glyph_max <= 1, "压力帧字形区最大通道差 {} > 1", d.glyph_max);
+    assert!(
+        d.glyph_max <= 1,
+        "压力帧字形区最大通道差 {} > 1",
+        d.glyph_max
+    );
     assert!(
         ratio <= GLYPH_DIFF_RATIO_LIMIT,
         "压力帧字形差异占比 {:.2}% 超过上限",
@@ -365,11 +388,20 @@ fn gpu_parity_minimal_inverse_char() {
     let mut snap = term.snapshot().expect("snap");
     snap.full_redraw = true;
     let (pw, ph) = (4 * cw, ch);
-    eprintln!("  cells: {:?}", snap.cells[0].iter().map(|c| (c.chars.clone(), c.inverse)).collect::<Vec<_>>());
+    eprintln!(
+        "  cells: {:?}",
+        snap.cells[0]
+            .iter()
+            .map(|c| (c.chars.clone(), c.inverse))
+            .collect::<Vec<_>>()
+    );
     cpu.render(&snap, pw, ph).expect("cpu");
     gpu.render(&snap, pw, ph).expect("gpu");
     let d = compare(cpu.framebuffer(), gpu.framebuffer_rgba(), pw, ph);
-    eprintln!("  minimal inverse: bg_diff={} glyph_diff={} glyph_max={}", d.bg_diff, d.glyph_diff, d.glyph_max);
+    eprintln!(
+        "  minimal inverse: bg_diff={} glyph_diff={} glyph_max={}",
+        d.bg_diff, d.glyph_diff, d.glyph_max
+    );
     assert!(d.all_max <= 1, "最小复现差异 {}", d.all_max);
 }
 
@@ -404,7 +436,8 @@ fn gpu_parity_preedit_overlay() {
                     let g = &gpu.framebuffer_rgba()[i * 4..i * 4 + 3];
                     let cr = ((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF);
                     let gc = (u32::from(g[0]), u32::from(g[1]), u32::from(g[2]));
-                    if cr.0.abs_diff(gc.0) > 1 || cr.1.abs_diff(gc.1) > 1 || cr.2.abs_diff(gc.2) > 1 {
+                    if cr.0.abs_diff(gc.0) > 1 || cr.1.abs_diff(gc.1) > 1 || cr.2.abs_diff(gc.2) > 1
+                    {
                         x0 = x0.min(x);
                         y0 = y0.min(y);
                         x1 = x1.max(x);
@@ -466,7 +499,11 @@ fn parity_scrollbar(rows_sb: u64, at_bottom: bool) {
     let total = rows_sb + u64::from(rows);
     let thumb_h = ((u64::from(ph) * u64::from(rows)) / total).max(24) as u32;
     let thumb_h = thumb_h.min(ph);
-    let thumb_y = if at_bottom { ph - thumb_h } else { (ph - thumb_h) / 2 };
+    let thumb_y = if at_bottom {
+        ph - thumb_h
+    } else {
+        (ph - thumb_h) / 2
+    };
     cpu.set_scrollbar(Some((thumb_y, thumb_h)));
     gpu.set_scrollbar(Some((thumb_y, thumb_h)));
     let pw = u32::from(cols) * cpu.cell_metrics(scale).0;
@@ -484,7 +521,11 @@ fn parity_scrollbar(rows_sb: u64, at_bottom: bool) {
         for x in 0..pw {
             let i = (y * pw + x) as usize;
             let c = fb[i];
-            let (cr, cg, cb) = (((c >> 16) & 0xFF) as i32, ((c >> 8) & 0xFF) as i32, (c & 0xFF) as i32);
+            let (cr, cg, cb) = (
+                ((c >> 16) & 0xFF) as i32,
+                ((c >> 8) & 0xFF) as i32,
+                (c & 0xFF) as i32,
+            );
             let (gr, gg, gb) = (
                 rgba[i * 4] as i32,
                 rgba[i * 4 + 1] as i32,
@@ -519,10 +560,7 @@ fn parity_scrollbar(rows_sb: u64, at_bottom: bool) {
         total_px as f64 / (total_px + outside_total) as f64 * 100.0,
         inside_share_of_all * 100.0
     );
-    assert!(
-        max_d <= 1,
-        "滚动条列最大通道差应 ≤1 LSB（实测 {max_d}）"
-    );
+    assert!(max_d <= 1, "滚动条列最大通道差应 ≤1 LSB（实测 {max_d}）");
     assert!(
         ratio <= BG_DIFF_RATIO_LIMIT,
         "滚动条列差异占比应 ≤{:.1}%（实测 {:.3}%）",

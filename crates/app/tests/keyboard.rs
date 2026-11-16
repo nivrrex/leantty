@@ -5,7 +5,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 
-use app::{route_key, KeyRoute, Wake};
+use app::{KeyRoute, Wake, route_key};
 
 /// route_key 分类断言（纯函数，无 I/O）。
 #[test]

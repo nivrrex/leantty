@@ -13,7 +13,10 @@ pub fn normalize_ime_commit(text: &str) -> String {
 
 /// Preedit 显示串提取：组合串为空时返 None（清除信号）。
 /// 光标范围 (begin, end) 为字节索引；越界 clamp 到串长（外部输入防御）。
-pub fn preedit_display(preedit: &str, cursor: Option<(usize, usize)>) -> Option<(String, Option<(usize, usize)>)> {
+pub fn preedit_display(
+    preedit: &str,
+    cursor: Option<(usize, usize)>,
+) -> Option<(String, Option<(usize, usize)>)> {
     if preedit.is_empty() {
         return None;
     }
@@ -21,11 +24,7 @@ pub fn preedit_display(preedit: &str, cursor: Option<(usize, usize)>) -> Option<
     // 各自 clamp 到 [0, len] 后保序（begin≤end；非法输入 swap 防御）。
     let cur = cursor.map(|(b, e)| {
         let (b, e) = (b.min(len), e.min(len));
-        if b <= e {
-            (b, e)
-        } else {
-            (e, b)
-        }
+        if b <= e { (b, e) } else { (e, b) }
     });
     Some((preedit.to_string(), cur))
 }
@@ -38,9 +37,17 @@ mod tests {
     fn normalize_ime_commit_newlines() {
         assert_eq!(normalize_ime_commit("a"), "a", "无换行原样");
         assert_eq!(normalize_ime_commit("a\nb"), "a\rb", "LF→CR");
-        assert_eq!(normalize_ime_commit("a\r\nb"), "a\rb", "CRLF→CR（先去 CRLF 防双 CR）");
+        assert_eq!(
+            normalize_ime_commit("a\r\nb"),
+            "a\rb",
+            "CRLF→CR（先去 CRLF 防双 CR）"
+        );
         assert_eq!(normalize_ime_commit(""), "", "空串原样");
-        assert_eq!(normalize_ime_commit("你\n好"), "你\rb".replace('b', "好"), "CJK 多行归一");
+        assert_eq!(
+            normalize_ime_commit("你\n好"),
+            "你\rb".replace('b', "好"),
+            "CJK 多行归一"
+        );
     }
 
     #[test]

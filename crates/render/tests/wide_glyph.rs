@@ -82,7 +82,11 @@ fn cjk_wide_glyph_spans_two_cells() {
     // 用外框字符 '回'：其字形填充接近整格宽，能可靠判断是否跨格
     // （'中' 的右半可能是空白，会与"截断"混淆）。
     let snap = snap_with("回A");
-    assert_eq!(snap.cells[0][0].wide, vt::CellWide::Wide, "首个字符应为宽字符");
+    assert_eq!(
+        snap.cells[0][0].wide,
+        vt::CellWide::Wide,
+        "首个字符应为宽字符"
+    );
     assert_eq!(snap.cells[0][0].chars, "回");
     assert_eq!(
         snap.cells[0][1].wide,
@@ -174,13 +178,21 @@ fn manual_wide_cell_spans_two_cells() {
         underline: vt::Underline::None,
         wide,
     };
-    let mut cells = vec![blank("回", vt::CellWide::Wide), blank("", vt::CellWide::SpacerTail)];
+    let mut cells = vec![
+        blank("回", vt::CellWide::Wide),
+        blank("", vt::CellWide::SpacerTail),
+    ];
     cells.extend((2..20).map(|_| blank("", vt::CellWide::Narrow)));
     let snap = FrameSnapshot {
         cols: cells.len() as u16,
         rows: 1,
         cells: vec![cells],
-        cursor: Cursor { x: 0, y: 0, visible: false, style: CursorStyle::Block },
+        cursor: Cursor {
+            x: 0,
+            y: 0,
+            visible: false,
+            style: CursorStyle::Block,
+        },
         scrollback_rows: 0,
         alternate_screen: false,
         wrapped: Vec::new(),
@@ -233,7 +245,10 @@ fn manual_wide_cell_spans_two_cells() {
     );
     eprintln!("手工构造: cell={cw}x{ch} 起始格墨迹={first} 续格墨迹={second}");
     assert!(first > 0);
-    assert!(second > 0, "手工构造的 Wide cell 也未跨格 → render 的 span/blit 逻辑问题");
+    assert!(
+        second > 0,
+        "手工构造的 Wide cell 也未跨格 → render 的 span/blit 逻辑问题"
+    );
 }
 
 /// 对照实验：把 CJK 字体直接设为主字体（不经 add_background_fonts），

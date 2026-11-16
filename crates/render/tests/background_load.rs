@@ -66,13 +66,17 @@ fn background_load_sequence_placeholder_then_glyph() {
     // 阶段1（占位）：后台字体未到位 → 汉字格应画 U+25A1（与直接渲染 U+25A1 帧逐像素一致）。
     r.render(&snap("你"), 32, 32).expect("render 占位");
     let fb_ph = r.framebuffer().to_vec();
-    r.render(&snap('\u{25A1}'.to_string().as_str()), 32, 32).expect("render 方块");
+    r.render(&snap('\u{25A1}'.to_string().as_str()), 32, 32)
+        .expect("render 方块");
     let fb_box = r.framebuffer().to_vec();
     assert_eq!(fb_ph, fb_box, "后台字体未到位时汉字格应画 U+25A1 占位方块");
 
     // 阶段2（到位→重绘替换）：add_background_fonts 后重绘应不同于占位帧。
     let fonts = render::load_font_list(&settings().fallback);
-    assert!(!fonts.is_empty(), "系统应有 CJK/兜底字体（home-pc 实测 Noto CJK）");
+    assert!(
+        !fonts.is_empty(),
+        "系统应有 CJK/兜底字体（home-pc 实测 Noto CJK）"
+    );
     r.add_background_fonts(fonts);
     r.render(&snap("你"), 32, 32).expect("render 到位");
     let fb_real = r.framebuffer().to_vec();
@@ -98,6 +102,11 @@ fn add_empty_background_fonts_is_noop() {
     r.add_background_fonts(Vec::new());
     r.render(&snap("你"), 32, 32).expect("render");
     let fb_ph = r.framebuffer().to_vec();
-    r.render(&snap('\u{25A1}'.to_string().as_str()), 32, 32).expect("render 方块");
-    assert_eq!(fb_ph, r.framebuffer().to_vec(), "空列表并入后占位状态应不变");
+    r.render(&snap('\u{25A1}'.to_string().as_str()), 32, 32)
+        .expect("render 方块");
+    assert_eq!(
+        fb_ph,
+        r.framebuffer().to_vec(),
+        "空列表并入后占位状态应不变"
+    );
 }

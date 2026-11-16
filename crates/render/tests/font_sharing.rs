@@ -28,7 +28,11 @@ fn settings(fallback: Vec<FontSpec>) -> FontSettings {
 }
 
 fn palette() -> render::Palette {
-    let c = Rgb { r: 255, g: 255, b: 255 };
+    let c = Rgb {
+        r: 255,
+        g: 255,
+        b: 255,
+    };
     let b = Rgb { r: 0, g: 0, b: 0 };
     render::Palette {
         primary_bg: b,
@@ -81,7 +85,11 @@ fn expected_unique_faces() -> Option<usize> {
             ids.push(id);
         }
     }
-    if ids.is_empty() { None } else { Some(ids.len()) }
+    if ids.is_empty() {
+        None
+    } else {
+        Some(ids.len())
+    }
 }
 
 #[test]
@@ -106,7 +114,10 @@ fn same_face_is_shared_not_cloned() {
         let mut seen: Vec<usize> = Vec::new();
         for f in g.iter() {
             let p = Arc::as_ptr(f) as usize;
-            assert!(!seen.contains(&p), "组 {gi} 内出现重复实例（同一份字体被复制）");
+            assert!(
+                !seen.contains(&p),
+                "组 {gi} 内出现重复实例（同一份字体被复制）"
+            );
             seen.push(p);
         }
     }

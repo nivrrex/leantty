@@ -18,9 +18,9 @@
 //!   glyph，不 panic）。
 
 pub mod decide;
-pub mod preedit;
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 pub mod gpu;
+pub mod preedit;
 
 /// 进程启动锚点（阶段 3A 任务 2：启动分段耗时日志；app 在 main 首行调用）。
 static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -38,9 +38,8 @@ fn since_start_ms() -> f64 {
         .unwrap_or(0.0)
 }
 
-pub use decide::{decide, CellDecision, DecideCtx};
-pub use preedit::{layout_end_position, layout_preedit, PreeditLayout, PreeditOverlay};
-
+pub use decide::{CellDecision, DecideCtx, decide};
+pub use preedit::{PreeditLayout, PreeditOverlay, layout_end_position, layout_preedit};
 
 /// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
 ///
@@ -366,7 +365,10 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
     }
     {
         let tp = std::time::Instant::now();
-        eperf!("[perf] bg_generic_loop_us={}", t_gen_loop.elapsed().as_micros());
+        eperf!(
+            "[perf] bg_generic_loop_us={}",
+            t_gen_loop.elapsed().as_micros()
+        );
         prints_us += tp.elapsed().as_micros();
     }
     // 阶段 4O t4：`load_font_list` 返回 Vec<Font>（公共签名未变），所以每个回退面既被
@@ -375,10 +377,7 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
     let t_free = std::time::Instant::now();
     drop(cache);
     drop(db);
-    eperf!(
-        "[perf] bg_font_free_us={}",
-        t_free.elapsed().as_micros()
-    );
+    eperf!("[perf] bg_font_free_us={}", t_free.elapsed().as_micros());
     eperf!("[perf] bg_print_us={}", prints_us);
     fonts
 }
@@ -387,9 +386,7 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
 ///
 /// 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底由 app 层后台加载后
 /// 经 `add_background_fonts` 并入。返回顺序固定为 [normal, bold, italic, bold_italic]。
-pub(crate) fn build_font_groups(
-    settings: &FontSettings,
-) -> Result<Vec<Vec<Arc<Font>>>, Error> {
+pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Arc<Font>>>, Error> {
     let mut db = Database::new();
     let t_db = std::time::Instant::now();
     db.load_system_fonts();
@@ -423,11 +420,15 @@ pub(crate) fn build_font_groups(
         // 微秒精度，用于定位 Windows 上 group_begin→seg / seg→cache / cache→end 的未归属耗时。
         let t_before_load = std::time::Instant::now();
         let pre_load_us = t_before_load.duration_since(t_font).as_micros();
-        let load_result =
-            load_font_with_fallback_cached(&db, &spec.family, &spec.style, &mut face_cache, "group");
+        let load_result = load_font_with_fallback_cached(
+            &db,
+            &spec.family,
+            &spec.style,
+            &mut face_cache,
+            "group",
+        );
         let load_us = t_before_load.elapsed().as_micros();
-        let main = match load_result
-        {
+        let main = match load_result {
             Ok((f, cached, used_style)) => {
                 // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
                 // "主字体面" 与 "回退字体面" 的成本。
@@ -589,10 +590,6 @@ impl CpuRenderer {
         me
     }
 
-
-
-
-
     /// 基线相对格顶的偏移（像素）。
     ///
     /// 取 `cell_h - ceil(-descent) - ceil(line_gap)`：既保证下行字形（g/p/y）落在
@@ -735,7 +732,13 @@ impl CpuRenderer {
     }
 
     /// 光栅化（带缓存）：px = 字号 * 缩放因子。
-    fn rasterize_at(&mut self, group: u8, font_idx: usize, ch: char, px: f32) -> (fontdue::Metrics, Vec<u8>) {
+    fn rasterize_at(
+        &mut self,
+        group: u8,
+        font_idx: usize,
+        ch: char,
+        px: f32,
+    ) -> (fontdue::Metrics, Vec<u8>) {
         let key = GlyphKey {
             group,
             ch,
@@ -849,8 +852,13 @@ fn preedit_key(
     frame: &FrameSnapshot,
 ) -> Option<(u16, u16, u16, usize, u64)> {
     let o = overlay.as_ref()?;
-    let layout =
-        preedit::layout_preedit(&o.text, frame.cursor.x, frame.cursor.y, frame.cols, frame.rows)?;
+    let layout = preedit::layout_preedit(
+        &o.text,
+        frame.cursor.x,
+        frame.cursor.y,
+        frame.cols,
+        frame.rows,
+    )?;
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325; // FNV-1a 偏移基数
     for b in o.text.as_bytes() {
         hash ^= u64::from(*b);
@@ -909,7 +917,8 @@ impl CpuRenderer {
         self.last_cursor = Some(cursor_key(frame));
         self.last_scrollbar = self.scrollbar;
         self.last_preedit = preedit_key(&self.preedit, frame);
-        self.damage.push((0, 0, pixel_width.max(1), pixel_height.max(1)));
+        self.damage
+            .push((0, 0, pixel_width.max(1), pixel_height.max(1)));
     }
 
     /// 增量重绘：只画脏行；光标/滚动条/预编辑作为叠加层按变化补齐。
@@ -970,8 +979,12 @@ impl CpuRenderer {
                 // 该行的条带段刚被内容覆盖（无滚动条）→ 刷新备份。
                 self.capture_band_char_row(y, ctx.cell_h);
                 let py = (y as u32).saturating_mul(ctx.cell_h);
-                self.damage
-                    .push((0, py, self.fb_width.max(1), ctx.cell_h.min(self.fb_height.saturating_sub(py)).max(1)));
+                self.damage.push((
+                    0,
+                    py,
+                    self.fb_width.max(1),
+                    ctx.cell_h.min(self.fb_height.saturating_sub(py)).max(1),
+                ));
                 rows_drawn = true;
             }
         }
@@ -1056,7 +1069,9 @@ impl CpuRenderer {
 
     /// 把条带恢复为采集时的内容（去掉当前滚动条像素）。
     fn restore_band(&mut self) {
-        let Some(buf) = self.band_backup.clone() else { return; };
+        let Some(buf) = self.band_backup.clone() else {
+            return;
+        };
         let w = self.fb_width;
         let h = self.fb_height;
         if w < SCROLLBAR_WIDTH || h == 0 || buf.len() != (SCROLLBAR_WIDTH * h) as usize {
@@ -1088,10 +1103,7 @@ impl CpuRenderer {
             let px0 = x as u32 * cell_w;
             let py0 = y as u32 * cell_h;
             // SpacerTail/SpacerHead 不绘制字形；背景仍填充（宽字符背景跨 2 格）。
-            let is_tail = matches!(
-                cell.wide,
-                CellWide::SpacerTail | CellWide::SpacerHead
-            );
+            let is_tail = matches!(cell.wide, CellWide::SpacerTail | CellWide::SpacerHead);
             let span = if cell.wide == CellWide::Wide && x + 1 < row.len() {
                 2
             } else {
@@ -1120,7 +1132,15 @@ impl CpuRenderer {
             // 续格上的右半部分擦成背景色（阶段 4B t1 实测：'回' 位图非零 alpha
             // 列 1..14，但渲染墨迹只到列 9）。
             if !is_tail {
-                fill_rect(&mut self.framebuffer, pixel_width, px0, py0, area_w, cell_h, bg);
+                fill_rect(
+                    &mut self.framebuffer,
+                    pixel_width,
+                    px0,
+                    py0,
+                    area_w,
+                    cell_h,
+                    bg,
+                );
             }
             if is_tail || cell.chars.is_empty() || cell.invisible {
                 continue;
@@ -1327,7 +1347,9 @@ impl CpuRenderer {
     /// 滚动条：右缘 4px 轨道（前景/背景通道平均，半透明近似）+拇指（前景色）。
     /// 纯绘制无状态；几何由 set_scrollbar 提供。
     fn draw_scrollbar(&mut self, pixel_height: u32) {
-        let Some((thumb_y, thumb_h)) = self.scrollbar else { return; };
+        let Some((thumb_y, thumb_h)) = self.scrollbar else {
+            return;
+        };
         let width = self.fb_width;
         if width < SCROLLBAR_WIDTH || pixel_height == 0 || thumb_h == 0 {
             return;
@@ -1341,17 +1363,35 @@ impl CpuRenderer {
             | (avg(fg >> 16 & 0xFF, bg >> 16 & 0xFF) << 16)
             | (avg(fg >> 8 & 0xFF, bg >> 8 & 0xFF) << 8)
             | avg(fg & 0xFF, bg & 0xFF);
-        fill_rect(&mut self.framebuffer, width, track_x, 0, SCROLLBAR_WIDTH, pixel_height, track);
+        fill_rect(
+            &mut self.framebuffer,
+            width,
+            track_x,
+            0,
+            SCROLLBAR_WIDTH,
+            pixel_height,
+            track,
+        );
         let thumb_h = thumb_h.min(pixel_height);
         let thumb_y = thumb_y.min(pixel_height.saturating_sub(thumb_h));
-        fill_rect(&mut self.framebuffer, width, track_x, thumb_y, SCROLLBAR_WIDTH, thumb_h, fg);
+        fill_rect(
+            &mut self.framebuffer,
+            width,
+            track_x,
+            thumb_y,
+            SCROLLBAR_WIDTH,
+            thumb_h,
+            fg,
+        );
     }
 
     /// IME 预编辑叠加绘制（任务 2C.3）：在终端光标处以叠加层绘制文本
     /// （带下划线，宽字符占 2 格），不写入网格；组合光标以反色标示。
     /// 超出右边界整体换行、贴底平移、超整行截断（布局规则见 preedit::layout_preedit）。
     fn draw_preedit(&mut self, frame: &FrameSnapshot, cell_w: u32, cell_h: u32, px: f32) {
-        let Some(overlay) = self.preedit.clone() else { return; };
+        let Some(overlay) = self.preedit.clone() else {
+            return;
+        };
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
         let Some(layout) = preedit::layout_preedit(
@@ -1387,7 +1427,15 @@ impl CpuRenderer {
             let is_cursor = cursor_cell_idx == Some(idx);
             // 叠加层底色覆盖（遮住原格内容），组合光标格反色。
             let (cell_bg, cell_fg) = if is_cursor { (fg, bg) } else { (bg, fg) };
-            fill_rect(&mut self.framebuffer, self.fb_width, px0, y, area_w, cell_h, cell_bg);
+            fill_rect(
+                &mut self.framebuffer,
+                self.fb_width,
+                px0,
+                y,
+                area_w,
+                cell_h,
+                cell_bg,
+            );
             // 字形：宽字符按 2 格内缩放绘制（与终端宽字符规则一致）。
             let group = GROUP_NORMAL as u8;
             let font_idx = self.font_index_for(group, pc.ch);
@@ -1431,7 +1479,15 @@ impl CpuRenderer {
             }
             // 下划线：格底部 2px（组合态统一单线）。
             let uy = y + cell_h.saturating_sub(2);
-            fill_rect(&mut self.framebuffer, self.fb_width, px0, uy, area_w, 2, cell_fg);
+            fill_rect(
+                &mut self.framebuffer,
+                self.fb_width,
+                px0,
+                uy,
+                area_w,
+                2,
+                cell_fg,
+            );
             x_cells += span;
         }
     }
@@ -1647,7 +1703,6 @@ fn blend_channel(pixel: u32, fg: u32, alpha: u8, channel: u32, gamma: f32) -> u3
     (pixel & !(0xFF << shift)) | (c << shift)
 }
 
-
 /// 位图最近邻缩放（宽字符缩放到 2 格宽高内）。
 fn scale_bitmap(bitmap: &[u8], w: usize, h: usize, tw: usize, th: usize) -> Vec<u8> {
     if tw == 0 || th == 0 || w == 0 || h == 0 {
@@ -1736,8 +1791,9 @@ fn load_font_styled_cached(
 
     let t_read = std::time::Instant::now();
     let bytes: Vec<u8> = match &face.source {
-        Source::File(path) => std::fs::read(path)
-            .map_err(|e| Error::Font(format!("read font file: {}", e)))?,
+        Source::File(path) => {
+            std::fs::read(path).map_err(|e| Error::Font(format!("read font file: {}", e)))?
+        }
         Source::Binary(data) => data.as_ref().as_ref().to_vec(),
         Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
     };
@@ -1768,7 +1824,8 @@ fn load_font_styled_cached(
     cache.insert(id, Arc::clone(&shared));
     let insert_us = t_insert.elapsed().as_micros();
 
-    let steps_us = query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
+    let steps_us =
+        query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
     eperf!(
         "[perf] font_steps_us family='{}' style='{}' kind={} src={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} arc_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
         family,
@@ -1823,7 +1880,6 @@ fn load_font_with_fallback_cached(
     Err(last_err.unwrap_or_else(|| Error::Font(format!("family '{}' not found", family))))
 }
 
-
 /// 系统 generic 字体加载（回退链末档）。
 fn load_font_generic(db: &Database, family: Family) -> Result<Font, Error> {
     let query = Query {
@@ -1837,8 +1893,9 @@ fn load_font_generic(db: &Database, family: Family) -> Result<Font, Error> {
         .face(id)
         .ok_or_else(|| Error::Font("face not found".to_string()))?;
     let bytes: Vec<u8> = match &face.source {
-        Source::File(path) => std::fs::read(path)
-            .map_err(|e| Error::Font(format!("read font file: {}", e)))?,
+        Source::File(path) => {
+            std::fs::read(path).map_err(|e| Error::Font(format!("read font file: {}", e)))?
+        }
         Source::Binary(data) => data.as_ref().as_ref().to_vec(),
         Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
     };
@@ -1848,8 +1905,8 @@ fn load_font_generic(db: &Database, family: Family) -> Result<Font, Error> {
 
 #[cfg(test)]
 mod blit_tests {
-    use super::blit;
     use super::Antialiasing;
+    use super::blit;
 
     const BG: u32 = 0xFF00_0000;
     const FG: u32 = 0xFF00_00FF;
@@ -1884,11 +1941,7 @@ mod blit_tests {
         assert!(fb[0..8].contains(&FG), "本格内应有前景像素");
         // 右邻格 [8,16) 列全背景
         let invaded = fb[8..16].iter().filter(|&&p| p != BG).count();
-        assert_eq!(
-            invaded, 0,
-            "右邻格应全为背景色，被侵入像素 {}",
-            invaded
-        );
+        assert_eq!(invaded, 0, "右邻格应全为背景色，被侵入像素 {}", invaded);
     }
 
     /// 超高位图：只画本格，下邻格像素不变。

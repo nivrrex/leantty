@@ -45,11 +45,17 @@ mod tests {
         assert_eq!(normalize_paste("a\r\nb", false), "a\rb");
         assert_eq!(normalize_paste("a\rb", false), "a\rb");
         let wrapped = normalize_paste("x", true);
-        assert!(wrapped.starts_with("\u{1b}[200~"), "应包裹 ESC[200~：{wrapped:?}");
+        assert!(
+            wrapped.starts_with("\u{1b}[200~"),
+            "应包裹 ESC[200~：{wrapped:?}"
+        );
         assert!(wrapped.ends_with("\u{1b}[201~"), "应以 ESC[201~ 结尾");
         // 防注入：内容中的 ESC[201~ 被过滤
         let injected = normalize_paste("a\u{1b}[201~b", true);
-        assert!(!injected[..injected.len() - 6].contains("\u{1b}[201~"), "内容内 ESC[201~ 应被过滤");
+        assert!(
+            !injected[..injected.len() - 6].contains("\u{1b}[201~"),
+            "内容内 ESC[201~ 应被过滤"
+        );
     }
 
     #[test]
@@ -60,7 +66,10 @@ mod tests {
         assert_eq!(chunks[0].len(), PASTE_CHUNK);
         assert_eq!(chunks[1].len(), PASTE_CHUNK);
         assert_eq!(chunks[2].len(), 20);
-        assert_eq!(chunks[0].len() + chunks[1].len() + chunks[2].len(), text.len());
+        assert_eq!(
+            chunks[0].len() + chunks[1].len() + chunks[2].len(),
+            text.len()
+        );
         let empty: Vec<String> = paste_chunks("");
         assert!(empty.is_empty(), "空文本应无块");
     }
@@ -319,7 +328,10 @@ mod drain_tests {
     #[test]
     fn partial_write_keeps_remainder() {
         let mut queue = q(&[b"abcdef"]);
-        let mut w = PartialWriter { n: 2, got: Vec::new() };
+        let mut w = PartialWriter {
+            n: 2,
+            got: Vec::new(),
+        };
         let budget = DrainBudget {
             max_chunks: 100,
             max_bytes: 1024,
@@ -345,7 +357,11 @@ mod drain_tests {
         let first = drain_pending(&mut queue, &mut w, DrainBudget::default());
         assert_eq!(first.bytes_written, 4);
         assert!(first.would_block, "遇 WouldBlock 立即返回");
-        assert_eq!(queue.front().map(|v| v.as_slice()), Some(&b"456789"[..]), "剩余保留");
+        assert_eq!(
+            queue.front().map(|v| v.as_slice()),
+            Some(&b"456789"[..]),
+            "剩余保留"
+        );
         // 下一轮（对端仍不可写）立即返回且不消耗 CPU 时间片外的数据
         let second = drain_pending(&mut queue, &mut w, DrainBudget::default());
         assert_eq!(second.bytes_written, 0);
