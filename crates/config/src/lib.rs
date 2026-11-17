@@ -191,8 +191,10 @@ pub struct ScrollingConfig {
 #[derive(Debug, Clone)]
 pub struct ShellConfig {
     pub program: String,
-    /// 参数已解析并校验；PTY spawn 接口当前不含 args（DECISIONS 登记），接线待后续阶段。
-    pub args: Vec<String>,
+    /// 参数已解析并校验。`None` = 未配置；`Some(vec![])` = 显式空数组；
+    /// 两者含义不同（后者表示“不要注入任何默认参数”）。Windows 侧由
+    /// `Pty::spawn_with_args` 消费（阶段 3U）；Unix 侧目前忽略该字段。
+    pub args: Option<Vec<String>>,
 }
 
 /// terminal 段。
@@ -876,10 +878,7 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
             }
         };
         if let Some(program) = program {
-            c.terminal.shell = Some(ShellConfig {
-                program,
-                args: args.unwrap_or_default(),
-            });
+            c.terminal.shell = Some(ShellConfig { program, args });
         }
     }
 

@@ -105,6 +105,67 @@ impl WindowsPty {
             Vec::new()
         }
     }
+
+    /// 用户配置的启动参数优先；未配置（`None`）时沿用既有默认（`utf8_codepage_args`）。
+    /// `Some(vec![])` 表示显式空数组 —— 不注入任何默认参数（阶段 3U t2e）。
+    pub fn decide_shell_args(program: &str, configured: Option<&[String]>) -> Vec<String> {
+        match configured {
+            Some(a) => a.to_vec(),
+            None => Self::utf8_codepage_args(program)
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+        }
+    }
+
+    /// 带 `terminal.shell.args` 的 spawn 实现（`Pty::spawn_with_args` 的 Windows 版本）。
+    fn spawn_inner(
+        &mut self,
+        shell: &str,
+        configured: Option<&[String]>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), Error> {
+        if self.master.is_some() {
+            return Err(Error::AlreadySpawned);
+        }
+        // 默认启动 cmd.exe（任务契约）；调用方传空时回落 cmd.exe。
+        let shell = if shell.trim().is_empty() {
+            "cmd.exe"
+        } else {
+            shell
+        };
+        if cols == 0 || rows == 0 {
+            return Err(Error::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "cols and rows must be > 0",
+            )));
+        }
+        // 实验 X：创建子进程前清除本进程可能继承的"忽略 Ctrl 事件"状态；
+        // 失败路径返回 Error（不 unwrap、不忽略）。
+        clear_console_ctrl_ignore()?;
+        // 部署自检（3O）：只打警告，不改变启动路径
+        warn_if_conpty_pair_incomplete();
+        let system = native_pty_system();
+        let PtyPair { master, slave } = system.openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
+        let program = Self::resolve_program(shell);
+        let mut cmd = CommandBuilder::new(program);
+        for a in Self::decide_shell_args(shell, configured) {
+            cmd.arg(a);
+        }
+        let child = slave.spawn_command(cmd)?;
+        drop(slave);
+        let writer = master.take_writer()?;
+        self.master = Some(master);
+        self.child = Some(child);
+        self.writer = Some(writer);
+        Ok(())
+    }
 }
 
 impl Default for WindowsPty {
@@ -191,45 +252,18 @@ impl WindowsPty {
 
 impl Pty for WindowsPty {
     fn spawn(&mut self, shell: &str, cols: u16, rows: u16) -> Result<(), Error> {
-        if self.master.is_some() {
-            return Err(Error::AlreadySpawned);
-        }
-        // 默认启动 cmd.exe（任务契约）；调用方传空时回落 cmd.exe。
-        let shell = if shell.trim().is_empty() {
-            "cmd.exe"
-        } else {
-            shell
-        };
-        if cols == 0 || rows == 0 {
-            return Err(Error::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "cols and rows must be > 0",
-            )));
-        }
-        // 实验 X：创建子进程前清除本进程可能继承的"忽略 Ctrl 事件"状态；
-        // 失败路径返回 Error（不 unwrap、不忽略）。
-        clear_console_ctrl_ignore()?;
-        // 部署自检（3O）：只打警告，不改变启动路径
-        warn_if_conpty_pair_incomplete();
-        let system = native_pty_system();
-        let PtyPair { master, slave } = system.openpty(PtySize {
-            rows,
-            cols,
-            pixel_width: 0,
-            pixel_height: 0,
-        })?;
-        let program = Self::resolve_program(shell);
-        let mut cmd = CommandBuilder::new(program);
-        for a in Self::utf8_codepage_args(shell) {
-            cmd.arg(a);
-        }
-        let child = slave.spawn_command(cmd)?;
-        drop(slave);
-        let writer = master.take_writer()?;
-        self.master = Some(master);
-        self.child = Some(child);
-        self.writer = Some(writer);
-        Ok(())
+        self.spawn_inner(shell, None, cols, rows)
+    }
+
+    /// 阶段 3U：`terminal.shell.args` 接线入口（用户配置优先，未配置走默认编码页参数）。
+    fn spawn_with_args(
+        &mut self,
+        shell: &str,
+        args: Option<&[String]>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), Error> {
+        self.spawn_inner(shell, args, cols, rows)
     }
 
     fn take_reader(&mut self) -> Result<Box<dyn Read + Send>, Error> {
@@ -319,5 +353,37 @@ mod tests {
     fn ctrl_handler_zero_maps_to_error() {
         assert!(map_ctrl_handler_result(0).is_err());
         assert!(map_ctrl_handler_result(1).is_ok());
+    }
+
+    /// 阶段 3U：`terminal.shell.args` 决策表（用户配置优先；未配置走默认编码页参数）。
+    #[test]
+    fn decide_shell_args_table() {
+        let none: Option<&[String]> = None;
+        assert_eq!(
+            WindowsPty::decide_shell_args("cmd.exe", none),
+            vec!["/K".to_string(), "chcp 65001".to_string()]
+        );
+        assert_eq!(
+            WindowsPty::decide_shell_args("CMD.EXE", none),
+            vec!["/K".to_string(), "chcp 65001".to_string()]
+        );
+        assert_eq!(
+            WindowsPty::decide_shell_args(r"C:\Windows\System32\cmd.exe", none),
+            vec!["/K".to_string(), "chcp 65001".to_string()]
+        );
+        assert_eq!(
+            WindowsPty::decide_shell_args("powershell.exe", none),
+            vec![
+                "-NoLogo".to_string(),
+                "-NoExit".to_string(),
+                "-Command".to_string(),
+                "chcp 65001".to_string()
+            ]
+        );
+        assert!(WindowsPty::decide_shell_args("pwsh.exe", none).is_empty());
+        let empty: Vec<String> = Vec::new();
+        assert!(WindowsPty::decide_shell_args("cmd.exe", Some(&empty)).is_empty());
+        let user = vec!["/D".to_string(), "/K".to_string(), "echo X".to_string()];
+        assert_eq!(WindowsPty::decide_shell_args("cmd.exe", Some(&user)), user);
     }
 }
