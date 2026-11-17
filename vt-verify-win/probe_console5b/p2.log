@@ -1,0 +1,10 @@
+=== mode=mode2_shared_console pid=11096 ===
+pre: visible_console_windows=0
+GetConsoleProcessList(null,0) -> 0 (GetLastError before=0 after=87)
+GetConsoleProcessList(buf,8) -> 2 pids=[11096, 9716] (GetLastError before=87 after=87)
+FreeConsole() -> 1 (GetLastError before=87 after=6)
+post+1s: visible_console_windows=0
+post+3s: visible_console_windows=0
+AttachConsole(self) after free -> 0 (GetLastError before=0 after=6)
+post+8s: visible_console_windows=0
+done

@@ -456,3 +456,16 @@
 - 阶段 5A t4（待验证假设，置信度中）：`should_free_console(process_count)` 仅在 `==1` 时返回 true，`free_if_sole_user()` 用 `GetConsoleProcessList(null,0)` 取进程数，为 1 时调用 `FreeConsole`（失败一律忽略），调用点在参数解析成功、非 help/version、创建事件循环之前（`cfg(windows)`）。**Windows 实机未验证**。推翻条件：若出现 ConPTY 子进程启动异常、或 Windows e2e 变红、或从已打开的 cmd 窗口启动导致对方窗口消失，则整段回退（保留 `should_free_console` 及其单测）。
 - 阶段 5A t5c 许可证判定（已验证事实 + 工程判断）：`r-efi`（Windows 目标的 UEFI 依赖）表达式为 `MIT OR Apache-2.0 OR LGPL-2.1-or-later`，按 SPDX 的 OR 语义可选用 MIT，不构成 GPL 义务；脚本因此只在"所有备选都含 GPL"时才停止，而非字符串命中即停止。生成结果：295 个第三方 crate，全部有许可证信息，无 GPL/AGPL 独占项。
 - 阶段 5A t5d 模板（已验证事实）：两份模板覆盖全部已支持字段（unknown 字段零告警，config 单测载入通过）；字体用通用候选（Linux DejaVu Sans Mono + Noto Sans CJK SC，Windows Consolas + Microsoft YaHei）；`hinting = false` 显式写入，因为默认 true 会触发既有的"fontdue 不支持 hinting"警告。模板启动时 stderr 只剩 1 条窗口尺寸异步提交的通用提示（`request_inner_size`），无配置相关告警 —— 与任务书"stderr 为空"的字面要求有 1 行差异，属既有启动提示，本阶段不改。
+
+- 阶段 5B t1（已验证事实）：`phase5a-done` = `0b7115e`（轻量 tag，与 main 同值）；`--no-ff` 合并为 `3bb9737`，0 冲突；改名提交 `f44d639`/`bb070ad` 为纯标识符与字符串替换（含 Windows 专属文件与 scripts/windows）。
+- 阶段 5B t2（已验证事实）：`build.ps1 --release` 产出 `leantty.exe` 12 683 264 B；`cargo test --workspace` 228 passed；shell.args 五例（默认/cmd/用户 args/pwsh/空数组）均符合预期；子 shell 退出延迟 1258–2196 ms、杀 shell 1787–1954 ms；空闲 30 s 稳态 `wake_timer=5`/5 s。
+- 阶段 5B t2 门禁缺口（已验证事实）：`cargo clippy -D warnings` 在 Windows 上因 `crates/app/src/lib.rs:113` doc 缩进失败（5A 引入，crates 未改）。
+- 阶段 5B t3（已验证事实）：`--version`=0/`--help`=0/未知选项=2/`--config-file` 缺值=2/不存在文件=1；`--config-file` 优先于 `LEANTTY_CONFIG`（未知键警告只来自命令行文件）。
+- 阶段 5B t4（已验证事实，与预期不符→停止）：`Start-Process` 启动后仍存在 1 个可见 `ConsoleWindowClass` 窗口且线程 PID=app、`AttachConsole(app)` 成功、conhost 的父进程=app → 5A t4 的 FreeConsole 释放未生效；t5–t7 未执行、未打 tag。
+
+- 阶段 5B 续 t0（已验证事实）：Windows 上 clippy 唯一告警是 `crates/app/src/lib.rs:113` doc 列表缩进（5A 引入），补空行后 `cargo clippy -D warnings` 0 error。
+- 阶段 5B 续 t4a（已验证事实）：本机 `GetConsoleProcessList(null,0)` 返回 0 且 `GetLastError=87`；非空缓冲（容量 2）返回真实进程数（独占 1 / 共享 2）；`FreeConsole` 返回 1 且窗口在 +1s 消失。→ 5A t4 从未释放的根因即"空缓冲查询失败"，`should_free_console(0)=false`。
+- 阶段 5B 续 t4b（已验证事实）：改为 `[u32; 2]` 缓冲 + 同样的 `count==1` 判定后，`Start-Process` 新控制台启动下 1s/3s/8s 均无本进程 ConsoleWindowClass 窗口、`AttachConsole(app)` 失败、ConPTY 子 shell 与退出检测（2044 ms）与空闲唤醒（≈1 次/秒）均正常；共享控制台场景窗口保留、重定向正常。
+- 阶段 5B 续 t5（已验证事实 + 偏离）：exe 图标由 windres→COFF→`cargo rustc -C link-arg` 注入；**不能**写进 `.cargo/config.toml` 的 `[target.*] rustflags`（同一段作用于 build script 宿主链接，实测 collect2 链接失败）。提取图标 sha256 `60DDA1CA…` 与无资源产物默认图标 `575EF706…` 不同。
+- 阶段 5B 续 t6（已验证事实）：build.ps1 注入 `--remap-path-prefix`（repo→/leantty、CARGO_HOME→/cargo-home、RUSTUP_HOME→/rustup-home）；扫描 exe 与 zip 全部文件：仓库路径 0、`/leantty/` 0、用户名 0、主机名 0、IPv4/ssh/ali:8022 0；盘符路径仅 2 处数据碎片 + 1 处依赖内置的 Windows 字体目录常量（C:\Windows\Fonts、%USERPROFILE%\AppData\…\Fonts）。
+- 阶段 5B 续 t7（已验证事实）：`leantty-0.1.0-windows-x86_64.zip` 5 783 314 B / sha256 `4c33a459…`，9 条目单顶层目录；解压到含空格与中文路径、从 C:\ 跑 `--version`=0、`--config-file leantty.toml` 存活 10s 且 stderr 0 字节、随附 OpenConsole 生效。
