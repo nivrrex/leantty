@@ -87,22 +87,15 @@ if [ -n "$STDFEAT" ]; then
 fi
 echo "crates/ 无 wgpu from_env 调用；wgpu-types 未启用 std"
 
-step "9/9 rustfmt（crates/，排除 Windows 专属文件）"
-# 阶段 4U t3：统一格式化后加入门禁。**排除** crates/pty/src/windows.rs 与
-# crates/pty/tests/pty_windows.rs——它们是 Windows 专属文件，按任务约定不得由
-# Linux 侧修改（后续由 Windows 侧格式化后合并）。剔除方式：解析 `cargo fmt --check`
-# 的 "Diff in <路径>" 行，过滤掉这两个路径，剩余任一文件有偏差即失败。
-FMT_OUT=$(cargo fmt --all --check 2>&1 || true)
-FMT_BAD=$(printf '%s\n' "$FMT_OUT" \
-    | grep -oE '^Diff in [^:]+' \
-    | sed 's/^Diff in //' \
-    | sort -u \
-    | grep -vE '/crates/pty/src/windows\.rs$|/crates/pty/tests/pty_windows\.rs$' || true)
-if [ -n "$FMT_BAD" ]; then
-    echo "$FMT_BAD"
-    fail "rustfmt 偏差（上述文件需要 cargo fmt --all）"
+step "9/9 rustfmt（全仓，含 Windows 专属文件）"
+# 阶段 4U t3：格式化统一后加入门禁。阶段 4W t3：Windows 侧 3T 已把
+# crates/pty/src/windows.rs 与 crates/pty/tests/pty_windows.rs 过 rustfmt，
+# 两平台 rustfmt 对该两文件输出一致（实测 0 偏差），排除名单已去掉。
+if ! FMT_OUT=$(cargo fmt --all --check 2>&1); then
+    printf '%s\n' "$FMT_OUT" | head -40
+    fail "rustfmt 偏差（需要 cargo fmt --all）"
 fi
-echo "rustfmt 通过（两个 Windows 专属文件按约定排除，待 Windows 侧格式化）"
+echo "rustfmt 通过（全仓）"
 
 # 再次确认工作区干净（run_all 不应修改受版本控制的文件）
 [ -z "$(git status --porcelain)" ] || { git status --porcelain | head -5; fail "门禁过程中工作区变脏"; }
