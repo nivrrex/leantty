@@ -1,0 +1,11 @@
+=== mode=mode1_startprocess pid=1492 ===
+    console_window hwnd=5637948 rect=(130,130)-(1123,649)
+pre: visible_console_windows=1
+GetConsoleProcessList(null,0) -> 0 (GetLastError before=0 after=87)
+GetConsoleProcessList(buf,8) -> 1 pids=[1492] (GetLastError before=87 after=87)
+FreeConsole() -> 1 (GetLastError before=87 after=6)
+post+1s: visible_console_windows=0
+post+3s: visible_console_windows=0
+AttachConsole(self) after free -> 0 (GetLastError before=0 after=6)
+post+8s: visible_console_windows=0
+done

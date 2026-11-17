@@ -48,3 +48,5 @@ scripts/e2e/out/
 /vt-verify-win/kit-trial v4/
 /vt-verify-win/kit v4 中文 路径/
 /vt-verify-win/p2-block.ps1
+/vt-verify-win/dist-release/
+/vt-verify-win/probe_console5b/*.exe

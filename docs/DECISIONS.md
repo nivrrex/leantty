@@ -462,3 +462,10 @@
 - 阶段 5B t2 门禁缺口（已验证事实）：`cargo clippy -D warnings` 在 Windows 上因 `crates/app/src/lib.rs:113` doc 缩进失败（5A 引入，crates 未改）。
 - 阶段 5B t3（已验证事实）：`--version`=0/`--help`=0/未知选项=2/`--config-file` 缺值=2/不存在文件=1；`--config-file` 优先于 `LEANTTY_CONFIG`（未知键警告只来自命令行文件）。
 - 阶段 5B t4（已验证事实，与预期不符→停止）：`Start-Process` 启动后仍存在 1 个可见 `ConsoleWindowClass` 窗口且线程 PID=app、`AttachConsole(app)` 成功、conhost 的父进程=app → 5A t4 的 FreeConsole 释放未生效；t5–t7 未执行、未打 tag。
+
+- 阶段 5B 续 t0（已验证事实）：Windows 上 clippy 唯一告警是 `crates/app/src/lib.rs:113` doc 列表缩进（5A 引入），补空行后 `cargo clippy -D warnings` 0 error。
+- 阶段 5B 续 t4a（已验证事实）：本机 `GetConsoleProcessList(null,0)` 返回 0 且 `GetLastError=87`；非空缓冲（容量 2）返回真实进程数（独占 1 / 共享 2）；`FreeConsole` 返回 1 且窗口在 +1s 消失。→ 5A t4 从未释放的根因即"空缓冲查询失败"，`should_free_console(0)=false`。
+- 阶段 5B 续 t4b（已验证事实）：改为 `[u32; 2]` 缓冲 + 同样的 `count==1` 判定后，`Start-Process` 新控制台启动下 1s/3s/8s 均无本进程 ConsoleWindowClass 窗口、`AttachConsole(app)` 失败、ConPTY 子 shell 与退出检测（2044 ms）与空闲唤醒（≈1 次/秒）均正常；共享控制台场景窗口保留、重定向正常。
+- 阶段 5B 续 t5（已验证事实 + 偏离）：exe 图标由 windres→COFF→`cargo rustc -C link-arg` 注入；**不能**写进 `.cargo/config.toml` 的 `[target.*] rustflags`（同一段作用于 build script 宿主链接，实测 collect2 链接失败）。提取图标 sha256 `60DDA1CA…` 与无资源产物默认图标 `575EF706…` 不同。
+- 阶段 5B 续 t6（已验证事实）：build.ps1 注入 `--remap-path-prefix`（repo→/leantty、CARGO_HOME→/cargo-home、RUSTUP_HOME→/rustup-home）；扫描 exe 与 zip 全部文件：仓库路径 0、`/leantty/` 0、用户名 0、主机名 0、IPv4/ssh/ali:8022 0；盘符路径仅 2 处数据碎片 + 1 处依赖内置的 Windows 字体目录常量（C:\Windows\Fonts、%USERPROFILE%\AppData\…\Fonts）。
+- 阶段 5B 续 t7（已验证事实）：`leantty-0.1.0-windows-x86_64.zip` 5 783 314 B / sha256 `4c33a459…`，9 条目单顶层目录；解压到含空格与中文路径、从 C:\ 跑 `--version`=0、`--config-file leantty.toml` 存活 10s 且 stderr 0 字节、随附 OpenConsole 生效。

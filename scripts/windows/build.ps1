@@ -32,6 +32,18 @@ Write-Host "GHOSTTY_SOURCE_DIR=$env:GHOSTTY_SOURCE_DIR"
 Write-Host "GHOSTTY_ZIG_SYSTEM_DIR=$env:GHOSTTY_ZIG_SYSTEM_DIR"
 
 Set-Location $repo
+# 5B t6：路径泄漏治理 —— 把仓库根、CARGO_HOME、RUSTUP_HOME 映射到中性前缀。
+# 不能写进 .cargo/config.toml（路径必须运行时取值），所以经 RUSTFLAGS 注入；
+# 注意 RUSTFLAGS 会覆盖 config 里 [target.*] 的 rustflags，故这里把
+# --no-gc-sections 一并带上（与 config 保持一致）。
+$repoRoot = (Get-Item $PSCommandPath).Directory.Parent.Parent.FullName
+$cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+$rustupHome = if ($env:RUSTUP_HOME) { $env:RUSTUP_HOME } else { Join-Path $HOME '.rustup' }
+$env:RUSTFLAGS = ("-C link-arg=-Wl,--no-gc-sections " +
+    "--remap-path-prefix={0}=/leantty " -f $repoRoot) +
+    ("--remap-path-prefix={0}=/cargo-home " -f $cargoHome) +
+    ("--remap-path-prefix={0}=/rustup-home" -f $rustupHome)
+Write-Host "RUSTFLAGS remap: repo=$repoRoot cargo=$cargoHome rustup=$rustupHome"
 if ($ExtraCargoArgs) {
     & cargo build --workspace $ExtraCargoArgs
 } else {
