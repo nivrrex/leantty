@@ -33,10 +33,33 @@ impl KeyEncoder {
 
     /// 编码单个按键事件为字节序列。
     pub fn encode_key(&mut self, key: Key, mods: Mods, action: Action) -> Result<Vec<u8>, Error> {
+        self.encode_key_full(key, mods, action, None, None)
+    }
+
+    /// 编码按键事件，并带上"未按 Shift 的码点"与 UTF-8 文本（阶段 6A 修复）。
+    ///
+    /// Kitty 键盘协议对非功能键要求提供 unshifted codepoint：缺省为 0 时上游编码器
+    /// 找不到对应的 kitty 表项，直接**不输出任何字节**（vendor/ghostty-src
+    /// `src/input/key_encode.zig` 的 `kitty()` 里 `break :entry null` 后 `return`）。因此在
+    /// kitty 模式下必须把它填上，否则 Ctrl+字母等组合键会静默丢失。
+    pub fn encode_key_full(
+        &mut self,
+        key: Key,
+        mods: Mods,
+        action: Action,
+        unshifted: Option<char>,
+        utf8: Option<&str>,
+    ) -> Result<Vec<u8>, Error> {
         let mut ev = KeyEvent::new()?;
         ev.set_action(action);
         ev.set_key(key);
         ev.set_mods(mods);
+        if let Some(c) = unshifted {
+            ev.set_unshifted_codepoint(c);
+        }
+        if let Some(t) = utf8 {
+            ev.set_utf8(Some(t.to_string()));
+        }
         let mut out = Vec::new();
         self.inner.encode_to_vec(&ev, &mut out)?;
         Ok(out)

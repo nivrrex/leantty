@@ -1578,7 +1578,17 @@ impl ApplicationHandler for AppHandler {
                                 if let (Some(key), Some(vt)) = (key, self.vt.as_mut()) {
                                     match vt.key_encoder() {
                                         Ok(mut enc) => {
-                                            match enc.encode_key(key, mods, Action::Press) {
+                                            // 阶段 6A：kitty 模式下必须提供 unshifted codepoint，
+                                            // 否则组合键被上游编码器静默丢弃（Ctrl+D/P/C 全丢）。
+                                            let unshifted =
+                                                unshifted_codepoint(&event.logical_key);
+                                            match enc.encode_key_full(
+                                                key,
+                                                mods,
+                                                Action::Press,
+                                                unshifted,
+                                                None,
+                                            ) {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
                                                     // 写线程只能丢弃"已在队列里"的块（并补发括号
@@ -3556,6 +3566,26 @@ const DIGITS: [vt::Key; 10] = [
 ];
 
 /// winit 逻辑键 → vt::Key（阶段1 子集：命名键 + ASCII 字母数字）。
+/// 取"未按 Shift 的码点"（阶段 6A 修复，纯函数）。
+///
+/// Kitty 键盘协议要求非功能键带上这个码点；缺省为 0 时上游编码器找不到 kitty 表项，
+/// 会**静默不输出**（见 `vendor/ghostty-src/src/input/key_encode.zig` 的 `kitty()`）。
+/// winit 的 `logical_key` 在 Shift 按下时给的是大写字母，因此这里统一折成小写，
+/// 与 kitty 规范里"unshifted code point"的语义一致。
+pub fn unshifted_codepoint(key: &WinitKey) -> Option<char> {
+    match key {
+        WinitKey::Character(s) => {
+            let c = s.as_ref().chars().next()?;
+            Some(if c.is_ascii_uppercase() {
+                c.to_ascii_lowercase()
+            } else {
+                c
+            })
+        }
+        _ => None,
+    }
+}
+
 fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
     match key {
         WinitKey::Named(NamedKey::Enter) => Some(vt::Key::Enter),
@@ -4043,5 +4073,35 @@ mod liveness_tests {
         assert_eq!(w1, t0);
         let w2 = next_liveness_wake(w1, true, Some(w1), INTERVAL).unwrap();
         assert_eq!(w2, w1 + INTERVAL);
+    }
+}
+
+#[cfg(test)]
+mod unshifted_tests {
+    use super::unshifted_codepoint;
+    use winit::keyboard::Key as WinitKey;
+
+    #[test]
+    fn codepoint_from_logical_key() {
+        // 小写字母原样；大写（Shift 按下时 winit 给大写）折成小写；数字/符号原样。
+        for (input, expect) in [
+            ("a", Some('a')),
+            ("A", Some('a')),
+            ("z", Some('z')),
+            ("1", Some('1')),
+            ("-", Some('-')),
+            ("你", Some('你')),
+        ] {
+            assert_eq!(
+                unshifted_codepoint(&WinitKey::Character(input.into())),
+                expect,
+                "logical_key Character({input:?})"
+            );
+        }
+        assert_eq!(
+            unshifted_codepoint(&WinitKey::Named(winit::keyboard::NamedKey::Enter)),
+            None,
+            "命名键没有字符码点"
+        );
     }
 }

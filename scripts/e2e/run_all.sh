@@ -2823,6 +2823,64 @@ else
     fi
 fi
 
+# case63（阶段 6A t5c）：键盘编码矩阵。kitty 键盘协议下 Ctrl+字母必须是 CSI-u，
+# legacy 与 modifyOtherKeys 仍是单字节控制字符。每条都带"普通字母 a"作为注入生效证据。
+if [ ! -x "$LEANTTY_REL" ] && [ ! -x "$LEANTTY_BIN" ]; then
+    echo "FAIL case63-key-matrix (缺二进制)"; FAIL=$((FAIL+1))
+else
+    OK63=0; TOT63=0
+    for spec in "legacy:61 0d 1b 09 1b5b41 01 03 04 10 61" \
+                "kitty7:1b5b3f3775 61 0d 1b 09 1b5b313b313a3141 1b5b39373b3575 1b5b39393b3575 1b5b3130303b3575 1b5b3131323b3575 61" \
+                "mok2:61 0d 1b 09 1b5b41 01 03 04 10 61"; do
+        MODE=${spec%%:*}; WANT=${spec#*:}
+        TOT63=$((TOT63+1))
+        GOT=$(sh "$ROOT/scripts/e2e/keymatrix.sh" "$MODE" "$OUT/case63-$MODE.log" 2>/dev/null | tail -1)
+        echo "  [c63 $MODE] 实收=[$GOT]"
+        if [ "$GOT" = "$WANT" ]; then
+            OK63=$((OK63+1))
+        else
+            echo "  [c63 $MODE] 期望=[$WANT]"
+        fi
+    done
+    if [ "$OK63" -eq "$TOT63" ]; then
+        echo "PASS case63-key-matrix ($OK63/$TOT63)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case63-key-matrix ($OK63/$TOT63)"; FAIL=$((FAIL+1))
+    fi
+fi
+
+# case64（阶段 6A t5d）：真实 pi 端到端 —— 空编辑器下 Ctrl-D 应让 pi 退出。
+# 临时 HOME、无 API key、无网络；只按自己记录的 PID 关闭。
+if [ ! -x "$LEANTTY_REL" ] || [ ! -x /root/pi/pi ]; then
+    echo "  [c64] 跳过（缺 leantty release 二进制或本机未安装 pi）"
+else
+    PHOME=$(mktemp -d /tmp/pi-home-XXXXXX)
+    CFG64="$OUT/case64-pi.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/usr/bin/env"\nargs = ["HOME=%s", "TERM=xterm-256color", "/root/pi/pi"]\n' "$PHOME" > "$CFG64"
+    LEANTTY_CONFIG="$CFG64" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case64.out" 2>"$OUT/case64.err" &
+    APP_PID=$!
+    if ! wait_window; then
+        echo "FAIL case64-pi-ctrl-d (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
+    else
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 6
+        x11 xdotool type "a"; sleep 0.8
+        x11 xdotool key BackSpace; sleep 0.8
+        PIPID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+        ALIVE_BEFORE=$(kill -0 "$PIPID" 2>/dev/null && echo yes || echo no)
+        x11 xdotool key ctrl+d; sleep 3
+        ST=$(ps -o stat= -p "$PIPID" 2>/dev/null | tr -d ' ')
+        if [ "$ALIVE_BEFORE" = yes ] && { [ -z "$ST" ] || [ "$ST" = "Z" ]; }; then
+            echo "PASS case64-pi-ctrl-d (注入前存活=yes，Ctrl-D 后 pi 已退出)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case64-pi-ctrl-d (注入前=$ALIVE_BEFORE Ctrl-D 后状态='${ST:-已退出}')"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    fi
+    rm -rf "$PHOME"
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
