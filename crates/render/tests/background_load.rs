@@ -73,10 +73,7 @@ fn background_load_sequence_placeholder_then_glyph() {
 
     // 阶段2（到位→重绘替换）：add_background_fonts 后重绘应不同于占位帧。
     let fonts = render::load_font_list(&settings().fallback);
-    assert!(
-        !fonts.is_empty(),
-        "系统应有 CJK/兜底字体（如 Noto CJK）"
-    );
+    assert!(!fonts.is_empty(), "系统应有 CJK/兜底字体（如 Noto CJK）");
     r.add_background_fonts(fonts);
     r.render(&snap("你"), 32, 32).expect("render 到位");
     let fb_real = r.framebuffer().to_vec();
