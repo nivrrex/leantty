@@ -2804,9 +2804,8 @@ elif ! command -v xprop >/dev/null 2>&1; then
 else
     CFG62="$OUT/case62.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG62"
-    APPRel_SAVED="$APP_REL"
-    APP_CONFIG="$CFG62" SHELL=/bin/sh "$APP_REL" >"$OUT/case62.out" 2>"$OUT/case62.log" &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG62" SHELL=/bin/sh "$LEANTTY_BIN" >"$OUT/case62.out" 2>"$OUT/case62.log" &
+    LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case62-window-ident (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
     else

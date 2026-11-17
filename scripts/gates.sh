@@ -56,6 +56,12 @@ echo "release 告警数=$WARN"
 
 step "5/9 scripts/e2e/run_all.sh"
 sh scripts/e2e/run_all.sh >/tmp/gates_e2e.log 2>&1 || { tail -40 /tmp/gates_e2e.log; fail "e2e"; }
+# 汇总行必须存在：run_all 中途因 set -u/异常退出时不会打印汇总，此前只检查退出码与
+# ^FAIL 行，会让"跑到一半就中断"的 e2e 蒙过去（阶段 5A t3 实测踩到，用未定义变量名导致）。
+grep -q "e2e 汇总" /tmp/gates_e2e.log || {
+    tail -20 /tmp/gates_e2e.log
+    fail "e2e 未跑到汇总（疑似中途中断）"
+}
 grep -E "e2e 汇总" /tmp/gates_e2e.log | tail -1
 grep -E "^FAIL" /tmp/gates_e2e.log && fail "e2e 有 FAIL 项"
 
