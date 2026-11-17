@@ -381,16 +381,16 @@ if start_app "$D" "$L" 120 30; then
     assert_no_wake "case9-dims120x30-no-wake" "$L"
 fi
 
-# 用例 10：examples/linux.toml（--config 启动）+ 中文输入 → 回显非方块、
+# 用例 10：config/leantty.linux.toml（--config 启动）+ 中文输入 → 回显非方块、
 # font 索引行存在（回退链 e2e 断言，替代截图像素比对；规格任务 3.6 备选方案）。
 # 中文输入走 printf 八进制路径（实测：xdotool type 对 CJK 发 caret 记法文本，
 # 本环境不可用；case2 同结论，DECISIONS 登记）。
 D="$OUT/case10-cjk-config.dump"
 L="$OUT/case10-cjk-config.log"
-# examples/linux.toml 的 renderer.backend 是 auto（会优先 GPU）；本用例断言的是
+# config/leantty.linux.toml 的 renderer.backend 是 auto（会优先 GPU）；本用例断言的是
 # CPU 后端的 dump 钩子（# font 行），故派生一份把 backend 固定为 cpu 的副本。
 CFG10="$OUT/case10-cfg.toml"
-sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/examples/linux.toml" >"$CFG10"
+sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/config/leantty.linux.toml" >"$CFG10"
 LEANTTY_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$LEANTTY_BIN" --config "$CFG10" >>"$L" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
