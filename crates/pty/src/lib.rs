@@ -26,6 +26,20 @@ pub use windows::WindowsPty as NativePty;
 pub trait Pty {
     /// 起 shell，cols/rows 为行列数。
     fn spawn(&mut self, shell: &str, cols: u16, rows: u16) -> Result<(), Error>;
+    /// 带显式启动参数（`terminal.shell.args`）的 spawn。
+    ///
+    /// 默认实现忽略 args，走既有 `spawn`（Unix 侧不注入任何默认参数，等价；
+    /// 阶段 3U Windows 侧覆盖它以让用户配置优先）。
+    fn spawn_with_args(
+        &mut self,
+        shell: &str,
+        args: Option<&[String]>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), Error> {
+        let _ = args;
+        self.spawn(shell, cols, rows)
+    }
     /// 取走读端（PTY 主端读句柄），供读线程使用；只能取一次。
     fn take_reader(&mut self) -> Result<Box<dyn Read + Send>, Error>;
     /// 取写句柄。

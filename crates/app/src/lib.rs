@@ -1209,7 +1209,19 @@ impl ApplicationHandler for AppHandler {
         }
         let t_spawn = Instant::now();
         let mut pty = NativePty::new();
-        if let Err(e) = pty.spawn(&config.shell, config.cols, config.rows) {
+        // 阶段 3U：用户配置的 terminal.shell.args 优先（None=未配置，Some([])=显式空数组）。
+        let shell_args = config
+            .config
+            .terminal
+            .shell
+            .as_ref()
+            .and_then(|s| s.args.clone());
+        if let Err(e) = pty.spawn_with_args(
+            &config.shell,
+            shell_args.as_deref(),
+            config.cols,
+            config.rows,
+        ) {
             eprintln!("pty spawn: {}", e);
             return;
         }

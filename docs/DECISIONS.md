@@ -431,3 +431,11 @@
 - 阶段 3T t5（已验证事实，推翻 4S §3 归因）：960×480、同内容，cpu vs WARP 差异 1.0304%（>32 为 1.0234%），其中滚动条列仅 9 px（0.156%），列外字形区 4739 px（≈1.03%）；1.46% 的"滚动条列"归因在本对比中不成立。
 - 阶段 3T t6（已验证事实）：`pty_windows.rs` 去 `C:\dev\tty` 后改用 `env!("CARGO_MANIFEST_DIR")`，测试通过；`wb2_lib.ps1` 的 `$ROOT` 由 `$PSScriptRoot` 推导，`C:\` 与仓库内两 cwd 均解析一致；两文件 `rustfmt --check` 干净。
 - 阶段 3T t7（已验证事实）：RC1 zip 6 604 572 B / sha256 `4b7a720c…`；MANIFEST 首行记录 ConPTY `FileVersion 1.25.2611.09001`；中文+空格路径解压、异目录启动、随附 OpenConsole 生效、系统 OpenConsole 集合不变。
+
+- 阶段 3U t1（已验证事实）：`phase4w-done` = `79fbb0e`（轻量 tag，解引用同值），`--no-ff` 合并为 `8694b3c`，0 冲突。
+- 阶段 3U t2（已验证事实）：`terminal.shell.args` 接线按 4W §3 落地（`ff8da85` shared）：`ShellConfig.args: Option<Vec<String>>`、`Pty::spawn_with_args`（默认实现走旧 `spawn`，Unix 不变）、Windows `decide_shell_args`；实机五例——默认/`cmd` 无 args 均 `/K "chcp 65001"`，用户 args 生效且无 chcp（标记文件生成），`pwsh` 无 `/K`，显式空数组不注入默认。
+- 阶段 3U t2 偏离（工程判断，置信度高）：`powershell.exe` 未配置时保留原 4 项默认参数（4W 表为 `[]`），避免既有 UTF-8 行为回归；`pwsh.exe` 无默认参数不受影响。
+- 阶段 3U t2f（已验证事实）：3T 的 shim 绕行在 `scripts/windows/` 内 0 引用（仓库外临时工具，未入库），标废弃。
+- 阶段 3U t3（已验证事实）：D=`phase4w-done` 构建，子 shell 退出 12/12 关闭（1670–2056 ms）、杀子 shell 12/12 关闭（936–2113 ms），均 ≤5 s；空闲 30 s 得 8 条统计行、`wake_timer=5`/5 s（≈1 次/秒）。
+- 阶段 3U t4（已验证事实）：RC2 zip 6 607 474 B / sha256 `868ce254…`；与 RC1 逐文件对比仅 app.exe 变化（18 109 900 / `5f95750e…`），其余六项完全一致。
+- 阶段 3U 门禁（已验证事实）：`cargo test --workspace` 217 passed；clippy `-D warnings` 0；`cargo fmt --all --check` 0 偏差。
