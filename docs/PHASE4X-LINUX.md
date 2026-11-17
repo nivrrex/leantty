@@ -146,9 +146,39 @@ Linux 侧**未核实**）在**功能上**与最终源码一致，可继续作为
 | Windows 目标 `cargo check --workspace --tests` | 0 error / 0 warning |
 | `scripts/gates.sh` | 9 步全过（含全仓 rustfmt、clippy 两配置、release 零告警、wgpu==30.0.2）|
 
-## 6. t5 Linux 交付包
+## 6. t5 Linux 交付包（dual-package skill）
 
-见生成结果（部署包 / 开发包的大小与 sha256、含空格目录冒烟输出）。
+产物放在项目目录之外（`/root/dev/tty_packages/`，未进仓库）：
+
+| 包 | 大小 | sha256 |
+|---|---|---|
+| `tty.tar.gz`（部署包，顶层目录 `tty/`） | 5,359,817 B | `7ce62c6d1801e1dde852b6377a2db06f522e871435e1704f6616f9b148e2934f` |
+| `tty_dev.tar.gz`（开发包，顶层目录 `tty_dev/`） | 4,362,182 B | `01c59f1ad107593c2c1aed01c5aea8967a7688f91638ccd6fca1ce3c1a481128` |
+
+部署包内容：`app`（16,043,792 B 预编译二进制）+ `config.example.toml` + `DEPLOY.md`
+（含"第 1 步防覆盖解压 `tar -xzkf`"、依赖表、配置项表、已知问题）。
+开发包内容：`git archive HEAD` 快照（1789 个文件，18MB 解压）+ 追加的 `CHANGELOG.md`
+（含本轮决策/未决项/待验证假设）+ 构建须知（外部 zig 与 ghostty 源码目录以环境变量注入）。
+
+**部署包冒烟（含空格的临时目录）**：
+
+```
+$ mkdir -p "/root/dev/验证 目录 with spaces/部署" && tar -xzkf tty.tar.gz -C "…"
+$ ldd app
+  linux-vdso.so.1 / libc.so.6 / ld-linux-x86-64.so.2 / libgcc_s.so.1 / libm.so.6
+$ DISPLAY=:99 APP_CONFIG=… SHELL=/bin/sh ./app
+  窗口=创建成功 首帧=first_frame_ms=191 截图=PNG 1280x720（均值亮度 0.0227，非全黑）
+  SIGTERM 后退出码=143（20ms 内退出）
+```
+
+X11 与 Vulkan 都是**运行期 dlopen**（`ldd` 只见 libc/libm/libgcc），因此部署机缺 Vulkan 时
+`backend = "cpu"`/`"auto"` 仍可用。
+
+**引用完整性扫描**（skill 的 `check_refs.sh`）：部署包 **0 处未解析引用**；开发包 43 处，全部位于
+历史阶段报告（`docs/DECISIONS.md` 12、`docs/WIN-NOTES.md` 6、`vt-verify/REPORT.md` 4、
+`PHASE3A-WIN.md` 3 等），指向仓库外路径（vendored wgpu 源码、Windows 侧工作目录、ghostty 头文件）
+或纯文本里的数字斜杠（`96dpi/1.0`、`323.6/333.7/330.1`）。**未改写源项目**（本阶段"只改必需部分"），
+归为开发包的已知项：这些是历史报告的外部引用，不影响构建与运行。
 
 ## 7. 未解决 / 待验证
 
