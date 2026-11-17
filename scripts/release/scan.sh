@@ -74,8 +74,16 @@ scan_one() {
     grep -anE "$B_PATTERNS" "$src" 2>/dev/null | cut -c1-140 | sed "s|^|$f: |" >> "$B_LIST"
     # C 类是兜底桶：已经归入 B 类（系统常量）的命中不再重复计入 C。
     grep -anE "$C_PATTERNS" "$src" 2>/dev/null | grep -vE 'C:\\path\\to' \
-        | grep -avE "$B_PATTERNS" \
-        | cut -c1-140 | sed "s|^|$f: |" >> "$C_LIST"
+        | grep -avE "$B_PATTERNS" | cut -c1-140 > /tmp/scan_c_hits.$$
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        if is_allowlisted "$f" "$line"; then
+            printf '%s: %s\n' "$f" "$line" >> "$EXEMPT_LIST"
+        else
+            printf '%s: %s\n' "$f" "$line" >> "$C_LIST"
+        fi
+    done < /tmp/scan_c_hits.$$
+    rm -f /tmp/scan_c_hits.$$
     grep -ainE "$R_PATTERNS" "$src" 2>/dev/null | cut -c1-140 | sed "s|^|$f: |" >> "$R_LIST"
     rm -f /tmp/scan_a_hits.$$
     [ "$src" = "$f" ] || rm -f "$src"

@@ -141,3 +141,60 @@ phase5c-t2 干净 worktree，rm -rf target 后 #2：同上（可复现）
 | `crates/pty/tests/pty_windows.rs` | `127.0.0.1` | 仅作为 ping 的目标地址 |
 | `crates/pty/src/windows.rs` | `C:\Windows` | Windows 系统常量（conhost/cmd 默认目录） |
 | `vendor/*` | `/home/user/`、`127.0.0.1` | 上游 libghostty-rs 文档示例 |
+
+## 5. s9 重新执行结果（已验证事实）
+
+### 5.1 门禁与 tag
+
+`scripts/gates.sh` **10 步全过**（HEAD 于 `phase5c-t3`），e2e **115/115**（GPU 轮 10/10）；
+`phase5c-t3` = `3504fb2a8f12f8f6f2f1ab07861b50dc4a9dcb6b`。
+
+### 5.2 deb（重建）
+
+- 大小 **3,514,444 B**，sha256 `9f200ec1f5e20fa5fa90a132c58042abe1077cbd1b416bb7eaf9338c9a1f8d3c`。
+- 与上一版 `2fa3c387…` 不同属**预期**：包内 `README.md`/`README.zh-CN.md` 多了 Linux 故障排查条目，
+  且新增了源码头里的一处测试断言消息改动（不进二进制）——打包内容变化必然改包哈希。
+- 包内 `/usr/bin/leantty` 的 sha256 = **`4bf11fbf1537961cd4c8be980d1b62683bd87e44382cbdfbe9175b251b46e413`**，
+  与 s3/s7c 的可复现构建值一致。
+- Depends 未变：`libc6, libwayland-client0, libx11-6, libx11-xcb1, libxcb1, libxcursor1, libxi6,
+  libxkbcommon0, libxkbcommon-x11-0`；Recommends `libvulkan1`。
+
+### 5.3 导出与扫描
+
+导出目录 167 个文件（3.9 MB）：`A=0  B=3  C=0  豁免=15  仅报告=2`。
+- B 类 3 条：`crates/pty/src/windows.rs` 的 `C:\Windows\System32` 等系统常量。
+- 豁免 15 条：见 §4.4（单元测试合成路径、ping 目标回环、Windows 系统常量、vendor 上游文档）。
+- 仅报告 2 条（**都在导出文件内，未修改**）：`crates/app/src/lib.rs:120`（"本机 Win10 LTSC"）、
+  `scripts/windows/conpty/README.md:7`（"Windows 10 LTSC 19044"）。
+- deb 与 zip（容器文件本身）：`A=0 B=0 C=0`。
+- zip 解包目录：`A=0  B=1  C=0  豁免=121  仅报告=0`；B=1 是 `leantty.exe` 里的 `C:\Windows\Fonts`
+  系统常量，121 条豁免全部来自随附的 Microsoft ConPTY 二进制（其内部 `C:\__w\...` 构建机路径）。
+
+### 5.4 干净检出验证（t6e）
+
+复制导出目录到临时目录（路径含空格），按 `docs/BUILDING.md` 注入 `ZIG`/`GHOSTTY_SOURCE_DIR`/
+`GHOSTTY_ZIG_SYSTEM_DIR` 后：`cargo build --release --locked` 成功（4m01s），
+`cargo test --workspace` **全部通过，0 失败**（无因删开发文件而失败的用例）。
+
+### 5.5 发布资产（t6f）
+
+`leantty-release-assets/`：
+- `leantty_0.1.0_amd64.deb`（3,514,444 B，sha256 `9f200ec1…`）
+- `leantty-0.1.0-windows-x86_64.zip`（5,783,314 B，sha256 **`4c33a4593dcb66b532423d4c0b215fa26789ca346d42d1c05dc82afab9de0acb`**，与 Windows 侧自述一致）
+- `SHA256SUMS`（仅这两个文件名，不含路径）
+
+### 5.6 一致性结论（t6g）
+
+- **zip 内 `README.md` 与 `README.zh-CN.md` 比仓库各少一条 Linux 专属故障排查**（用户裁决不重打 zip）；
+  其余 4 个文件（LICENSE、THIRD-PARTY-NOTICES.md、leantty.toml、leantty-portable.cmd）与仓库逐字节一致。
+- **crates/ 相对 Windows 构建源码的差异只有两处**：`crates/pty/src/windows.rs` 一行文档注释
+  （行数不变 389 → 389）、`crates/render/tests/background_load.rs` 一行测试断言消息；
+  二者**都不进入 release 二进制**，Linux release 二进制 sha256 经 s3（两次干净构建）与 s7c（清空 target
+  重建）证明**未变化**（`4bf11fbf…`）。因此 zip 对应的源码与 zip 内二进制在功能上与当前源码一致。
+
+## 6. 交付物摘要
+
+| 项 | 值 |
+|---|---|
+| 三个上传文件 | `leantty_0.1.0_amd64.deb`、`leantty-0.1.0-windows-x86_64.zip`、`SHA256SUMS` |
+| 建议仓库描述 | `A lightweight terminal emulator with CPU and optional wgpu/Vulkan rendering.` |

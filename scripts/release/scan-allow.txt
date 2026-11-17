@@ -15,3 +15,7 @@ scripts/windows/*|127\.0\.0\.1|ConPTY 下载脚本里的代理示例占位（已
 # 4) vendor/ 上游文档（上游作者信息与示例路径，按规则单独列出，不算命中）
 vendor/*|/home/user/|上游 libghostty-rs 文档里的示例路径
 vendor/*|127\.0\.0\.1|上游示例里的本地 HTTP 服务地址
+#
+# 5) 随附的 Microsoft ConPTY 二进制（conpty.dll / OpenConsole.exe）内部含系统路径常量
+conpty.dll|.|B 类：Microsoft 随附 ConPTY 二进制内的系统路径常量（非本项目身份信息）
+OpenConsole.exe|.|B 类：同上
