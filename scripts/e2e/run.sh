@@ -7,26 +7,26 @@ OUT="$ROOT/scripts/e2e/out"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
+LEANTTY_BIN="$ROOT/target/release/leantty"
 
-[ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build --release -p app"; exit 1; }
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build --release -p leantty-app"; exit 1; }
 command -v Xvfb >/dev/null 2>&1 || { echo "FATAL: Xvfb 未安装"; exit 1; }
 command -v xdotool >/dev/null 2>&1 || { echo "FATAL: xdotool 未安装"; exit 1; }
 
 # 起 Xvfb（固定 :99，guard 保证不抢占）与窗口管理器
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
 e2e_start_wm "$OUT/openbox.log"
 
 # 起 app（SHELL=/bin/sh）
-SHELL=/bin/sh "$APP_BIN" >"$OUT/app.log" 2>&1 &
-APP_PID=$!
+SHELL=/bin/sh "$LEANTTY_BIN" >"$OUT/app.log" 2>&1 &
+LEANTTY_PID=$!
 
 # 等窗口出现（最多 10s）
 WID=""
 i=0
 while [ $i -lt 20 ]; do
-    WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+    WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
     [ -n "$WID" ] && break
     sleep 0.5
     i=$((i+1))
@@ -49,6 +49,6 @@ echo "截图已保存"
 # 关 app
 x11 xdotool windowclose "$WID" 2>/dev/null
 sleep 1
-kill $APP_PID 2>/dev/null
-wait $APP_PID 2>/dev/null
+kill $LEANTTY_PID 2>/dev/null
+wait $LEANTTY_PID 2>/dev/null
 echo "复现完成：$OUT（app.log / screenshot-repro.png）"

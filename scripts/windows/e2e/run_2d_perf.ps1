@@ -11,7 +11,7 @@ function Measure-Config([string]$name, [string]$cfgPath, [int]$runs) {
     for ($i = 1; $i -le $runs; $i++) {
         $err = Join-Path $OUT "$name-$i.err"
         Remove-Item $err -ErrorAction SilentlyContinue
-        Remove-Item Env:\APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue
+        Remove-Item Env:\LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue
         if ($cfgPath) {
             $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $cfgPath) -WorkingDirectory $ROOT -PassThru -RedirectStandardError $err
         } else {

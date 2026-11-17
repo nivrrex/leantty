@@ -10,7 +10,7 @@ param(
     [int]$TypeWaitSec = 4
 )
 $ErrorActionPreference = 'Stop'
-. 'C:\dev\tty\scripts\windows\e2e\wb2_lib.ps1' -AppBin 'C:\dev\tty\target\release\app.exe'
+. 'C:\dev\tty\scripts\windows\e2e\wb2_lib.ps1' -AppBin 'C:\dev\tty\target\release\leantty.exe'
 
 function Start-App([string]$exe, [string]$cfg, [string]$workDir) {
     $si = New-Object System.Diagnostics.ProcessStartInfo

@@ -17,8 +17,8 @@ OUT="$ROOT/scripts/e2e/out/asrate"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
 
 BACKEND=gpu
 case "$MODE" in
@@ -26,7 +26,7 @@ case "$MODE" in
     gpu) BACKEND=gpu ;;
     lavapipe)
         BACKEND=gpu
-        export APP_GPU_ALLOW_SOFTWARE=1
+        export LEANTTY_GPU_ALLOW_SOFTWARE=1
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
         ;;
     *) echo "用法: $0 <cpu|gpu|lavapipe> [次数]"; exit 2 ;;
@@ -55,17 +55,17 @@ for k in $(seq 1 "$RUNS"); do
     e2e_start_wm "$OUT/wm-$MODE.log"
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$BACKEND" >"$OUT/cfg-$MODE.toml"
     LOG="$OUT/app-$MODE-$k.log"
-    APP_CONFIG="$OUT/cfg-$MODE.toml" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$OUT/cfg-$MODE.toml" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$LOG" 2>&1 &
+    LEANTTY_PID=$!
     i=0
     WID=""
     while [ $i -lt 120 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.2
         i=$((i + 1))
     done
-    [ -z "$WID" ] && { echo "run$k: 窗口未出现"; kill_own "$APP_PID"; kill_own "$XVFB_PID"; kill_own "$WM_PID"; continue; }
+    [ -z "$WID" ] && { echo "run$k: 窗口未出现"; kill_own "$LEANTTY_PID"; kill_own "$XVFB_PID"; kill_own "$WM_PID"; continue; }
     sleep 1.0
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -102,9 +102,9 @@ for k in $(seq 1 "$RUNS"); do
     O2=$(awk -v ty="$TY2" -v th="$TH" -v ph="$PH" -v sb="$SB" 'BEGIN{ d=ph-th; if (d<=0) {print -1; exit} printf "%.0f", ty/d*sb }')
     ADV=$(( ${O2:-0} - ${O1:-0} ))
     echo "run$k: offset ${O1:-NA} → ${O2:-NA}，3 秒推进 ${ADV} 行（≈$(( ADV / 3 )) 行/秒），最大帧间隔=${IV:-NA}ms"
-    kill -TERM "$APP_PID" 2>/dev/null
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
     kill_own "${XVFB_PID:-}"
     kill_own "${WM_PID:-}"
     sleep 0.4

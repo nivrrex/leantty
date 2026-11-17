@@ -31,7 +31,7 @@ function Shoot-Client([IntPtr]$hwnd, [string]$path) {
 
 # ---------- a1: same input sequence, default incremental vs forced full redraw
 function Run-Scene([string]$name, [bool]$forceFull) {
-    if ($forceFull) { $env:APP_FORCE_FULL_REDRAW = '1' } else { Remove-Item Env:\APP_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue }
+    if ($forceFull) { $env:LEANTTY_FORCE_FULL_REDRAW = '1' } else { Remove-Item Env:\LEANTTY_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue }
     $a = Start-Case2 $name 'clip-win.toml'
     $Script:CurHwnd = $a.hwnd
     if ($a.hwnd -eq [IntPtr]::Zero) { return @{ ok = $false } }
@@ -45,7 +45,7 @@ function Run-Scene([string]$name, [bool]$forceFull) {
     $png = Join-Path $OUT "$name.png"
     $ok = Shoot-Client $a.hwnd $png
     Stop-App2 $a.proc
-    Remove-Item Env:\APP_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue
+    Remove-Item Env:\LEANTTY_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue
     @{ ok = $ok; png = $png }
 }
 
@@ -78,8 +78,8 @@ Start-Sleep -Seconds 1
 
 # ---------- a2: present timing, damage vs full buffer
 function Run-Present([string]$name, [bool]$fullBuf) {
-    if ($fullBuf) { $env:APP_PRESENT_FULL = '1' } else { Remove-Item Env:\APP_PRESENT_FULL -ErrorAction SilentlyContinue }
-    $env:APP_PRESENT_STATS = '1'
+    if ($fullBuf) { $env:LEANTTY_PRESENT_FULL = '1' } else { Remove-Item Env:\LEANTTY_PRESENT_FULL -ErrorAction SilentlyContinue }
+    $env:LEANTTY_PRESENT_STATS = '1'
     $a = Start-Case2 $name 'clip-win.toml'
     $Script:CurHwnd = $a.hwnd
     if ($a.hwnd -eq [IntPtr]::Zero) { return @{ ok = $false; lines = @() } }
@@ -87,8 +87,8 @@ function Run-Present([string]$name, [bool]$fullBuf) {
     $null = Wait-Dump2 $a.dump 'P40' 40
     Start-Sleep -Seconds 3
     Stop-App2 $a.proc
-    Remove-Item Env:\APP_PRESENT_FULL -ErrorAction SilentlyContinue
-    Remove-Item Env:\APP_PRESENT_STATS -ErrorAction SilentlyContinue
+    Remove-Item Env:\LEANTTY_PRESENT_FULL -ErrorAction SilentlyContinue
+    Remove-Item Env:\LEANTTY_PRESENT_STATS -ErrorAction SilentlyContinue
     $lines = @()
     if (Test-Path $a.err) {
         $lines = (Get-Content $a.err -Encoding UTF8 | Where-Object { $_ -match 'present_us' })

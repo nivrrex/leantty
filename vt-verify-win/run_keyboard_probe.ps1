@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -38,7 +38,7 @@ public class W4 {
 }
 '@
 
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe.err"
 "pid=$($p.Id)"
@@ -96,7 +96,7 @@ $inputs[1].u.ki.dwFlags = 0x0004 -bor 0x0002
 [void][W4]::SendInput(2, $inputs, [System.Runtime.InteropServices.Marshal]::SizeOf([W4+INPUT]))
 Start-Sleep -Seconds 8
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 6
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 6
 "--- err ---"
 Get-Content "$OUT\probe.err" -ErrorAction SilentlyContinue | Select-Object -First 6
 "fg_final=$([W4]::GetForegroundWindow()) hwnd=$hwnd"

@@ -4,8 +4,11 @@ use std::str::FromStr;
 use config::{Action, Config, Mouse, Rgb};
 
 const EXAMPLES: &[(&str, &str)] = &[
-    ("linux", include_str!("../../../examples/linux.toml")),
-    ("windows", include_str!("../../../examples/windows.toml")),
+    ("linux", include_str!("../../../config/leantty.linux.toml")),
+    (
+        "windows",
+        include_str!("../../../config/leantty.windows.toml"),
+    ),
 ];
 
 #[test]
@@ -15,7 +18,8 @@ fn examples_load_without_warnings() {
         assert!(warnings.is_empty(), "{name} warnings: {warnings:?}");
         assert_eq!(c.window.dimensions.columns, 120);
         assert_eq!(c.window.dimensions.lines, 30);
-        assert_eq!(c.window.position, Some(config::Pos { x: 50, y: 40 }));
+        // 模板里 position 是注释掉的默认值（交给窗口管理器决定），故为 None。
+        assert_eq!(c.window.position, None);
         assert_eq!(c.window.padding, config::Padding { x: 0, y: 0 });
         assert!(c.window.dynamic_title);
         assert_eq!(c.window.opacity, 1.0);
@@ -28,10 +32,13 @@ fn examples_load_without_warnings() {
         assert!(c.selection.save_to_clipboard);
         assert!(c.colors.draw_bold_text_with_bright_colors);
         assert_eq!(c.font.fallback.len(), 1);
+        // 模板字体是通用候选（Linux DejaVu/Noto，Windows Consolas/雅黑），不带机器相关设定。
+        assert!(c.font.size > 0.0);
         assert_eq!(c.mouse.bindings.len(), 2);
         assert_eq!(c.keyboard.bindings.len(), 2);
+        // 模板不指定 shell（Unix 用 $SHELL → /bin/sh；Windows 由程序默认 cmd.exe）。
+        assert!(c.terminal.shell.is_none(), "{name} 模板不应固定 shell");
         if *name == "windows" {
-            assert_eq!(c.terminal.shell.as_ref().unwrap().program, "pwsh.exe");
             // 阶段 3A 任务 1：Windows 样例主字体改为小体积等宽西文 Consolas，
             // 大体积 CJK 字体（微软雅黑）放 fallback（主字体同步加载，大字体拖慢首帧）。
             assert_eq!(c.font.normal.family, "Consolas");
@@ -41,20 +48,20 @@ fn examples_load_without_warnings() {
             assert_eq!(
                 c.colors.primary.background,
                 Rgb {
-                    r: 0xfc,
-                    g: 0xfc,
-                    b: 0xfc
+                    r: 0x1a,
+                    g: 0x1b,
+                    b: 0x26
                 }
             );
         } else {
-            assert_eq!(c.font.normal.family, "Consolas");
-            assert_eq!(c.font.fallback[0].family, "黑体");
+            assert_eq!(c.font.normal.family, "DejaVu Sans Mono");
+            assert_eq!(c.font.fallback[0].family, "Noto Sans CJK SC");
             assert_eq!(
                 c.colors.primary.background,
                 Rgb {
-                    r: 0xf3,
-                    g: 0xf1,
-                    b: 0xe9
+                    r: 0x1a,
+                    g: 0x1b,
+                    b: 0x26
                 }
             );
         }
@@ -159,12 +166,12 @@ fn path_priority_cli_env_default() {
     unsafe {
         let env_path = tmp.join("app-config-test.toml");
         std::env::set_var(
-            "APP_CONFIG",
+            "LEANTTY_CONFIG",
             env_path.to_str().expect("temp 路径应为 UTF-8"),
         );
         let p = config::resolve_config_path(None).unwrap();
         assert_eq!(p, env_path);
-        std::env::remove_var("APP_CONFIG");
+        std::env::remove_var("LEANTTY_CONFIG");
 
         // 默认路径基准目录按平台不同：Windows 读 APPDATA，其他平台读
         // XDG_CONFIG_HOME（未设置则 $HOME/.config）。只在此测试内分支，
@@ -232,5 +239,62 @@ fn renderer_backend_invalid_value_warns_and_falls_back() {
     assert!(
         w.iter().any(|m| m.contains("renderer.backend")),
         "应带路径警告: {w:?}"
+    );
+}
+
+/// 阶段 4X t2：`terminal.shell.args` 的四种输入形态必须可区分（3U 改了类型但没带测试，
+/// 这里补上；也是"注入确实生效"链条最上游的一环）。
+#[test]
+fn shell_args_distinguishes_absent_empty_and_invalid() {
+    // 1) 未配置 → None（Windows 侧据此注入默认 chcp 参数）
+    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\n").expect("parse");
+    assert!(w.is_empty(), "不该有警告: {w:?}");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        None,
+        "未配置 args 必须是 None（而非 Some(vec![])）"
+    );
+
+    // 2) 显式空数组 → Some(vec![])：表示"不要任何默认参数"
+    let (c, w) =
+        config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = []\n").expect("parse");
+    assert!(w.is_empty(), "不该有警告: {w:?}");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        Some(Vec::new()),
+        "显式空数组必须是 Some(vec![])，与未配置不同"
+    );
+
+    // 3) 非数组 → 告警并整条忽略（None）
+    let (c, w) =
+        config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = \"-c x\"\n").expect("parse");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        None,
+        "非数组应整条忽略"
+    );
+    assert!(
+        w.iter()
+            .any(|m| m.contains("terminal.shell.args") && m.contains("expected array")),
+        "应告警 expected array，实测: {w:?}"
+    );
+
+    // 4) 非字符串元素静默丢弃，其余保留原顺序
+    let (c, w) = config::parse(
+        "[terminal.shell]\nprogram = \"/bin/bash\"\nargs = [\"-l\", 3, \"-c\", \"echo hi\"]\n",
+    )
+    .expect("parse");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        Some(vec![
+            "-l".to_string(),
+            "-c".to_string(),
+            "echo hi".to_string()
+        ]),
+        "非字符串元素丢弃、字符串元素保序"
+    );
+    assert!(
+        w.iter().all(|m| !m.contains("terminal.shell.args")),
+        "元素类型不符不告警（现状语义），实测: {w:?}"
     );
 }

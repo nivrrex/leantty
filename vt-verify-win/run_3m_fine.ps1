@@ -6,7 +6,7 @@
 # within a few tens of milliseconds of process creation.
 # ASCII only.
 param(
-    [string]$Exe = 'C:\dev\tty\target\release\app.exe',
+    [string]$Exe = 'C:\dev\tty\target\release\leantty.exe',
     [string]$Cfg = 'C:\dev\tty\examples\windows.toml',
     [string]$Tag = 'A',
     [int]$Ms = 6000,

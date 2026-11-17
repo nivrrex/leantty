@@ -22,8 +22,8 @@ OUT="$ROOT/scripts/e2e/out/rss"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制：cargo build --release"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制：cargo build --release"; exit 1; }
 
 CSV="$OUT/rss-$BACKEND.csv"
 LOG="$OUT/app-$BACKEND.log"
@@ -33,7 +33,7 @@ CLIP="$OUT/clip1mb.txt"
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.5
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
 e2e_start_wm "$OUT/wm.log"
 
 CFG="$OUT/cfg-$BACKEND.toml"
@@ -58,13 +58,13 @@ classify() { # $1=pid → "heap=X anon=Y file=Z stack=W"
 
 echo "t_s,vmsize_kb,vmrss_kb,rssanon_kb,rssfile_kb,vmdata_kb,allocator,xvfb_rss_kb" >"$CSV"
 : >"$LOG"
-APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$LOG" 2>&1 &
+LEANTTY_PID=$!
 
 i=0
 WID=""
 while [ $i -lt 100 ]; do
-    WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+    WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
     [ -n "$WID" ] && break
     sleep 0.2
     i=$((i+1))
@@ -94,18 +94,18 @@ while [ "$ELAPSED" -lt $((MIN * 60)) ]; do
     ELAPSED=$((ELAPSED + 3))
     sleep 3
     if [ "$ELAPSED" -ge "$NEXT" ]; then
-        VM=$(awk '/^VmSize:/ {print $2}' "/proc/$APP_PID/status" 2>/dev/null)
-        RSS=$(awk '/^VmRSS:/ {print $2}' "/proc/$APP_PID/status" 2>/dev/null)
-        ANON=$(awk '/^RssAnon:/ {print $2}' "/proc/$APP_PID/status" 2>/dev/null)
-        FILE=$(awk '/^RssFile:/ {print $2}' "/proc/$APP_PID/status" 2>/dev/null)
-        DATA=$(awk '/^VmData:/ {print $2}' "/proc/$APP_PID/status" 2>/dev/null)
+        VM=$(awk '/^VmSize:/ {print $2}' "/proc/$LEANTTY_PID/status" 2>/dev/null)
+        RSS=$(awk '/^VmRSS:/ {print $2}' "/proc/$LEANTTY_PID/status" 2>/dev/null)
+        ANON=$(awk '/^RssAnon:/ {print $2}' "/proc/$LEANTTY_PID/status" 2>/dev/null)
+        FILE=$(awk '/^RssFile:/ {print $2}' "/proc/$LEANTTY_PID/status" 2>/dev/null)
+        DATA=$(awk '/^VmData:/ {print $2}' "/proc/$LEANTTY_PID/status" 2>/dev/null)
         XR=$(ps -o rss= -p "${XVFB_PID_LOCAL:-0}" 2>/dev/null | tr -d ' ')
-        CL=$(classify "$APP_PID")
+        CL=$(classify "$LEANTTY_PID")
         echo "$ELAPSED,${VM:-0},${RSS:-0},${ANON:-0},${FILE:-0},${DATA:-0},\"$CL\",${XR:-0}" >>"$CSV"
         echo "  [t=${ELAPSED}s] RSS=${RSS}KB anon=${ANON} file=${FILE} data=${DATA} | $CL | xvfb=${XR}KB"
         NEXT=$((NEXT + 30))
     fi
-    if ! kill -0 "$APP_PID" 2>/dev/null; then
+    if ! kill -0 "$LEANTTY_PID" 2>/dev/null; then
         echo "FAIL: app 提前退出（t=${ELAPSED}s）"
         break
     fi
@@ -116,9 +116,9 @@ echo "--- 最后一次 [perf] 帧日志（含 sb_rows/glyphs/fb_bytes/pending/wq
 grep "frames n=" "$LOG" | tail -1
 echo "--- 采集表：$CSV"
 
-kill -TERM "$APP_PID" 2>/dev/null
+kill -TERM "$LEANTTY_PID" 2>/dev/null
 W=0
-while kill -0 "$APP_PID" 2>/dev/null && [ "$W" -lt 20 ]; do sleep 0.5; W=$((W + 1)); done
-kill -KILL "$APP_PID" 2>/dev/null
-wait "$APP_PID" 2>/dev/null
-APP_PID=""
+while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$W" -lt 20 ]; do sleep 0.5; W=$((W + 1)); done
+kill -KILL "$LEANTTY_PID" 2>/dev/null
+wait "$LEANTTY_PID" 2>/dev/null
+LEANTTY_PID=""

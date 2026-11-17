@@ -102,7 +102,7 @@ function Start-AppDirect {
     $wrapper = Join-Path $WorkDir ('launch-{0}.cmd' -f ([Guid]::NewGuid().ToString('N').Substring(0, 8)))
     $lines = @('@echo off')
     $lines += ('cd /d "{0}"' -f $WorkDir)
-    $lines += 'set "APP_PERF_FRAMES=1"'
+    $lines += 'set "LEANTTY_PERF_FRAMES=1"'
     foreach ($k in ($EnvVars.Keys | Sort-Object)) {
         $lines += ('set "{0}={1}"' -f $k, $EnvVars[$k])
     }

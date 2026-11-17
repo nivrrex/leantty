@@ -44,11 +44,11 @@ pub use preedit::{PreeditLayout, PreeditOverlay, layout_end_position, layout_pre
 /// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
 ///
 /// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
-/// 设置环境变量 `APP_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
+/// 设置环境变量 `LEANTTY_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
 /// 面向用户的警告/错误（配置告警、hinting 不支持、backend 回落等）不受此开关影响。
 fn perf_on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
+    *ON.get_or_init(|| std::env::var_os("LEANTTY_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
 }
 
 /// 受 `perf_on()` 门控的 eprintln（仅用于 `[perf]` 诊断行）。

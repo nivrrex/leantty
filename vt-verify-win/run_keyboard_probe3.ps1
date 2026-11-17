@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -60,7 +60,7 @@ function Focus-App([IntPtr]$h) {
     return $r
 }
 
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe3.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe3.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe3.err"
 "pid=$($p.Id)"
@@ -103,6 +103,6 @@ foreach ($ch in 'echo hello'.ToCharArray()) { [void](Send-Key ([uint16][char]$ch
 [void](Send-Key ([uint16][char]"`r") 0x0004)
 Start-Sleep -Seconds 8
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 8
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 8
 "fg_final=$([W5]::GetForegroundWindow()) hwnd=$hwnd"
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

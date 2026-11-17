@@ -59,7 +59,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File run-tonight.ps1 -SkipSoak
 - 不修改系统设置、注册表、全局环境变量、防火墙；不联网；只在 kit 目录内读写。
 - 只结束**自己启动的** `app.exe`（按 PID）；**不触碰** `OpenConsole.exe`、`conhost.exe`、WezTerm、pwsh 等任何进程。
 - 每个阶段独立 try/catch 且有时限；某阶段失败会记进 summary，后面的阶段照常跑，最终一定生成 zip。
-- `[perf]` 日志用直接文件句柄重定向（内部 `cmd /c "... 2>log"`），并设 `APP_PERF_FRAMES=1`。
+- `[perf]` 日志用直接文件句柄重定向（内部 `cmd /c "... 2>log"`），并设 `LEANTTY_PERF_FRAMES=1`。
 
 ## 3 条手动项（脚本做不了）
 

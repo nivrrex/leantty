@@ -1,8 +1,8 @@
 # Manual app startup repro: env hook, dump, stderr, window.
 $ErrorActionPreference = 'Continue'
-$env:APP_DUMP_SNAPSHOT = 'C:\dev\tty\vt-verify-win\logs\manual.dump'
+$env:LEANTTY_DUMP_SNAPSHOT = 'C:\dev\tty\vt-verify-win\logs\manual.dump'
 $env:SHELL = 'cmd.exe'
-$p = Start-Process -FilePath 'C:\dev\tty\target\debug\app.exe' -PassThru -RedirectStandardError 'C:\dev\tty\vt-verify-win\logs\manual.err' -WorkingDirectory 'C:\dev\tty'
+$p = Start-Process -FilePath 'C:\dev\tty\target\debug\leantty.exe' -PassThru -RedirectStandardError 'C:\dev\tty\vt-verify-win\logs\manual.err' -WorkingDirectory 'C:\dev\tty'
 Write-Host "pid=$($p.Id)"
 Start-Sleep -Seconds 10
 Get-Process -Id $p.Id -ErrorAction SilentlyContinue | Select-Object Id,MainWindowTitle,Responding | Format-Table -AutoSize

@@ -13,7 +13,7 @@ $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
 $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 Add-Type -AssemblyName System.Windows.Forms
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 
 for ($run = 1; $run -le $Runs; $run++) {
     $a = Start-App2 ("t4-$Tag-$Mb-$run") (Join-Path $CFG 'clip-win.toml')

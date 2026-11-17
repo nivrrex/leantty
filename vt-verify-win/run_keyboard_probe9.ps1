@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -42,7 +42,7 @@ public class WA {
 [void][WA]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
 $Script:INPUT_SIZE = [System.Runtime.InteropServices.Marshal]::SizeOf((New-Object WA+INPUT))
 
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe9.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe9.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe9.err"
 $hwnd = [IntPtr]::Zero
@@ -54,12 +54,12 @@ while (((Get-Date) - $t0).TotalSeconds -lt 30) {
 }
 "hwnd=$hwnd"
 Start-Sleep -Seconds 3
-"dump-1: $((Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
+"dump-1: $((Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
 
 # TEST 1: resize -> new cols/rows in dump proves message pump alive
 [void][WA]::SetWindowPos($hwnd, [IntPtr](-1), 100, 100, 1280, 900, 0x0040)
 Start-Sleep -Seconds 2
-"dump-2-after-resize: $((Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
+"dump-2-after-resize: $((Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
 
 # TEST 2: focus + SendInput VK 'e' with proper lParam-free struct
 $tmp = 0
@@ -86,7 +86,7 @@ $inputs[1].u.ki.dwFlags = 0x0002
 $s = [uint32][WA]::SendInput($n, $inputs, $Script:INPUT_SIZE)
 "sendinput-e=$s"
 Start-Sleep -Seconds 3
-"dump-3-after-key-e: $((Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
+"dump-3-after-key-e: $((Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 1))"
 
 # TEST 3: WM_CLOSE exits the app?
 [void][WA]::PostMessage($hwnd, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)

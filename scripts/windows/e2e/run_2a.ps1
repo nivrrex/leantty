@@ -3,7 +3,7 @@
 param([string]$AppBin = '')
 $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
-if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\app.exe' }
+if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\leantty.exe' }
 if (-not (Test-Path $AppBin)) { Write-Host "FATAL: no app binary"; exit 2 }
 $OUT = Join-Path $ROOT 'vt-verify-win\logs\phase2a-win'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
@@ -106,7 +106,7 @@ function Start-App([string]$name, [string]$configPath) {
     $err = Join-Path $OUT "$name.err"
     Remove-Item $dump -ErrorAction SilentlyContinue
     Remove-Item $err -ErrorAction SilentlyContinue
-    $env:APP_DUMP_SNAPSHOT = $dump
+    $env:LEANTTY_DUMP_SNAPSHOT = $dump
     $argList = @()
     if ($configPath) { $argList = @('--config', $configPath) }
     $t0 = Get-Date

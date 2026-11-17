@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -49,10 +49,10 @@ public class WC {
 [void][WC]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
 $Script:INPUT_SIZE = [System.Runtime.InteropServices.Marshal]::SizeOf((New-Object WC+INPUT))
 
-$env:APP_TRACE_FILE = "$OUT\probe12.trace"
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe12.dump"
+$env:LEANTTY_TRACE_FILE = "$OUT\probe12.trace"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe12.dump"
 $env:SHELL = 'cmd.exe'
-Remove-Item $env:APP_TRACE_FILE -ErrorAction SilentlyContinue
+Remove-Item $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe12.err"
 $targetPid = $p.Id
 "pid=$targetPid"
@@ -111,10 +111,10 @@ foreach ($ch in 'echo hello'.ToCharArray()) {
 }
 [void](Send-VkC 0x0D)
 Start-Sleep -Seconds 5
-"trace-lines=$(@(Get-Content $env:APP_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
-"keydbg-lines=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue).Count)"
+"trace-lines=$(@(Get-Content $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
+"keydbg-lines=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue).Count)"
 "--- trace tail ---"
-Get-Content $env:APP_TRACE_FILE -ErrorAction SilentlyContinue | Select-Object -Last 8
+Get-Content $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue | Select-Object -Last 8
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
 Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue

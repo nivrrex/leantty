@@ -1,6 +1,10 @@
 [workspace.package]
-rust-version = "1.96"
+version = "0.1.0"
 edition = "2024"
+rust-version = "1.96"
+license = "MIT"
+publish = false
+description = "leantty — a lightweight terminal emulator (CPU or GPU rendering)"
 
 [workspace]
 members = [
@@ -22,3 +26,6 @@ fontdb = "0.21"
 fontdue = "0.9"
 winit = "0.30"
 toml = "0.8"
+
+[profile.release]
+strip = "symbols"

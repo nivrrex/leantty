@@ -3,9 +3,9 @@
 # 无 ICD 回落与强制失败两条边界用例。
 #
 # 为什么不是"把 run_all 的全部用例跑第二遍"：绝大多数用例的断言依赖
-# `APP_DUMP_SNAPSHOT`（仅 CPU 后端可写）与脏行增量语义（GPU 每帧整帧重绘），
+# `LEANTTY_DUMP_SNAPSHOT`（仅 CPU 后端可写）与脏行增量语义（GPU 每帧整帧重绘），
 # 在 GPU 后端下不具备等价物。GPU 与 CPU 的逐像素等价性由
-# `cargo test -p render --test gpu_parity`（8 个用例，含 1 LSB 门禁）覆盖。
+# `cargo test -p leantty-render --test gpu_parity`（8 个用例，含 1 LSB 门禁）覆盖。
 #
 # 安全护栏同 run_all：所有 X11 操作经 guard.sh 的 x11()，强制 DISPLAY=:99。
 
@@ -15,7 +15,7 @@ OUT="$ROOT/scripts/e2e/out"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/debug/app"
+LEANTTY_BIN="$ROOT/target/debug/leantty"
 PASS=0
 FAIL=0
 SKIP=0
@@ -23,7 +23,7 @@ SKIP=0
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.3
 e2e_start_xvfb "$OUT/gpu-round-xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
 e2e_start_wm "$OUT/gpu-round-wm.log"
 
 CFG_GPU="$OUT/gpu-round-gpu.toml"
@@ -38,14 +38,14 @@ TOML
 sed 's/^backend = "gpu"/backend = "auto"/' "$CFG_GPU" >"$CFG_AUTO"
 sed 's/^backend = "gpu"/backend = "cpu"/' "$CFG_GPU" >"$CFG_CPU"
 
-# 起 app 并等待窗口；输出 APP_PID/WID
+# 起 app 并等待窗口；输出 LEANTTY_PID/WID
 start_gpu_app() { # $1=config $2=log $3=extra-env
-    env $3 APP_CONFIG="$1" SHELL=/bin/sh APP_PERF_FRAMES=1 "$APP_BIN" >"$2" 2>&1 &
-    APP_PID=$!
+    env $3 LEANTTY_CONFIG="$1" SHELL=/bin/sh LEANTTY_PERF_FRAMES=1 "$LEANTTY_BIN" >"$2" 2>&1 &
+    LEANTTY_PID=$!
     i=0
     WID=""
     while [ $i -lt 80 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.2
         i=$((i+1))
@@ -54,10 +54,10 @@ start_gpu_app() { # $1=config $2=log $3=extra-env
 }
 
 stop_app() {
-    [ -n "${APP_PID:-}" ] || return 0
-    kill -TERM "$APP_PID" 2>/dev/null
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    [ -n "${LEANTTY_PID:-}" ] || return 0
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
 }
 
 echo "--- GPU 轮：backend=gpu 冒烟（窗口 + 首帧 + present）"
@@ -354,7 +354,7 @@ else
 fi
 
 echo "--- GPU 轮：gpu + 无 ICD → 非零退出"
-APP_CONFIG="$CFG_GPU" VK_ICD_FILENAMES=/nonexistent/icd.json timeout 20 "$APP_BIN" >"$OUT/gpu-round-gpu-noicd.log" 2>&1
+LEANTTY_CONFIG="$CFG_GPU" VK_ICD_FILENAMES=/nonexistent/icd.json timeout 20 "$LEANTTY_BIN" >"$OUT/gpu-round-gpu-noicd.log" 2>&1
 RC=$?
 if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then
     echo "PASS gpu-round-gpu-noicd-exit ($RC)"; PASS=$((PASS+1))

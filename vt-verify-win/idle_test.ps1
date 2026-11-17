@@ -1,8 +1,8 @@
 $ErrorActionPreference='Continue'
 $root="E:/dev/tty/vt-verify-win/tonight-kit-v4"
-$env:APP_VT="conpty"; $env:APP_PERF_FRAMES="1"; $env:TERM="xterm"
+$env:LEANTTY_VT="conpty"; $env:LEANTTY_PERF_FRAMES="1"; $env:TERM="xterm"
 $env:KN_CFG="$root/configs"; $env:KN_HOME=$root
-$exe="E:/dev/tty/target/release/app.exe"
+$exe="E:/dev/tty/target/release/leantty.exe"
 $log="E:/dev/tty/vt-verify-win/logs/idle-stats.log"
 New-Item -ItemType Directory -Force "E:/dev/tty/vt-verify-win/logs" | Out-Null
 Remove-Item $log -ErrorAction SilentlyContinue

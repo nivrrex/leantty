@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = "$ROOT\vt-verify-win\logs\phase2a-win"
-$env:APP_DUMP_SNAPSHOT = "$OUT\pwsh80.dump"
-$p = Start-Process -FilePath "$ROOT\target\debug\app.exe" -ArgumentList @('--config', "$OUT\pwsh80.toml") -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\pwsh80.err"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\pwsh80.dump"
+$p = Start-Process -FilePath "$ROOT\target\debug\leantty.exe" -ArgumentList @('--config', "$OUT\pwsh80.toml") -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\pwsh80.err"
 $hwnd = [IntPtr]::Zero
 $t0 = Get-Date
 while (((Get-Date) - $t0).TotalSeconds -lt 30) {
@@ -13,5 +13,5 @@ while (((Get-Date) - $t0).TotalSeconds -lt 30) {
 "hwnd=$hwnd"
 Start-Sleep -Seconds 8
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 4
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

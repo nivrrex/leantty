@@ -3,7 +3,7 @@ $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
 $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 Add-Type -AssemblyName System.Drawing
-if ($ForceFull) { $env:APP_FORCE_FULL_REDRAW = '1' } else { Remove-Item Env:\APP_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue }
+if ($ForceFull) { $env:LEANTTY_FORCE_FULL_REDRAW = '1' } else { Remove-Item Env:\LEANTTY_FORCE_FULL_REDRAW -ErrorAction SilentlyContinue }
 function Grab([IntPtr]$h, [string]$p) {
   $cr = New-Object WB2+RECT; [void][WB2]::GetClientRect($h, [ref]$cr)
   $pt = New-Object WB2+POINT; $pt.x=0; $pt.y=0; [void][WB2]::ClientToScreen($h, [ref]$pt)

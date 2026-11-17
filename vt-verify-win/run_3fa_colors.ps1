@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 $err = Join-Path $OUT "3fa-$Tag.err"
 $dump = Join-Path $OUT "3fa-$Tag.dump"
 Remove-Item $err, $dump -ErrorAction SilentlyContinue
-$env:APP_DUMP_SNAPSHOT = $dump
+$env:LEANTTY_DUMP_SNAPSHOT = $dump
 $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $Cfg) -WorkingDirectory $ROOT -PassThru -RedirectStandardError $err
 $Script:FoundPid = [uint64]$p.Id
 $Script:FoundClass = 'Window Class'

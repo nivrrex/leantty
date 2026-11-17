@@ -1,5 +1,5 @@
 # t3: minimise/restore guard re-verification (4C P1).
-# Uses the debug build because APP_DUMP_SNAPSHOT is debug-only.
+# Uses the debug build because LEANTTY_DUMP_SNAPSHOT is debug-only.
 param([string]$AppBin = '', [int]$Runs = 3)
 $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin

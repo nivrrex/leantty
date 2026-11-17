@@ -3,7 +3,7 @@ $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
 $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 $file = Join-Path $ROOT 'vt-verify-win\perfdata\big200k.txt'
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 for ($i = 1; $i -le $Runs; $i++) {
   $a = Start-App2 ("tp-$Tag-$i") (Join-Path $CFG 'clip-win.toml')
   if ($a.hwnd -eq [IntPtr]::Zero) { Write-Host "tp run$i no-window"; continue }

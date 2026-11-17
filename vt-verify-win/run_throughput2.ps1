@@ -13,7 +13,7 @@ $ROOT = 'C:\dev\tty'
 $CFG = Join-Path $ROOT 'scripts\windows\e2e\cfg'
 $done = Join-Path $ROOT "vt-verify-win\perfdata\done$Kind.txt"
 $batch = Join-Path $ROOT "vt-verify-win\perfdata\tp$Kind.cmd"
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 
 # a config with the requested geometry
 $cfgPath = Join-Path $CFG ("tp-$Cols" + "x$Rows.toml")

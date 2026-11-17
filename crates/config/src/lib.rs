@@ -487,7 +487,7 @@ pub fn parse(text: &str) -> Result<(Config, Warnings), Error> {
     Ok((config, warnings))
 }
 
-/// 当前二进制名（不硬编码用户路径；args[0] 的 file_stem，空回落 "tty"）。
+/// 当前二进制名（不硬编码用户路径；args[0] 的 file_stem，空回落 "leantty"）。
 pub fn app_name() -> String {
     std::env::args()
         .next()
@@ -497,7 +497,7 @@ pub fn app_name() -> String {
                 .map(|s| s.to_string_lossy().to_string())
         })
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "tty".to_string())
+        .unwrap_or_else(|| "leantty".to_string())
 }
 
 /// 默认配置文件路径：
@@ -517,12 +517,12 @@ pub fn default_config_path() -> Result<PathBuf, Error> {
     Ok(base.join(&name).join(format!("{}.toml", name)))
 }
 
-/// 配置文件路径优先级：命令行 > APP_CONFIG 环境变量 > 默认路径。
+/// 配置文件路径优先级：命令行 > LEANTTY_CONFIG 环境变量 > 默认路径。
 pub fn resolve_config_path(cli: Option<PathBuf>) -> Result<PathBuf, Error> {
     if let Some(p) = cli {
         return Ok(p);
     }
-    if let Ok(v) = std::env::var("APP_CONFIG") {
+    if let Ok(v) = std::env::var("LEANTTY_CONFIG") {
         return Ok(PathBuf::from(v));
     }
     default_config_path()

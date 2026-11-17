@@ -20,13 +20,13 @@ OUT="$ROOT/scripts/e2e/out/fontmem"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
 
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.4
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
 e2e_start_wm "$OUT/wm.log"
 
 sample() { # $1=pid $2=标签 $3=已过毫秒
@@ -50,12 +50,12 @@ run_case() { # $1=名字 $2=font 段内容
         printf '%s\n' "$2"
     } >"$CFG"
     echo "t_ms,vmrss_kb,rssanon_kb,smaps_rss_kb" >"$CSV"
-    APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$LOG" 2>&1 &
+    LEANTTY_PID=$!
     i=0
     WID=""
     while [ $i -lt 100 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.05
         i=$((i + 1))
@@ -63,7 +63,7 @@ run_case() { # $1=名字 $2=font 段内容
     # 窗口出现后开始密集采样（50ms × 60 = 3s）
     n=0
     while [ "$n" -lt 60 ]; do
-        sample "$APP_PID" "$NAME" $((n * 50)) >>"$CSV"
+        sample "$LEANTTY_PID" "$NAME" $((n * 50)) >>"$CSV"
         n=$((n + 1))
         sleep 0.05
     done
@@ -72,18 +72,18 @@ run_case() { # $1=名字 $2=font 段内容
     while [ "$t" -le $((DUR * 1000)) ]; do
         sleep 5
         t=$((t + 5000))
-        sample "$APP_PID" "$NAME" "$t" >>"$CSV"
+        sample "$LEANTTY_PID" "$NAME" "$t" >>"$CSV"
     done
     FINAL=$(awk -F, 'END {print $2}' "$CSV")
     BG=$(grep -oE "bg_fonts_ms=[0-9]+" "$LOG" | head -1 | cut -d= -f2)
     FF=$(grep -oE "first_frame_ms=[0-9]+" "$LOG" | head -1 | cut -d= -f2)
     echo "  [$NAME] 结束 RSS=${FINAL}KB  first_frame=${FF:-NA}ms  bg_fonts=${BG:-NA}ms"
-    kill -TERM "$APP_PID" 2>/dev/null
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     w=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.5; w=$((w + 1)); done
-    kill -KILL "$APP_PID" 2>/dev/null
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.5; w=$((w + 1)); done
+    kill -KILL "$LEANTTY_PID" 2>/dev/null
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
     sleep 1
 }
 

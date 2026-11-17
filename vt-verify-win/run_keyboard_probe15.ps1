@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -46,10 +46,10 @@ public class WF {
 [void][WF]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
 $Script:INPUT_SIZE = [System.Runtime.InteropServices.Marshal]::SizeOf((New-Object WF+INPUT))
 
-$env:APP_TRACE_FILE = "$OUT\probe15.trace"
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe15.dump"
+$env:LEANTTY_TRACE_FILE = "$OUT\probe15.trace"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe15.dump"
 $env:SHELL = 'cmd.exe'
-Remove-Item $env:APP_TRACE_FILE -ErrorAction SilentlyContinue
+Remove-Item $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe15.err"
 $Script:TargetPid = [uint64]$p.Id
 Start-Sleep -Seconds 4
@@ -80,7 +80,7 @@ $myTid = [WF]::GetCurrentThreadId()
 Start-Sleep -Milliseconds 400
 "fg=$([WF]::GetForegroundWindow()) match=$([WF]::GetForegroundWindow() -eq $real)"
 
-function Count-Keydbg { @((Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue)).Count }
+function Count-Keydbg { @((Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue)).Count }
 
 # A: keybd_event 'a' (VK 0x41)
 [WF]::keybd_event(0x41, 0, 0, [UIntPtr]::Zero)
@@ -113,7 +113,7 @@ Start-Sleep -Milliseconds 600
 "after-sendinput-scancode-d(sent=$s2): $(Count-Keydbg)"
 
 "--- KEYDBG lines ---"
-Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue | Select-Object -First 8 | ForEach-Object { $_.Line }
+Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG' -ErrorAction SilentlyContinue | Select-Object -First 8 | ForEach-Object { $_.Line }
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 5
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 5
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
