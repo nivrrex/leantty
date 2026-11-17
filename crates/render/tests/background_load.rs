@@ -75,7 +75,7 @@ fn background_load_sequence_placeholder_then_glyph() {
     let fonts = render::load_font_list(&settings().fallback);
     assert!(
         !fonts.is_empty(),
-        "系统应有 CJK/兜底字体（home-pc 实测 Noto CJK）"
+        "系统应有 CJK/兜底字体（如 Noto CJK）"
     );
     r.add_background_fonts(fonts);
     r.render(&snap("你"), 32, 32).expect("render 到位");
