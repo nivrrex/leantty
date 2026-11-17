@@ -42,7 +42,9 @@ is_allowlisted() {
     f=$1; hit=$2
     [ -f "$ALLOW_FILE" ] || return 1
     grep -vE '^[[:space:]]*(#|$)' "$ALLOW_FILE" | while IFS='|' read -r glob pat reason; do
-        case "$f" in $glob) ;; *) continue ;; esac
+        # 清单里的路径按仓库相对路径书写，扫描目标可能是绝对路径或另一份拷贝，
+        # 因此同时接受"整体匹配"和"以 /<glob> 结尾"两种形态。
+        case "$f" in $glob|*/$glob) ;; *) continue ;; esac
         printf '%s\n' "$hit" | grep -aqE "$pat" || continue
         printf '%s|%s\n' "$f" "$reason"
         return 0
