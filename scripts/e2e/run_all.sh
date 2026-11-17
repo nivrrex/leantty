@@ -2705,7 +2705,7 @@ fi
 
 # case56..case61（阶段 5A t2）：命令行参数。全部在 `env -u DISPLAY` 下运行，
 # 证明参数解析发生在任何显示连接之前；优先级用例在 :99 下跑（需要开窗口读配置）。
-LEANTTY_BIN_ABS="$(pwd)/$LEANTTY_BIN"
+LEANTTY_BIN_ABS="$LEANTTY_BIN"   # 已经是绝对路径（$ROOT/target/debug/leantty）
 CLI_DIR="$OUT/cli"
 mkdir -p "$CLI_DIR"
 if [ ! -x "$LEANTTY_BIN" ]; then
