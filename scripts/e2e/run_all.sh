@@ -14,10 +14,10 @@ E2E_GUARD_DIR="$ROOT/scripts/e2e"
 # release 零告警门禁（阶段 3C 任务 2）：release 构建与 clippy 必须无告警，
 # 否则失败即中止（debug 下被 cfg 门控掉的变量容易在 release 变成 unused）。
 if command -v cargo >/dev/null 2>&1; then
-    _rel_warn=$(cargo build --release -p app 2>&1 | grep -cE "^warning|^error" || true)
+    _rel_warn=$(cargo build --release -p leantty-app 2>&1 | grep -cE "^warning|^error" || true)
     if [ "${_rel_warn:-0}" -ne 0 ]; then
         echo "FATAL: cargo build --release 存在 warning/error（${_rel_warn} 条）" >&2
-        cargo build --release -p app 2>&1 | grep -E "^warning|^error" -A4 | head -20 >&2
+        cargo build --release -p leantty-app 2>&1 | grep -E "^warning|^error" -A4 | head -20 >&2
         exit 1
     fi
     _rel_clippy=$(cargo clippy --release --workspace --all-targets -- -D warnings 2>&1 | grep -cE "^error|^warning" || true)
@@ -46,7 +46,7 @@ LEANTTY_BIN="$ROOT/target/debug/leantty"
 for tool in Xvfb xdotool openbox import python3 strings; do
     command -v "$tool" >/dev/null 2>&1 || { echo "FATAL: $tool 未安装"; exit 1; }
 done
-[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：LEANTTY_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build -p leantty-app（e2e 用 debug 二进制：LEANTTY_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
 PASS=0; FAIL=0
 
 # e2e 默认后端：阶段 4B 起默认配置是 renderer.backend=auto（会优先 GPU），
@@ -62,7 +62,7 @@ export LEANTTY_CONFIG="$E2E_CFG"
 # GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
 # 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
 GPU_LOG="$OUT/gpu-parity.log"
-if cargo test -p render --test gpu_parity --release -- --nocapture >"$GPU_LOG" 2>&1; then
+if cargo test -p leantty-render --test gpu_parity --release -- --nocapture >"$GPU_LOG" 2>&1; then
     GPU_SKIP=$(grep -c "SKIP:" "$GPU_LOG" || true)
     GPU_CASES=$(grep -cE "^test result:" "$GPU_LOG" || true)
     GPU_PASSED=$(grep -oE "test result: ok\. [0-9]+ passed" "$GPU_LOG" | grep -oE "[0-9]+" | head -1)

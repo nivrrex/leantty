@@ -5,7 +5,7 @@
 # 为什么不是"把 run_all 的全部用例跑第二遍"：绝大多数用例的断言依赖
 # `LEANTTY_DUMP_SNAPSHOT`（仅 CPU 后端可写）与脏行增量语义（GPU 每帧整帧重绘），
 # 在 GPU 后端下不具备等价物。GPU 与 CPU 的逐像素等价性由
-# `cargo test -p render --test gpu_parity`（8 个用例，含 1 LSB 门禁）覆盖。
+# `cargo test -p leantty-render --test gpu_parity`（8 个用例，含 1 LSB 门禁）覆盖。
 #
 # 安全护栏同 run_all：所有 X11 操作经 guard.sh 的 x11()，强制 DISPLAY=:99。
 

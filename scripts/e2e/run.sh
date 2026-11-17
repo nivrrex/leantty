@@ -9,7 +9,7 @@ E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
 LEANTTY_BIN="$ROOT/target/release/leantty"
 
-[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build --release -p app"; exit 1; }
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build --release -p leantty-app"; exit 1; }
 command -v Xvfb >/dev/null 2>&1 || { echo "FATAL: Xvfb 未安装"; exit 1; }
 command -v xdotool >/dev/null 2>&1 || { echo "FATAL: xdotool 未安装"; exit 1; }
 

@@ -26,7 +26,7 @@ export ZIG GHOSTTY_SOURCE_DIR GHOSTTY_ZIG_SYSTEM_DIR
 : "${LEANTTY_ROWS:=24}"
 : "${LEANTTY_SHELL:=}"
 : "${RUN:=0}"
-cargo build --release -p app
+cargo build --release -p leantty-app
 if [ "$RUN" = "1" ]; then
     # LEANTTY_COLS/LEANTTY_ROWS/LEANTTY_SHELL/LEANTTY_FONT_* 由用户环境透传（未设置时 app 内回落默认）。
     if [ -n "$LEANTTY_SHELL" ]; then
