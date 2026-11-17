@@ -244,6 +244,7 @@ pub fn reader_body_with_depth<R: std::io::Read>(
     }
 }
 
+pub mod cli;
 mod clipboard;
 mod follow;
 mod framepace;

@@ -29,18 +29,28 @@ fn main() -> Result<(), app::Error> {
     app::start_time_set();
     // 渲染侧启动锚点（阶段 3A 任务 2：字体加载分段耗时按同一锚点打印）。
     render::mark_start();
-    let mut cli_config: Option<PathBuf> = None;
-    let mut cli_font: Option<String> = None;
-    let mut cli_font_size: Option<f32> = None;
-    let mut args = std::env::args().skip(1);
-    while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--config" => cli_config = args.next().map(PathBuf::from),
-            "--font" => cli_font = args.next(),
-            "--font-size" => cli_font_size = args.next().and_then(|v| v.parse().ok()),
-            _ => {}
+    // 阶段 5A t2：参数解析必须发生在创建事件循环与任何显示连接之前，
+    // 使 --help / --version 在无 DISPLAY 的环境下也能用。
+    let (cli_config, cli_font, cli_font_size) = match app::cli::parse_args(std::env::args_os().skip(1)) {
+        Ok(app::cli::Cli::Help) => {
+            let default = config::default_config_path()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "<无法确定：HOME/XDG_CONFIG_HOME 未设置>".to_string());
+            print!("{}", app::cli::help_text(&default));
+            return Ok(());
         }
-    }
+        Ok(app::cli::Cli::Version) => {
+            println!("leantty {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
+        Ok(app::cli::Cli::Run { config_file }) => (config_file.map(PathBuf::from), None, None),
+        Err(e) => {
+            // 用法错误：一行说明 + "Try --help"，退出码 2（不开窗口、不建事件循环）。
+            eprintln!("leantty: {e}");
+            eprintln!("Try --help");
+            std::process::exit(2);
+        }
+    };
     if let (Some(p), Some(t0)) = (proc_start, app::start_time()) {
         eperf!(
             "[perf] main_ms={:.1} since_start={:.1}",
@@ -79,7 +89,14 @@ fn load_config(
     cli_font: Option<String>,
     cli_font_size: Option<f32>,
 ) -> config::Config {
-    let mut config = match config::resolve_config_path(cli_config) {
+    // 阶段 5A t2：显式 `--config-file` 指向不可读文件 → 报错退出 1（不开窗口）；
+    // 环境变量与默认路径沿用既有行为（stderr 警告后按默认配置启动）。
+    let explicit = cli_config.clone();
+    let path = match &explicit {
+        Some(p) => Ok(p.clone()),
+        None => config::resolve_config_path(None),
+    };
+    let mut config = match path {
         Ok(path) => match std::fs::read_to_string(&path) {
             Ok(text) => match config::parse(&text) {
                 Ok((c, warnings)) => {
@@ -89,11 +106,19 @@ fn load_config(
                     c
                 }
                 Err(e) => {
+                    if explicit.is_some() {
+                        eprintln!("leantty: 无法解析配置文件 '{}': {e}", path.display());
+                        std::process::exit(1);
+                    }
                     eprintln!("config: {e}; using defaults");
                     config::Config::default()
                 }
             },
             Err(e) => {
+                if explicit.is_some() {
+                    eprintln!("leantty: 无法读取配置文件 '{}': {e}", path.display());
+                    std::process::exit(1);
+                }
                 eprintln!("config: {} 未读取 ({e}); using defaults", path.display());
                 config::Config::default()
             }

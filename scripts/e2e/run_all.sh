@@ -2703,6 +2703,98 @@ else
     done
 fi
 
+# case56..case61（阶段 5A t2）：命令行参数。全部在 `env -u DISPLAY` 下运行，
+# 证明参数解析发生在任何显示连接之前；优先级用例在 :99 下跑（需要开窗口读配置）。
+LEANTTY_BIN_ABS="$(pwd)/$LEANTTY_BIN"
+CLI_DIR="$OUT/cli"
+mkdir -p "$CLI_DIR"
+if [ ! -x "$LEANTTY_BIN" ]; then
+    echo "FAIL case56..case61-cli (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OKC=0; TOTC=0
+    # 56: --help
+    TOTC=$((TOTC+1))
+    H_OUT=$(env -u DISPLAY "$LEANTTY_BIN_ABS" --help 2>"$CLI_DIR/help.err"); H_RC=$?
+    if [ "$H_RC" -eq 0 ] && printf '%s' "$H_OUT" | grep -q "Usage: leantty \[OPTIONS\]" \
+        && printf '%s' "$H_OUT" | grep -q -- "--config-file <PATH>" \
+        && printf '%s' "$H_OUT" | grep -q "LEANTTY_CONFIG" \
+        && printf '%s' "$H_OUT" | grep -q "Default configuration file: " \
+        && [ ! -s "$CLI_DIR/help.err" ]; then
+        OKC=$((OKC+1)); echo "  [c56] --help 无 DISPLAY → rc=0，含用法/三选项/LEANTTY_CONFIG/默认路径，stderr 空"
+    else
+        echo "  [c56] --help 失败 rc=$H_RC stderr=$(head -1 "$CLI_DIR/help.err")"
+    fi
+    # 57: --version
+    TOTC=$((TOTC+1))
+    V_OUT=$(env -u DISPLAY "$LEANTTY_BIN_ABS" --version 2>/dev/null); V_RC=$?
+    VER_STR=$(grep -m1 '^version = ' Cargo.toml >/dev/null 2>&1; echo "leantty $(grep -m1 -oE '[0-9]+\.[0-9]+\.[0-9]+' Cargo.lock | head -1)")
+    if [ "$V_RC" -eq 0 ] && printf '%s' "$V_OUT" | grep -qE '^leantty [0-9]+\.[0-9]+\.[0-9]+$'; then
+        OKC=$((OKC+1)); echo "  [c57] --version 无 DISPLAY → rc=0，输出='$V_OUT'"
+    else
+        echo "  [c57] --version 失败 rc=$V_RC 输出='$V_OUT'"
+    fi
+    # 58: 未知选项
+    TOTC=$((TOTC+1))
+    U_ERR=$(env -u DISPLAY "$LEANTTY_BIN_ABS" --bogus 2>&1 >/dev/null); U_RC=$?
+    if [ "$U_RC" -eq 2 ] && printf '%s' "$U_ERR" | grep -q "unknown option '--bogus'" \
+        && printf '%s' "$U_ERR" | grep -q "Try --help"; then
+        OKC=$((OKC+1)); echo "  [c58] 未知选项 → rc=2，stderr 含 unknown option 与 Try --help"
+    else
+        echo "  [c58] 未知选项失败 rc=$U_RC stderr=$(printf '%s' "$U_ERR" | head -1)"
+    fi
+    # 59: --config-file 缺值
+    TOTC=$((TOTC+1))
+    M_ERR=$(env -u DISPLAY "$LEANTTY_BIN_ABS" --config-file 2>&1 >/dev/null); M_RC=$?
+    if [ "$M_RC" -eq 2 ] && printf '%s' "$M_ERR" | grep -q "requires a value"; then
+        OKC=$((OKC+1)); echo "  [c59] --config-file 缺值 → rc=2，stderr 含 requires a value"
+    else
+        echo "  [c59] 缺值失败 rc=$M_RC stderr=$(printf '%s' "$M_ERR" | head -1)"
+    fi
+    # 60: 显式指定不存在的文件 → rc=1，stderr 含路径，且不开窗口
+    TOTC=$((TOTC+1))
+    MISSING="$CLI_DIR/no-such-file.toml"
+    rm -f "$MISSING"
+    X_ERR=$(env -u DISPLAY "$LEANTTY_BIN_ABS" --config-file "$MISSING" 2>&1 >/dev/null); X_RC=$?
+    if [ "$X_RC" -eq 1 ] && printf '%s' "$X_ERR" | grep -q "$MISSING"; then
+        OKC=$((OKC+1)); echo "  [c60] 不存在文件 → rc=1，stderr 含路径（无 DISPLAY 也不尝试开窗）"
+    else
+        echo "  [c60] 不存在文件失败 rc=$X_RC stderr=$(printf '%s' "$X_ERR" | head -1)"
+    fi
+    # 61: 优先级 —— --config-file 覆盖 LEANTTY_CONFIG（两份文件各含一个不同的未知键）
+    TOTC=$((TOTC+1))
+    CA="$CLI_DIR/prio-cli.toml"; CB="$CLI_DIR/prio-env.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\nbogus_cli_key = 1\n' > "$CA"
+    printf '[renderer]\nbackend = "cpu"\n[window]\nbogus_env_key = 1\n' > "$CB"
+    if ! x11 xdpyinfo >/dev/null 2>&1; then
+        echo "  [c61] 跳过（:99 不可用）"
+    else
+        # 正向：命令行 A + 环境变量 B → 只应警告 A 的键
+        LEANTTY_CONFIG="$CB" "$LEANTTY_BIN_ABS" --config-file "$CA" \
+            >"$CLI_DIR/prio1.out" 2>"$CLI_DIR/prio1.err" &
+        P_PID=$!
+        sleep 3
+        kill -TERM "$P_PID" 2>/dev/null; wait "$P_PID" 2>/dev/null
+        # 反向：只给环境变量 B → 只应警告 B 的键（证明"注入确实生效"，不是恰好没读）
+        LEANTTY_CONFIG="$CB" "$LEANTTY_BIN_ABS" >"$CLI_DIR/prio2.out" 2>"$CLI_DIR/prio2.err" &
+        P_PID=$!
+        sleep 3
+        kill -TERM "$P_PID" 2>/dev/null; wait "$P_PID" 2>/dev/null
+        W1_CLI=$(grep -c "bogus_cli_key" "$CLI_DIR/prio1.err" || true)
+        W1_ENV=$(grep -c "bogus_env_key" "$CLI_DIR/prio1.err" || true)
+        W2_ENV=$(grep -c "bogus_env_key" "$CLI_DIR/prio2.err" || true)
+        if [ "${W1_CLI:-0}" -ge 1 ] && [ "${W1_ENV:-0}" -eq 0 ] && [ "${W2_ENV:-0}" -ge 1 ]; then
+            OKC=$((OKC+1)); echo "  [c61] 优先级 → 命令行键警告=$W1_CLI 环境键警告=$W1_ENV（反向仅环境变量时=$W2_ENV）"
+        else
+            echo "  [c61] 优先级失败 → 命令行键=$W1_CLI 环境键=$W1_ENV 反向=$W2_ENV"
+        fi
+    fi
+    if [ "$OKC" -eq "$TOTC" ]; then
+        echo "PASS cli-args ($OKC/$TOTC)"; PASS=$((PASS+1))
+    else
+        echo "FAIL cli-args ($OKC/$TOTC)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
