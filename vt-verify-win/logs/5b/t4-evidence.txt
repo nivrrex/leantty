@@ -1,0 +1,15 @@
+# 5B t4a 证据（2026-11-17，本机 Windows 10 LTSC）
+
+## Start-Process 新控制台启动 leantty.exe（--config，cmd.exe shell）
+- EnumWindows(可见 ConsoleWindowClass)：1 个
+  pid=6072  title=[E:\dev\tty\target\release\leantty.exe]   ← 窗口线程 PID 即 app 自身
+- AttachConsole(app pid) 返回 True；GetConsoleWindow 非 0（app 仍持有控制台）
+- 进程树：conhost.exe 的 ParentProcessId = app pid（例：conhost 5408 ← leantty 6524）
+- 结论：5A t4 的 "FreeConsole 后不再残留控制台窗口" 在本机**不成立**（控制台仍在，且是 app 自己的）。
+
+## cmd /c "... 2>file" 方式
+- 本轮未取得可靠数据（bash→cmd 的嵌套引号传参失败，err.log 内容为 cmd 的报错，非 app 输出）；
+  且由于控制台在 a 中即未被释放，"控制台保留" 的前提不成立，该项标 **未测**。
+
+## 其它
+- 退出检测未回归：杀掉 app 的 ConPTY 子 shell 后 app 1988 ms 退出（t4a 内同时测得）。
