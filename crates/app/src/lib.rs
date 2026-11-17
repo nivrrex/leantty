@@ -109,7 +109,8 @@ mod console {
     /// 两个调用都是 kernel32 的无参数/单指针 Win32 API：
     /// - `GetConsoleProcessList(&mut buf, len)` 的第一个参数是长 1 的 `u32` 数组（可空），
     ///   第二个是数组长度；传 `null_mut(), 0` 时返回控制台上的进程总数，不写内存。
-    /// - `FreeConsole()` 无参数、无返回值语义（BOOL），只会失败于"本进程没有控制台"。
+    /// - `FreeConsole()` 无参数、无返回值语义（BOOL），只会失败于“本进程没有控制台”。
+    ///
     /// 两者都不会保存我们传入的指针，也不会跨调用持有引用。
     pub fn free_if_sole_user() {
         unsafe extern "system" {
