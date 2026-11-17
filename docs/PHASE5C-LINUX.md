@@ -10,6 +10,8 @@
 | t2 门禁补强 | gates 增至 **10 步**，新增 `cargo clippy --target x86_64-pc-windows-gnu -- -D warnings`（0 告警）|
 | t3 README 核对 | 与 5B 实测逐条相符，无矛盾；按 t3b 追加 1 条 Linux 专属故障排查 → 用户裁决不重打 zip → `phase5c-t2` |
 | t5 zip 核对 | 大小/sha256 与自述一致；9 条目；4 个必需文件哈希一致，2 个 README 按裁决不一致（差异恰为新增条目）|
+| s1~s7 抹除痕迹 | 4 处注释/文档 + 1 行测试断言消息；构建三次同 sha256 `4bf11fbf…` |
+| s8 仅报告模式 | 命中 2 条（均在导出文件内），只列不改 |
 | t4 deb / t6 导出 / t7 收尾 | 见后文 |
 
 ## 1. t1 合并与审计（已验证事实）
@@ -97,3 +99,45 @@ $ git diff --stat
 `diff -u` 证明两份 README 的差异**各为 +1 行、−0 行**（就是新增的第 6 条），即 zip 内版本 =
 仓库版本去掉该条。**zip 内 README 比仓库少一条 Linux 专属故障排查**，源码与二进制一致，
 用户裁决不重打 zip。
+
+## 4. s1~s7 抹除个人环境痕迹
+
+### 4.1 逐处原文与判定（全部为注释/文档，无可执行代码）
+
+| 位置 | 原文片段 | 性质 | 改后 |
+|---|---|---|---|
+| `scripts/windows/conpty/fetch-conpty.ps1:14-15` | `-OutDir C:\some\dir` / `-Proxy http://127.0.0.1:7777` | `#` 用法注释 | `<path>` / `<proxy-url>` |
+| `scripts/windows/conpty/README.md:36` | `-Proxy http://127.0.0.1:7777` | 文档 | `-Proxy <proxy-url>` |
+| `scripts/windows/package.ps1:22` | `-OutDir D:\dist\tty -Proxy http://127.0.0.1:7777` | `#` 用法注释 | `<output-dir>` / `<proxy-url>` |
+| `crates/pty/src/windows.rs:188` | `（如 C:\dev\tty\cmd.exe）` | `///` 文档注释 | `（如 <dev-root>\cmd.exe）` |
+| `crates/render/tests/background_load.rs:78` | `（home-pc 实测 Noto CJK）` | 断言消息字符串 | `（如 Noto CJK）` |
+
+`crates/pty/src/windows.rs` 行数 389 → 389，diff 为 1+/1−；`background_load.rs` 112 行不变，1+/1−。
+
+### 4.2 二进制不受影响 + 构建可复现
+
+```
+phase5c-t2 干净 worktree，全量构建 #1：4bf11fbf1537961cd4c8be980d1b62683bd87e44382cbdfbe9175b251b46e413 (12,000,968 B)
+phase5c-t2 干净 worktree，rm -rf target 后 #2：同上（可复现）
+含 scrub 修改的主工作树，cargo clean 后 #3：同上
+含 s7 修改的主工作树，cargo clean 后 #4：同上
+```
+
+### 4.3 扫描结果（导出目标范围）
+
+`A=0  B=3  C=0  豁免=12  仅报告=2`
+
+- B 类 3 条：`crates/pty/src/windows.rs` 的 `C:\Windows\System32` / `C:\Windows\system32\conhost.exe`（系统常量）。
+- 豁免 12 条：见 §4.4。
+- 仅报告 2 条（**都位于会被导出的文件**，按 s8 标红、未修改、交用户裁定）：
+  - `crates/app/src/lib.rs:120`：`// 阶段 5B t4b（已验证事实）：本机 Win10 LTSC 上 ...`
+  - `scripts/windows/conpty/README.md:7`：`Windows 10 LTSC 19044 hosts conhost's ConPTY, ...`
+
+### 4.4 豁免清单（scripts/release/scan-allow.txt）
+
+| 文件 | 命中 | 原因 |
+|---|---|---|
+| `crates/app/src/cli.rs` | `/home/u/…` | 单元测试里构造的合成配置路径 |
+| `crates/pty/tests/pty_windows.rs` | `127.0.0.1` | 仅作为 ping 的目标地址 |
+| `crates/pty/src/windows.rs` | `C:\Windows` | Windows 系统常量（conhost/cmd 默认目录） |
+| `vendor/*` | `/home/user/`、`127.0.0.1` | 上游 libghostty-rs 文档示例 |

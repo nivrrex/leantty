@@ -30,9 +30,12 @@ B_PATTERNS='C:\\Windows|AppData\\Local\\Microsoft\\Windows\\Fonts|/usr/share/fon
 # C 类：盘符路径（形如 C:\dir 或 C:/dir）
 C_PATTERNS='(^|[^A-Za-z0-9])[A-Za-z]:[\\\\/][A-Za-z0-9_.]'
 
+# 仅报告模式（阶段 5C s8）：主机名变体与开发机硬件型号字样。命中只列出，不计入 A/C，不阻塞。
+R_PATTERNS='home[-_ ]?pc|office[-_ ]?pc|GT ?710|Tesla P4|RX ?[0-9]{3}|5600U|LTSC'
+
 ALLOW_FILE="$SCRIPT_DIR/scan-allow.txt"
-A_LIST=/tmp/scan_a.$$; B_LIST=/tmp/scan_b.$$; C_LIST=/tmp/scan_c.$$; EXEMPT_LIST=/tmp/scan_x.$$
-: > "$A_LIST"; : > "$B_LIST"; : > "$C_LIST"; : > "$EXEMPT_LIST"
+A_LIST=/tmp/scan_a.$$; B_LIST=/tmp/scan_b.$$; C_LIST=/tmp/scan_c.$$; EXEMPT_LIST=/tmp/scan_x.$$; R_LIST=/tmp/scan_r.$$
+: > "$A_LIST"; : > "$B_LIST"; : > "$C_LIST"; : > "$EXEMPT_LIST"; : > "$R_LIST"
 
 # 命中是否落在豁免清单里（清单每行： <路径 glob>|<命中正则>|<原因>）
 is_allowlisted() {
@@ -71,6 +74,7 @@ scan_one() {
     grep -anE "$C_PATTERNS" "$src" 2>/dev/null | grep -vE 'C:\\path\\to' \
         | grep -avE "$B_PATTERNS" \
         | cut -c1-140 | sed "s|^|$f: |" >> "$C_LIST"
+    grep -ainE "$R_PATTERNS" "$src" 2>/dev/null | cut -c1-140 | sed "s|^|$f: |" >> "$R_LIST"
     rm -f /tmp/scan_a_hits.$$
     [ "$src" = "$f" ] || rm -f "$src"
 }
@@ -84,14 +88,19 @@ for target in "$@"; do
 done
 
 X_HITS=$(wc -l < "$EXEMPT_LIST" | tr -d ' ')
+R_HITS=$(wc -l < "$R_LIST" | tr -d ' ')
 A_HITS=$(wc -l < "$A_LIST" | tr -d ' ')
 B_HITS=$(wc -l < "$B_LIST" | tr -d ' ')
 C_HITS=$(wc -l < "$C_LIST" | tr -d ' ')
 echo "扫描目标：$*"
-echo "  A 类命中=$A_HITS  B 类命中=$B_HITS  C 类命中=$C_HITS  豁免=$X_HITS"
+echo "  A 类命中=$A_HITS  B 类命中=$B_HITS  C 类命中=$C_HITS  豁免=$X_HITS  仅报告=$R_HITS"
 [ "$A_HITS" -gt 0 ] && { echo "--- A 类（必须清零）---"; sort -u "$A_LIST" | head -20; }
 [ "$B_HITS" -gt 0 ] && { echo "--- B 类（允许）---"; sort -u "$B_LIST" | head -20; }
 [ "$C_HITS" -gt 0 ] && { echo "--- C 类（需裁定）---"; sort -u "$C_LIST" | head -20; }
 [ "$X_HITS" -gt 0 ] && { echo "--- 豁免（scan-allow.txt）---"; sort -u "$EXEMPT_LIST" | head -20; }
-rm -f "$A_LIST" "$B_LIST" "$C_LIST" "$EXEMPT_LIST"
+if [ "$R_HITS" -gt 0 ]; then
+    echo "--- 仅报告（主机名变体 / 开发机硬件型号，不阻塞）---"
+    sort -u "$R_LIST" | head -40
+fi
+rm -f "$A_LIST" "$B_LIST" "$C_LIST" "$EXEMPT_LIST" "$R_LIST"
 [ "$A_HITS" -eq 0 ] && [ "$C_HITS" -eq 0 ]
