@@ -249,7 +249,8 @@ fn shell_args_distinguishes_absent_empty_and_invalid() {
     );
 
     // 2) 显式空数组 → Some(vec![])：表示"不要任何默认参数"
-    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = []\n").expect("parse");
+    let (c, w) =
+        config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = []\n").expect("parse");
     assert!(w.is_empty(), "不该有警告: {w:?}");
     assert_eq!(
         c.terminal.shell.as_ref().expect("shell").args,
@@ -258,8 +259,8 @@ fn shell_args_distinguishes_absent_empty_and_invalid() {
     );
 
     // 3) 非数组 → 告警并整条忽略（None）
-    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = \"-c x\"\n")
-        .expect("parse");
+    let (c, w) =
+        config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = \"-c x\"\n").expect("parse");
     assert_eq!(
         c.terminal.shell.as_ref().expect("shell").args,
         None,
@@ -278,7 +279,11 @@ fn shell_args_distinguishes_absent_empty_and_invalid() {
     .expect("parse");
     assert_eq!(
         c.terminal.shell.as_ref().expect("shell").args,
-        Some(vec!["-l".to_string(), "-c".to_string(), "echo hi".to_string()]),
+        Some(vec![
+            "-l".to_string(),
+            "-c".to_string(),
+            "echo hi".to_string()
+        ]),
         "非字符串元素丢弃、字符串元素保序"
     );
     assert!(
