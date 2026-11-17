@@ -33,7 +33,7 @@ they must be copied **side by side** next to the application.
 ```powershell
 pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir <目录>
 # when raw.githubusercontent / nuget CDN needs a proxy:
-pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir <目录> -Proxy http://127.0.0.1:7777
+pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir <目录> -Proxy <proxy-url>
 ```
 
 The script verifies the package hash, both file hashes and both Authenticode signatures

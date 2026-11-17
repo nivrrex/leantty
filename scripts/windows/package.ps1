@@ -19,7 +19,7 @@
 #
 # Usage:
 #   pwsh -File scripts/windows/package.ps1
-#   pwsh -File scripts/windows/package.ps1 -OutDir D:\dist\tty -Proxy http://127.0.0.1:7777
+#   pwsh -File scripts/windows/package.ps1 -OutDir <output-dir> -Proxy <proxy-url>
 param(
     [string]$OutDir = '',
     [string]$TargetDir = '',

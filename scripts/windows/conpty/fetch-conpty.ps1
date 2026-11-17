@@ -11,8 +11,8 @@
 #   3. both files carry a valid Authenticode signature from Microsoft Corporation
 #
 # Usage:
-#   pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir C:\some\dir
-#   pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir C:\some\dir -Proxy http://127.0.0.1:7777
+#   pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir <path>
+#   pwsh -File scripts/windows/conpty/fetch-conpty.ps1 -OutDir <path> -Proxy <proxy-url>
 param(
     [Parameter(Mandatory = $true)][string]$OutDir,
     [string]$Proxy = '',
