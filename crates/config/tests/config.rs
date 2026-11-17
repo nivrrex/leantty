@@ -234,3 +234,55 @@ fn renderer_backend_invalid_value_warns_and_falls_back() {
         "应带路径警告: {w:?}"
     );
 }
+
+/// 阶段 4X t2：`terminal.shell.args` 的四种输入形态必须可区分（3U 改了类型但没带测试，
+/// 这里补上；也是"注入确实生效"链条最上游的一环）。
+#[test]
+fn shell_args_distinguishes_absent_empty_and_invalid() {
+    // 1) 未配置 → None（Windows 侧据此注入默认 chcp 参数）
+    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\n").expect("parse");
+    assert!(w.is_empty(), "不该有警告: {w:?}");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        None,
+        "未配置 args 必须是 None（而非 Some(vec![])）"
+    );
+
+    // 2) 显式空数组 → Some(vec![])：表示"不要任何默认参数"
+    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = []\n").expect("parse");
+    assert!(w.is_empty(), "不该有警告: {w:?}");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        Some(Vec::new()),
+        "显式空数组必须是 Some(vec![])，与未配置不同"
+    );
+
+    // 3) 非数组 → 告警并整条忽略（None）
+    let (c, w) = config::parse("[terminal.shell]\nprogram = \"cmd.exe\"\nargs = \"-c x\"\n")
+        .expect("parse");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        None,
+        "非数组应整条忽略"
+    );
+    assert!(
+        w.iter()
+            .any(|m| m.contains("terminal.shell.args") && m.contains("expected array")),
+        "应告警 expected array，实测: {w:?}"
+    );
+
+    // 4) 非字符串元素静默丢弃，其余保留原顺序
+    let (c, w) = config::parse(
+        "[terminal.shell]\nprogram = \"/bin/bash\"\nargs = [\"-l\", 3, \"-c\", \"echo hi\"]\n",
+    )
+    .expect("parse");
+    assert_eq!(
+        c.terminal.shell.as_ref().expect("shell").args,
+        Some(vec!["-l".to_string(), "-c".to_string(), "echo hi".to_string()]),
+        "非字符串元素丢弃、字符串元素保序"
+    );
+    assert!(
+        w.iter().all(|m| !m.contains("terminal.shell.args")),
+        "元素类型不符不告警（现状语义），实测: {w:?}"
+    );
+}

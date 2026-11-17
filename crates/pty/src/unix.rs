@@ -40,6 +40,17 @@ impl Default for NativePty {
 
 impl Pty for NativePty {
     fn spawn(&mut self, shell: &str, cols: u16, rows: u16) -> Result<(), Error> {
+        // 阶段 4X t2：等价于"未配置 args"。既有语义与字节序列均不变。
+        self.spawn_with_args(shell, None, cols, rows)
+    }
+
+    fn spawn_with_args(
+        &mut self,
+        shell: &str,
+        args: Option<&[String]>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), Error> {
         if self.master.is_some() {
             return Err(Error::AlreadySpawned);
         }
@@ -52,6 +63,13 @@ impl Pty for NativePty {
         })?;
         let mut cmd = CommandBuilder::new(shell);
         cmd.cwd("/tmp");
+        // 阶段 4X t2：用户显式配置的 `terminal.shell.args` 逐项透传（`None` = 未配置，
+        // 与 4W 之前的行为逐字节一致；Unix 侧不注入任何默认参数）。
+        if let Some(list) = args {
+            for a in list {
+                cmd.arg(a);
+            }
+        }
         let child = slave.spawn_command(cmd)?;
         drop(slave);
         let writer = master.take_writer()?;

@@ -2619,6 +2619,90 @@ else
     fi
 fi
 
+# case53/54/55（阶段 4X t2）：`terminal.shell.args` 在 Unix 侧真的生效。
+# 用"标记文件"作为注入确实生效的证据（标记路径由本脚本的 OUT 目录推导，不硬编码绝对路径）：
+#   53. program=/bin/sh + args=["-c","echo ok > 标记; exec sleep 30"] → 标记出现、窗口存活；
+#   54. 不配置 args → 标记不出现，且交互 shell 可用（键入 echo 能写出另一标记）；
+#   55. args = []（显式空数组）→ 与 54 等价（不注入任何参数）。
+# 每个用例都跑 cpu 与 gpu 两轮。
+MARKDIR="$OUT/shellargs"
+mkdir -p "$MARKDIR"
+if [ ! -x "$APP_REL" ]; then
+    echo "FAIL case53-shell-args (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OK53=0; TOT53=0
+    for b53 in cpu gpu; do
+        TOT53=$((TOT53+1))
+        CFG53="$OUT/case53-$b53.toml"
+        L53="$OUT/case53-$b53.log"
+        M53="$MARKDIR/c53-$b53.txt"
+        rm -f "$M53"
+        printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "echo ok > %s; exec sleep 30"]\n' \
+            "$b53" "$M53" > "$CFG53"
+        APP_CONFIG="$CFG53" SHELL=/bin/sh "$APP_REL" >"$OUT/case53-$b53.out" 2>"$L53" &
+        APP_PID=$!
+        if ! wait_window; then
+            echo "FAIL case53-shell-args-$b53 (窗口未出现)"; stop_app; continue
+        fi
+        sleep 2
+        if [ -f "$M53" ] && [ "$(cat "$M53")" = "ok" ] && kill -0 "$APP_PID" 2>/dev/null; then
+            OK53=$((OK53+1)); VERD53="标记=ok 窗口=存活"
+        else
+            VERD53="标记=$( [ -f "$M53" ] && cat "$M53" || echo 无) 窗口=$(kill -0 "$APP_PID" 2>/dev/null && echo 存活 || echo 已退)"
+        fi
+        echo "  [c53 $b53] /bin/sh -c 'echo ok > 标记; exec sleep 30' → $VERD53"
+        stop_app
+    done
+    if [ "$OK53" -eq "$TOT53" ] && [ "$TOT53" -eq 2 ]; then
+        echo "PASS case53-shell-args ($OK53/$TOT53)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case53-shell-args ($OK53/$TOT53)"; FAIL=$((FAIL+1))
+    fi
+
+    # case54（未配置 args）与 case55（显式空数组）分开计分；两者都不应注入任何参数。
+    for spec in none empty; do
+        if [ "$spec" = "none" ]; then CID=54; CLABEL="未配置 args"; else CID=55; CLABEL="args = []"; fi
+        OKC=0; TOTC=0
+        for bc in cpu gpu; do
+            TOTC=$((TOTC+1))
+            CFGC="$OUT/case$CID-$bc.toml"
+            LC="$OUT/case$CID-$bc.log"
+            MT="$MARKDIR/c$CID-$bc-typed.txt"
+            rm -f "$MT"
+            if [ "$spec" = "none" ]; then
+                printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\n' "$bc" > "$CFGC"
+            else
+                printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' "$bc" > "$CFGC"
+            fi
+            APP_CONFIG="$CFGC" SHELL=/bin/sh "$APP_REL" >"$OUT/case$CID-$bc.out" 2>"$LC" &
+            APP_PID=$!
+            if ! wait_window; then
+                echo "FAIL case$CID-shell-args-$spec-$bc (窗口未出现)"; stop_app; continue
+            fi
+            x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+            x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+            sleep 1
+            x11 xdotool type --window "$WID" "echo typed > $MT"
+            x11 xdotool key --window "$WID" Return
+            sleep 1.5
+            # 判据：键入的标记出现（交互 shell 正常）且进程存活；若 args 被误注入，
+            # shell 会以 -c 立即退出或写入别的文件，二者都会让本断言失败。
+            if [ -f "$MT" ] && [ "$(cat "$MT")" = "typed" ] && kill -0 "$APP_PID" 2>/dev/null; then
+                OKC=$((OKC+1)); VERDC="键入标记=typed 进程=存活"
+            else
+                VERDC="键入标记=$( [ -f "$MT" ] && cat "$MT" || echo 无) 进程=$(kill -0 "$APP_PID" 2>/dev/null && echo 存活 || echo 已退)"
+            fi
+            echo "  [c$CID $spec/$bc] $CLABEL → $VERDC"
+            stop_app
+        done
+        if [ "$OKC" -eq "$TOTC" ] && [ "$TOTC" -eq 2 ]; then
+            echo "PASS case$CID-shell-args-$spec ($OKC/$TOTC)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case$CID-shell-args-$spec ($OKC/$TOTC)"; FAIL=$((FAIL+1))
+        fi
+    done
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
