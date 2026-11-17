@@ -132,6 +132,29 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   `APP_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`APP_PERF_FRAMES`（诊断日志开关）、
   `APP_FORCE_LIVENESS_POLL`（诊断：非 Windows 也启用存活轮询）。
 
+## 子进程启动（`terminal.shell`）
+
+- **`terminal.shell.program`**：显式配置优先；未配置时依次回落到环境变量 `SHELL`、平台默认
+  （Unix 为 `/bin/sh`，Windows 为 `cmd.exe`）。见 `crates/app/src/lib.rs::default_shell`。
+- **`terminal.shell.args`**：参数按 TOML 数组解析；**非数组类型**会告警并整条忽略
+  （`terminal.shell.args: expected array, ignored`），数组里的**非字符串元素被静默丢弃**
+  （`crates/config/src/lib.rs` 的 `filter_map`）。当前数据结构把"未配置"与"空数组"都折叠成
+  `args: Vec::new()`（`ShellConfig.args`），这也是下面"显式空数组"规则接线时需要先改成
+  `Option<Vec<String>>` 的原因。
+  - **规则（已批准，Windows 侧接线待 3U）**：用户显式配置的 `args` 优先、原样使用（**显式空数组
+    `args = []` 表示"不要任何参数"**，不会被默认值覆盖）；仅当 `args` 未配置且解析出的 shell
+    文件名（去目录、大小写不敏感、去 `.exe`）为 `cmd` 时，才使用默认值 `/K "chcp 65001"`；
+    未配置且为其它 shell（`pwsh`、`powershell`、`/bin/bash` 等）时为空 args。
+  - **现状（已验证事实）**：`args` 目前只解析不生效——`Pty::spawn(&mut self, shell, cols, rows)`
+    没有 args 参数，app 侧未把 `terminal.shell.args` 传给 PTY 层（`crates/config/src/lib.rs:194`
+    有登记）。Windows 侧当前仍由 `crates/pty/src/windows.rs` 内的
+    `utf8_codepage_args` 按 shell 名注入 `/K "chcp 65001"` 或
+    `-NoLogo -NoExit -Command chcp 65001`，并**忽略**用户配置的 args（3N/3T 以 shim 绕行）。
+    接线需要给 Pty trait 增加带默认实现的方法（不改既有 `spawn` 签名），属下一步工作，
+    最小补丁文本见 `docs/PHASE4W-LINUX.md` §3。
+  - Linux 上该字段无实际作用（`/bin/sh`、`bash` 等无需代码页参数），因此现状与规则不改变
+    Linux 既有 TOML 语义。
+
 ## 已知平台限制
 
 以下均为已在本仓库报告中实测证实的事实，不是推测：
@@ -154,8 +177,10 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   判停顿需结合同窗口 CPU tick（依据：`PHASE4S-LINUX.md` §2.6）。
 - **Windows 上子进程退出依赖 1 秒一次的低频存活检查**：ConPTY 输出管道不会因 shell 退出而 EOF，
   因此空闲时每秒最多唤醒一次（Linux 走读端 EOF 唤醒，完全静默）（依据：`PHASE4T-LINUX.md` §5）。
-- **Windows 侧的滚动条列疑似存在色彩管线差异**：CPU 与 GPU 同内容截图差异约 1.46%，与滚动条列
-  占画面宽度 12/800=1.5% 相当；Linux 上两适配器该列差异为 0（依据：`PHASE4S-LINUX.md` §3）。
+- **Windows 侧 CPU 与 GPU 的截图差异主要来自字形光栅，不是滚动条列**（更正 4S §3 的旧归因）：
+  960 宽同内容实测差异 1.0304%，其中滚动条列仅 9 px（0.156%）、列外字形区 4739 px（≈1.03%）；
+  旧解释里"1.46% ≈ 滚动条列 12/800=1.5%"只是宽度凑巧。Linux 上两适配器（NVIDIA / lavapipe）
+  该列差异为 0，未复现同类差异（依据：`PHASE3T-WIN.md` t5、`PHASE4W-LINUX.md` §4）。
 - **`case21`（拖选自动滚动）在 GPU 后端时间标定偏紧**：固定悬停 1.2 秒在 GPU 上跨行更少；
   受控复现显示两后端速率一致（约 370 行/秒）（依据：`PHASE4U-LINUX.md` §2）。
 - **自身环境变量只识别 4 个**：`WGPU_BACKEND`、`WGPU_ADAPTER_NAME`、`APP_GPU_ALLOW_SOFTWARE`、
