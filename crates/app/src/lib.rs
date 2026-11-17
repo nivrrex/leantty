@@ -1580,8 +1580,7 @@ impl ApplicationHandler for AppHandler {
                                         Ok(mut enc) => {
                                             // 阶段 6A：kitty 模式下必须提供 unshifted codepoint，
                                             // 否则组合键被上游编码器静默丢弃（Ctrl+D/P/C 全丢）。
-                                            let unshifted =
-                                                unshifted_codepoint(&event.logical_key);
+                                            let unshifted = unshifted_codepoint(&event.logical_key);
                                             match enc.encode_key_full(
                                                 key,
                                                 mods,

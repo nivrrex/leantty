@@ -35,4 +35,4 @@ x11 xdotool key a; sleep 0.3            # 收尾注入证据
 sleep 0.4
 kill -TERM "$P" 2>/dev/null; wait "$P" 2>/dev/null || true
 rm -f "$CFG"
-grep " IN " "$LOG" | awk '{print $3}' | tr '\n' ' '; echo
+grep " IN " "$LOG" | awk '{print $3}' | tr '\n' ' ' | sed 's/ *$//'; echo

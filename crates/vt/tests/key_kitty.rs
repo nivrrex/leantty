@@ -73,7 +73,11 @@ fn functional_keys_stay_encoded() {
     let up = enc
         .encode_key(Key::ArrowUp, Mods::empty(), Action::Press)
         .expect("encode");
-    assert_eq!(hex(&up), "1b5b313b313a3141", "kitty 模式下 Up 应为 ESC[1;1:1A");
+    assert_eq!(
+        hex(&up),
+        "1b5b313b313a3141",
+        "kitty 模式下 Up 应为 ESC[1;1:1A"
+    );
     let mut enc = encoder_with(b"");
     let up = enc
         .encode_key(Key::ArrowUp, Mods::empty(), Action::Press)

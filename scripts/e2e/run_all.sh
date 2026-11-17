@@ -2858,7 +2858,7 @@ else
     CFG64="$OUT/case64-pi.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/usr/bin/env"\nargs = ["HOME=%s", "TERM=xterm-256color", "/root/pi/pi"]\n' "$PHOME" > "$CFG64"
     LEANTTY_CONFIG="$CFG64" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case64.out" 2>"$OUT/case64.err" &
-    APP_PID=$!
+    LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case64-pi-ctrl-d (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
     else
@@ -2867,7 +2867,7 @@ else
         sleep 6
         x11 xdotool type "a"; sleep 0.8
         x11 xdotool key BackSpace; sleep 0.8
-        PIPID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+        PIPID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
         ALIVE_BEFORE=$(kill -0 "$PIPID" 2>/dev/null && echo yes || echo no)
         x11 xdotool key ctrl+d; sleep 3
         ST=$(ps -o stat= -p "$PIPID" 2>/dev/null | tr -d ' ')
