@@ -74,6 +74,21 @@ use winit::window::{Window, WindowAttributes};
 /// SHELL 环境变量未设置（或非 UTF-8）时的平台默认 shell。
 ///
 /// Windows 回落 cmd.exe，其他平台回落 /bin/sh。
+/// 内嵌的窗口图标（阶段 5A t3）。
+///
+/// 字节由 `scripts/gen-icons.sh` 从 `assets/icon/leantty.svg` 生成；解析失败只打印
+/// 用户可见警告并返回 `None`（不退出、不影响启动），符合"图标不是关键路径"的定位。
+fn window_icon() -> Option<winit::window::Icon> {
+    const RGBA: &[u8] = include_bytes!("../assets/window-icon-128.rgba");
+    match winit::window::Icon::from_rgba(RGBA.to_vec(), 128, 128) {
+        Ok(icon) => Some(icon),
+        Err(e) => {
+            eprintln!("window icon: 图标数据无效（{e}），本次不设置窗口图标");
+            None
+        }
+    }
+}
+
 pub fn default_shell() -> &'static str {
     if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }
 }
@@ -1044,6 +1059,21 @@ impl ApplicationHandler for AppHandler {
             })
             .unwrap_or_else(|| "leantty".to_string());
         attrs.title = bin_name.clone();
+        // 阶段 5A t3：窗口图标（编译期内嵌 128x128 原始 RGBA，失败只警告不退出）。
+        if let Some(icon) = window_icon() {
+            attrs.window_icon = Some(icon);
+        }
+        // 阶段 5A t3：X11 的 WM_CLASS 与 Wayland 的 app_id 都固定为 "leantty"
+        // （桌面环境据此匹配 .desktop 的 StartupWMClass / 图标）。
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            // X11：WM_CLASS = (instance, class)；Wayland：app_id。两个扩展 trait 都叫
+            // `with_name`，必须显式限定调用，不能同时 `use ... as _`。
+            attrs = winit::platform::x11::WindowAttributesExtX11::with_name(attrs, "leantty", "leantty");
+            attrs = winit::platform::wayland::WindowAttributesExtWayland::with_name(
+                attrs, "leantty", "leantty",
+            );
+        }
         // 初始位置（逻辑像素；Wayland 下合成器可能忽略——记录日志，不视为错误；
         // 越出屏幕范围交给窗口管理器处理，不自行钳制）。
         if let Some(pos) = config.config.window.position {
@@ -3804,6 +3834,26 @@ mod ime_event_tests {
     fn enabled_keeps_state() {
         let (changed, _, _) = ime_preedit_update(&Ime::Enabled);
         assert!(!changed, "Enabled 不改动组合态（仅重定位候选窗）");
+    }
+}
+
+#[cfg(test)]
+mod icon_tests {
+    /// 阶段 5A t3：窗口图标的内嵌字节必须是 128x128 的 RGBA8（winit `Icon::from_rgba` 的要求）。
+    /// 由 `scripts/gen-icons.sh` 生成，长度不对说明资源与生成脚本脱节。
+    #[test]
+    fn window_icon_rgba_is_128x128() {
+        let bytes = include_bytes!("../assets/window-icon-128.rgba");
+        assert_eq!(
+            bytes.len(),
+            128 * 128 * 4,
+            "window-icon-128.rgba 必须是 128x128 RGBA8（65536 字节）"
+        );
+        // 非全零：至少存在一个不透明像素（否则图标是全透明占位图）
+        assert!(
+            bytes.chunks_exact(4).any(|px| px[3] > 0),
+            "图标不应为全透明"
+        );
     }
 }
 

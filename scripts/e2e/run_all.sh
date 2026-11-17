@@ -2795,6 +2795,35 @@ else
     fi
 fi
 
+# case62（阶段 5A t3）：窗口标识与图标。断言 X11 的 WM_CLASS 含 leantty、
+# 且属性表里有 _NET_WM_ICON（图标由 winit 从内嵌 RGBA 设置）。缺 xprop 则标"未测"。
+if [ ! -x "$LEANTTY_BIN" ]; then
+    echo "FAIL case62-window-ident (缺 release 二进制)"; FAIL=$((FAIL+1))
+elif ! command -v xprop >/dev/null 2>&1; then
+    echo "  [c62] 未测（缺 xprop）"
+else
+    CFG62="$OUT/case62.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG62"
+    APPRel_SAVED="$APP_REL"
+    APP_CONFIG="$CFG62" SHELL=/bin/sh "$APP_REL" >"$OUT/case62.out" 2>"$OUT/case62.log" &
+    APP_PID=$!
+    if ! wait_window; then
+        echo "FAIL case62-window-ident (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
+    else
+        sleep 1
+        WC=$(x11 xprop -id "$WID" WM_CLASS 2>/dev/null)
+        ICON=$(x11 xprop -id "$WID" _NET_WM_ICON 2>/dev/null | head -c 80)
+        echo "  [c62] WM_CLASS=$WC"
+        echo "  [c62] _NET_WM_ICON=$(printf '%s' "$ICON" | head -1)"
+        if printf '%s' "$WC" | grep -q '"leantty"' && printf '%s' "$ICON" | grep -q "Icon"; then
+            echo "PASS case62-window-ident"; PASS=$((PASS+1))
+        else
+            echo "FAIL case62-window-ident (WM_CLASS 或 _NET_WM_ICON 不符)"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
