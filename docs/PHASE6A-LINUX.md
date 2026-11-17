@@ -139,6 +139,15 @@ legacy 下全部正确；kitty7 下四个 Ctrl 组合键**一个字节都没有*
 
 | 项 | 结果 |
 |---|---|
-| `cargo test --workspace` | 见 §8 |
-| `scripts/gates.sh` | 见 §8 |
-| e2e 总数 | 见 §8 |
+| `cargo test --workspace` | **207 passed / 0 failed**（新增 `key_kitty` 2 例 + `unshifted_tests` 1 例）|
+| `frame_bytes_identical` | **507485fb7945fb8f** 不变（字体指纹 `DejaVuSansMono.ttf:343140:c69b:8x16` 匹配，非 SKIP）|
+| `scripts/gates.sh` | **10 步全过**（HEAD=`1d5c975`）|
+| e2e | **117/117**（115 + `case63-key-matrix` + `case64-pi-ctrl-d`），GPU 轮 10/10 |
+| 回退验证 | 删掉 `encode_key_full` 调用后 kitty7 矩阵四个 Ctrl 键全空（红），恢复后转绿 |
+
+### 7.1 交付提交
+
+| 内容 | 提交 |
+|---|---|
+| 修复 + 单测 + e2e + 文档 | `af8315f` |
+| e2e 脚本修正（尾空格 / PID 变量名）+ cargo fmt | `1d5c975` |
