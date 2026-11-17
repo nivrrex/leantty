@@ -11,7 +11,7 @@
 | t3 图标 | SVG → 8 尺寸 PNG + ICO + 128x128 RGBA；`Icon::from_rgba`；WM_CLASS/app_id = leantty；单测 + e2e case62；tag `phase5a-t3`（**该 tag 的 e2e 实际中断，见 §3.4，已另建 `phase5a-t3b`**）|
 | t4 Windows 控制台 | `should_free_console` 纯函数 + `GetConsoleProcessList`/`FreeConsole`（cfg(windows)），windows-gnu check 通过；Windows 实机未验证 |
 | t5 发布材料 | Cargo 元数据（version/license/publish/description/strip）、MIT LICENSE、THIRD-PARTY-NOTICES（295 crate）、两份配置模板、desktop/cmd、双语 README、BUILDING.md |
-| t6 收尾 | gates 全过、e2e 全过、tag `phase5a-done` |
+| t6 收尾 | gates 9 步全过、e2e **115/115**、tag `phase5a-t3b` 与 `phase5a-done` |
 
 ## 1. t1 改名
 
@@ -137,7 +137,8 @@ PASS case62-window-ident
 | 项 | 结果 |
 |---|---|
 | `cargo test --workspace` | **204 passed / 0 failed** |
-| e2e | 见 §7（含新增 case56..62）|
+| release 二进制体积 | 12,000,968 B（`strip = "symbols"` 生效，此前 16,043,792 B）|
+| e2e | **115/115**（GPU 轮 10/10），含新增 case56..61（CLI）与 case62（窗口标识）|
 | `cargo check --target x86_64-pc-windows-gnu --workspace --tests` | 0 error / 0 warning |
 | `cargo fmt --all --check` / clippy 两配置 | 全过 |
 | `frame_bytes_identical` | 507485fb7945fb8f（不变）|
@@ -146,4 +147,5 @@ PASS case62-window-ident
 
 1. Windows 控制台释放（t4）**未在实机验证**（待验证假设，见 §4 的推翻条件）。
 2. 模板启动 stderr 仍有 1 条窗口尺寸提示（既有行为，非本次引入）。
-3. `phase5a-t3` 标记的 e2e 不完整，正确的检查点是 `phase5a-t3b`。
+3. `phase5a-t3` 标记的 e2e 不完整（见 §3.4），正确的检查点是 `phase5a-t3b`（与 t4/t5 同一
+   HEAD：只有在同一 HEAD 跑过 gates 才能打 tag）。
