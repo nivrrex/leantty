@@ -4,14 +4,14 @@
 # ASCII only.
 param(
     [string]$Dir = 'C:\dev\tty\vt-verify-win\3q-warp',
-    [string]$App = 'C:\dev\tty\target\release\app.exe',
+    [string]$App = 'C:\dev\tty\target\release\leantty.exe',
     [string]$Probe = 'C:\dev\tty\vt-verify-win\probe_paste\target\release\pp.exe'
 )
 $ErrorActionPreference = 'Stop'
 . 'C:\dev\tty\scripts\windows\tonight\lib.ps1'
 Add-Type -AssemblyName System.Windows.Forms
 $gpuCfg = Join-Path $Dir 'gpu.toml'
-$warpEnv = @{ APP_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
+$warpEnv = @{ LEANTTY_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
 $rows = @()
 
 function Start-Warp {

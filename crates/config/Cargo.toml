@@ -1,8 +1,11 @@
 [package]
-name = "config"
+name = "leantty-config"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
+
+[lib]
+name = "config"
 
 [dependencies]
 thiserror.workspace = true

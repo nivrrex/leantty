@@ -60,7 +60,7 @@ e2e（scripts/e2e/run_all.sh，12 PASS / 0 FAIL）：
 
 ## 5. 用户本机确认清单（≤5 条，仅限 Xvfb 无法验证项）
 
-1. 真实桌面会话起 `target/release/app`，键入中文（输入法）→ 组词上屏正常。
+1. 真实桌面会话起 `target/release/leantty`，键入中文（输入法）→ 组词上屏正常。
 2. 真实 GPU 环境字符边缘/反锯齿观感无异常。
 3. 拖拽窗口到极小尺寸（<1 列）→ 网格不崩溃、min(1) 兜底生效。
 4. 粘贴大段文本（bracketed paste）→ 无乱码无丢失。

@@ -3,9 +3,9 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-diag'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$env:APP_DUMP_SNAPSHOT = "$OUT\diag.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\diag.dump"
 $env:SHELL = 'cmd.exe'
-$p = Start-Process -FilePath "$ROOT\target\debug\app.exe" -PassThru -RedirectStandardError "$OUT\diag.err" -WorkingDirectory $ROOT
+$p = Start-Process -FilePath "$ROOT\target\debug\leantty.exe" -PassThru -RedirectStandardError "$OUT\diag.err" -WorkingDirectory $ROOT
 "pid=$($p.Id)"
 Start-Sleep -Seconds 8
 "hasExited=$($p.HasExited)"

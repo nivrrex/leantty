@@ -1,11 +1,11 @@
 # t2: how does WGPU_BACKEND actually reach app.exe?
 # Five launch variants, all with backend="gpu" (so the app exits 1 on this
-# GPU-less machine) and APP_PERF_FRAMES=1, stderr to a direct file handle.
+# GPU-less machine) and LEANTTY_PERF_FRAMES=1, stderr to a direct file handle.
 # The interesting value is `backends=` on the gpu_instance line.
 # ASCII only.
 param(
     [string]$Dir = 'C:\dev\tty\vt-verify-win\3p-env',
-    [string]$App = 'C:\dev\tty\target\release\app.exe',
+    [string]$App = 'C:\dev\tty\target\release\leantty.exe',
     [string]$CfgSrc = 'C:\dev\tty\scripts\windows\tonight\configs\gpu.toml'
 )
 $ErrorActionPreference = 'Stop'
@@ -33,7 +33,7 @@ function Show-Backends([string]$Tag) {
 function Run-Wrapper([string]$Tag, [string[]]$Sets, [string]$SetStyle) {
     # $Sets: list of "NAME=VALUE" pairs; $SetStyle: 'plain' | 'nospace' | 'quoted'
     $wrapper = Join-Path $Dir ('w-' + $Tag + '.cmd')
-    $lines = @('@echo off', ('cd /d "{0}"' -f $Dir), 'set APP_PERF_FRAMES=1')
+    $lines = @('@echo off', ('cd /d "{0}"' -f $Dir), 'set LEANTTY_PERF_FRAMES=1')
     foreach ($kv in $Sets) {
         switch ($SetStyle) {
             'plain'   { $lines += ('set {0} && echo set-ok' -f $kv) }

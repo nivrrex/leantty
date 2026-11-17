@@ -9,7 +9,7 @@
 #   * every stage has its own time limit and its own try/catch: one failure never
 #     stops the remaining stages
 #   * perf logs use a DIRECT file handle (wrapper .cmd with `2>log`) and
-#     APP_PERF_FRAMES=1; PowerShell's Start-Process redirection is never used
+#     LEANTTY_PERF_FRAMES=1; PowerShell's Start-Process redirection is never used
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File run-tonight.ps1
@@ -494,7 +494,7 @@ Invoke-Stage -Name 'P1' -LimitSec 900 -Title 'CPU baseline' -Body {
 # Variants: default / dx12 / vulkan (real adapters only), plus a WARP variant that
 # runs ONLY when none of the three found a usable real adapter. WARP is a software
 # adapter: it exercises surface / present / resize / loop logic, NOT real drivers.
-# APP_GPU_ALLOW_SOFTWARE is set for the warp variant only.
+# LEANTTY_GPU_ALLOW_SOFTWARE is set for the warp variant only.
 Invoke-Stage -Name 'P2' -LimitSec 1800 -Title 'GPU backends (real + WARP fallback)' -Body {
     if ($script:Rdp) {
         $script:StageStatusOverride = 'SKIP'
@@ -639,7 +639,7 @@ Invoke-Stage -Name 'P2' -LimitSec 1800 -Title 'GPU backends (real + WARP fallbac
     $warpOk = $false
     if (-not $realOk) {
         Test-Deadline
-        $warpEnv = @{ APP_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
+        $warpEnv = @{ LEANTTY_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
         $rw = Measure-GpuVariant -Tag 'warp' -Cfg $CfgGpu -EnvVars $warpEnv -Expect 'DX12'
         if ($rw.ok) {
             $warpOk = $true
@@ -839,7 +839,7 @@ Invoke-Stage -Name 'P4' -LimitSec 300 -Title 'summary + zip' -Body {
     $md.Add('## artefacts')
     $md.Add('')
     $md.Add('- shots/: S_cpu.png and the post-action screenshots')
-    $md.Add('- logs/: app stderr logs (APP_PERF_FRAMES=1, direct file handle)')
+    $md.Add('- logs/: app stderr logs (LEANTTY_PERF_FRAMES=1, direct file handle)')
     $md.Add('- environment.json, idle-cpu.json, soak-*.json, dxdiag.txt (if dxdiag finished)')
     $md -join "`r`n" | Set-Content -Path (Join-Path $RunDir 'summary.md') -Encoding UTF8
 

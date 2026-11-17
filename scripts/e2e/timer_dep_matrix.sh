@@ -16,8 +16,8 @@ OUT="$ROOT/scripts/e2e/out/tdep"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
 
 PASS=0
 FAIL=0
@@ -30,12 +30,12 @@ start_app() {
     e2e_start_xvfb "$OUT/xvfb-$BACKEND.log" || return 1
     e2e_start_wm "$OUT/wm-$BACKEND.log"
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$BACKEND" >"$OUT/cfg-$BACKEND.toml"
-    APP_CONFIG="$OUT/cfg-$BACKEND.toml" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$OUT/app-$BACKEND.log" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$OUT/cfg-$BACKEND.toml" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$OUT/app-$BACKEND.log" 2>&1 &
+    LEANTTY_PID=$!
     i=0
     WID=""
     while [ $i -lt 120 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.2
         i=$((i + 1))
@@ -53,12 +53,12 @@ start_app() {
 }
 
 stop_app() {
-    kill -TERM "$APP_PID" 2>/dev/null
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     w=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.25; w=$((w + 1)); done
-    kill -KILL "$APP_PID" 2>/dev/null
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.25; w=$((w + 1)); done
+    kill -KILL "$LEANTTY_PID" 2>/dev/null
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
     kill_own "${XVFB_PID:-}"
     kill_own "${WM_PID:-}"
     kill_own "${CLIP_PID:-}"
@@ -197,12 +197,12 @@ fi
 
 # ---------- ④ shell 退出（exit 与 SIGTERM） ----------
 if start_app; then
-    SHELL_PID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+    SHELL_PID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
     x11 xdotool type --window "$WID" "exit"
     x11 xdotool key --window "$WID" Return
     w=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
-    if kill -0 "$APP_PID" 2>/dev/null; then
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
+    if kill -0 "$LEANTTY_PID" 2>/dev/null; then
         bad "④a shell exit" "app 2 秒内未退出"
     else
         ok "④a shell exit" "app 在 $((w * 250))ms 内退出"
@@ -213,12 +213,12 @@ else
 fi
 
 if start_app; then
-    SHELL_PID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+    SHELL_PID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
     if [ -n "$SHELL_PID" ]; then
         kill -KILL "$SHELL_PID" 2>/dev/null
         w=0
-        while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
-        if kill -0 "$APP_PID" 2>/dev/null; then
+        while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
+        if kill -0 "$LEANTTY_PID" 2>/dev/null; then
             bad "④b shell 被信号终止" "app 2 秒内未退出"
         else
             ok "④b shell 被信号终止" "app 在 $((w * 250))ms 内退出"
@@ -278,10 +278,10 @@ fi
 
 # ---------- ⑦ SIGTERM ----------
 if start_app; then
-    kill -TERM "$APP_PID" 2>/dev/null
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     w=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
-    if kill -0 "$APP_PID" 2>/dev/null; then
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 8 ]; do sleep 0.25; w=$((w + 1)); done
+    if kill -0 "$LEANTTY_PID" 2>/dev/null; then
         bad "⑦ SIGTERM 退出" "2 秒内未退出"
     else
         ok "⑦ SIGTERM 退出" "在 $((w * 250))ms 内退出"

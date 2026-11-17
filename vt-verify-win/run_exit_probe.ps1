@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -28,7 +28,7 @@ public class WE2 {
 '@
 
 [void][WE2]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
-$env:APP_DUMP_SNAPSHOT = "$OUT\exitprobe.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\exitprobe.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\exitprobe.err"
 $Script:TargetPid = [uint64]$p.Id
@@ -73,4 +73,4 @@ while (((Get-Date) - $t0).TotalSeconds -lt 100) {
 }
 if (-not $p.HasExited) { "app-still-alive-at-100s"; Stop-Process -Id $p.Id -Force }
 "--- dump tail ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 4

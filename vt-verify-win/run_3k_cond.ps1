@@ -4,7 +4,7 @@ param([string]$AppBin = '', [string]$Tag = 'S')
 $ROOT = 'C:\dev\tty'
 . (Join-Path $ROOT 'scripts\windows\e2e\wb2_lib.ps1') -AppBin $AppBin
 Add-Type -AssemblyName System.Windows.Forms
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 $cfg = Join-Path $ROOT 'scripts\windows\e2e\cfg\clip-win.toml'
 $pwshCfg = Join-Path $ROOT 'scripts\windows\e2e\cfg\pwsh-win.toml'
 if (-not (Test-Path $pwshCfg)) { $pwshCfg = Join-Path $ROOT 'scripts\windows\e2e\cfg\ps-win.toml' }

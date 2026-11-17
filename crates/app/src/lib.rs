@@ -18,20 +18,20 @@
 /// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
 ///
 /// 默认**关闭**：release 正常运行不再向 stderr 打印 `[perf]` 行（此前每次启动 30+ 行）。
-/// 设置环境变量 `APP_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
+/// 设置环境变量 `LEANTTY_PERF_FRAMES`（已有变量，e2e 与帧日志共用）即打开。
 /// 面向用户的警告/错误（配置告警、hinting 不支持、backend 回落等）不受此开关影响。
 fn perf_on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
+    *ON.get_or_init(|| std::env::var_os("LEANTTY_PERF_FRAMES").is_some_and(|v| !v.is_empty()))
 }
 
-/// 诊断开关 `APP_FORCE_LIVENESS_POLL`（阶段 4V t1）：非 Windows 平台也走"存活检查
+/// 诊断开关 `LEANTTY_FORCE_LIVENESS_POLL`（阶段 4V t1）：非 Windows 平台也走"存活检查
 /// 唤醒"分支。仅用于在 Linux 上复现 Windows 的"子进程退出后窗口不关闭"问题，
 /// 不改变任何生产行为（默认关闭）。
 fn force_liveness_poll() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| {
-        std::env::var("APP_FORCE_LIVENESS_POLL")
+        std::env::var("LEANTTY_FORCE_LIVENESS_POLL")
             .map(|v| v.trim() == "1")
             .unwrap_or(false)
     })
@@ -266,7 +266,7 @@ pub use selection::{
     selection_viewport_region, viewport_to_abs, word_region,
 };
 
-/// 帧耗时诊断统计（APP_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
+/// 帧耗时诊断统计（LEANTTY_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
 #[derive(Default)]
 struct PerfFrames {
     render_us: Vec<u128>,
@@ -407,7 +407,7 @@ impl App {
             );
         }
         let mut handler = AppHandler {
-            perf_reset_at: std::env::var("APP_PERF_RESET_MS")
+            perf_reset_at: std::env::var("LEANTTY_PERF_RESET_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
                 .map(|ms| Instant::now() + std::time::Duration::from_millis(ms)),
@@ -435,24 +435,24 @@ impl App {
             last_sel_region: None,
             last_render_offset: 0,
             #[cfg(debug_assertions)]
-            force_full_redraw: std::env::var("APP_FORCE_FULL_REDRAW").is_ok(),
+            force_full_redraw: std::env::var("LEANTTY_FORCE_FULL_REDRAW").is_ok(),
             drained_any: false,
             last_render: None,
             urgent_render: false,
             #[cfg(debug_assertions)]
-            no_render: std::env::var("APP_NO_RENDER").is_ok(),
+            no_render: std::env::var("LEANTTY_NO_RENDER").is_ok(),
             #[cfg(debug_assertions)]
-            no_throttle: std::env::var("APP_NO_THROTTLE").is_ok(),
-            present_full: std::env::var("APP_PRESENT_FULL").is_ok(),
+            no_throttle: std::env::var("LEANTTY_NO_THROTTLE").is_ok(),
+            present_full: std::env::var("LEANTTY_PRESENT_FULL").is_ok(),
             render_ema_ms: None,
             frame_interval: Duration::from_millis(PACE_MIN_MS as u64),
-            perf_frames: std::env::var("APP_PERF_FRAMES")
+            perf_frames: std::env::var("LEANTTY_PERF_FRAMES")
                 .is_ok()
                 .then(PerfFrames::default),
             #[cfg(debug_assertions)]
-            present_stats: std::env::var("APP_PRESENT_STATS")
+            present_stats: std::env::var("LEANTTY_PRESENT_STATS")
                 .is_ok()
-                .then(|| (std::env::var("APP_PRESENT_FULL").is_ok(), Vec::new())),
+                .then(|| (std::env::var("LEANTTY_PRESENT_FULL").is_ok(), Vec::new())),
             vt: None,
             pty: None,
             renderer: None,
@@ -804,7 +804,7 @@ pub fn create_renderer(
 
 /// 用 winit 窗口的 raw handle 创建 GPU surface 渲染器（仅 Linux）。
 #[cfg(any(target_os = "linux", target_os = "windows"))]
-/// `APP_GPU_ALLOW_SOFTWARE=1` 且配置显式 `backend="gpu"` 时才允许软件适配器。
+/// `LEANTTY_GPU_ALLOW_SOFTWARE=1` 且配置显式 `backend="gpu"` 时才允许软件适配器。
 fn cfg_gpu_forces_software() -> bool {
     ALLOW_SOFTWARE_REQUESTED.with(|c| c.get()) && render::gpu::allow_software_from_env()
 }
@@ -846,7 +846,7 @@ fn build_gpu(
             width: size.width.max(1),
             height: size.height.max(1),
         },
-        // 阶段 4Q t4：软件适配器仅当 backend="gpu" 且 APP_GPU_ALLOW_SOFTWARE=1 时允许；
+        // 阶段 4Q t4：软件适配器仅当 backend="gpu" 且 LEANTTY_GPU_ALLOW_SOFTWARE=1 时允许；
         // build_gpu 只被 Gpu/（Linux 的）Auto 调用，故此处再确认一次"强制 gpu"。
         cfg_gpu_forces_software(),
     )?;
@@ -903,7 +903,7 @@ struct AppHandler {
     last_loop_at: Option<std::time::Instant>,
     /// 下次独立打印 loop gap 的时刻（每 5 秒）。
     loop_report_at: Option<std::time::Instant>,
-    /// 观测窗口重置时刻（阶段 4I t3，`APP_PERF_RESET_MS`，release 可用）。
+    /// 观测窗口重置时刻（阶段 4I t3，`LEANTTY_PERF_RESET_MS`，release 可用）。
     perf_reset_at: Option<std::time::Instant>,
     /// 首帧提交前一刻是否已打印（阶段 4C t3 启动打点）。
     pre_first_submit_logged: bool,
@@ -916,7 +916,7 @@ struct AppHandler {
     /// debug 专有：OS 触发重绘次数（e2e 行为级断言）。
     #[cfg(debug_assertions)]
     os_redraw_count: u32,
-    /// debug 测试钩子：延迟触发一次同步粘贴（APP_TEST_PASTE / APP_TEST_PASTE_AT_MS）。
+    /// debug 测试钩子：延迟触发一次同步粘贴（LEANTTY_TEST_PASTE / LEANTTY_TEST_PASTE_AT_MS）。
     /// 由事件循环内部调用 `paste_from_text`，不产生鼠标/键盘事件，因此不会顺带触发
     /// `RedrawRequested`，可以把"粘贴主动排帧"与其他重绘触发分离开来。
     #[cfg(debug_assertions)]
@@ -966,7 +966,7 @@ struct AppHandler {
     /// 测试注入的预编辑串（仅 debug 构建；粘性，不被 winit Ime 事件清除）。
     #[cfg(debug_assertions)]
     test_preedit: Option<String>,
-    /// 测试钩子：预编辑自动清除时刻（debug 专有，配合 APP_TEST_PREEDIT_CLEAR_MS）。
+    /// 测试钩子：预编辑自动清除时刻（debug 专有，配合 LEANTTY_TEST_PREEDIT_CLEAR_MS）。
     #[cfg(debug_assertions)]
     test_preedit_clear_at: Option<std::time::Instant>,
     /// 上次应用的窗口标题（避免每帧重复 set_title）。
@@ -975,7 +975,7 @@ struct AppHandler {
     last_sel_region: Option<(u16, u16, u16, u16)>,
     /// 上次渲染时的视口偏移（变化即整屏重绘：视口滚动不做位移复用）。
     last_render_offset: usize,
-    /// 强制整屏重绘（仅 debug：APP_FORCE_FULL_REDRAW=1，用于 e2e 增量/全量对拍）。
+    /// 强制整屏重绘（仅 debug：LEANTTY_FORCE_FULL_REDRAW=1，用于 e2e 增量/全量对拍）。
     #[cfg(debug_assertions)]
     force_full_redraw: bool,
     /// 本轮 about_to_wait 是否收到新 PTY 数据（供 follow/截断检查复用，减少快照）。
@@ -984,23 +984,23 @@ struct AppHandler {
     last_render: Option<Instant>,
     /// 交互事件触发的紧急渲染（键盘/鼠标/IME/resize）：跳过节流立即渲染。
     urgent_render: bool,
-    /// 关闭渲染（仅 debug：APP_NO_RENDER=1，用于吞吐基线"只 feed 不渲染"）。
+    /// 关闭渲染（仅 debug：LEANTTY_NO_RENDER=1，用于吞吐基线"只 feed 不渲染"）。
     #[cfg(debug_assertions)]
     no_render: bool,
-    /// 关闭帧合并节流（仅 debug：APP_NO_THROTTLE=1），用于对照"节流前"的输入回显延迟。
+    /// 关闭帧合并节流（仅 debug：LEANTTY_NO_THROTTLE=1），用于对照"节流前"的输入回显延迟。
     #[cfg(debug_assertions)]
     no_throttle: bool,
-    /// 强制整缓冲 present（诊断开关 APP_PRESENT_FULL=1，release 与 debug 均可用，
-    /// 默认关闭；用于对比脏区提交与全缓冲提交的 present 耗时，与 APP_PERF_FRAMES 同类）。
+    /// 强制整缓冲 present（诊断开关 LEANTTY_PRESENT_FULL=1，release 与 debug 均可用，
+    /// 默认关闭；用于对比脏区提交与全缓冲提交的 present 耗时，与 LEANTTY_PERF_FRAMES 同类）。
     present_full: bool,
     /// 渲染耗时 EMA（毫秒），用于自适应帧间隔；None 表示尚无样本。
     render_ema_ms: Option<f64>,
     /// 当前目标帧间隔（由 EMA 推导，最小 PACE_MIN_MS）。
     frame_interval: Duration,
-    /// 帧耗时诊断采样（APP_PERF_FRAMES=1，release 与 debug 均可用，默认关闭）。
+    /// 帧耗时诊断采样（LEANTTY_PERF_FRAMES=1，release 与 debug 均可用，默认关闭）。
     /// 每 50 帧输出一行：渲染/present 中位与 p95、被合并丢弃的唤醒次数、当前帧间隔。
     perf_frames: Option<PerfFrames>,
-    /// present 耗时采样（仅 debug：APP_PRESENT_STATS=1 每 100 帧打印一次）。
+    /// present 耗时采样（仅 debug：LEANTTY_PRESENT_STATS=1 每 100 帧打印一次）。
     #[cfg(debug_assertions)]
     present_stats: Option<(bool, Vec<u128>)>,
 }
@@ -1041,7 +1041,7 @@ impl ApplicationHandler for AppHandler {
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_else(|| p.to_string())
             })
-            .unwrap_or_else(|| "tty".to_string());
+            .unwrap_or_else(|| "leantty".to_string());
         attrs.title = bin_name.clone();
         // 初始位置（逻辑像素；Wayland 下合成器可能忽略——记录日志，不视为错误；
         // 越出屏幕范围交给窗口管理器处理，不自行钳制）。
@@ -1341,17 +1341,17 @@ impl ApplicationHandler for AppHandler {
         // 运行时绑定查表/选区参数访问（resumed take 后回填；AppHandler.config
         // 字段语义从"待消费配置"扩展为"运行时配置"，阶段 2B 任务 2.5 起用）。
         self.config = Some(config);
-        // 测试专用开关（仅 debug 构建；release 中不存在）：APP_TEST_PREEDIT
+        // 测试专用开关（仅 debug 构建；release 中不存在）：LEANTTY_TEST_PREEDIT
         // 注入一个预编辑串，供 e2e 断言叠加层渲染而不经过真实输入法。
         #[cfg(debug_assertions)]
-        if let Ok(t) = std::env::var("APP_TEST_PREEDIT")
+        if let Ok(t) = std::env::var("LEANTTY_TEST_PREEDIT")
             && !t.is_empty()
         {
             self.test_preedit = Some(t);
-            // 配套测试钩子（debug 专有）：设置 APP_TEST_PREEDIT_CLEAR_MS 后，
+            // 配套测试钩子（debug 专有）：设置 LEANTTY_TEST_PREEDIT_CLEAR_MS 后，
             // 从注入时刻起经过该毫秒数即清除预编辑，用于验证"清除后不留残影"
             // （阶段 4B-fix1 任务 C 的 e2e 场景）。
-            if let Ok(ms) = std::env::var("APP_TEST_PREEDIT_CLEAR_MS")
+            if let Ok(ms) = std::env::var("LEANTTY_TEST_PREEDIT_CLEAR_MS")
                 && let Ok(ms) = ms.parse::<u64>()
             {
                 self.test_preedit_clear_at =
@@ -1361,10 +1361,10 @@ impl ApplicationHandler for AppHandler {
         }
         // 测试钩子（debug 专有）：延迟触发一次同步粘贴，用于验证"粘贴后主动排帧"。
         #[cfg(debug_assertions)]
-        if let Ok(t) = std::env::var("APP_TEST_PASTE")
+        if let Ok(t) = std::env::var("LEANTTY_TEST_PASTE")
             && !t.is_empty()
         {
-            let at_ms = std::env::var("APP_TEST_PASTE_AT_MS")
+            let at_ms = std::env::var("LEANTTY_TEST_PASTE_AT_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
                 .unwrap_or(2000);
@@ -1609,7 +1609,7 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
-        // 阶段 4I t3：观测窗口重置（APP_PERF_RESET_MS，默认关闭）。用于把启动期
+        // 阶段 4I t3：观测窗口重置（LEANTTY_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
             && Instant::now() >= t
@@ -1630,7 +1630,7 @@ impl ApplicationHandler for AppHandler {
             eperf!("[perf] window_reset");
         }
         // 阶段 4G t2a 观测：两次事件循环迭代的最大间隔（主线程停顿的直接度量）。
-        // 仅在 APP_PERF_FRAMES 开启时统计（默认关闭，代价一次 Option 判空）。
+        // 仅在 LEANTTY_PERF_FRAMES 开启时统计（默认关闭，代价一次 Option 判空）。
         if self.perf_frames.is_some() {
             let now = std::time::Instant::now();
             if let Some(prev) = self.last_loop_at {
@@ -2088,7 +2088,7 @@ impl ApplicationHandler for AppHandler {
                     renderer.set_scrollbar(geom);
                     self.last_geom_drawn = geom;
                     // IME 预编辑叠加层（不写入网格；空串=清除）。
-                    // debug 测试注入（APP_TEST_PREEDIT）优先于真实 Ime 事件。
+                    // debug 测试注入（LEANTTY_TEST_PREEDIT）优先于真实 Ime 事件。
                     #[cfg(debug_assertions)]
                     let test_text = self.test_preedit.clone();
                     #[cfg(not(debug_assertions))]
@@ -2166,7 +2166,7 @@ impl ApplicationHandler for AppHandler {
                         self.finish_wake(event_loop, None);
                         return;
                     };
-                    // APP_PRESENT_FULL=1 时强制整缓冲提交（诊断用，release 亦可用）。
+                    // LEANTTY_PRESENT_FULL=1 时强制整缓冲提交（诊断用，release 亦可用）。
                     let force_full_present = self.present_full;
                     if !force_full_present && damage.is_empty() {
                         // 完全静态帧：不重绘、不提交（仍可更新 perf 日志）。
@@ -2303,7 +2303,7 @@ impl AppHandler {
     /// 存活检查的下一次到期时刻（阶段 4V t2，无副作用）。
     ///
     /// Windows 恒启用（ConPTY 输出管道不会因 shell 退出而 EOF，只能轮询 `try_wait`）；
-    /// 其他平台仅在诊断开关 `APP_FORCE_LIVENESS_POLL=1` 打开时启用，默认 `None`，
+    /// 其他平台仅在诊断开关 `LEANTTY_FORCE_LIVENESS_POLL=1` 打开时启用，默认 `None`，
     /// 即保持纯事件驱动、空闲零唤醒。
     fn liveness_deadline(&self, now: Instant) -> Option<Instant> {
         if !liveness_poll_wanted() || self.pty.is_none() {
@@ -2975,7 +2975,7 @@ impl AppHandler {
 
     /// 完整粘贴路径：按当前括号粘贴模式规范化后写入 PTY 并主动排一帧。
     ///
-    /// `do_paste`（剪贴板）与 debug 测试钩子 `APP_TEST_PASTE` 都走这里，
+    /// `do_paste`（剪贴板）与 debug 测试钩子 `LEANTTY_TEST_PASTE` 都走这里，
     /// 保证门禁验证的是生产路径（含 `ESC[200~ … ESC[201~` 包裹）。
     fn paste_from_text(&mut self, text: &str) {
         let bracketed = self
@@ -3341,12 +3341,12 @@ fn write_pty(pty: &mut NativePty, writer: Option<&writer::PtyWriter>, bytes: &[u
     }
 }
 
-/// 诊断钩子（仅 debug，默认关闭）：APP_FRAME_HASH=<路径> 时，每帧渲染后追加一行
+/// 诊断钩子（仅 debug，默认关闭）：LEANTTY_FRAME_HASH=<路径> 时，每帧渲染后追加一行
 /// `frame=<n> all=<hash> rows=<h0,h1,...>`，用于逐帧对拍"复用 vs 强制全量"，
 /// 定位首个出现像素差异的帧与差异行范围（阶段 3C 任务 6）。
 #[cfg(debug_assertions)]
 fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
-    let Ok(path) = std::env::var("APP_FRAME_HASH") else {
+    let Ok(path) = std::env::var("LEANTTY_FRAME_HASH") else {
         return;
     };
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -3384,14 +3384,14 @@ fn dump_frame_hash_if_requested(renderer: &render::CpuRenderer) {
     }
 }
 
-/// 测试钩子（默认关闭）：APP_DUMP_SNAPSHOT 设置时，每帧把 FrameSnapshot 文本
+/// 测试钩子（默认关闭）：LEANTTY_DUMP_SNAPSHOT 设置时，每帧把 FrameSnapshot 文本
 /// （行文本 + 宽格统计）写入该路径，供 e2e 断言而不依赖 OCR。
-/// 测试钩子（默认关闭，仅 debug 构建；任务 4 门控）：APP_DUMP_SNAPSHOT 设置时，
+/// 测试钩子（默认关闭，仅 debug 构建；任务 4 门控）：LEANTTY_DUMP_SNAPSHOT 设置时，
 /// 每帧把 FrameSnapshot 文本（行文本 + 宽格统计 + 每格字体索引）写入该路径，
 /// 供 e2e 断言而不依赖 OCR。release 构建中本函数与钩子字符串均不存在。
 #[cfg(debug_assertions)]
 fn dump_snapshot_if_requested(snap: &vt::FrameSnapshot, renderer: Option<&render::CpuRenderer>) {
-    let Ok(path) = std::env::var("APP_DUMP_SNAPSHOT") else {
+    let Ok(path) = std::env::var("LEANTTY_DUMP_SNAPSHOT") else {
         return;
     };
     let mut text = String::new();

@@ -19,30 +19,30 @@ OUT="$ROOT/scripts/e2e/out/matrix"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
 
 # 适配器选择
 if [ "$MODE" = "lavapipe" ]; then
-    export APP_GPU_ALLOW_SOFTWARE=1
+    export LEANTTY_GPU_ALLOW_SOFTWARE=1
     export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
 fi
 
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.4
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
 e2e_start_wm "$OUT/wm.log"
 
 CFG="$OUT/cfg-$MODE.toml"
 printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$BACKEND" >"$CFG"
 LOG="$OUT/app-$MODE-$BACKEND.log"
-APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$LOG" 2>&1 &
+LEANTTY_PID=$!
 i=0
 WID=""
 while [ $i -lt 120 ]; do
-    WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+    WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
     [ -n "$WID" ] && break
     sleep 0.2
     i=$((i + 1))
@@ -150,9 +150,9 @@ N2=$(grep -c "loop_gap_ms=" "$LOG" 2>/dev/null || true)
 NEW=$(( ${N2:-0} - ${N1:-0} ))
 row "空闲 10s 新增统计行" "$NEW" "$([ "$NEW" -eq 0 ] && echo OK || echo FAIL)"
 
-echo "--- 说明：项 2（预编辑）需 debug 二进制（APP_TEST_PREEDIT 为 debug 专有），由 case30 覆盖；"
+echo "--- 说明：项 2（预编辑）需 debug 二进制（LEANTTY_TEST_PREEDIT 为 debug 专有），由 case30 覆盖；"
 echo "    项 4（焦点光标样式）本实现无此行为；项 5（Expose）由 case31 覆盖；项 9（反色/粗体等纯快照变化）"
 echo "    由既有 case26/27/34/35/36 与 gpu_parity 覆盖。"
-kill -TERM "$APP_PID" 2>/dev/null
-wait "$APP_PID" 2>/dev/null
-APP_PID=""
+kill -TERM "$LEANTTY_PID" 2>/dev/null
+wait "$LEANTTY_PID" 2>/dev/null
+LEANTTY_PID=""

@@ -7,7 +7,7 @@
 #   1) 输出 300 行 → 截图 A（视口在底部）
 #   2) 对自身窗口注入滚轮上滚 10 格 → 截图 B（应明显不同于 A，证明已离开底部）
 #   3) 键入 `echo MARK_$((1+1))` 并回车 → 截图 C
-#   4) 判定：若该版本支持 APP_DUMP_SNAPSHOT（debug 钩子），则以"视口网格里出现
+#   4) 判定：若该版本支持 LEANTTY_DUMP_SNAPSHOT（debug 钩子），则以"视口网格里出现
 #      MARK_2 行"为准（MARK_2 只会在回底后进入可视区）；否则回退到像素判据
 #      "C 相对 B 的变化远大于 A 相对 B 的差异 ⇒ 视口移动过"。
 #   两种观测都不依赖实现细节，可在历史 tag 上运行。
@@ -16,8 +16,8 @@
 # 结束时只对自己记录的 PID 发 SIGTERM。
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-APP_BIN="${1:?需要 app 二进制路径}"
-LABEL="${2:-$(basename "$APP_BIN")}"
+LEANTTY_BIN="${1:?需要 app 二进制路径}"
+LABEL="${2:-$(basename "$LEANTTY_BIN")}"
 OUT="${BISECT_OUT:-$ROOT/scripts/e2e/out/bisect}"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
@@ -27,7 +27,7 @@ DISPLAY=:99
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.3
 e2e_start_xvfb "$OUT/xvfb.log" || exit 2
-trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
 e2e_start_wm "$OUT/wm.log" || exit 2
 
 CFG="$OUT/cfg-$LABEL.toml"
@@ -37,13 +37,13 @@ printf '[window]\ndimensions = { columns = 80, lines = 24 }\n' >"$CFG"
 LOG="$OUT/app-$LABEL.log"
 DUMP="$OUT/dump-$LABEL.txt"
 rm -f "$DUMP"
-APP_CONFIG="$CFG" APP_DUMP_SNAPSHOT="$DUMP" SHELL=/bin/sh "$APP_BIN" >"$LOG" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG" LEANTTY_DUMP_SNAPSHOT="$DUMP" SHELL=/bin/sh "$LEANTTY_BIN" >"$LOG" 2>&1 &
+LEANTTY_PID=$!
 
 i=0
 WID=""
 while [ $i -lt 100 ]; do
-    WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+    WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
     [ -n "$WID" ] && break
     sleep 0.2
     i=$((i+1))
@@ -85,9 +85,9 @@ x11 xdotool key --window "$WID" Return
 sleep 2.0
 x11 import -window "$WID" "$OUT/$LABEL-C-after-input.png" 2>/dev/null
 
-kill -TERM "$APP_PID" 2>/dev/null
-wait "$APP_PID" 2>/dev/null
-APP_PID=""
+kill -TERM "$LEANTTY_PID" 2>/dev/null
+wait "$LEANTTY_PID" 2>/dev/null
+LEANTTY_PID=""
 
 HAS_DUMP=0
 [ -s "$DUMP" ] && HAS_DUMP=1

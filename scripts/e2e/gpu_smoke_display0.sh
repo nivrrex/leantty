@@ -14,7 +14,7 @@
 
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-APP_BIN="${APP_BIN:-$ROOT/target/release/app}"
+LEANTTY_BIN="${LEANTTY_BIN:-$ROOT/target/release/leantty}"
 OUT="$ROOT/scripts/e2e/out"
 mkdir -p "$OUT"
 
@@ -45,13 +45,13 @@ backend = "gpu"
 TOML
 
 : >"$CAT_LOG"
-APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >>"$CAT_LOG" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >>"$CAT_LOG" 2>&1 &
+LEANTTY_PID=$!
 # 只清理自己启动的进程：等待其退出，必要时按 PID 发送信号。
 cleanup() {
-    if [ -n "${APP_PID:-}" ] && kill -0 "$APP_PID" 2>/dev/null; then
-        kill -TERM "$APP_PID" 2>/dev/null
-        wait "$APP_PID" 2>/dev/null
+    if [ -n "${LEANTTY_PID:-}" ] && kill -0 "$LEANTTY_PID" 2>/dev/null; then
+        kill -TERM "$LEANTTY_PID" 2>/dev/null
+        wait "$LEANTTY_PID" 2>/dev/null
     fi
 }
 trap 'cleanup; exit 1' INT TERM
@@ -83,7 +83,7 @@ else
 fi
 
 cleanup
-APP_PID=""
+LEANTTY_PID=""
 
 FRAMES_LINE=$(grep -E "\[perf\] frames n=" "$CAT_LOG" | tail -1)
 GPU_LINE=$(grep -E "gpu_init_ms|backend=gpu" "$CAT_LOG" | head -2 | tr '\n' ' ')

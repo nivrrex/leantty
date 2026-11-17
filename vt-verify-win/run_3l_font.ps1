@@ -1,6 +1,6 @@
 param([string]$AppBin = '', [string]$Cfg = '', [string]$Tag = 'A', [int]$Runs = 5, [string]$ErrTarget = 'file')
 $ROOT = 'C:\dev\tty'
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 $dir = Join-Path $ROOT 'vt-verify-win\logs\3l-font'
 for ($i = 1; $i -le $Runs; $i++) {
     $out = Join-Path $dir ("{0}-{1}.err" -f $Tag, $i)

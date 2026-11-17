@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -42,7 +42,7 @@ $EnumCb = [W9+EnumThreadProc]{
     return $true
 }
 
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe8.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe8.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe8.err"
 $hwnd = [IntPtr]::Zero
@@ -79,5 +79,5 @@ foreach ($w in $Script:Windows) {
 }
 Start-Sleep -Seconds 5
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

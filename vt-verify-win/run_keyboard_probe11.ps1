@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.Drawing
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -53,10 +53,10 @@ public class WB {
 [void][WB]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
 $Script:INPUT_SIZE = [System.Runtime.InteropServices.Marshal]::SizeOf((New-Object WB+INPUT))
 
-$env:APP_TRACE_FILE = "$OUT\probe11.trace"
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe11.dump"
+$env:LEANTTY_TRACE_FILE = "$OUT\probe11.trace"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe11.dump"
 $env:SHELL = 'cmd.exe'
-Remove-Item $env:APP_TRACE_FILE -ErrorAction SilentlyContinue
+Remove-Item $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe11.err"
 $hwnd = [IntPtr]::Zero
 $t0 = Get-Date
@@ -86,7 +86,7 @@ $g.Dispose(); $bmp.Dispose()
 "screenshot saved"
 
 # trace size before keys
-"trace-before=$(@(Get-Content $env:APP_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
+"trace-before=$(@(Get-Content $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
 
 # focus + SendInput 'echo hi' + Enter
 $tmp = 0
@@ -117,9 +117,9 @@ foreach ($ch in 'echo hi'.ToCharArray()) {
 }
 [void](Send-VkB 0x0D)
 Start-Sleep -Seconds 5
-"trace-after=$(@(Get-Content $env:APP_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
+"trace-after=$(@(Get-Content $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue).Count)"
 "--- trace tail ---"
-Get-Content $env:APP_TRACE_FILE -ErrorAction SilentlyContinue | Select-Object -Last 6
+Get-Content $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue | Select-Object -Last 6
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue | Select-Object -First 4
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

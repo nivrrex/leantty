@@ -1,7 +1,7 @@
 # Bisect: mirror run_all.ps1 Start-Case exactly (function + hashtable return) with diagnostics.
 $ErrorActionPreference = 'Continue'
 $ROOT = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
-$AppBin = Join-Path $ROOT 'target\debug\app.exe'
+$AppBin = Join-Path $ROOT 'target\debug\leantty.exe'
 $OUT = Join-Path $PSScriptRoot 'out'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
 Write-Host "ROOT=$ROOT AppBin=$AppBin exists=$(Test-Path $AppBin)"
@@ -35,7 +35,7 @@ function Start-Case([string]$name, [string]$shell, [string]$configPath) {
     $dump = Join-Path $OUT "$name.dump"
     $err = Join-Path $OUT "$name.err"
     Remove-Item $dump -ErrorAction SilentlyContinue
-    $env:APP_DUMP_SNAPSHOT = $dump
+    $env:LEANTTY_DUMP_SNAPSHOT = $dump
     if ($shell) { $env:SHELL = $shell } else { Remove-Item Env:SHELL -ErrorAction SilentlyContinue }
     $argList = @()
     if ($configPath) { $argList = @('--config', $configPath) }

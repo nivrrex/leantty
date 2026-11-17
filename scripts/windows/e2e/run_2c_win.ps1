@@ -7,7 +7,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Clipboard]::Clear()
 
 function Start-Case([string]$name, [string]$cfgName, [string]$preedit) {
-    if ($preedit) { $env:APP_TEST_PREEDIT = $preedit } else { Remove-Item Env:\APP_TEST_PREEDIT -ErrorAction SilentlyContinue }
+    if ($preedit) { $env:LEANTTY_TEST_PREEDIT = $preedit } else { Remove-Item Env:\LEANTTY_TEST_PREEDIT -ErrorAction SilentlyContinue }
     $a = Start-App2 $name (Join-Path $CFG $cfgName)
     if ($a.hwnd -ne [IntPtr]::Zero) {
         $null = Focus-App2 $a.hwnd

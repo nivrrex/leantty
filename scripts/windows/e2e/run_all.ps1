@@ -8,7 +8,7 @@
 param([string]$AppBin = '')
 $ErrorActionPreference = 'Continue'
 $ROOT = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
-if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\app.exe' }
+if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\leantty.exe' }
 if (-not (Test-Path $AppBin)) { Write-Host "FATAL: app binary not found: $AppBin"; exit 2 }
 $OUT = Join-Path $PSScriptRoot 'out'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
@@ -221,7 +221,7 @@ function Start-Case([string]$name, [string]$shell, [string]$configPath) {
     $err = Join-Path $OUT "$name.err"
     Remove-Item $dump -ErrorAction SilentlyContinue
     Remove-Item $err -ErrorAction SilentlyContinue
-    $env:APP_DUMP_SNAPSHOT = $dump
+    $env:LEANTTY_DUMP_SNAPSHOT = $dump
     if ($shell) { $env:SHELL = $shell } else { Remove-Item Env:SHELL -ErrorAction SilentlyContinue }
     $argList = @()
     if ($configPath) { $argList = @('--config', $configPath) }
@@ -267,14 +267,14 @@ function Screenshot([string]$name) {
 }
 
 # ---- case 0: release binary must not contain the debug-only hook string
-$releaseBin = Join-Path $ROOT 'target\release\app.exe'
+$releaseBin = Join-Path $ROOT 'target\release\leantty.exe'
 if (Test-Path $releaseBin) {
     $bytes = [System.IO.File]::ReadAllBytes($releaseBin)
     $ascii = [System.Text.Encoding]::ASCII.GetString($bytes)
-    if ($ascii -match 'APP_DUMP_SNAPSHOT') { Report 'release-hook-gated' $false '(APP_DUMP_SNAPSHOT present in release binary)' }
-    else { Report 'release-hook-gated' $true '(release binary has no APP_DUMP_SNAPSHOT string)' }
+    if ($ascii -match 'LEANTTY_DUMP_SNAPSHOT') { Report 'release-hook-gated' $false '(LEANTTY_DUMP_SNAPSHOT present in release binary)' }
+    else { Report 'release-hook-gated' $true '(release binary has no LEANTTY_DUMP_SNAPSHOT string)' }
 } else {
-    Report 'release-hook-gated' $false '(target\release\app.exe missing; run build first)'
+    Report 'release-hook-gated' $false '(target\release\leantty.exe missing; run build first)'
 }
 
 # ---- foreground gate: keyboard injection needs a real foreground window

@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -73,7 +73,7 @@ function Send-Vk([uint32]$vk) {
     return [uint32][W7]::SendInput($n, $inputs, $Script:INPUT_SIZE)
 }
 
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe5.dump"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe5.dump"
 $env:SHELL = 'cmd.exe'
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe5.err"
 $hwnd = [IntPtr]::Zero
@@ -112,7 +112,7 @@ for ($k = 1; $k -le 3; $k++) {
     "t=${k}x2s fg=$fg match=$($fg -eq $hwnd)"
 }
 "--- dump ---"
-Get-Content $env:APP_DUMP_SNAPSHOT -ErrorAction SilentlyContinue
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT -ErrorAction SilentlyContinue
 "--- err ---"
 Get-Content "$OUT\probe5.err" -ErrorAction SilentlyContinue | Select-Object -First 4
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

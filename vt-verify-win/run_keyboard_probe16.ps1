@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -26,10 +26,10 @@ public class WG {
 '@
 
 [void][WG]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
-$env:APP_TRACE_FILE = "$OUT\probe16.trace"
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe16.dump"
+$env:LEANTTY_TRACE_FILE = "$OUT\probe16.trace"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe16.dump"
 $env:SHELL = 'cmd.exe'
-Remove-Item $env:APP_TRACE_FILE -ErrorAction SilentlyContinue
+Remove-Item $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe16.err"
 $Script:TargetPid = [uint64]$p.Id
 Start-Sleep -Seconds 4
@@ -75,17 +75,17 @@ foreach ($vk in @(0x45,0x43,0x48,0x4F,0x20,0x48,0x49)) { Send-VkG $vk; Start-Sle
 Send-VkG 0x0D
 Start-Sleep -Seconds 3
 "--- dump after echo hi ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 3
-"keydbg=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG').Count)"
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 3
+"keydbg=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG').Count)"
 
 # stage 2: Ctrl+C on idle prompt
 Send-CtrlVG 0x43
 Start-Sleep -Seconds 3
 "--- dump after Ctrl+C ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 5
-"keydbg=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG').Count)"
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 5
+"keydbg=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG').Count)"
 "--- KEYDBG tail ---"
-Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG' | Select-Object -Last 6 | ForEach-Object { $_.Line }
+Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG' | Select-Object -Last 6 | ForEach-Object { $_.Line }
 
 # stage 3: CJK clipboard paste
 $b64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes([string]([char]0x6C49 + [char]0x5B57)))
@@ -95,6 +95,6 @@ Start-Process powershell -ArgumentList @('-NoProfile','-STA','-EncodedCommand',$
 Send-CtrlVG 0x56
 Start-Sleep -Seconds 3
 "--- dump after CJK paste ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 5
-"keydbg=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG').Count)"
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 5
+"keydbg=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG').Count)"
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

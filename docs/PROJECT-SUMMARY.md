@@ -53,14 +53,14 @@ DX12 真实硬件表现、Windows 系统 conhost 的既有限制随 ConPTY 版�
 
 1. `load_font_list` 的深拷贝（字体库每次列举都克隆字体数据）。
 2. GPU 初始化前移（当前在首帧渲染路径内创建适配器/设备）。
-3. 适配器选择的正式配置（现在只有 `WGPU_ADAPTER_NAME`/`APP_GPU_ALLOW_SOFTWARE` 两个临时开关，
+3. 适配器选择的正式配置（现在只有 `WGPU_ADAPTER_NAME`/`LEANTTY_GPU_ALLOW_SOFTWARE` 两个临时开关，
    `WGPU_BACKEND` 由项目自解析）。
 4. CPU 后端 30 分钟 soak 在 21.6 分钟提前退出（机制未定位，8 轮定向复现未重现）。
 5. GPU 后端自动滚动偶发 605 行（同配置其余两次 1094/1099）。
 
 ## 6. 交付物
 
-- Linux：`target/release/app`（自包含二进制，运行期仅依赖系统 X11/Vulkan 运行库）。
+- Linux：`target/release/leantty`（自包含二进制，运行期仅依赖系统 X11/Vulkan 运行库）。
 - Windows：RC2 zip（随附官方 ConPTY，需两文件同目录），由 Windows 侧产出与验证。
 - 脚本：`scripts/gates.sh`、`scripts/tag_checked.sh`、`scripts/e2e/*`（e2e、soak、矩阵、探针）。
 - 文档：各阶段 `PHASE*-LINUX.md` / `PHASE*-WIN.md`、`docs/DECISIONS.md`、本总结。

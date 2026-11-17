@@ -1,6 +1,6 @@
 param([string]$AppBin = '', [string]$Cfg = '', [string]$Tag = 'NUL', [int]$Runs = 5)
 $ROOT = 'C:\dev\tty'
-$env:APP_PERF_FRAMES = '1'
+$env:LEANTTY_PERF_FRAMES = '1'
 for ($i = 1; $i -le $Runs; $i++) {
     # NUL 对照：stdout/stderr 都丢给 NUL，无法事后解析，只测首帧时间
     $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $Cfg) -WorkingDirectory $ROOT -PassThru -RedirectStandardError 'NUL' -RedirectStandardOutput 'NUL'

@@ -24,8 +24,8 @@ OUT="$ROOT/scripts/e2e/out/pb"
 mkdir -p "$OUT"
 E2E_GUARD_DIR="$ROOT/scripts/e2e"
 . "$ROOT/scripts/e2e/guard.sh"
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: 需要 release 二进制"; exit 1; }
 
 CLIP="$OUT/clip1mb.txt"
 # 13MiB 注释行（bash 执行 `#` 注释是纯解析、不 fork，消费很快；用注释避免"逐行 not found"拖慢）
@@ -46,12 +46,12 @@ while [ "$i" -lt "$RUNS" ]; do
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$BACKEND" >"$CFG"
     LOG="$OUT/run$i-$BACKEND.log"
     rm -f "$MARK"
-    APP_CONFIG="$CFG" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_BIN" >"$LOG" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG" LEANTTY_PERF_FRAMES=1 SHELL=/bin/bash "$LEANTTY_BIN" >"$LOG" 2>&1 &
+    LEANTTY_PID=$!
     k=0
     WID=""
     while [ $k -lt 100 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.2
         k=$((k + 1))
@@ -59,7 +59,7 @@ while [ "$i" -lt "$RUNS" ]; do
     if [ -z "$WID" ]; then
         echo "run$i: 窗口未出现"
         FAIL=$((FAIL + 1))
-        kill_own "$APP_PID"; kill_own "$XVFB_PID"; kill_own "$WM_PID"
+        kill_own "$LEANTTY_PID"; kill_own "$XVFB_PID"; kill_own "$WM_PID"
         continue
     fi
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -126,12 +126,12 @@ while [ "$i" -lt "$RUNS" ]; do
         echo "run$i: FAIL（三次尝试后仍未执行，截断/拒绝日志数=${REJ:-0}）"
         FAIL=$((FAIL + 1))
     fi
-    kill -TERM "$APP_PID" 2>/dev/null
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     w=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.5; w=$((w + 1)); done
-    kill -KILL "$APP_PID" 2>/dev/null
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$w" -lt 20 ]; do sleep 0.5; w=$((w + 1)); done
+    kill -KILL "$LEANTTY_PID" 2>/dev/null
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
     kill_own "${XVFB_PID:-}"
     kill_own "${WM_PID:-}"
     sleep 0.5

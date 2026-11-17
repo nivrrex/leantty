@@ -7,7 +7,7 @@
 param([string]$AppBin = '')
 $ErrorActionPreference = 'Continue'
 $ROOT = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\app.exe' }
+if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\leantty.exe' }
 if (-not (Test-Path $AppBin)) { Write-Host "FATAL: no app binary"; exit 2 }
 $OUT = Join-Path $ROOT 'vt-verify-win\logs\phase2b-win'
 Copy-Item (Join-Path $ROOT 'vt-verify-win\rs.ps1') (Join-Path $env:TEMP 'rs.ps1') -Force
@@ -81,7 +81,7 @@ function Start-App2([string]$name, [string]$configPath) {
     $dump = Join-Path $OUT "$name.dump"
     $err = Join-Path $OUT "$name.err"
     Remove-Item $dump, $err -ErrorAction SilentlyContinue
-    $env:APP_DUMP_SNAPSHOT = $dump
+    $env:LEANTTY_DUMP_SNAPSHOT = $dump
     $argList = @('--config', $configPath)
     $p = Start-Process -FilePath $AppBin -ArgumentList $argList -WorkingDirectory $ROOT -PassThru -RedirectStandardError $err
     $Script:FoundPid = [uint64]$p.Id

@@ -1125,10 +1125,10 @@ pub fn parse_backends_spec(spec: &str) -> Result<wgpu::Backends, String> {
 
 /// 是否允许使用软件 GPU 适配器（阶段 4Q t4，仅诊断/测试用）。
 ///
-/// 只有 `APP_GPU_ALLOW_SOFTWARE=1` 时为真；**是否真正生效由调用方决定**：
+/// 只有 `LEANTTY_GPU_ALLOW_SOFTWARE=1` 时为真；**是否真正生效由调用方决定**：
 /// app 只在配置为 `backend="gpu"` 时传入，`backend="auto"` 永远忽略（见 app 的后端选择）。
 pub fn allow_software_from_env() -> bool {
-    std::env::var("APP_GPU_ALLOW_SOFTWARE").is_ok_and(|v| v.trim() == "1")
+    std::env::var("LEANTTY_GPU_ALLOW_SOFTWARE").is_ok_and(|v| v.trim() == "1")
 }
 
 impl Gpu {
@@ -1255,9 +1255,9 @@ impl Gpu {
         let info = adapter.get_info();
         let is_software = info.device_type == wgpu::DeviceType::Cpu;
         if is_software {
-            // 用户可见警告（不受 APP_PERF_FRAMES 门控）：软件适配器只用于诊断
+            // 用户可见警告（不受 LEANTTY_PERF_FRAMES 门控）：软件适配器只用于诊断
             eprintln!(
-                "正在使用软件 GPU 适配器：{}，仅用于诊断（APP_GPU_ALLOW_SOFTWARE=1）",
+                "正在使用软件 GPU 适配器：{}，仅用于诊断（LEANTTY_GPU_ALLOW_SOFTWARE=1）",
                 info.name
             );
         }

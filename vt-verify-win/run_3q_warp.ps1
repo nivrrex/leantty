@@ -4,7 +4,7 @@
 # ASCII only.
 param(
     [string]$Dir = 'C:\dev\tty\vt-verify-win\3q-warp',
-    [string]$App = 'C:\dev\tty\target\release\app.exe',
+    [string]$App = 'C:\dev\tty\target\release\leantty.exe',
     [int]$SoakMinutes = 5,
     [int]$Starts = 10
 )
@@ -113,7 +113,7 @@ $sample = Join-Path $Dir 'sample.ps1'
 ('@echo off' + "`r`n" + 'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sample.ps1"') |
     Set-Content -Path (Join-Path $Dir 'sample.cmd') -Encoding ASCII
 
-$warpEnv = @{ APP_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
+$warpEnv = @{ LEANTTY_GPU_ALLOW_SOFTWARE = '1'; WGPU_BACKEND = 'dx12'; WGPU_ADAPTER_NAME = 'Basic' }
 $cpuEnv = @{ WGPU_BACKEND = '' }
 $short = Get-ShortPath $Dir
 $rows = @()
@@ -183,7 +183,7 @@ for ($i = 1; $i -le $Starts; $i++) {
     Start-Sleep -Milliseconds 800
 }
 $all = @(Get-Content $firstLog -Encoding UTF8)
-$warn = @($all | Where-Object { $_ -match 'APP_GPU_ALLOW_SOFTWARE=1' })
+$warn = @($all | Where-Object { $_ -match 'LEANTTY_GPU_ALLOW_SOFTWARE=1' })
 $inst = Get-PerfLine $firstLog 'gpu_instance_ms'
 $adapt = Get-PerfLine $firstLog 'gpu_adapter_ms'
 $surf = Get-PerfLine $firstLog 'gpu_surface_ms'

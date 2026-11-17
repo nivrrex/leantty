@@ -29,7 +29,7 @@ function CountColor([string]$path, [int]$r, [int]$g, [int]$b, [int]$tol) {
     $n
 }
 
-$env:APP_DUMP_SNAPSHOT = Join-Path $OUT 't3-cursor.dump'
+$env:LEANTTY_DUMP_SNAPSHOT = Join-Path $OUT 't3-cursor.dump'
 $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $CFG) -WorkingDirectory $ROOT -PassThru -RedirectStandardError (Join-Path $OUT 't3-cursor.err')
 $Script:FoundPid = [uint64]$p.Id
 $Script:FoundClass = 'Window Class'

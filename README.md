@@ -78,7 +78,7 @@ Windows 目标现在也能编译并使用 wgpu 的 GPU 后端（Vulkan + DX12）
 
 | 用途 | 变量 |
 |---|---|
-| 打印 GPU 诊断（适配器清单/选中项/backend/surface 格式与 present mode） | `APP_PERF_FRAMES=1` |
+| 打印 GPU 诊断（适配器清单/选中项/backend/surface 格式与 present mode） | `LEANTTY_PERF_FRAMES=1` |
 | 指定后端（如 `dx12`、`vulkan`） | `WGPU_BACKEND`（未设置时 Linux=Vulkan，Windows=Vulkan+DX12） |
 | 指定适配器（名字子串，不区分大小写） | `WGPU_ADAPTER_NAME`（未匹配会给出可用列表并报错） |
 
@@ -91,7 +91,7 @@ Windows 目标现在也能编译并使用 wgpu 的 GPU 后端（Vulkan + DX12）
 仅在 WARP（DX12 的软件适配器）上验证过。Windows 的 `backend = "auto"` **恒为 CPU**，`gpu` 是显式
 实验开关（见上）。
 
-**软件适配器诊断开关**（阶段 4Q）：`APP_GPU_ALLOW_SOFTWARE=1` 允许选中软件 GPU 适配器
+**软件适配器诊断开关**（阶段 4Q）：`LEANTTY_GPU_ALLOW_SOFTWARE=1` 允许选中软件 GPU 适配器
 （Linux 的 lavapipe、Windows 的 WARP / Basic Render Driver），**仅当 `backend = "gpu"` 时生效**；
 `backend = "auto"` 永远忽略该变量。选中软件适配器时会默认打印一行用户可见警告
 （"正在使用软件 GPU 适配器：<名称>，仅用于诊断"），诊断日志里标 `software=true`。
@@ -105,10 +105,10 @@ Windows 上的差异；无 GPU 的 Windows 机器上 `backend="gpu"` 的实际�
 ## 诊断输出（默认关闭）
 
 启动与运行期的 `[perf] …` 性能/诊断行**默认不打印**（每次启动 30+ 行，且在小体积重定向
-宿主下单行写入可达毫秒级）。需要时设置已有环境变量 `APP_PERF_FRAMES=1` 即恢复，例如：
+宿主下单行写入可达毫秒级）。需要时设置已有环境变量 `LEANTTY_PERF_FRAMES=1` 即恢复，例如：
 
 ```sh
-APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
+LEANTTY_PERF_FRAMES=1 ./target/release/leantty 2>perf.log
 ```
 
 - **采集 `[perf]` 日志请用直接句柄重定向**（如 `2>perf.log`）。不要用 PowerShell 的
@@ -118,19 +118,19 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   `first_frame_ms` 等）与每 50 帧的耗时统计。
 - **面向用户的警告与错误不受影响**（配置告警、`hinting` 不支持、backend 回落、resize 说明等
   始终输出）。
-- **`APP_FORCE_LIVENESS_POLL=1`**（release 可用）：让非 Windows 平台也走"存活检查唤醒"
+- **`LEANTTY_FORCE_LIVENESS_POLL=1`**（release 可用）：让非 Windows 平台也走"存活检查唤醒"
   分支（Windows 恒开启该分支，因为 ConPTY 输出管道不会因 shell 退出而 EOF，退出检测只能靠
   轮询 `try_wait`）。仅用于在 Linux 上复现/验证 Windows 的"子进程退出后窗口不关闭"问题，
   会带来每秒一次的空闲唤醒，**不用于日常运行**（`PHASE4V-LINUX.md` §2）。
-- 其它诊断钩子（`APP_DUMP_SNAPSHOT`、`APP_FRAME_HASH`、`APP_TEST_PASTE` 等）仅 debug 构建存在。
+- 其它诊断钩子（`LEANTTY_DUMP_SNAPSHOT`、`LEANTTY_FRAME_HASH`、`LEANTTY_TEST_PASTE` 等）仅 debug 构建存在。
 - **wgpu 自身的 `WGPU_*` 环境变量在本构建中不生效**：本项目以 `default-features = false` 引入
   wgpu 30.0.2，未启用其 `std` 特性，而 wgpu-types 的 `env::var` 在无 `std` 时恒返回 `None`
   （`wgpu-types-30.0.2/src/env.rs`），因此 `WGPU_BACKEND`（wgpu 侧）、`WGPU_POWER_PREF`、
   `WGPU_DX12_*`、`WGPU_GLES_MINOR_VERSION` 等一律无效。
   本项目**只识别以下由自身解析的变量**：`WGPU_BACKEND`（本项目自己解析，逗号列表，大小写不敏感、
   允许空白，无法识别的记号会报错）、`WGPU_ADAPTER_NAME`（名字子串匹配）、
-  `APP_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`APP_PERF_FRAMES`（诊断日志开关）、
-  `APP_FORCE_LIVENESS_POLL`（诊断：非 Windows 也启用存活轮询）。
+  `LEANTTY_GPU_ALLOW_SOFTWARE`（允许软件适配器，仅 `backend="gpu"` 生效）、`LEANTTY_PERF_FRAMES`（诊断日志开关）、
+  `LEANTTY_FORCE_LIVENESS_POLL`（诊断：非 Windows 也启用存活轮询）。
 
 ## 子进程启动（`terminal.shell`）
 
@@ -171,7 +171,7 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
 - **Windows 的 `auto` 后端恒为 CPU**：要用 GPU 必须显式 `backend = "gpu"`（实验性）
   （依据：`PHASE4R-LINUX.md` §5）。
 - **本项目自身只识别少数环境变量**：`WGPU_BACKEND`（自解析）、`WGPU_ADAPTER_NAME`、
-  `APP_GPU_ALLOW_SOFTWARE`、`APP_PERF_FRAMES`，另有诊断用 `APP_FORCE_LIVENESS_POLL`；
+  `LEANTTY_GPU_ALLOW_SOFTWARE`、`LEANTTY_PERF_FRAMES`，另有诊断用 `LEANTTY_FORCE_LIVENESS_POLL`；
   wgpu 自身的 `WGPU_*` 因 `default-features = false`（无 `std` 特性）全部不生效
   （依据：`PHASE4R-LINUX.md` §3）。
 - **Windows 系统 conhost（19044）的既有缺陷**：物化 `ESC[7m`（变成 `ESC[30m`+`ESC[47m`）、

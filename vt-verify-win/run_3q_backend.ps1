@@ -1,11 +1,11 @@
 # t2: WGPU_BACKEND parsing on Windows (4Q). Nine values, backend="gpu",
-# APP_PERF_FRAMES=1, direct file handle via a wrapper .cmd (set "K=V" form).
+# LEANTTY_PERF_FRAMES=1, direct file handle via a wrapper .cmd (set "K=V" form).
 # Records backends_env / backends_effective, adapter enumeration, exit code, time
 # and the error text. No software-adapter switch here on purpose.
 # ASCII only.
 param(
     [string]$Dir = 'C:\dev\tty\vt-verify-win\3q-backend',
-    [string]$App = 'C:\dev\tty\target\release\app.exe'
+    [string]$App = 'C:\dev\tty\target\release\leantty.exe'
 )
 $ErrorActionPreference = 'Stop'
 if (Test-Path $Dir) { Remove-Item -Recurse -Force $Dir }
@@ -35,8 +35,8 @@ foreach ($c in $cases) {
     @(
         '@echo off',
         ('cd /d "{0}"' -f $Dir),
-        'set "APP_PERF_FRAMES=1"',
-        'set "APP_GPU_ALLOW_SOFTWARE="',
+        'set "LEANTTY_PERF_FRAMES=1"',
+        'set "LEANTTY_GPU_ALLOW_SOFTWARE="',
         $setLine,
         ('"{0}" --config "{1}" 2>"{2}"' -f $App, $cfg, $log),
         'echo EXITCODE=%ERRORLEVEL%'

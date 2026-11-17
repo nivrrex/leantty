@@ -1,8 +1,11 @@
 [package]
-name = "pty"
+name = "leantty-pty"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
+
+[lib]
+name = "pty"
 
 [dependencies]
 anyhow = "1"
@@ -10,4 +13,4 @@ portable-pty.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-vt = { path = "../vt" }
+leantty-vt = { path = "../vt" }

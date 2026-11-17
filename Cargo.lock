@@ -78,21 +78,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "config",
- "pty",
- "raw-window-handle",
- "render",
- "softbuffer",
- "thiserror 2.0.21",
- "vt",
- "winit",
-]
-
-[[package]]
 name = "arboard"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -301,14 +286,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
 dependencies = [
  "crossbeam-utils",
-]
-
-[[package]]
-name = "config"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.21",
- "toml",
 ]
 
 [[package]]
@@ -831,6 +808,61 @@ name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
+
+[[package]]
+name = "leantty-app"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "leantty-config",
+ "leantty-pty",
+ "leantty-render",
+ "leantty-vt",
+ "raw-window-handle",
+ "softbuffer",
+ "thiserror 2.0.21",
+ "winit",
+]
+
+[[package]]
+name = "leantty-config"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
+name = "leantty-pty"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "leantty-vt",
+ "portable-pty",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "leantty-render"
+version = "0.1.0"
+dependencies = [
+ "fontdb",
+ "fontdue",
+ "leantty-vt",
+ "pollster",
+ "raw-window-handle",
+ "softbuffer",
+ "thiserror 2.0.21",
+ "wgpu",
+]
+
+[[package]]
+name = "leantty-vt"
+version = "0.1.0"
+dependencies = [
+ "libghostty-vt",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "libc"
@@ -1555,16 +1587,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d595e54a326bc53c1c197b32d295e14b169e3cfeaa8dc82b529f947fba6bcf5"
 
 [[package]]
-name = "pty"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "portable-pty",
- "thiserror 2.0.21",
- "vt",
-]
-
-[[package]]
 name = "quick-xml"
 version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1643,20 +1665,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "580c875845b41ecb1564ad1ae4703044cef774145e3d7a94dc2b3fa7c97868fd"
 dependencies = [
  "bitflags 2.13.2",
-]
-
-[[package]]
-name = "render"
-version = "0.1.0"
-dependencies = [
- "fontdb",
- "fontdue",
- "pollster",
- "raw-window-handle",
- "softbuffer",
- "thiserror 2.0.21",
- "vt",
- "wgpu",
 ]
 
 [[package]]
@@ -2236,14 +2244,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "vt"
-version = "0.1.0"
-dependencies = [
- "libghostty-vt",
- "thiserror 2.0.21",
-]
 
 [[package]]
 name = "walkdir"

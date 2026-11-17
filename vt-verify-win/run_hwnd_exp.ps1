@@ -8,9 +8,9 @@ public class W3 {
 }
 '@
 $ROOT = 'C:\dev\tty'
-$env:APP_DUMP_SNAPSHOT = 'C:\dev\tty\vt-verify-win\logs\exp.dump'
+$env:LEANTTY_DUMP_SNAPSHOT = 'C:\dev\tty\vt-verify-win\logs\exp.dump'
 $env:SHELL = 'cmd.exe'
-$p = Start-Process -FilePath "$ROOT\target\debug\app.exe" -WorkingDirectory $ROOT -PassThru -RedirectStandardError 'C:\dev\tty\vt-verify-win\logs\exp.err'
+$p = Start-Process -FilePath "$ROOT\target\debug\leantty.exe" -WorkingDirectory $ROOT -PassThru -RedirectStandardError 'C:\dev\tty\vt-verify-win\logs\exp.err'
 "p type: $($p.GetType().FullName); p.Id=$($p.Id)"
 Start-Sleep -Seconds 5
 $proc = Get-Process -Id $p.Id -ErrorAction SilentlyContinue

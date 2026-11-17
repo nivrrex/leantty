@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -27,10 +27,10 @@ public class WH {
 '@
 
 [void][WH]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 0)
-$env:APP_TRACE_FILE = "$OUT\probe17.trace"
-$env:APP_DUMP_SNAPSHOT = "$OUT\probe17.dump"
+$env:LEANTTY_TRACE_FILE = "$OUT\probe17.trace"
+$env:LEANTTY_DUMP_SNAPSHOT = "$OUT\probe17.dump"
 $env:SHELL = 'cmd.exe'
-Remove-Item $env:APP_TRACE_FILE -ErrorAction SilentlyContinue
+Remove-Item $env:LEANTTY_TRACE_FILE -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath $AppBin -WorkingDirectory $ROOT -PassThru -RedirectStandardError "$OUT\probe17.err"
 $Script:TargetPid = [uint64]$p.Id
 Start-Sleep -Seconds 4
@@ -70,15 +70,15 @@ foreach ($vk in @(0x53,0x4F,0x52,0x54)) { Send-VkH $vk; Start-Sleep -Millisecond
 Send-VkH 0x0D
 Start-Sleep -Seconds 2
 "--- dump A1 (sort running) ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 4
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 4
 [WH]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
 [WH]::keybd_event(0x43, 0, 0, [UIntPtr]::Zero)
 [WH]::keybd_event(0x43, 0, 0x0002, [UIntPtr]::Zero)
 [WH]::keybd_event(0x11, 0, 0x0002, [UIntPtr]::Zero)
 Start-Sleep -Seconds 3
 "--- dump A2 (after Ctrl+C; expect new prompt line) ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 6
-"keydbg=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG').Count)"
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 6
+"keydbg=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG').Count)"
 
 # B: WM_CHAR CJK directly to the winit window
 [void][WH]::PostMessage($real, 0x0102, [IntPtr]([uint16]0x6C49), [IntPtr]1)
@@ -88,8 +88,8 @@ Start-Sleep -Milliseconds 200
 [void][WH]::PostMessage($real, 0x0102, [IntPtr]([uint16]0x000D), [IntPtr]1)
 Start-Sleep -Seconds 3
 "--- dump B (after WM_CHAR CJK + Enter; expect CJK echoed) ---"
-Get-Content $env:APP_DUMP_SNAPSHOT | Select-Object -First 8
-"keydbg=$(@(Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG').Count)"
+Get-Content $env:LEANTTY_DUMP_SNAPSHOT | Select-Object -First 8
+"keydbg=$(@(Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG').Count)"
 "--- KEYDBG tail ---"
-Select-String -Path $env:APP_TRACE_FILE -Pattern 'KEYDBG' | Select-Object -Last 6 | ForEach-Object { $_.Line }
+Select-String -Path $env:LEANTTY_TRACE_FILE -Pattern 'KEYDBG' | Select-Object -Last 6 | ForEach-Object { $_.Line }
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue

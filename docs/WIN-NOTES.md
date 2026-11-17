@@ -25,7 +25,7 @@
 - pwsh 7.6.6 本机 ConPTY 启动即 FailFast（totalWidth=-17；80x24 与 120x30 同），powershell.exe 5.1 正常；windows.toml 示例 shell 在 pwsh 修复前于本机启动即崩（字体项本身无错，banner 已经网格渲染）。
 - Get-Process MainWindowHandle 命中 6x6 隐藏 "Winit Thread Event Target" 工具窗；真窗须按 class "Window Class"（标题 tty）EnumWindows 枚举；同桌面 PI agent 同名 "tty" 窗，pid 为唯一权威。
 - app 为 console 子系统，自带可见 ConsoleWindowClass 控制台窗（抢焦点）；e2e 启动后隐藏。
-- ConPTY spawn 后 app 的 fd 2 失效（其后 eprintln 全部丢失）；诊断改用 APP_TRACE_FILE 文件直写。
+- ConPTY spawn 后 app 的 fd 2 失效（其后 eprintln 全部丢失）；诊断改用 LEANTTY_TRACE_FILE 文件直写。
 - 前台解锁配方（probe13/15 实证）：SPI_SETFOREGROUNDLOCKTIMEOUT=0 + AttachThreadInput(app UI 线程) + SetFocus + SetForegroundWindow + GetForegroundWindow 非零校验。
 - 真实控制台 Ctrl+C 对照两 API 路径不可用（probe18/19）：GenerateConsoleCtrlEvent 跨控制台投递无效（ping/sleep 均存活）、WriteConsoleInput 报 err=6（ERROR_INVALID_HANDLE）；判别改由 e2e case m（PS 引擎可中断命令正控）在同一链路完成。
 - Y 首跑 wrapper 漏 set SHELL，app 默认起 cmd.exe，Start-Sleep 报 not recognized、Y2DONE 假阳性；修正重测（PHASE2A-WIN-ADD §1）。
@@ -50,9 +50,9 @@
 - 请求 9（3A）：crates/pty/tests/pty_windows.rs 的 ctrl_c_probe_powershell_ping 在本机稳定失败——drain_quiet 的 800 ms 静默阈值小于 ping 的 TTL 间隔（~1 s）与本机 powershell 冷启动（~1167 ms），预取只拿到 banner 后断言失败，并使测试进程以 0xC000013A 退出；`crates/pty` 在 3A 合并中无改动（git diff --stat 为空），串行执行同样失败。建议静默阈值提到 ≥1.5 s 或改为等首个 TTL/超时。状态=已验证事实，未擅改。
 - 请求 10（3A）：crates/app/src/lib.rs:912 的 `let t_present = Instant::now();` 仅在 `#[cfg(debug_assertions)]` 分支使用，release 构建报 `unused variable: t_present` 警告（clippy dev profile 看不到）；建议加 cfg 门控或 `let _ = t_present;`。状态=已验证事实。
 - 请求 11（3C，观测增强）：启动分段仍缺两个打点——renderer/字形缓存初始化完成、首帧提交前。本机实测（release，5 次中位）：config 25 / window 107 / surface 12 / pty_spawn 9 / fontdb 53 / 字体组 158 / first_frame 823，覆盖约 364 ms，还剩约 460 ms 无打点（且 first_pty_byte 1061 晚于 first_frame 823，说明不是等 shell）。不改变行为。状态=已验证事实 + 待拆分。
-- 请求 12（3C，待验证）：大段输出在 app 内推进极慢——debug 二进制下 app 内 cmd 执行 `type` 20 000 行（1.28 MB）180 s 内未到结束标记，dump 停在 L000050；100 行 60 s 内未完成；同时段 APP_PERF_FRAMES 显示 render_ms 中位 1–3 ms（release）/16–18 ms（debug）、present 1–2 ms、coalesced≈130，渲染侧空闲。建议在读线程→channel→vt.feed 路径统计每秒喂入字节数，确认是否存在节流。未定位，仅现象记录。
+- 请求 12（3C，待验证）：大段输出在 app 内推进极慢——debug 二进制下 app 内 cmd 执行 `type` 20 000 行（1.28 MB）180 s 内未到结束标记，dump 停在 L000050；100 行 60 s 内未完成；同时段 LEANTTY_PERF_FRAMES 显示 render_ms 中位 1–3 ms（release）/16–18 ms（debug）、present 1–2 ms、coalesced≈130，渲染侧空闲。建议在读线程→channel→vt.feed 路径统计每秒喂入字节数，确认是否存在节流。未定位，仅现象记录。
 - 事实变更（3C，已验证）：上一轮把 `ctrl_c_probe_powershell_ping` 的 0xC000013A 归给 clear_console_ctrl_ignore **是错的**。A/B 对照（启用/禁用测试内 reignore）均 5/5 通过；真因是 `t4_e8_ffi_ctrl_c_to_ping` 在 AttachConsole 失败后调 `GenerateConsoleCtrlEvent(0, 0)`，进程组 0 广播到调用者自身控制台组，把 harness 杀掉。已在该测试内修（仅测试进程重新忽略 Ctrl-C），windows.rs 未改。
-- 请求 13（3D，P1 数据丢失，已验证事实）：`crates/app/src/lib.rs:1233` 的 `WindowEvent::Resized` 未过滤最小化/零尺寸——最小化时窗口收到 1×1，行列被 `min(1)` 钳位后 `vt.resize(1,1)` 把终端内容裁掉；Windows 实测最小化期间 dump 头为 `# cols=1 rows=1`，恢复后文本丢失（暗像素 4465→2104，逐像素 diff 5413，基线噪声 0；`APP_FORCE_FULL_REDRAW=1` 同样不救）。建议 cols/rows 为 0（或 physical_size 任一维为 0）时跳过 vt/pty resize，或记住最小化前尺寸。未改共用代码。
+- 请求 13（3D，P1 数据丢失，已验证事实）：`crates/app/src/lib.rs:1233` 的 `WindowEvent::Resized` 未过滤最小化/零尺寸——最小化时窗口收到 1×1，行列被 `min(1)` 钳位后 `vt.resize(1,1)` 把终端内容裁掉；Windows 实测最小化期间 dump 头为 `# cols=1 rows=1`，恢复后文本丢失（暗像素 4465→2104，逐像素 diff 5413，基线噪声 0；`LEANTTY_FORCE_FULL_REDRAW=1` 同样不救）。建议 cols/rows 为 0（或 physical_size 任一维为 0）时跳过 vt/pty resize，或记住最小化前尺寸。未改共用代码。
 - 请求 14（3D，输入侧现象，待验证）：WezTerm conpty（20240203）下向原始读端粘贴 >450 KB 停在约 450 000 字节不再前进（三次：450554 / 456442 / 459002），系统 conhost 正常完成 1 MB（5.7 s）与 10 MB（60.7 s）；release 构建。是否为 ConPTY 输入流控或探针（`ReadFile` 原始读）在新 ConPTY 下的读取差异未区分。建议在共享读线程→channel→vt.feed 路径加“每秒喂入字节数”观测。
 - 事实更正（3D，已验证）：3C 记录的“1 MB 级输出推进极慢而渲染空闲”在 release 下**不成立**——20 000 行 5.47 s、2 000 000 行 330 s（中位）均正常完成，渲染 render 4 ms / present 1 ms。3C 当时用的是 debug 构建 + 每帧写 dump，属测量方法污染；该项降级为测量问题，不是缺陷。
 - 事实（3D，已验证）：release 2M 行 120×30 三次 323.6/333.7/330.1 s；200×60 单次 325.0 s（render 中位 11 ms）；WezTerm conpty 120×30 单次 229.0 s（比系统 conhost 快约 1.44×）。
@@ -124,13 +124,13 @@
 - 事实（3P，已验证）：P4 OOM 的四个候选中，**"zip 自包含"被证伪**（zip 在 RunDir 之外）、**"整文件 ReadAllText"被证伪**（3O 代码无此调用）、**"遗留 app 持日志"被复现**（独占句柄下两种策略都报共享冲突，已由 P4 前 `Stop-AllKitApps` 消除前置条件）、**"Compress-Archive 内存"机制成立**（154.5 MB 输入 → 峰值 WS 355 MB ≈ 1.7×，Optimal 4.2 s）；目标机 1029 s 的 OOM 未在本机复现（本机 run 目录约 1 MB）。
 - 事实（3P，已验证）：DPI 感知必须在新进程第一条语句设置——本机实测全新进程调用 `SetProcessDpiAwarenessContext(-4)` 返回 True，加载 `System.Windows.Forms` 后再调用返回 False；kit v3 用子进程 `shot.ps1` 承担枚举与截图，`summary.json` 实测 `dpi_aware=true`；本机缩放为 96dpi/1.0（非 150%），150% 效果未验证。
 - 事实（3Q，已验证）：4Q 的严格解析在 Windows 上按预期工作——`WGPU_BACKEND` 取值 dx12/DX12/"dx12 "/vulkan/"dx12,vulkan"/vk/空/乱码 九种，`backends_env` 原样回显（含尾随空格），`backends_effective` 大小写无关、空格裁掉、组合正确；无法识别的记号直接报错并回显（`WGPU_BACKEND='dx' 含无法识别的后端记号 ["dx"]`）；空值等价于未设置。DX12 枚举到 `Microsoft Basic Render Driver type=Cpu`（被过滤），Vulkan 枚举 0 个。
-- 事实（3Q，已验证）：`APP_GPU_ALLOW_SOFTWARE=1` 使 GPU 测试从 SKIP 变为真实执行——`gpu_parity` 8/8 通过（199.9 s，WARP）；默认无开关时全部 SKIP。
+- 事实（3Q，已验证）：`LEANTTY_GPU_ALLOW_SOFTWARE=1` 使 GPU 测试从 SKIP 变为真实执行——`gpu_parity` 8/8 通过（199.9 s，WARP）；默认无开关时全部 SKIP。
 - 事实（3Q，已验证，WARP/DX12 软件路径）：启动 10 次 first_frame 中位 477/最小 395 ms，`gpu_init_ms=107.6`，adapter=`Microsoft Basic Render Driver` `software=true`，surface=`Bgra8Unorm/Fifo/Opaque 960x480`，用户可见软件适配器警告 1 行；内容与 CPU 同图 max_diff=252、diff_ratio 2.22%、gt32 1.46%、结构性缺行/列 0/12（12=滚动条）；**空闲 20 秒 frames_window/os/resize/other 全 0 → 4Q 的"空闲不渲染"修复在 Windows 上也成立**；20 次缩放 ratio 0.28%、最小化与遮挡 diff 0；吞吐 30 万行 128.4 s（CPU 49–62 s）；1MB/5MB 粘贴精确、Ctrl-C 65 531、loop_gap 39 ms；浸泡 5 min ws 316.6 MB、priv 541.3 MB 无趋势；关窗 236 ms 无 panic。
 - 事实（3Q，已验证）：kit v4 的 P2 在无真实适配器时会跑 warp 兜底变体并给 `PASS (WARP only)`；两次试跑（-Quick 5.8 min、默认 17.9 min）P2 均真实执行 WARP，`idle 20 s -> 0 frame(s)`、`vs S_cpu diff_ratio 0.83%`、`throughput 59.5 s`。
 - 事实（3Q，已验证，kit 自身 7 个缺陷）：P2 缺 warp 兜底；Confirm-Typing 只吃 session；主进程内 `System.IO.Compression` 与已加载的 WinForms 混用会卡死（拆 `zip-run.ps1`）；`& powershell.exe @args` 用自动变量 `$args` 导致子进程变交互式挂起（改 `$zipArgs`）；`summary.json` 序列化整个 Env 图会卡死（只序列化原语）；stage 记录字段名是 error 不是 note；`@(...)|Where` 单元素非数组导致 `.Count` 报错。
 - 请求 1（3Q，观测 P3）：`gpu_surface_ms` 之后建议补一条 present/帧延迟配置的打点，便于区分 WARP 与真实 GPU 的 present 行为。状态=已验证事实（缺打点）。
 - 请求 1（3P，构建配置 P1）：`crates/render/Cargo.toml` 的 wgpu `default-features = false` 未启 `std`，使 `WGPU_BACKEND` 在编译期被丢弃（4P 文档宣称可用）。建议加 `"std"`；否则 Windows 上的后端选择与其观测永远无效。状态=已验证事实（源码+探针）。
-- 请求 1（3O，观测 P3）：启动期内存峰值（406–416 MB）在 `APP_PERF_FRAMES=1` 下没有可对齐的分段打点，目标机上若要定位需在 renderer 初始化前后补采样点。状态=已验证事实。
+- 请求 1（3O，观测 P3）：启动期内存峰值（406–416 MB）在 `LEANTTY_PERF_FRAMES=1` 下没有可对齐的分段打点，目标机上若要定位需在 renderer 初始化前后补采样点。状态=已验证事实。
 - 请求 1（3N，CI P1）：`crates/render/src/lib.rs:63` 的 `pub(crate) use eperf;` unused import，使 `clippy -D warnings` 与 release 零告警门槛无法达成；删掉或使用即可。状态=已验证事实。
 - 请求 2（3N，测试 P2）：`frame_bytes_identical` 的 `GOLDEN_FINGERPRINT` 绑定单一 DejaVu 文件尺寸（343140 B），Windows 侧为 340712 B 因而恒 SKIP，黄金校验在该平台失效；建议改为指纹集合或分平台期望值。状态=已验证事实。
 - 请求 1（3M，功能 P2）：`render::load_font_list()`（后台回退路径）不打 `font_steps_us`（3L 提出，3M 用 YS/Y1 兜出数量级）。状态=已验证事实。
@@ -159,10 +159,10 @@
 ## 阶段 3S（2026-11-16）结论
 
 - 合并 Linux 4T（`phase4t-done` = `8132ade`，轻量 tag）到 win，合并提交 `b926a01`，0 冲突；Windows 专属文件整体 sha256 合并前后一致（`8540f797…`）。状态=已验证事实。
-- Windows 门禁（合并后）：debug/release 0 告警、clippy `-D warnings` dev/release 均 0、`cargo test --workspace` 211 passed / 0 failed、`wgpu 30.0.2`、`gpu_parity` + `APP_GPU_ALLOW_SOFTWARE=1`（DX12 WARP）10/10 通过。状态=已验证事实。
+- Windows 门禁（合并后）：debug/release 0 告警、clippy `-D warnings` dev/release 均 0、`cargo test --workspace` 211 passed / 0 failed、`wgpu 30.0.2`、`gpu_parity` + `LEANTTY_GPU_ALLOW_SOFTWARE=1`（DX12 WARP）10/10 通过。状态=已验证事实。
 - `t6_probe_spawn_from_devtty_cwd` 硬编码 `C:\dev\tty`（仓库已迁到 E:）：未建等价目录时必失败；本轮以 `mklink /J C:\dev\tty E:\dev\tty` 复原环境后全绿。属测试硬编码，未改。状态=已验证事实。
 - **Windows shell 退出检测（A=4r / B=4s / C=4t，各 12 组合 × 3 次）**：A 全部在子进程退出后 3.1–4.3 s 内退出；B 与 C 全部 15 s 内不退出（cpu 后端、系统 conhost 与随附 ConPTY 两种部署、cmd 与 pwsh 一致）。直接杀 shell 子进程：A 107–127 ms 退出，B/C 均不退出。状态=已验证事实。
 - 因此 Linux 4T 对"4S 空闲静默引入退出检测回归"的判断在 Windows 成立；但 4T 的 1 秒存活检查在 Windows 上**未生效**（C 与 B 同表现），触发 3S 任务书停止条件（未改 crates/）。状态=已验证事实（表现）+ 工程判断（归因）。
 - 定位证据（C）：子 shell 存活 30 s 无输出时 13 s 内仅 1 条 5 秒统计行（`loops=1`）→ 1 秒唤醒从未发生；杀 shell 后 4 s 不退出，随后一次窗口最小化/还原事件即立即退出 → `try_wait` 有效、缺的只是定时唤醒。状态=已验证事实。
 - 待验证假设：存活唤醒块在空闲那次 `about_to_wait` 中被提前 `return` 跳过，或 `wait_scheduled` 残留为真；两者需在 crates 内加计数/日志区分（本任务不允许改）。推翻条件：加一行日志即可判定。状态=待验证假设。
-- 上轮（3R）回报中的 keygen / SQLite / `send-keys --hex` / `tonight.sh` / `F7a`·`F7b` / `watchdog` 在仓库历史与工作区**均无命中**；`APP_VT` 不存在（仅 3R 自建脚本使用，app 不读取）；`process_group` 只出现在 ConPTY Ctrl 事件测试的进程组参数里。状态=已验证事实。
+- 上轮（3R）回报中的 keygen / SQLite / `send-keys --hex` / `tonight.sh` / `F7a`·`F7b` / `watchdog` 在仓库历史与工作区**均无命中**；`LEANTTY_VT` 不存在（仅 3R 自建脚本使用，app 不读取）；`process_group` 只出现在 ConPTY Ctrl 事件测试的进程组参数里。状态=已验证事实。

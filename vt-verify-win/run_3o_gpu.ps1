@@ -1,12 +1,12 @@
 # t2: GPU failure paths on a machine without a real GPU adapter.
 # Every launch uses the 3N direct-handle wrapper (cmd /c "... 2>log") with
-# APP_PERF_FRAMES=1; nothing here uses PowerShell's Start-Process redirection.
+# LEANTTY_PERF_FRAMES=1; nothing here uses PowerShell's Start-Process redirection.
 # Only the app.exe started by this script is ever stopped (and it is expected to
 # exit by itself for backend=gpu).
 # ASCII only.
 param(
     [string]$Kit = 'C:\dev\tty\vt-verify-win\3o-gpu',
-    [string]$App = 'C:\dev\tty\target\release\app.exe'
+    [string]$App = 'C:\dev\tty\target\release\leantty.exe'
 )
 $ErrorActionPreference = 'Stop'
 $dir = $Kit
@@ -24,7 +24,7 @@ function Run-Case {
     param([string]$Tag, [string]$Cfg, [hashtable]$EnvVars = @{}, [int]$WaitExitSec = 120, [switch]$ExpectExit)
     $log = Join-Path $dir ('logs\' + $Tag + '.log')
     $wrapper = Join-Path $dir ('run-' + $Tag + '.cmd')
-    $lines = @('@echo off', ('cd /d "{0}"' -f $dir), 'set APP_PERF_FRAMES=1')
+    $lines = @('@echo off', ('cd /d "{0}"' -f $dir), 'set LEANTTY_PERF_FRAMES=1')
     foreach ($k in $EnvVars.Keys) { $lines += ('set {0}={1}' -f $k, $EnvVars[$k]) }
     $lines += ('"{0}" --config "{1}" 2>"{2}"' -f $App, (Join-Path $dir $Cfg), $log)
     $lines += 'echo EXITCODE=%ERRORLEVEL%'

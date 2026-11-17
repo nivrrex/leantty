@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
 $OUT = 'C:\dev\tty\vt-verify-win\logs\e2e-probe'
 New-Item -ItemType Directory -Force -Path $OUT | Out-Null
-$AppBin = "$ROOT\target\debug\app.exe"
+$AppBin = "$ROOT\target\debug\leantty.exe"
 
 Add-Type -TypeDefinition @'
 using System;
@@ -138,9 +138,9 @@ $before = @(Get-Process app -ErrorAction SilentlyContinue | Select-Object -Expan
 $wrapper = "$OUT\y1-wrapper.cmd"
 Set-Content -Path $wrapper -Encoding ASCII @'
 @echo off
-set APP_DUMP_SNAPSHOT=C:\dev\tty\vt-verify-win\logs\e2e-probe\y1.dump
+set LEANTTY_DUMP_SNAPSHOT=C:\dev\tty\vt-verify-win\logs\e2e-probe\y1.dump
 set SHELL=powershell.exe
-C:\dev\tty\target\debug\app.exe
+C:\dev\tty\target\debug\leantty.exe
 '@
 Remove-Item "$OUT\y1.dump" -ErrorAction SilentlyContinue
 schtasks /create /tn tty-y1 /tr "cmd /c $wrapper" /sc once /st 23:59 /it /f | Out-Null
@@ -165,9 +165,9 @@ if ($y1pid -gt 0) {
 $wrapper2 = "$OUT\y2-wrapper.cmd"
 Set-Content -Path $wrapper2 -Encoding ASCII @'
 @echo off
-set APP_DUMP_SNAPSHOT=C:\dev\tty\vt-verify-win\logs\e2e-probe\y2.dump
+set LEANTTY_DUMP_SNAPSHOT=C:\dev\tty\vt-verify-win\logs\e2e-probe\y2.dump
 set SHELL=powershell.exe
-C:\dev\tty\target\debug\app.exe
+C:\dev\tty\target\debug\leantty.exe
 '@
 Remove-Item "$OUT\y2.dump" -ErrorAction SilentlyContinue
 $before2 = @(Get-Process app -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)

@@ -1,5 +1,5 @@
 #!/bin/sh
-# e2e 验收（阶段 B）：Xvfb(:99) + openbox + app + xdotool，断言经 APP_DUMP_SNAPSHOT 文本钩子。
+# e2e 验收（阶段 B）：Xvfb(:99) + openbox + app + xdotool，断言经 LEANTTY_DUMP_SNAPSHOT 文本钩子。
 # 一条命令跑全部用例；失败时保留 dump 与截图。变量全部来自环境/脚本位置推导。
 #
 # 安全护栏（阶段 3B 任务 1）：所有 X11 操作经 scripts/e2e/guard.sh 的 x11 包装，
@@ -41,12 +41,12 @@ done
 sleep 0.5
 # per-case 日志与 app-run.log 追加写入，跨 run 残留会污染断言（如 stderr 不含 wake），每次开头清空
 rm -f "$OUT"/case*.log "$OUT"/app-run.log
-APP_BIN="$ROOT/target/debug/app"
+LEANTTY_BIN="$ROOT/target/debug/leantty"
 
 for tool in Xvfb xdotool openbox import python3 strings; do
     command -v "$tool" >/dev/null 2>&1 || { echo "FATAL: $tool 未安装"; exit 1; }
 done
-[ -x "$APP_BIN" ] || { echo "FATAL: $APP_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：APP_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
+[ -x "$LEANTTY_BIN" ] || { echo "FATAL: $LEANTTY_BIN 不存在，请先 cargo build -p app（e2e 用 debug 二进制：LEANTTY_DUMP_SNAPSHOT 钩子仅 debug 构建编译）"; exit 1; }
 PASS=0; FAIL=0
 
 # e2e 默认后端：阶段 4B 起默认配置是 renderer.backend=auto（会优先 GPU），
@@ -57,7 +57,7 @@ cat >"$E2E_CFG" <<'TOML'
 [renderer]
 backend = "cpu"
 TOML
-export APP_CONFIG="$E2E_CFG"
+export LEANTTY_CONFIG="$E2E_CFG"
 
 # GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
 # 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
@@ -77,33 +77,33 @@ else
     FAIL=$((FAIL+1))
 fi
 
-# release 构建检查：APP_DUMP_SNAPSHOT 钩子仅 debug（#[cfg(debug_assertions)] 门控整个
+# release 构建检查：LEANTTY_DUMP_SNAPSHOT 钩子仅 debug（#[cfg(debug_assertions)] 门控整个
 # 函数与钩子字符串）——release 二进制中该字符串不应存在。
-if strings "$ROOT/target/release/app" 2>/dev/null | grep -q APP_DUMP_SNAPSHOT; then
-    echo "FAIL release-hook-leak (APP_DUMP_SNAPSHOT 出现在 release 二进制)"
+if strings "$ROOT/target/release/leantty" 2>/dev/null | grep -q LEANTTY_DUMP_SNAPSHOT; then
+    echo "FAIL release-hook-leak (LEANTTY_DUMP_SNAPSHOT 出现在 release 二进制)"
     FAIL=$((FAIL+1))
 else
-    echo "PASS release-hook-gated (release 二进制无 APP_DUMP_SNAPSHOT)"
+    echo "PASS release-hook-gated (release 二进制无 LEANTTY_DUMP_SNAPSHOT)"
     PASS=$((PASS+1))
 fi
 
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"; exit 0' EXIT INT TERM
 e2e_start_wm "$OUT/openbox.log"
 
-WID=""; APP_PID=""
+WID=""; LEANTTY_PID=""
 
 wait_window() { # 等 app 窗口出现并置 WID；按 PID 枚举窗口并校验 _NET_WM_PID 归属当前 app（防前序用例 kill 后的残留窗口条目）。窗口标题随 dynamic_title 变化（false 时为二进制名），故不按窗口名匹配。首字体含 CJK 时 from_bytes 一次性成本约 7s（DECISIONS 登记），等待上限放宽到 40×0.5=20s。
     local i=0 pid wid
     WID=""
     while [ $i -lt 40 ]; do
         # 进程已退（zombie）立即失败：X server 连接偶发失败等启动错误不再空等 20s。
-        if [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; then
+        if [ "$(awk '{print $3}' /proc/$LEANTTY_PID/stat 2>/dev/null)" = "Z" ]; then
             return 1
         fi
-        for wid in $(x11 xdotool search --pid "$APP_PID" 2>/dev/null); do
+        for wid in $(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null); do
             pid=$(xprop -id "$wid" _NET_WM_PID 2>/dev/null | grep -o '[0-9]*$' || true)
-            if [ -n "$pid" ] && [ "$pid" = "$APP_PID" ]; then
+            if [ -n "$pid" ] && [ "$pid" = "$LEANTTY_PID" ]; then
                 WID=$wid
                 return 0
             fi
@@ -118,24 +118,24 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     local log=${2:-$OUT/app-run.log}
     local attempt=1
     if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-        APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" "$LEANTTY_BIN" >>"$log" 2>&1 &
     else
-        APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$LEANTTY_BIN" >>"$log" 2>&1 &
     fi
-    APP_PID=$!
+    LEANTTY_PID=$!
     if ! wait_window; then
         # X server 连接偶发失败（Xvfb 序列环境已验证）：进程已退出（kill -0 失败
         # 或 zombie）则 1s 后重试一次；进程存活但窗口未到则不重试（避免叠 app）。
-        if [ $attempt -lt 2 ] && { ! kill -0 $APP_PID 2>/dev/null || [ "$(awk '{print $3}' /proc/$APP_PID/stat 2>/dev/null)" = "Z" ]; }; then
+        if [ $attempt -lt 2 ] && { ! kill -0 $LEANTTY_PID 2>/dev/null || [ "$(awk '{print $3}' /proc/$LEANTTY_PID/stat 2>/dev/null)" = "Z" ]; }; then
             attempt=$((attempt+1))
             echo "retry start_app: 第 $((attempt-1)) 次启动进程已退出，1s 后重试" >&2
             sleep 1
             if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh APP_COLS="$3" APP_ROWS="$4" "$APP_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" "$LEANTTY_BIN" >>"$log" 2>&1 &
             else
-                APP_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$APP_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$LEANTTY_BIN" >>"$log" 2>&1 &
             fi
-            APP_PID=$!
+            LEANTTY_PID=$!
             if wait_window; then
                 x11 xdotool windowactivate "$WID" >/dev/null 2>&1
                 x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -143,8 +143,8 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
             fi
         fi
         echo "FAIL start_app: 未找到 tty 窗口"
-        echo "  diag: APP_PID=$APP_PID search=[$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | tr '\n' ' ')]"
-        ps -o pid,stat,cmd -p $APP_PID 2>/dev/null || echo "  diag: app 进程不存在"
+        echo "  diag: LEANTTY_PID=$LEANTTY_PID search=[$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | tr '\n' ' ')]"
+        ps -o pid,stat,cmd -p $LEANTTY_PID 2>/dev/null || echo "  diag: app 进程不存在"
         echo "  diag: applog=[$(cat "$log" 2>/dev/null | tr '\n' '|')]"
         tail -2 "$OUT/openbox.log" 2>/dev/null | sed 's/^/  ob: /'
         FAIL=$((FAIL+1))
@@ -159,9 +159,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
 }
 
 stop_app() {
-    [ -n "$APP_PID" ] && kill $APP_PID 2>/dev/null
-    [ -n "$APP_PID" ] && wait $APP_PID 2>/dev/null
-    APP_PID=""
+    [ -n "$LEANTTY_PID" ] && kill $LEANTTY_PID 2>/dev/null
+    [ -n "$LEANTTY_PID" ] && wait $LEANTTY_PID 2>/dev/null
+    LEANTTY_PID=""
 }
 
 # 等 dump 文件出现 pattern（最多 5s）
@@ -186,10 +186,10 @@ assert_dump() { # $1 用例名 $2 文件 $3 pattern
     fi
 }
 
-assert_app_exits() { # $1 用例名（APP_PID 须全局）
+assert_app_exits() { # $1 用例名（LEANTTY_PID 须全局）
     local i=0 alive=1
     while [ $i -lt 10 ]; do
-        kill -0 $APP_PID 2>/dev/null || { alive=0; break; }
+        kill -0 $LEANTTY_PID 2>/dev/null || { alive=0; break; }
         sleep 0.5
         i=$((i+1))
     done
@@ -200,8 +200,8 @@ assert_app_exits() { # $1 用例名（APP_PID 须全局）
         FAIL=$((FAIL+1))
         cp "$D" "$OUT/$1-fail.dump" 2>/dev/null
         x11 import -window root "$OUT/$1-fail.png" 2>/dev/null
-        ps -o pid,stat,wchan:20,cmd -p $APP_PID >"$OUT/$1-fail-ps.txt" 2>&1
-        x11 xdotool search --pid "$APP_PID" >"$OUT/$1-fail-windows.txt" 2>&1
+        ps -o pid,stat,wchan:20,cmd -p $LEANTTY_PID >"$OUT/$1-fail-ps.txt" 2>&1
+        x11 xdotool search --pid "$LEANTTY_PID" >"$OUT/$1-fail-windows.txt" 2>&1
         x11 wmctrl -l >"$OUT/$1-fail-wmctrl.txt" 2>&1
     fi
     stop_app
@@ -361,7 +361,7 @@ else
     echo "SKIP case8-alt-screen (vim/less 均未安装，无法构造交替屏)"
 fi
 
-# 用例 9：启动参数 120x30（window.dimensions 经 APP_COLS/APP_ROWS env 层）→
+# 用例 9：启动参数 120x30（window.dimensions 经 LEANTTY_COLS/LEANTTY_ROWS env 层）→
 # 快照 cols/rows 与 stty size 一致（网格由字体度量算出，dimensions 决定初始行列）
 D="$OUT/case9-dims120x30.dump"
 L="$OUT/case9-dims120x30.log"
@@ -391,8 +391,8 @@ L="$OUT/case10-cjk-config.log"
 # CPU 后端的 dump 钩子（# font 行），故派生一份把 backend 固定为 cpu 的副本。
 CFG10="$OUT/case10-cfg.toml"
 sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/examples/linux.toml" >"$CFG10"
-APP_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$APP_BIN" --config "$CFG10" >>"$L" 2>&1 &
-APP_PID=$!
+LEANTTY_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$LEANTTY_BIN" --config "$CFG10" >>"$L" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -845,7 +845,7 @@ if start_app "$D" "$L"; then
 fi
 
 
-# 用例 22：IME 预编辑叠加渲染（任务 2C.3）——APP_TEST_PREEDIT（仅 debug）
+# 用例 22：IME 预编辑叠加渲染（任务 2C.3）——LEANTTY_TEST_PREEDIT（仅 debug）
 # 注入组合串后：叠加区域像素与无 Preedit 时不同、下划线像素存在、
 # dump（终端网格）不含该文本（证明未写入终端状态）。
 D="$OUT/case22-preedit.dump"
@@ -857,7 +857,7 @@ if start_app "$D" "$L"; then
     x11 import -window root "$A" 2>/dev/null
     stop_app
     # 带 Preedit 注入再启动（debug 专有开关）
-    export APP_TEST_PREEDIT="中文字"
+    export LEANTTY_TEST_PREEDIT="中文字"
     if start_app "$D" "$L"; then
         sleep 1.2
         x11 import -window root "$B" 2>/dev/null
@@ -902,14 +902,14 @@ if start_app "$D" "$L"; then
             echo "PASS case22-preedit-not-in-grid (dump 不含预编辑文本)"
             PASS=$((PASS+1))
         fi
-        unset APP_TEST_PREEDIT
+        unset LEANTTY_TEST_PREEDIT
         x11 xdotool key --window "$WID" ctrl+d
         sleep 0.3
         x11 xdotool key --window "$WID" ctrl+d
         assert_app_exits "case22-preedit-exits"
         assert_no_wake "case22-preedit-no-wake" "$L"
     fi
-    unset APP_TEST_PREEDIT
+    unset LEANTTY_TEST_PREEDIT
 fi
 
 
@@ -934,7 +934,7 @@ backend = "cpu"
 dimensions = { columns = 80, lines = 24 }
 dynamic_title = false
 TOML
-export APP_CONFIG="$CFG_ON"
+export LEANTTY_CONFIG="$CFG_ON"
 if start_app "$D" "$L"; then
     sleep 1
     # window.position：X11 下初始位置最终由窗口管理器决定（winit 的请求不保证被采纳）。
@@ -958,7 +958,7 @@ if start_app "$D" "$L"; then
     assert_app_exits "case23-title-exits"
     assert_no_wake "case23-title-no-wake" "$L"
 fi
-export APP_CONFIG="$CFG_OFF"
+export LEANTTY_CONFIG="$CFG_OFF"
 if start_app "$D" "$L"; then
     sleep 1
     x11 xdotool type --window "$WID" "printf '\\033]0;T999\\007'"
@@ -985,7 +985,7 @@ if start_app "$D" "$L"; then
     assert_app_exits "case23-static-exits"
     assert_no_wake "case23-static-no-wake" "$L"
 fi
-export APP_CONFIG="$E2E_CFG"
+export LEANTTY_CONFIG="$E2E_CFG"
 
 
 # 用例 24：大段粘贴静止排空（任务 2D.2，P1）——1MB 已知模式粘贴后不产生任何
@@ -1057,7 +1057,7 @@ fi
 
 
 # 用例 26：增量渲染正确性（阶段 3A 任务 3）——同一输入序列分别以增量与
-# APP_FORCE_FULL_REDRAW=1（仅 debug）运行，截取窗口图像断言逐像素相等。
+# LEANTTY_FORCE_FULL_REDRAW=1（仅 debug）运行，截取窗口图像断言逐像素相等。
 # 覆盖：文本输出、光标移动、视口滚动、选区高亮、滚动条。
 D="$OUT/case26-incr.dump"
 L="$OUT/case26-incr.log"
@@ -1101,9 +1101,9 @@ run_sequence() { # $1=force(full|incr) $2=png
     return 0
 }
 if run_sequence incr "$A"; then
-    export APP_FORCE_FULL_REDRAW=1
+    export LEANTTY_FORCE_FULL_REDRAW=1
     if run_sequence full "$B"; then
-        unset APP_FORCE_FULL_REDRAW
+        unset LEANTTY_FORCE_FULL_REDRAW
         if [ -s "$A" ] && [ -s "$B" ]; then
             DIFF=$(compare -metric AE "$A" "$B" null: 2>&1 | head -1 | tr -dc '0-9')
             : "${DIFF:=unknown}"
@@ -1121,16 +1121,16 @@ if run_sequence incr "$A"; then
             FAIL=$((FAIL+1))
         fi
     else
-        unset APP_FORCE_FULL_REDRAW
-        echo "FAIL case26-force-full-start (APP_FORCE_FULL_REDRAW 运行启动失败)"
+        unset LEANTTY_FORCE_FULL_REDRAW
+        echo "FAIL case26-force-full-start (LEANTTY_FORCE_FULL_REDRAW 运行启动失败)"
         FAIL=$((FAIL+1))
     fi
 fi
-unset APP_FORCE_FULL_REDRAW
+unset LEANTTY_FORCE_FULL_REDRAW
 
 
 # 用例 27：滚动场景增量渲染正确性——输出 300 行后用滚动绑定
-# （PageUp/PageDown → ScrollPageUp/Down）滚动，增量与 APP_FORCE_FULL_REDRAW=1
+# （PageUp/PageDown → ScrollPageUp/Down）滚动，增量与 LEANTTY_FORCE_FULL_REDRAW=1
 # 两次运行截取窗口图像断言逐像素相等。
 D27="$OUT/case27-scroll.dump"
 L27="$OUT/case27-scroll.log"
@@ -1170,16 +1170,16 @@ scroll_seq() { # $1=png
     sleep 0.6
     x11 import -window "$WID" "$1" 2>/dev/null
 }
-export APP_CONFIG="$CFG27"
+export LEANTTY_CONFIG="$CFG27"
 if start_app "$D27" "$L27"; then
     scroll_seq "$A27"
     stop_app
-    export APP_FORCE_FULL_REDRAW=1
+    export LEANTTY_FORCE_FULL_REDRAW=1
     if start_app "$D27" "$L27"; then
         scroll_seq "$B27"
         stop_app
     fi
-    unset APP_FORCE_FULL_REDRAW
+    unset LEANTTY_FORCE_FULL_REDRAW
     if [ -s "$A27" ] && [ -s "$B27" ]; then
         DIFF27=$(compare -metric AE "$A27" "$B27" null: 2>&1 | head -1 | tr -dc '0-9')
         : "${DIFF27:=unknown}"
@@ -1194,9 +1194,9 @@ if start_app "$D27" "$L27"; then
     else
         echo "FAIL case27-scroll-incremental-equals-full (截图缺失)"; FAIL=$((FAIL+1))
     fi
-    export APP_CONFIG="$E2E_CFG"
+    export LEANTTY_CONFIG="$E2E_CFG"
 fi
-export APP_CONFIG="$E2E_CFG"
+export LEANTTY_CONFIG="$E2E_CFG"
 
 
 # 用例 28：自适应帧间隔的尾沿渲染（阶段 3C 任务 4）——大量输出后立即打印结束标记，
@@ -1244,8 +1244,8 @@ dimensions = { columns = 100, lines = 30 }
 [colors.primary]
 background = "#008040"
 TOML
-APP_CONFIG="$CFG29" APP_DUMP_SNAPSHOT="$D29" SHELL=/bin/sh "$APP_BIN" >"$L29" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG29" LEANTTY_DUMP_SNAPSHOT="$D29" SHELL=/bin/sh "$LEANTTY_BIN" >"$L29" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     # 强制一个"非整格"窗口尺寸：在网格尺寸上各加 7/5 像素。
     GEO=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null)
@@ -1289,8 +1289,8 @@ backend = "cpu"
 dimensions = { columns = 80, lines = 24 }
 TOML
 # 参照：不注入预编辑，内容固定
-APP_CONFIG="$CFG30" SHELL=/bin/sh "$APP_BIN" >"$L30" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG30" SHELL=/bin/sh "$LEANTTY_BIN" >"$L30" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
     sleep 0.6
@@ -1300,8 +1300,8 @@ if wait_window; then
     stop_app
 fi
 # 注入预编辑，1.2s 后自动清除：先抓"有预编辑"，再抓"清除后"
-APP_CONFIG="$CFG30" APP_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" APP_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/sh "$APP_BIN" >>"$L30" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG30" LEANTTY_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" LEANTTY_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/sh "$LEANTTY_BIN" >>"$L30" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
     sleep 0.6
@@ -1339,8 +1339,8 @@ backend = "cpu"
 [window]
 dimensions = { columns = 80, lines = 24 }
 TOML
-APP_CONFIG="$CFG31" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_BIN" >"$L31" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG31" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$L31" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
     sleep 0.6
@@ -1370,7 +1370,7 @@ fi
 
 # 用例 32（4B-fix3）：粘贴写入 PTY 后必须**由粘贴本身**主动排一帧。
 #   构造：`stty -echo` 关闭回显（此后无回显字节可驱动渲染），由 debug 钩子
-#   APP_TEST_PASTE 在事件循环内部触发同步粘贴（不产生鼠标/键盘事件，因此不会
+#   LEANTTY_TEST_PASTE 在事件循环内部触发同步粘贴（不产生鼠标/键盘事件，因此不会
 #   顺带触发 RedrawRequested）。断言：粘贴后出现首帧，且该帧由 urgent 路径驱动
 #   （urgent=true）——回退"写完主动排一帧"的加固后，将没有任何新帧、也没有该行。
 CFG32="$OUT/case32-paste-frame.toml"
@@ -1378,10 +1378,10 @@ H32="$OUT/case32-frames.hash"
 L32="$OUT/case32-paste-frame.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG32"
 rm -f "$H32"
-APP_CONFIG="$CFG32" APP_PERF_FRAMES=1 APP_FRAME_HASH="$H32" APP_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
-  APP_TEST_PASTE="SILENT_PASTE" APP_TEST_PASTE_AT_MS=3500 \
-  SHELL=/bin/sh "$APP_BIN" >"$L32" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG32" LEANTTY_PERF_FRAMES=1 LEANTTY_FRAME_HASH="$H32" LEANTTY_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
+  LEANTTY_TEST_PASTE="SILENT_PASTE" LEANTTY_TEST_PASTE_AT_MS=3500 \
+  SHELL=/bin/sh "$LEANTTY_BIN" >"$L32" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1426,8 +1426,8 @@ D33="$OUT/case33-minimize.dump"
 L33="$OUT/case33-minimize.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG33"
 rm -f "$D33"
-APP_CONFIG="$CFG33" APP_DUMP_SNAPSHOT="$D33" SHELL=/bin/sh "$APP_BIN" >"$L33" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG33" LEANTTY_DUMP_SNAPSHOT="$D33" SHELL=/bin/sh "$LEANTTY_BIN" >"$L33" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1463,8 +1463,8 @@ L34="$OUT/case34-inverse.log"
 S34="$OUT/case34-inverse.png"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG34"
 rm -f "$D34"
-APP_CONFIG="$CFG34" APP_DUMP_SNAPSHOT="$D34" SHELL=/bin/sh "$APP_BIN" >"$L34" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG34" LEANTTY_DUMP_SNAPSHOT="$D34" SHELL=/bin/sh "$LEANTTY_BIN" >"$L34" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1503,8 +1503,8 @@ S35="$OUT/case35-paste-inverse.png"
 CLIP35="$OUT/case35-clip.txt"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG35"
 printf 'PASTED35XX' > "$CLIP35"
-APP_CONFIG="$CFG35" SHELL=/bin/bash "$APP_BIN" >"$L35" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG35" SHELL=/bin/bash "$LEANTTY_BIN" >"$L35" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1570,8 +1570,8 @@ count_color() { # $1=img $2=#rrggbb
     convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
 }
-APP_CONFIG="$CFG36" SHELL=/bin/sh "$APP_BIN" >"$L36" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG36" SHELL=/bin/sh "$LEANTTY_BIN" >"$L36" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1619,8 +1619,8 @@ count_cursor() { # $1=img → 品红像素数（-fuzz 2%；先黑化非目标色
     convert "$1" -fuzz 2% -fill black +opaque "#ff00ff" -fill white -opaque "#ff00ff" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
 }
-APP_CONFIG="$CFG37" SHELL=/bin/sh "$APP_BIN" >"$L37" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG37" SHELL=/bin/sh "$LEANTTY_BIN" >"$L37" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1680,9 +1680,9 @@ CLIP38="$OUT/case38-clip.txt"
 D38="$OUT/case38-dump.txt"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG38"
 awk 'BEGIN { for (i = 0; i < 20000; i++) printf "paste38_line_%06d\n", i }' > "$CLIP38"
-APP_CONFIG="$CFG38" APP_PERF_FRAMES=1 APP_TEST_PASTE="@$CLIP38" APP_TEST_PASTE_AT_MS=2500 \
-    APP_DUMP_SNAPSHOT="$D38" SHELL=/bin/sh "$APP_BIN" >"$L38" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG38" LEANTTY_PERF_FRAMES=1 LEANTTY_TEST_PASTE="@$CLIP38" LEANTTY_TEST_PASTE_AT_MS=2500 \
+    LEANTTY_DUMP_SNAPSHOT="$D38" SHELL=/bin/sh "$LEANTTY_BIN" >"$L38" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1753,9 +1753,9 @@ rm -f "$RECV39"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG39"
 awk 'BEGIN { for (i = 0; i < 260000; i++) printf "p39_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP39"
 SZ39=$(wc -c < "$CLIP39")
-APP_CONFIG="$CFG39" APP_PERF_FRAMES=1 APP_TEST_PASTE="@$CLIP39" APP_TEST_PASTE_AT_MS=1500 \
-    SHELL=/bin/sh "$APP_BIN" >"$L39" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG39" LEANTTY_PERF_FRAMES=1 LEANTTY_TEST_PASTE="@$CLIP39" LEANTTY_TEST_PASTE_AT_MS=1500 \
+    SHELL=/bin/sh "$LEANTTY_BIN" >"$L39" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1794,9 +1794,9 @@ L40="$OUT/case40-close.log"
 CLIP40="$OUT/case40-clip.txt"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG40"
 awk 'BEGIN { for (i = 0; i < 200000; i++) printf "p40_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP40"
-APP_CONFIG="$CFG40" APP_TEST_PASTE="@$CLIP40" APP_TEST_PASTE_AT_MS=1500 \
-    SHELL=/bin/sh "$APP_BIN" >"$L40" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG40" LEANTTY_TEST_PASTE="@$CLIP40" LEANTTY_TEST_PASTE_AT_MS=1500 \
+    SHELL=/bin/sh "$LEANTTY_BIN" >"$L40" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1804,16 +1804,16 @@ if wait_window; then
     x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 30'"
     x11 xdotool key --window "$WID" Return
     sleep 3.0
-    SHELL_PID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
-    kill -TERM "$APP_PID" 2>/dev/null
+    SHELL_PID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     i=0
     while [ $i -lt 40 ]; do
-        kill -0 "$APP_PID" 2>/dev/null || break
+        kill -0 "$LEANTTY_PID" 2>/dev/null || break
         sleep 0.25
         i=$((i+1))
     done
     ALIVE40=0
-    kill -0 "$APP_PID" 2>/dev/null && ALIVE40=1
+    kill -0 "$LEANTTY_PID" 2>/dev/null && ALIVE40=1
     PANIC40=$(grep -c "panicked at" "$L40" || true)
     ORPHAN40=0
     [ -n "$SHELL_PID" ] && kill -0 "$SHELL_PID" 2>/dev/null && ORPHAN40=1
@@ -1823,7 +1823,7 @@ if wait_window; then
     else
         echo "FAIL case40-close-during-paste (alive=$ALIVE40 panic=$PANIC40 orphan=$ORPHAN40)"; FAIL=$((FAIL+1))
     fi
-    APP_PID=""
+    LEANTTY_PID=""
     kill -0 "${SHELL_PID:-0}" 2>/dev/null && kill_own "$SHELL_PID"
 else
     echo "FAIL case40-close-during-paste (窗口未出现)"; FAIL=$((FAIL+1))
@@ -1841,8 +1841,8 @@ W41="$OUT/case41-wedge.txt"
 rm -f "$W41"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' > "$CFG41"
 awk 'BEGIN { for (i = 0; i < 130000; i++) printf "paste5m_line_%06d_yyyyyyyyyyyyyy\n", i }' > "$CLIP41"
-APP_CONFIG="$CFG41" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_BIN" >"$L41" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG41" LEANTTY_PERF_FRAMES=1 SHELL=/bin/bash "$LEANTTY_BIN" >"$L41" 2>&1 &
+LEANTTY_PID=$!
 if wait_window; then
     sleep 1.2
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1895,8 +1895,8 @@ fi
 CFG42="$OUT/case42-osc-color.toml"
 L42="$OUT/case42-osc-color.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42"
-APP_CONFIG="$CFG42" APP_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/sh "$APP_BIN" >"$L42" 2>&1 &
-APP_PID=$!
+LEANTTY_CONFIG="$CFG42" LEANTTY_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/sh "$LEANTTY_BIN" >"$L42" 2>&1 &
+LEANTTY_PID=$!
 count42() { # $1=img $2=#rrggbb（先黑化非目标色再白化目标色，与 case36/37 同口径）
     convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
@@ -1930,23 +1930,23 @@ else
 fi
 
 # 用例 43（4J-t3）：release + 真实粘贴路径的写线程停顿门禁（cpu 与 gpu 各一轮）。
-#   背景：case38 用 debug 钩子（APP_TEST_PASTE）与 dump，release 侧只有手工测量，
+#   背景：case38 用 debug 钩子（LEANTTY_TEST_PASTE）与 dump，release 侧只有手工测量，
 #   而 4G 的错误结论正是"钩子与 release 不一致"造成的。本用例全程 release 二进制、
 #   真实路径（xclip + 右键 → do_paste → paste_from_text），不依赖任何 debug 钩子。
 #   测量：粘贴开始前即用单进程链式 xdotool 连续注入鼠标移动，使事件循环始终有事做，
 #   于是 [perf] loop_gap_ms 记录的就是"事件处理延迟"，被写阻塞就会暴露为长间隔。
-APP_REL="$ROOT/target/release/app"
+LEANTTY_REL="$ROOT/target/release/leantty"
 for c43 in cpu gpu; do
     CFG43="$OUT/case43-$c43.toml"
     L43="$OUT/case43-$c43.log"
     CLIP43="$OUT/case43-clip.txt"
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$c43" > "$CFG43"
-    if [ ! -x "$APP_REL" ]; then
+    if [ ! -x "$LEANTTY_REL" ]; then
         echo "FAIL case43-release-paste-stall-$c43 (缺 release 二进制：先 cargo build --release)"; FAIL=$((FAIL+1)); continue
     fi
     awk 'BEGIN { for (i = 0; i < 20000; i++) printf "paste41_line_%06d\n", i }' > "$CLIP43"
-    APP_CONFIG="$CFG43" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_REL" >"$L43" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG43" LEANTTY_PERF_FRAMES=1 SHELL=/bin/bash "$LEANTTY_REL" >"$L43" 2>&1 &
+    LEANTTY_PID=$!
     if wait_window; then
         x11 xdotool windowactivate "$WID" >/dev/null 2>&1
         x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -2052,16 +2052,16 @@ thumb_ratio() { # $1=图片 → 打印拇指底部占比（0..1，失败打印 -
         | sed -n 's/^\([0-9]*\),\([0-9]*\):.*gray(\([0-9]*\)).*/\2 \3/p' \
         | awk -v h="$_h" '{ if ($2+0 > 200 && $1+0 > m) m=$1+0 } END { if (m == "") print -1; else printf "%.3f\n", (m+1)/h }'
 }
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
 for c44 in cpu gpu; do
     CFG44="$OUT/case44-$c44.toml"
     L44="$OUT/case44-$c44.log"
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$c44" > "$CFG44"
-    if [ ! -x "$APP_REL" ]; then
+    if [ ! -x "$LEANTTY_REL" ]; then
         echo "FAIL case44-input-follow-$c44 (缺 release 二进制)"; FAIL=$((FAIL+1)); continue
     fi
-    APP_CONFIG="$CFG44" SHELL=/bin/sh "$APP_REL" >"$L44" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG44" SHELL=/bin/sh "$LEANTTY_REL" >"$L44" 2>&1 &
+    LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case44-input-follow-$c44 (窗口未出现)"; FAIL=$((FAIL+1)); continue
     fi
@@ -2141,8 +2141,8 @@ done
 #   键入入队"，实测 4 分钟待写数据涨到 49MB/770 项（全在匿名 mmap）。
 #   本用例把 1MB 粘贴连续灌入"逐行执行命令"的慢消费者，断言：
 #     写线程队列 ≤ 1MiB（WRITER_QUEUE_CAP）+ 一块余量；pending_paste ≤ 8MiB（PASTE_BACKLOG_CAP）。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
-if [ ! -x "$APP_REL" ]; then
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case45-paste-backlog-bounded (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     CFG45="$OUT/case45.toml"
@@ -2150,8 +2150,8 @@ else
     CLIP45="$OUT/case45-clip.txt"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 120, lines = 30 }\n' > "$CFG45"
     awk 'BEGIN { for (i = 0; i < 20000; i++) printf "case45_paste_line_%06d_xxxx\n", i }' > "$CLIP45"
-    APP_CONFIG="$CFG45" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L45" 2>&1 &
-    APP_PID=$!
+    LEANTTY_CONFIG="$CFG45" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L45" 2>&1 &
+    LEANTTY_PID=$!
     if wait_window; then
         x11 xdotool windowactivate "$WID" >/dev/null 2>&1
         x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -2197,8 +2197,8 @@ fi
 #   1 次三次尝试都不执行）；截断还可能切开 UTF-8 字符。
 #   本用例：慢消费者 + 连续 1MB 粘贴直至出现 paste_rejected，随后键入 WEDGE_OK_$((1+1))
 #   并回车，标记文件必须被写出。cpu 3 轮 + gpu 2 轮（合计 5/5）。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
-if [ ! -x "$APP_REL" ]; then
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case46-paste-reject-no-wedge (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     CLIP46="$OUT/case46-clip.txt"
@@ -2213,8 +2213,8 @@ else
         M46="/tmp/case46-marker-$it.txt"
         rm -f "$M46"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$B46" > "$CFG46"
-        APP_CONFIG="$CFG46" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_REL" >"$L46" 2>&1 &
-        APP_PID=$!
+        LEANTTY_CONFIG="$CFG46" LEANTTY_PERF_FRAMES=1 SHELL=/bin/bash "$LEANTTY_REL" >"$L46" 2>&1 &
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case46-paste-reject-no-wedge (第 $it 轮窗口未出现)"; break
         fi
@@ -2275,7 +2275,7 @@ fi
 #   背景（Windows 3J）：<1MB 的 paste_text_accepted 路径未调用 follow_viewport_before_input，
 #   只有 ≥1MB 的分块路径调用了 → 小粘贴在上滚后不回底（4K 的 case44 只覆盖了大粘贴）。
 #   观测沿用 case44 的"滚动条拇指底部占比"：底部≈1.00，上滚后<0.95。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
 thumb_ratio() { # $1=图片 → 拇指底部占比（0..1，失败 -1）
     _w=$(identify -format "%w" "$1" 2>/dev/null) || { echo -1; return; }
     _h=$(identify -format "%h" "$1" 2>/dev/null) || { echo -1; return; }
@@ -2283,7 +2283,7 @@ thumb_ratio() { # $1=图片 → 拇指底部占比（0..1，失败 -1）
         | sed -n 's/^\([0-9]*\),\([0-9]*\):.*gray(\([0-9]*\)).*/\2 \3/p' \
         | awk -v h="$_h" '{ if ($2+0 > 200 && $1+0 > m) m=$1+0 } END { if (m == "") print -1; else printf "%.3f\n", (m+1)/h }'
 }
-if [ ! -x "$APP_REL" ]; then
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case47-paste-follow-by-size (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     # 五种**精确字节数**的粘贴素材（用 head -c 截断，避免估算偏差）
@@ -2300,8 +2300,8 @@ else
         CFG47="$OUT/case47-$c47.toml"
         L47="$OUT/case47-$c47.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$c47" > "$CFG47"
-        APP_CONFIG="$CFG47" APP_PERF_FRAMES=1 SHELL=/bin/bash "$APP_REL" >"$L47" 2>&1 &
-        APP_PID=$!
+        LEANTTY_CONFIG="$CFG47" LEANTTY_PERF_FRAMES=1 SHELL=/bin/bash "$LEANTTY_REL" >"$L47" 2>&1 &
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case47-paste-follow-by-size-$c47 (窗口未出现)"; FAIL=$((FAIL+1)); continue
         fi
@@ -2377,24 +2377,24 @@ else
     fi
 fi
 
-# 用例 48（4O-t3）：启动期 [perf] 默认关闭，且 APP_PERF_FRAMES=1 时恢复。
+# 用例 48（4O-t3）：启动期 [perf] 默认关闭，且 LEANTTY_PERF_FRAMES=1 时恢复。
 #   背景：PHASE3L-WIN §2.1 实测同一 release 二进制经 PowerShell 重定向时每条 eprintln
 #   约 6.8ms；启动期 30+ 行 [perf] 既是可观测的启动成本也是噪音。现仅在设置
-#   APP_PERF_FRAMES 时打印；面向用户的警告/错误不受影响（本用例一并断言）。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
-if [ ! -x "$APP_REL" ]; then
+#   LEANTTY_PERF_FRAMES 时打印；面向用户的警告/错误不受影响（本用例一并断言）。
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case48-perf-log-default-off (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     CFG48="$OUT/case48-perf.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG48"
     L48A="$OUT/case48-default.err"
     L48B="$OUT/case48-on.err"
-    ( APP_CONFIG="$CFG48" SHELL=/bin/sh timeout 5 "$APP_REL" >/dev/null 2>"$L48A" ) || true
-    ( APP_CONFIG="$CFG48" APP_PERF_FRAMES=1 SHELL=/bin/sh timeout 5 "$APP_REL" >/dev/null 2>"$L48B" ) || true
+    ( LEANTTY_CONFIG="$CFG48" SHELL=/bin/sh timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48A" ) || true
+    ( LEANTTY_CONFIG="$CFG48" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48B" ) || true
     N48A=$(grep -c "\[perf\]" "$L48A" 2>/dev/null || true)
     N48B=$(grep -c "\[perf\]" "$L48B" 2>/dev/null || true)
     FF48=$(grep -c "first_frame_ms" "$L48B" 2>/dev/null || true)
-    echo "  默认 [perf] 行数=${N48A:-0}（应 0）  APP_PERF_FRAMES=1 时=${N48B:-0}（应 >0，含 first_frame_ms=$FF48）"
+    echo "  默认 [perf] 行数=${N48A:-0}（应 0）  LEANTTY_PERF_FRAMES=1 时=${N48B:-0}（应 >0，含 first_frame_ms=$FF48）"
     if [ "${N48A:-1}" -eq 0 ] && [ "${N48B:-0}" -gt 10 ] && [ "${FF48:-0}" -ge 1 ]; then
         echo "PASS case48-perf-log-default-off (default=$N48A on=$N48B)"; PASS=$((PASS+1))
     else
@@ -2410,8 +2410,8 @@ fi
 #   观测：`[perf] loop_gap_ms ... frames_window=N`（每 5 秒一行，只统计真正绘制的帧）。
 #   判据：输出停止后的空闲窗口 frames_window ≤3；窗口缩放后同样在 1 个窗口内收敛到 ≤3。
 #   另：WINIT_X11_SCALE_FACTOR=1.5 重复一次（模拟 Windows 上的非整数缩放）。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
-if [ ! -x "$APP_REL" ]; then
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case49-gpu-idle-no-spin (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     OK49=0; TOT49=0
@@ -2421,11 +2421,11 @@ else
         L49="$OUT/case49-$variant.log"
         printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG49"
         if [ "$variant" = "s15" ]; then
-            WINIT_X11_SCALE_FACTOR=1.5 APP_CONFIG="$CFG49" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L49" 2>&1 &
+            WINIT_X11_SCALE_FACTOR=1.5 LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L49" 2>&1 &
         else
-            APP_CONFIG="$CFG49" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L49" 2>&1 &
+            LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L49" 2>&1 &
         fi
-        APP_PID=$!
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case49-gpu-idle-no-spin-$variant (窗口未出现)"; continue
         fi
@@ -2468,8 +2468,8 @@ fi
 #   修复：about_to_wait 入口默认 ControlFlow::Wait，只有确有代办工作才升级为 WaitUntil。
 #   判据：输出停止并收尾后，连续 12 秒内不得出现新的 5 秒统计行（即 loops=0），
 #   且这段时间 CPU tick 增量 ≤24（≈2% 单核）、voluntary ctx 增量 <150。
-APP_REL="${APP_REL:-$ROOT/target/release/app}"
-if [ ! -x "$APP_REL" ]; then
+LEANTTY_REL="${LEANTTY_REL:-$ROOT/target/release/leantty}"
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case50-idle-no-timer-wake (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     OK50=0; TOT50=0
@@ -2478,8 +2478,8 @@ else
         CFG50="$OUT/case50-$b50.toml"
         L50="$OUT/case50-$b50.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$b50" > "$CFG50"
-        APP_CONFIG="$CFG50" APP_PERF_FRAMES=1 SHELL=/bin/sh "$APP_REL" >"$L50" 2>&1 &
-        APP_PID=$!
+        LEANTTY_CONFIG="$CFG50" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L50" 2>&1 &
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case50-idle-no-timer-wake-$b50 (窗口未出现)"; continue
         fi
@@ -2490,12 +2490,12 @@ else
         x11 xdotool key --window "$WID" Return
         sleep 8                      # 输出结束 + 尾沿收尾
         N1=$(grep -c "loop_gap_ms=" "$L50" 2>/dev/null || true)
-        read -r U1 S1 < <(awk '{print $14, $15}' "/proc/$APP_PID/stat")
-        V1=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$APP_PID/status")
+        read -r U1 S1 < <(awk '{print $14, $15}' "/proc/$LEANTTY_PID/stat")
+        V1=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$LEANTTY_PID/status")
         sleep 12
         N2=$(grep -c "loop_gap_ms=" "$L50" 2>/dev/null || true)
-        read -r U2 S2 < <(awk '{print $14, $15}' "/proc/$APP_PID/stat")
-        V2=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$APP_PID/status")
+        read -r U2 S2 < <(awk '{print $14, $15}' "/proc/$LEANTTY_PID/stat")
+        V2=$(awk '/^voluntary_ctxt_switches/ {print $2}' "/proc/$LEANTTY_PID/status")
         TICK=$(( (U2 + S2) - (U1 + S1) ))
         VDELTA=$(( V2 - V1 ))
         NEW=$(( ${N2:-0} - ${N1:-0} ))
@@ -2512,15 +2512,15 @@ else
     fi
 fi
 
-# case51/case52（阶段 4V t2/t3）：存活检查唤醒。用诊断开关 APP_FORCE_LIVENESS_POLL=1
+# case51/case52（阶段 4V t2/t3）：存活检查唤醒。用诊断开关 LEANTTY_FORCE_LIVENESS_POLL=1
 # 让 Linux 也走 Windows 的"每秒轮询 try_wait"分支，从而在本机验证：
 #   51. 空闲时按 ~1 次/秒定时唤醒（每 5 秒一条统计行，loops/wake_timer ≈ 5）；
 #   52. 子进程被杀后 ≤3 秒退出窗口。
 # 注意：Linux 上**杀会话首进程必然导致 pty 挂断**（内核在会话首进程退出时发送挂断，
 # 即使其它进程仍持有从端），读线程必被唤醒 → case52 在 Linux 上"修复前也是绿的"，
 # 它只用来验证退出路径 ≤3s；回归检测由 case51（空闲唤醒数）承担，回退时 case51 变红。
-# 三个后端都覆盖：cpu / gpu(NVIDIA) / lavapipe(软件 Vulkan，需 APP_GPU_ALLOW_SOFTWARE=1)。
-if [ ! -x "$APP_REL" ]; then
+# 三个后端都覆盖：cpu / gpu(NVIDIA) / lavapipe(软件 Vulkan，需 LEANTTY_GPU_ALLOW_SOFTWARE=1)。
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case51-liveness-wake (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     OK51=0; TOT51=0
@@ -2532,14 +2532,14 @@ else
         [ "$b51" = "cpu" ] && printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG51"
         # lavapipe：显式 gpu 后端 + 允许软件适配器 + 指定软件 ICD
         if [ "$b51" = "lavapipe" ]; then
-            APP_CONFIG="$CFG51" APP_PERF_FRAMES=1 APP_FORCE_LIVENESS_POLL=1 \
-                APP_GPU_ALLOW_SOFTWARE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-                SHELL=/bin/sh "$APP_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+            LEANTTY_CONFIG="$CFG51" LEANTTY_PERF_FRAMES=1 LEANTTY_FORCE_LIVENESS_POLL=1 \
+                LEANTTY_GPU_ALLOW_SOFTWARE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
+                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
         else
-            APP_CONFIG="$CFG51" APP_PERF_FRAMES=1 APP_FORCE_LIVENESS_POLL=1 \
-                SHELL=/bin/sh "$APP_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+            LEANTTY_CONFIG="$CFG51" LEANTTY_PERF_FRAMES=1 LEANTTY_FORCE_LIVENESS_POLL=1 \
+                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
         fi
-        APP_PID=$!
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case51-liveness-wake-$b51 (窗口未出现)"; stop_app; continue
         fi
@@ -2581,27 +2581,27 @@ else
             printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' > "$CFG52"
         fi
         if [ "$b52" = "lavapipe" ]; then
-            APP_CONFIG="$CFG52" APP_FORCE_LIVENESS_POLL=1 APP_GPU_ALLOW_SOFTWARE=1 \
+            LEANTTY_CONFIG="$CFG52" LEANTTY_FORCE_LIVENESS_POLL=1 LEANTTY_GPU_ALLOW_SOFTWARE=1 \
                 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-                SHELL=/bin/sh "$APP_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
+                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
         else
-            APP_CONFIG="$CFG52" APP_FORCE_LIVENESS_POLL=1 SHELL=/bin/sh \
-                "$APP_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
+            LEANTTY_CONFIG="$CFG52" LEANTTY_FORCE_LIVENESS_POLL=1 SHELL=/bin/sh \
+                "$LEANTTY_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
         fi
-        APP_PID=$!
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case52-liveness-exit-$b52 (窗口未出现)"; stop_app; continue
         fi
         sleep 2
         # 只用记录的 PID：子进程（/bin/sh）是 app 的直接子进程
-        SPID=$(pgrep -P "$APP_PID" 2>/dev/null | head -1)
+        SPID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
         if [ -z "$SPID" ]; then
             echo "FAIL case52-liveness-exit-$b52 (找不到子进程)"; stop_app; continue
         fi
         kill -KILL "$SPID" 2>/dev/null
         T0=$(date +%s%N); i=0; GONE=""
         while [ $i -le 30 ]; do
-            ST=$(ps -o stat= -p "$APP_PID" 2>/dev/null | tr -d ' ')
+            ST=$(ps -o stat= -p "$LEANTTY_PID" 2>/dev/null | tr -d ' ')
             case "$ST" in ""|Z*) GONE=1; break;; esac
             sleep 0.1; i=$((i+1))
         done
@@ -2627,7 +2627,7 @@ fi
 # 每个用例都跑 cpu 与 gpu 两轮。
 MARKDIR="$OUT/shellargs"
 mkdir -p "$MARKDIR"
-if [ ! -x "$APP_REL" ]; then
+if [ ! -x "$LEANTTY_REL" ]; then
     echo "FAIL case53-shell-args (缺 release 二进制)"; FAIL=$((FAIL+1))
 else
     OK53=0; TOT53=0
@@ -2639,16 +2639,16 @@ else
         rm -f "$M53"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "echo ok > %s; exec sleep 30"]\n' \
             "$b53" "$M53" > "$CFG53"
-        APP_CONFIG="$CFG53" SHELL=/bin/sh "$APP_REL" >"$OUT/case53-$b53.out" 2>"$L53" &
-        APP_PID=$!
+        LEANTTY_CONFIG="$CFG53" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case53-$b53.out" 2>"$L53" &
+        LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case53-shell-args-$b53 (窗口未出现)"; stop_app; continue
         fi
         sleep 2
-        if [ -f "$M53" ] && [ "$(cat "$M53")" = "ok" ] && kill -0 "$APP_PID" 2>/dev/null; then
+        if [ -f "$M53" ] && [ "$(cat "$M53")" = "ok" ] && kill -0 "$LEANTTY_PID" 2>/dev/null; then
             OK53=$((OK53+1)); VERD53="标记=ok 窗口=存活"
         else
-            VERD53="标记=$( [ -f "$M53" ] && cat "$M53" || echo 无) 窗口=$(kill -0 "$APP_PID" 2>/dev/null && echo 存活 || echo 已退)"
+            VERD53="标记=$( [ -f "$M53" ] && cat "$M53" || echo 无) 窗口=$(kill -0 "$LEANTTY_PID" 2>/dev/null && echo 存活 || echo 已退)"
         fi
         echo "  [c53 $b53] /bin/sh -c 'echo ok > 标记; exec sleep 30' → $VERD53"
         stop_app
@@ -2674,8 +2674,8 @@ else
             else
                 printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' "$bc" > "$CFGC"
             fi
-            APP_CONFIG="$CFGC" SHELL=/bin/sh "$APP_REL" >"$OUT/case$CID-$bc.out" 2>"$LC" &
-            APP_PID=$!
+            LEANTTY_CONFIG="$CFGC" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case$CID-$bc.out" 2>"$LC" &
+            LEANTTY_PID=$!
             if ! wait_window; then
                 echo "FAIL case$CID-shell-args-$spec-$bc (窗口未出现)"; stop_app; continue
             fi
@@ -2687,10 +2687,10 @@ else
             sleep 1.5
             # 判据：键入的标记出现（交互 shell 正常）且进程存活；若 args 被误注入，
             # shell 会以 -c 立即退出或写入别的文件，二者都会让本断言失败。
-            if [ -f "$MT" ] && [ "$(cat "$MT")" = "typed" ] && kill -0 "$APP_PID" 2>/dev/null; then
+            if [ -f "$MT" ] && [ "$(cat "$MT")" = "typed" ] && kill -0 "$LEANTTY_PID" 2>/dev/null; then
                 OKC=$((OKC+1)); VERDC="键入标记=typed 进程=存活"
             else
-                VERDC="键入标记=$( [ -f "$MT" ] && cat "$MT" || echo 无) 进程=$(kill -0 "$APP_PID" 2>/dev/null && echo 存活 || echo 已退)"
+                VERDC="键入标记=$( [ -f "$MT" ] && cat "$MT" || echo 无) 进程=$(kill -0 "$LEANTTY_PID" 2>/dev/null && echo 存活 || echo 已退)"
             fi
             echo "  [c$CID $spec/$bc] $CLABEL → $VERDC"
             stop_app

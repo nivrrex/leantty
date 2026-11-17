@@ -159,12 +159,12 @@ fn path_priority_cli_env_default() {
     unsafe {
         let env_path = tmp.join("app-config-test.toml");
         std::env::set_var(
-            "APP_CONFIG",
+            "LEANTTY_CONFIG",
             env_path.to_str().expect("temp 路径应为 UTF-8"),
         );
         let p = config::resolve_config_path(None).unwrap();
         assert_eq!(p, env_path);
-        std::env::remove_var("APP_CONFIG");
+        std::env::remove_var("LEANTTY_CONFIG");
 
         // 默认路径基准目录按平台不同：Windows 读 APPDATA，其他平台读
         // XDG_CONFIG_HOME（未设置则 $HOME/.config）。只在此测试内分支，

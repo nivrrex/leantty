@@ -1,14 +1,21 @@
 [package]
-name = "app"
+name = "leantty-app"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
+[lib]
+name = "app"
+
+[[bin]]
+name = "leantty"
+path = "src/main.rs"
+
 [dependencies]
-config = { path = "../config" }
-pty = { path = "../pty" }
-render = { path = "../render" }
-vt = { path = "../vt" }
+leantty-config = { path = "../config" }
+leantty-pty = { path = "../pty" }
+leantty-render = { path = "../render" }
+leantty-vt = { path = "../vt" }
 softbuffer.workspace = true
 winit.workspace = true
 raw-window-handle = "0.6"

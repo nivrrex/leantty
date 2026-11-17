@@ -1,15 +1,15 @@
 //! tty 终端入口：起 App 并运行事件循环。
 //!
 //! 配置加载（均为外部输入，失败回落默认，不 panic）：
-//! - 路径优先级：--config <路径> > APP_CONFIG 环境变量 > 默认配置文件路径
+//! - 路径优先级：--config <路径> > LEANTTY_CONFIG 环境变量 > 默认配置文件路径
 //! - 字段优先级：命令行 --font/--font-size > APP_* 环境变量 > 配置文件 > 默认值
 //! - 文件缺失 / 解析硬错误：stderr 报告后以默认配置启动
 //! - 字段级问题（类型错误、颜色非法、数值越界、未知字段）：stderr 警告，
 //!   该字段回落默认，配置整体仍可用
 
-/// 与库内一致：`[perf]` 诊断行受 `APP_PERF_FRAMES` 门控（阶段 4O t3）。
+/// 与库内一致：`[perf]` 诊断行受 `LEANTTY_PERF_FRAMES` 门控（阶段 4O t3）。
 fn perf_on() -> bool {
-    std::env::var_os("APP_PERF_FRAMES").is_some_and(|v| !v.is_empty())
+    std::env::var_os("LEANTTY_PERF_FRAMES").is_some_and(|v| !v.is_empty())
 }
 
 macro_rules! eperf {
@@ -104,16 +104,16 @@ fn load_config(
         }
     };
     // 环境变量层（覆盖配置文件值）
-    if let Some(cols) = env_u16("APP_COLS") {
+    if let Some(cols) = env_u16("LEANTTY_COLS") {
         config.window.dimensions.columns = cols;
     }
-    if let Some(rows) = env_u16("APP_ROWS") {
+    if let Some(rows) = env_u16("LEANTTY_ROWS") {
         config.window.dimensions.lines = rows;
     }
-    if let Some(family) = env_string("APP_FONT_FAMILY") {
+    if let Some(family) = env_string("LEANTTY_FONT_FAMILY") {
         config.font.normal.family = family;
     }
-    if let Some(size) = env_f32("APP_FONT_SIZE") {
+    if let Some(size) = env_f32("LEANTTY_FONT_SIZE") {
         config.font.size = size;
     }
     // 命令行层（最高优先级）

@@ -4,7 +4,7 @@ $ROOT = 'C:\dev\tty'
 Add-Type -AssemblyName System.Drawing
 $dump = Join-Path $OUT '3fa-sel.dump'
 Remove-Item $dump -ErrorAction SilentlyContinue
-$env:APP_DUMP_SNAPSHOT = $dump
+$env:LEANTTY_DUMP_SNAPSHOT = $dump
 $err = Join-Path $OUT '3fa-sel.err'
 $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $Cfg) -WorkingDirectory $ROOT -PassThru -RedirectStandardError $err
 $Script:FoundPid = [uint64]$p.Id; $Script:FoundClass = 'Window Class'; $Script:FoundHwnd = [IntPtr]::Zero

@@ -1,5 +1,5 @@
 [package]
-name = "render"
+name = "leantty-render"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -16,8 +16,11 @@ wgpu = { version = "=30.0.2", default-features = false, features = ["vulkan", "w
 [target.'cfg(target_os = "windows")'.dependencies]
 wgpu = { version = "=30.0.2", default-features = false, features = ["vulkan", "dx12", "wgsl"] }
 
+[lib]
+name = "render"
+
 [dependencies]
-vt = { path = "../vt" }
+leantty-vt = { path = "../vt" }
 softbuffer.workspace = true
 fontdb.workspace = true
 fontdue.workspace = true

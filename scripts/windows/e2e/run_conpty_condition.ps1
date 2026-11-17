@@ -10,7 +10,7 @@ param(
 )
 $ErrorActionPreference = 'Continue'
 $ROOT = 'C:\dev\tty'
-if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\app.exe' }
+if (-not $AppBin) { $AppBin = Join-Path $ROOT 'target\debug\leantty.exe' }
 $appDir = Split-Path -Parent $AppBin
 $logs = Join-Path $ROOT 'vt-verify-win\logs\conpty-runs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null

@@ -332,14 +332,14 @@ fn incremental_matches_full_pixel_exact() {
 
 /// 固定种子伪随机操作序列：写文本、清屏、滚动、resize、缩放、选区、光标、preedit，
 /// 每步比较增量与全量帧缓冲；不一致即失败并打印种子与首个差异坐标。
-/// 种子可用 `APP_RANDOM_SEED` 覆盖（默认固定 20260201）。
+/// 种子可用 `LEANTTY_RANDOM_SEED` 覆盖（默认固定 20260201）。
 #[test]
 fn incremental_random_sequence_3000_steps() {
-    let seed: u64 = std::env::var("APP_RANDOM_SEED")
+    let seed: u64 = std::env::var("LEANTTY_RANDOM_SEED")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(20260201);
-    println!("随机序列种子: {seed}（可用 APP_RANDOM_SEED 覆盖）");
+    println!("随机序列种子: {seed}（可用 LEANTTY_RANDOM_SEED 覆盖）");
 
     // 简单确定性 PRNG（LCG），无需新依赖。
     let mut state = seed;

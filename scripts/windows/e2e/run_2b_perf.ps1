@@ -12,7 +12,7 @@ function Measure-Start([string]$name, [string]$cfgPath, [int]$runs) {
         $dump = Join-Path $OUT "$name-$i.dump"
         $err = Join-Path $OUT "$name-$i.err"
         Remove-Item $dump, $err -ErrorAction SilentlyContinue
-        $env:APP_DUMP_SNAPSHOT = $dump
+        $env:LEANTTY_DUMP_SNAPSHOT = $dump
         # -ArgumentList with an empty array is rejected by Start-Process
         if ($cfgPath) {
             $p = Start-Process -FilePath $AppBin -ArgumentList @('--config', $cfgPath) -WorkingDirectory $ROOT -PassThru -RedirectStandardError $err
@@ -44,7 +44,7 @@ function Measure-Start([string]$name, [string]$cfgPath, [int]$runs) {
 # the dump hook only exists in debug builds, so the early-input case runs the
 # debug binary while the latency numbers above come from the release binary
 function Measure-FirstInput([string]$name, [string]$cfgPath) {
-    $Script:AppBin = Join-Path $ROOT 'target\debug\app.exe'
+    $Script:AppBin = Join-Path $ROOT 'target\debug\leantty.exe'
     $a = Start-App2 $name $cfgPath
     $Script:AppBin = $AppBin
     if ($a.hwnd -eq [IntPtr]::Zero) { return @{ ok = $false; detail = 'no window' } }

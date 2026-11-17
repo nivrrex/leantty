@@ -23,14 +23,14 @@ E2E_GUARD_DIR="$ROOT/scripts/e2e"
 
 DUR_MIN="${1:-15}"
 DUR_S=$((DUR_MIN * 60))
-APP_BIN="$ROOT/target/release/app"
-[ -x "$APP_BIN" ] || APP_BIN="$ROOT/target/debug/app"
+LEANTTY_BIN="$ROOT/target/release/leantty"
+[ -x "$LEANTTY_BIN" ] || LEANTTY_BIN="$ROOT/target/debug/leantty"
 FAILED=0
 
 for p in $(e2e_stale_pids); do kill_own "$p"; done
 sleep 0.5
 e2e_start_xvfb "$OUT/xvfb.log" || exit 1
-trap 'kill_own "${APP_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
+trap 'kill_own "${LEANTTY_PID:-}"; kill_own "${CLIP_PID:-}"; kill_own "${WM_PID:-}"; kill_own "${XVFB_PID:-}"' EXIT
 trap 'exit 1' INT TERM
 e2e_start_wm "$OUT/wm.log"
 
@@ -48,13 +48,13 @@ run_backend() { # $1 = cpu|gpu
     printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 120, lines = 30 }\n[terminal.shell]\nprogram = "/bin/bash"\nargs = ["--norc", "--noprofile"]\n' "$BACKEND" >"$CFG"
     : >"$CSV"
     echo "t_s,rss_kb,fd,threads" >>"$CSV"
-    APP_RANDOM_SEED=20260201 APP_PERF_FRAMES=1 APP_CONFIG="$CFG" SHELL=/bin/bash \
-        "$APP_BIN" >"$LOG" 2>&1 &
-    APP_PID=$!
+    LEANTTY_RANDOM_SEED=20260201 LEANTTY_PERF_FRAMES=1 LEANTTY_CONFIG="$CFG" SHELL=/bin/bash \
+        "$LEANTTY_BIN" >"$LOG" 2>&1 &
+    LEANTTY_PID=$!
     i=0
     WID=""
     while [ $i -lt 80 ]; do
-        WID=$(x11 xdotool search --pid "$APP_PID" 2>/dev/null | head -1)
+        WID=$(x11 xdotool search --pid "$LEANTTY_PID" 2>/dev/null | head -1)
         [ -n "$WID" ] && break
         sleep 0.2
         i=$((i+1))
@@ -70,7 +70,7 @@ run_backend() { # $1 = cpu|gpu
     WX=$(echo "$GEO" | grep '^X=' | cut -d= -f2)
     WY=$(echo "$GEO" | grep '^Y=' | cut -d= -f2)
 
-    echo "=== soak $BACKEND：${DUR_MIN} 分钟（pid=$APP_PID wid=$WID）"
+    echo "=== soak $BACKEND：${DUR_MIN} 分钟（pid=$LEANTTY_PID wid=$WID）"
 
     ELAPSED=0
     NEXT_SAMPLE=0
@@ -82,7 +82,7 @@ run_backend() { # $1 = cpu|gpu
         x11 xdotool key --window "$WID" Return
         case $((STEP % 8)) in
             0)
-                # 大量滚动输出（固定种子由 APP_RANDOM_SEED 控制渲染随机性）
+                # 大量滚动输出（固定种子由 LEANTTY_RANDOM_SEED 控制渲染随机性）
                 x11 xdotool type --window "$WID" "seq 1 6000 | tail -n +1"
                 x11 xdotool key --window "$WID" Return
                 ;;
@@ -173,36 +173,36 @@ run_backend() { # $1 = cpu|gpu
         sleep 1
         ELAPSED=$((ELAPSED+1))
         if [ "$ELAPSED" -ge "$NEXT_SAMPLE" ]; then
-            RSS=$(ps -o rss= -p "$APP_PID" 2>/dev/null | tr -d ' ')
-            FD=$(ls /proc/"$APP_PID"/fd 2>/dev/null | wc -l)
-            TH=$(ls /proc/"$APP_PID"/task 2>/dev/null | wc -l)
+            RSS=$(ps -o rss= -p "$LEANTTY_PID" 2>/dev/null | tr -d ' ')
+            FD=$(ls /proc/"$LEANTTY_PID"/fd 2>/dev/null | wc -l)
+            TH=$(ls /proc/"$LEANTTY_PID"/task 2>/dev/null | wc -l)
             echo "$ELAPSED,${RSS:-0},${FD:-0},${TH:-0}" >>"$CSV"
             echo "  [${BACKEND} t=${ELAPSED}s] rss=${RSS:-0}KB fd=${FD:-0} threads=${TH:-0}"
             NEXT_SAMPLE=$((NEXT_SAMPLE+30))
         fi
         # app 意外退出则提前结束
-        if ! kill -0 "$APP_PID" 2>/dev/null; then
+        if ! kill -0 "$LEANTTY_PID" 2>/dev/null; then
             echo "FAIL soak-$BACKEND (app 在 t=${ELAPSED}s 提前退出)"
             FAILED=$((FAILED+1))
-            APP_PID=""
+            LEANTTY_PID=""
             return
         fi
     done
 
     # —— 收尾：SIGTERM 并在限定时间退出 ——
-    kill -TERM "$APP_PID" 2>/dev/null
+    kill -TERM "$LEANTTY_PID" 2>/dev/null
     WAITED=0
-    while kill -0 "$APP_PID" 2>/dev/null && [ "$WAITED" -lt 20 ]; do
+    while kill -0 "$LEANTTY_PID" 2>/dev/null && [ "$WAITED" -lt 20 ]; do
         sleep 0.5
         WAITED=$((WAITED+1))
     done
-    if kill -0 "$APP_PID" 2>/dev/null; then
+    if kill -0 "$LEANTTY_PID" 2>/dev/null; then
         echo "FAIL soak-$BACKEND (SIGTERM 后 10s 未退出)"
         FAILED=$((FAILED+1))
-        kill -KILL "$APP_PID" 2>/dev/null
+        kill -KILL "$LEANTTY_PID" 2>/dev/null
     fi
-    wait "$APP_PID" 2>/dev/null
-    APP_PID=""
+    wait "$LEANTTY_PID" 2>/dev/null
+    LEANTTY_PID=""
 
     # —— 判据 ——
     if grep -qE "panicked at|RUST_BACKTRACE|thread '.*' panicked" "$LOG"; then
