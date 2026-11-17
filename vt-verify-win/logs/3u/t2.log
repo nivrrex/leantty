@@ -1,0 +1,10 @@
+case=a (no terminal.shell section -> default shell)
+a-default: child_cmdline=[C:\Windows\system32\cmd.exe /K "chcp 65001"] marker=False
+case=b (program=cmd.exe, no args)
+b-cmd-noargs: child_cmdline=[C:\Windows\system32\cmd.exe /K "chcp 65001"] marker=False
+case=c (program=cmd.exe + user args)
+c-cmd-args: child_cmdline=[C:\Windows\system32\cmd.exe /D /K "echo X>E:/dev/3u/marker.txt"] marker=True
+case=d (program=pwsh, no args)
+d-pwsh-noargs: child_cmdline=["C:\Program Files\PowerShell\7\pwsh.exe"] marker=False
+case=e (explicit empty args array)
+e-cmd-emptyargs: child_cmdline=[C:\Windows\system32\cmd.exe] marker=False
