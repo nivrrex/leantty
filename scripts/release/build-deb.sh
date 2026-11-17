@@ -59,6 +59,7 @@ DOC="$PKGROOT/usr/share/doc/$PKG"
 install -m 0644 "$ROOT/README.md" "$DOC/README.md"
 install -m 0644 "$ROOT/README.zh-CN.md" "$DOC/README.zh-CN.md"
 install -m 0644 "$ROOT/THIRD-PARTY-NOTICES.md" "$DOC/THIRD-PARTY-NOTICES.md"
+install -m 0644 "$ROOT/CHANGELOG.md" "$DOC/CHANGELOG.md"
 install -m 0644 "$ROOT/config/leantty.linux.toml" "$DOC/examples/leantty.toml"
 
 cat > "$DOC/copyright" <<EOF
@@ -154,7 +155,8 @@ cp -a "$PKGROOT/." "$WORK/debian-tmp/"
 {
     echo "$PKG ($VER) unstable; urgency=medium"
     echo
-    echo "  * Initial release."
+    echo "  * Kitty keyboard protocol input (Ctrl+C/D/P) fixed; function keys,
+     Insert/Delete/PageUp/PageDown and Ctrl+[ now produce input."
     echo
     echo " -- leantty <noreply@example.invalid>  $(date -R)"
 } > "$DOC/changelog.Debian"

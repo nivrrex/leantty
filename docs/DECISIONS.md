@@ -483,3 +483,9 @@
 - 阶段 6A 排除项（已验证事实）：③ 应答路径正常（探针 1ms 内收到 `ESC[?7u`）；② 模式已同步（每次按键重建编码器并 `set_options_from_terminal`，Up 已被编码为 `ESC[1;1:1A`）。
 - 阶段 6A 已知限制（工程判断，置信度高）：leantty 只发 Press、不发 kitty 的释放事件（`ESC[<cp>;1:3u`），而 alacritty 会发；依赖 key-up 的程序可能缺事件。推翻条件：出现必须靠 `:3` 事件工作的程序。
 - 阶段 6A 取证局限（已验证事实）：pi 0.87.1 的终端 UI（`@mariozechner/pi-tui`）已 Bun 编译进 198MB 单文件，`/root/pi` 下无 `node_modules`/`dist`，故只能从符号与注释片段（`setKittyProtocolActive`、`parseKittySequence` 等）推断其按键解析，**源码行号未核实**。
+- 阶段 6B 根因补充（已验证事实）：kitty 分支对非功能键要求 `unshifted_codepoint`（`key_encode.zig:139-151`）；legacy 的控制字符由 `ctrlSeq()`（`:708`）产生，只覆盖 `@`–`_`（`[`→1b、`\`→1c、`]`→1d、`^`→1e、`_`→1f、`@`→00），**`;` `,` `.` `'` 不在范围内**。
+- 阶段 6B 修复（已验证事实）：`map_logical_key` 补 F1–F12/Insert/PageUp/PageDown/Delete 与符号键；`route_key` 把"整串控制字符"的 text 交给编码器（Delete 由 `7f` 变为 `ESC[3~`）；`unshifted_codepoint` 改用 winit 的 `key_without_modifiers`（X11/Windows 均可用）。实测 kitty7 下 F1=`ESC[1;1P`、Delete=`ESC[3~`、符号键 Ctrl 组合均为 CSI-u。
+- 阶段 6B ctrl+[ 回写（工程判断）：仅当 legacy 模式、无 Alt、编码器返回空、键为 `BracketLeft` 时回写 `0x1b`；范围只有这一个键，未新增通用映射表。回退办法：删除该分支即恢复"无输出"。
+- 阶段 6B 未修补项（待验证假设）：legacy 的 `ctrl+;` `ctrl+,` `ctrl+.` `ctrl+'` `ctrl+shift+;` `ctrl+i` `ctrl+m` 由编码器原样不输出，记为上游行为；`ctrl+space` 编码器在 legacy 能给出 `00`、kitty 能给出 `ESC[32;5u`，但端到端注入实测为空，**疑注入侧（xdotool/WM）吞键，未核实**。推翻条件：若改用真实键盘或其他注入方式能出字节，则责任在注入侧而非应用。
+- 阶段 6B t3 未上线（已验证事实）：alacritty 在 kitty7 下每键都附带 `ESC[…;1:3u` 释放事件，而 leantty 只发 Press；且按下编码本身（Escape `1b` vs `ESC[27u`、F1 `ESC[1;1P` vs `ESC[1P`）已不同，"98 键按下与释放逐键一致"的前提不成立 → 按 t3c 回退、不发送释放事件，写入 README 已知限制。
+- 阶段 6B 启动提示降级（已验证事实）：`request_inner_size: …` 属信息性（异步提交，不是拒绝），改为 `eperf!` 门控；Xvfb 100dpi 实测默认 0 行、`LEANTTY_PERF_FRAMES=1` 时 1 行；失败分支未降级。

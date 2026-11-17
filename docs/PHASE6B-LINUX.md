@@ -108,3 +108,74 @@ leantty 与 alacritty 在 legacy / kitty flags=7 两种模式下各测 98 键；
 | `shift+semicolon` | `3a` | `3a` | `3a` | `1b5b39373b313a3375 3a 1b5b35393b313a3375` |
 | `shift+slash` | `3f` | `3f` | `3f` | `1b5b39373b313a3375 3f 1b5b34373b313a3375` |
 | `ctrl+shift+semicolon` | `` | `3a` | `` | `1b5b39373b313a3375 1b5b35393a35383b3675 1b5b35393b313a3375` |
+
+## 3. t2 诊断与修复（t2i / t2j）
+
+### 3.1 上游编码器行为（已验证事实，`vendor/ghostty-src/src/input/key_encode.zig`）
+
+- `kitty()`（第 100 行起）：非功能键靠 `event.unshifted_codepoint > 0` 建表项（第 139-151 行），
+  为 0 时 `break :entry null` 后 `return`（无输出）→ **应用必须提供码点**。
+- `legacy()` 里控制字符由 `ctrlSeq()`（第 708 行起）负责：`char` 取 `utf8[0]`（仅当 `utf8.len == 1`）
+  否则取 `logical_key.codepoint()`；随后 `@`–`_` 折成 C0（`[`→0x1b、`\`→0x1c、`]`→0x1d、
+  `^`→0x1e、`_`→0x1f、`@`→0x00）；**其它标点（`;` `,` `.` `'`）不在该范围内，直接返回 null**
+  （未核实是否属上游有意为之）。
+
+### 3.2 探测矩阵（`crates/vt` 单测，穷举 utf8 × unshifted）
+
+| 键 | legacy（带码点） | kitty7（带码点） |
+|---|---|---|
+| Space | `00` | `ESC[32;5u` |
+| BracketLeft | **空** | `ESC[91;5u` |
+| BracketRight | `1d` | `ESC[93;5u` |
+| Backslash | `1c` | `ESC[92;5u` |
+| Slash | `1f` | `ESC[47;5u` |
+| Semicolon / Comma / Period / Quote | **空** | `ESC[59;5u` / `44` / `46` / `39` |
+| I / M | **空** | `ESC[105;5u` / `ESC[109;5u` |
+
+**结论分类**：
+1. **类别 1（应用数据有误）**：kitty 下全部符号键/字母键——补上码点后编码器即输出期望字节（已修）。
+2. **类别 2（编码器无法输出）**：legacy 的 `ctrl+[`（已按裁决回写 `0x1b`，仅此一键）；`ctrl+space`
+   在 legacy 其实**能**输出 `00`（见上表），端到端测到空输出，疑似注入侧（xdotool/WM）吞键，标**待核实**。
+3. **类别 3（参考终端特有 / 上游行为）**：legacy 的 `ctrl+;` `ctrl+,` `ctrl+.` `ctrl+'`
+   `ctrl+shift+;` `ctrl+i` `ctrl+m` —— alacritty 回写原始字符或 `09`/`0d`，编码器不提供；按裁决不修补。
+
+### 3.3 修复内容
+
+- `map_logical_key`：补 `Insert / PageUp / PageDown / Delete / F1–F12` 与符号键
+  （Minus Equal Comma Period Semicolon Quote Backquote Backslash BracketLeft BracketRight Slash Space）。
+- `route_key`：整串为控制字符的 text（如 Delete 的 `0x7f`）改走编码器。
+- `unshifted_codepoint`：优先 `KeyEventExtModifierSupplement::key_without_modifiers`
+  （winit-0.30.13 `src/platform/modifier_supplement.rs:6/26`，X11 与 Windows 后端均实现），
+  回退逻辑键单字符，再回退 ASCII 折叠。
+- `ctrl+[`（legacy、无 alt、编码器返回空）回写 `0x1b`，范围仅此一键（DECISIONS 记为工程判断）。
+
+### 3.4 回归结果（修复后，98 键对拍）
+
+- legacy：只剩 `ctrl+i` `ctrl+m` `ctrl+space` `ctrl+comma` `ctrl+period` `ctrl+semicolon`
+  `ctrl+apostrophe` `ctrl+shift+semicolon` 为空（均属类别 3/待核实）；其它与 alacritty 一致。
+- kitty7：只剩 `ctrl+space`、`ctrl+shift+semicolon` 为空（前者编码器可输出 `ESC[32;5u`，端到端为空，
+  疑注入侧；后者属上游行为）。
+- 回归断言：`crates/vt/tests/key_kitty.rs` 表驱动（模式 × 键，期望取自 alacritty 基线/编码器实测）。
+
+## 4. t4 启动提示降级（已验证事实）
+
+`request_inner_size: …` 位于 `crates/app/src/lib.rs` 的 HiDPI 修正分支（`scale != 1.0` 且
+`request_inner_size` 返回 `None`，即"已异步提交"），属**信息性**；改为 `eperf!` 门控。
+Xvfb（100 dpi）实测：默认 stderr **0 行**、`LEANTTY_PERF_FRAMES=1` 时 **1 行**。
+失败分支（`snapshot`/`buffer_mut`/`surface` 等错误）未改动，仍默认输出。
+README 两份删除对应故障排查条目。
+
+## 5. t5 版本与发布文档
+
+- `workspace.package.version` → **0.1.1**（`Cargo.lock` 同步）。
+- 新增 `CHANGELOG.md`（用户视角，0.1.1 Fixed/Changed + 0.1.0），加入 `export.sh` 白名单与 deb 的
+  `/usr/share/doc/leantty/`；`changelog.Debian.gz` 条目改写为 0.1.1 的内容。
+- `build-deb.sh` 与 `export.sh` 无硬编码版本号（均从 `Cargo.toml` 读取）。
+- `THIRD-PARTY-NOTICES.md` 重新生成（295 个第三方 crate），除版本号相关行外无差异。
+
+## 6. t3 释放/重复事件：**未上线**
+
+按要求先评估：alacritty 在 kitty7 下对每个键都会额外发送 `ESC[…;1:3u` 释放事件；而 leantty 目前只发
+Press。判定条件之一是"t1f 的 98 键按下与释放事件与 alacritty 逐键一致"——leantty 的 Escape/F1 等
+按下编码与 alacritty 就不同（`ESC[27u` vs `1b`、`ESC[1P` vs `ESC[1;1P`），逐键一致的先决条件不成立，
+故按 t3c **回退全部 t3 改动、不上线**，并在 README 已知限制与 DECISIONS 写明"不发送 kitty 释放事件"。

@@ -135,7 +135,12 @@ configuration file (see the templates).
    adapter; use `"auto"` or `"cpu"`.
 5. **Paste does nothing in the terminal but works in other apps**: the shell may have bracketed
    paste enabled and the application inside can ignore it — check the program's own handling.
-6. **A line starting with "request_inner_size:" on Linux at startup**: informational. It may appear when the display scale is not 1.0; the window size is applied asynchronously and the final size arrives through a resize event. No action is needed.
+
+- **Some Ctrl combinations produce no input** (Linux): Ctrl+Semicolon, Ctrl+Comma, Ctrl+Period,
+  Ctrl+Apostrophe, Ctrl+Shift+Semicolon, and Ctrl+I / Ctrl+M are not delivered to programs; the
+  keysym-to-control-character mapping for these is not provided by the input encoder.
+- **Kitty key release events are not sent**: programs that ask for key-up reporting get key presses
+  only.
 
 ## License
 

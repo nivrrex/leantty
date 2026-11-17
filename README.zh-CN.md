@@ -120,7 +120,10 @@ leantty --help                       # 查看选项
 4. **GPU 后端启动失败**（`backend = "gpu"` 非零退出）：没有可用的 Vulkan/DX12 适配器，
    改用 `"auto"` 或 `"cpu"`。
 5. **别的程序能粘贴、这里没反应**：终端里的程序可能自己接管了括号粘贴，检查该程序的处理方式。
-6. **Linux 启动时可能出现以 "request_inner_size:" 开头的一行提示**：仅为信息性提示。显示缩放不为 1.0 时可能出现；窗口尺寸是异步生效的，最终尺寸随后经缩放事件给出，无需处理。
+
+- **部分 Ctrl 组合没有输入**（Linux）：Ctrl+Semicolon、Ctrl+Comma、Ctrl+Period、Ctrl+Apostrophe、
+  Ctrl+Shift+Semicolon 以及 Ctrl+I / Ctrl+M 不会送到程序，编码器未提供这些键到控制字符的映射。
+- **不发送 kitty 键盘协议的按键释放事件**：请求上报 key-up 的程序只能收到按下事件。
 
 ## 许可证
 

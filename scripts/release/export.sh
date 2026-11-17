@@ -19,7 +19,7 @@ if [ -e "$DEST" ] && [ -n "$(ls -A "$DEST" 2>/dev/null)" ]; then
 fi
 mkdir -p "$DEST"
 
-FILES="Cargo.toml Cargo.lock .gitignore LICENSE THIRD-PARTY-NOTICES.md README.md README.zh-CN.md"
+FILES="Cargo.toml Cargo.lock .gitignore LICENSE THIRD-PARTY-NOTICES.md README.md README.zh-CN.md CHANGELOG.md"
 DIRS="crates vendor config assets packaging"
 # 注意：export.sh 与 scan.sh 属开发侧工具，不导出（s5）。
 EXTRA=".cargo/config.toml docs/BUILDING.md scripts/gen-icons.sh scripts/release/build-deb.sh scripts/release/gen-notices.sh"
