@@ -1,4 +1,4 @@
-# Windows build script: set the env-var contract and run cargo build --workspace.
+﻿# Windows build script: set the env-var contract and run cargo build --workspace.
 # All paths come in as parameters; no absolute path is hard-coded in the repo.
 param(
     [Parameter(Mandatory = $true)][string]$Zig,
@@ -40,5 +40,12 @@ if ($ExtraCargoArgs) {
 if ($LASTEXITCODE -ne 0) {
     Write-Error "cargo build --workspace failed (exit $LASTEXITCODE)"
     exit $LASTEXITCODE
+}
+# 5B t5：图标资源由独立脚本处理（windres -> COFF -> cargo rustc 只注入最终 bin）。
+# 路径全部由脚本位置推导；不写进 .cargo/config.toml 的 rustflags（会波及 build script 链接）。
+$iconScript = Join-Path $PSScriptRoot 'gen-icon-res.ps1'
+if (Test-Path $iconScript) {
+    & $iconScript -Zig $Zig
+    if ($LASTEXITCODE -ne 0) { throw "gen-icon-res.ps1 failed (exit $LASTEXITCODE)" }
 }
 Write-Host "build.ps1 OK"
