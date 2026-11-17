@@ -52,6 +52,11 @@ fn main() -> Result<(), app::Error> {
                 std::process::exit(2);
             }
         };
+    // 阶段 5A t4（仅 Windows）：若当前进程是控制台的唯一使用者，释放控制台，
+    // 避免双击启动时残留一个黑框。必须在参数解析成功、且不是 help/version 之后，
+    // 创建事件循环之前执行（失败一律忽略）。
+    #[cfg(windows)]
+    app::free_if_sole_user();
     if let (Some(p), Some(t0)) = (proc_start, app::start_time()) {
         eperf!(
             "[perf] main_ms={:.1} since_start={:.1}",

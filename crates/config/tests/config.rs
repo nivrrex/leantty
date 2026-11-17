@@ -4,8 +4,11 @@ use std::str::FromStr;
 use config::{Action, Config, Mouse, Rgb};
 
 const EXAMPLES: &[(&str, &str)] = &[
-    ("linux", include_str!("../../../examples/linux.toml")),
-    ("windows", include_str!("../../../examples/windows.toml")),
+    ("linux", include_str!("../../../config/leantty.linux.toml")),
+    (
+        "windows",
+        include_str!("../../../config/leantty.windows.toml"),
+    ),
 ];
 
 #[test]
@@ -15,7 +18,8 @@ fn examples_load_without_warnings() {
         assert!(warnings.is_empty(), "{name} warnings: {warnings:?}");
         assert_eq!(c.window.dimensions.columns, 120);
         assert_eq!(c.window.dimensions.lines, 30);
-        assert_eq!(c.window.position, Some(config::Pos { x: 50, y: 40 }));
+        // 模板里 position 是注释掉的默认值（交给窗口管理器决定），故为 None。
+        assert_eq!(c.window.position, None);
         assert_eq!(c.window.padding, config::Padding { x: 0, y: 0 });
         assert!(c.window.dynamic_title);
         assert_eq!(c.window.opacity, 1.0);
@@ -28,10 +32,13 @@ fn examples_load_without_warnings() {
         assert!(c.selection.save_to_clipboard);
         assert!(c.colors.draw_bold_text_with_bright_colors);
         assert_eq!(c.font.fallback.len(), 1);
+        // 模板字体是通用候选（Linux DejaVu/Noto，Windows Consolas/雅黑），不带机器相关设定。
+        assert!(c.font.size > 0.0);
         assert_eq!(c.mouse.bindings.len(), 2);
         assert_eq!(c.keyboard.bindings.len(), 2);
+        // 模板不指定 shell（Unix 用 $SHELL → /bin/sh；Windows 由程序默认 cmd.exe）。
+        assert!(c.terminal.shell.is_none(), "{name} 模板不应固定 shell");
         if *name == "windows" {
-            assert_eq!(c.terminal.shell.as_ref().unwrap().program, "pwsh.exe");
             // 阶段 3A 任务 1：Windows 样例主字体改为小体积等宽西文 Consolas，
             // 大体积 CJK 字体（微软雅黑）放 fallback（主字体同步加载，大字体拖慢首帧）。
             assert_eq!(c.font.normal.family, "Consolas");
@@ -41,20 +48,20 @@ fn examples_load_without_warnings() {
             assert_eq!(
                 c.colors.primary.background,
                 Rgb {
-                    r: 0xfc,
-                    g: 0xfc,
-                    b: 0xfc
+                    r: 0x1a,
+                    g: 0x1b,
+                    b: 0x26
                 }
             );
         } else {
-            assert_eq!(c.font.normal.family, "Consolas");
-            assert_eq!(c.font.fallback[0].family, "黑体");
+            assert_eq!(c.font.normal.family, "DejaVu Sans Mono");
+            assert_eq!(c.font.fallback[0].family, "Noto Sans CJK SC");
             assert_eq!(
                 c.colors.primary.background,
                 Rgb {
-                    r: 0xf3,
-                    g: 0xf1,
-                    b: 0xe9
+                    r: 0x1a,
+                    g: 0x1b,
+                    b: 0x26
                 }
             );
         }

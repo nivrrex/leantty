@@ -89,6 +89,50 @@ fn window_icon() -> Option<winit::window::Icon> {
     }
 }
 
+// ===== 阶段 5A t4：Windows 控制台释放 =====
+
+/// 是否应该调用 `FreeConsole`：仅当**当前进程是控制台的唯一使用者**时才释放
+/// （阶段 5A t4，纯函数，便于单测）。
+///
+/// 由 `GetConsoleProcessList` 返回的进程数决定：1 表示只有自己（典型情形是从资源管理器
+/// 或 .cmd 启动、且父进程已退出），此时释放控制台不会影响别人；大于 1 说明还有其它进程
+/// 共享该控制台（例如从已打开的 cmd 窗口里启动），释放会让对方的窗口消失，故不动。
+pub fn should_free_console(process_count: u32) -> bool {
+    process_count == 1
+}
+
+#[cfg(windows)]
+mod console {
+    /// 释放本进程的控制台（失败一律忽略——这不是关键路径）。
+    ///
+    /// # Safety
+    /// 两个调用都是 kernel32 的无参数/单指针 Win32 API：
+    /// - `GetConsoleProcessList(&mut buf, len)` 的第一个参数是长 1 的 `u32` 数组（可空），
+    ///   第二个是数组长度；传 `null_mut(), 0` 时返回控制台上的进程总数，不写内存。
+    /// - `FreeConsole()` 无参数、无返回值语义（BOOL），只会失败于"本进程没有控制台"。
+    /// 两者都不会保存我们传入的指针，也不会跨调用持有引用。
+    pub fn free_if_sole_user() {
+        unsafe extern "system" {
+            fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
+            fn FreeConsole() -> i32;
+        }
+        // SAFETY: 见函数注释——空指针 + 长度 0 的查询形式是 documented 用法，
+        // 只读返回计数，不写任何内存。
+        let count = unsafe { GetConsoleProcessList(std::ptr::null_mut(), 0) };
+        if !crate::should_free_console(count) {
+            return;
+        }
+        // SAFETY: 无参数调用；返回值（BOOL）失败时唯一原因是本进程没有控制台，
+        // 按"失败一律忽略"处理，不做重试也不报错。
+        unsafe {
+            FreeConsole();
+        }
+    }
+}
+
+#[cfg(windows)]
+pub use console::free_if_sole_user;
+
 pub fn default_shell() -> &'static str {
     if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }
 }
@@ -3836,6 +3880,23 @@ mod ime_event_tests {
     fn enabled_keeps_state() {
         let (changed, _, _) = ime_preedit_update(&Ime::Enabled);
         assert!(!changed, "Enabled 不改动组合态（仅重定位候选窗）");
+    }
+}
+
+#[cfg(test)]
+mod console_tests {
+    use super::should_free_console;
+
+    #[test]
+    fn free_console_only_when_sole_user() {
+        // 只有自己是控制台唯一使用者时才释放；≥2 说明还有别的进程共享控制台。
+        assert!(should_free_console(1), "1 个进程（只有自己）应释放");
+        assert!(!should_free_console(0), "0 表示查询失败，不释放");
+        assert!(
+            !should_free_console(2),
+            "2 个及以上不释放（会关掉对方的窗口）"
+        );
+        assert!(!should_free_console(10));
     }
 }
 

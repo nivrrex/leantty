@@ -1,6 +1,9 @@
 [package]
 name = "leantty-config"
-version = "0.1.0"
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+description.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
