@@ -1,0 +1,12 @@
+kill,4r,sys,cmd,10572,118,True
+kill,4r,sys,pwsh,13220,150,True
+kill,4r,bundle,cmd,10056,101,True
+kill,4r,bundle,pwsh,14404,130,True
+kill,4s,sys,cmd,15076,-1,False
+kill,4s,sys,pwsh,9028,8965,True
+kill,4s,bundle,cmd,3252,-1,False
+kill,4s,bundle,pwsh,8420,-1,False
+kill,4v,sys,cmd,15712,1225,True
+kill,4v,sys,pwsh,6376,1400,True
+kill,4v,bundle,cmd,5376,1243,True
+kill,4v,bundle,pwsh,8216,1125,True

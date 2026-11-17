@@ -1,0 +1,8 @@
+    Checking libghostty-vt-sys v0.2.1 (E:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt-sys)
+    Checking pty v0.1.0 (E:\dev\tty\crates\pty)
+    Checking config v0.1.0 (E:\dev\tty\crates\config)
+    Checking libghostty-vt v0.2.1 (E:\dev\tty\vendor\libghostty-rs\crates\libghostty-vt)
+    Checking vt v0.1.0 (E:\dev\tty\crates\vt)
+    Checking render v0.1.0 (E:\dev\tty\crates\render)
+    Checking app v0.1.0 (E:\dev\tty\crates\app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.19s

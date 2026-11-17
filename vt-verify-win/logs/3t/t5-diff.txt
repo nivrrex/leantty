@@ -1,0 +1,12 @@
+size=960x480 total=460800 diff=4748 (1.0304%) diff_gt32=4716 (1.0234%) bbox=(33,11)-(950,476)
+scrollbar_col: width=12px px=5760 diff=9 (0.1562% of col) diff_gt32=9; col share of image=1.2500%
+outside_scrollbar: text_like_diff=4739 background_like_diff=0
+scipy 不可用：跳过连通区域
+hot1: px=474 box=(134,11)-(207,22) w=74 h=12
+hot2: px=48 box=(608,166)-(622,172) w=15 h=7
+hot3: px=39 box=(434,37)-(447,44) w=14 h=8
+hot4: px=35 box=(649,274)-(655,284) w=7 h=11
+hot5: px=35 box=(521,386)-(527,396) w=7 h=11
+components(>=10px)=165
+cpu_scrollbar_dark_rows=450 span=(0,479)
+gpu_scrollbar_dark_rows=450 span=(0,479)

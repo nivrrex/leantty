@@ -16,7 +16,11 @@ use vt::{Action, CellWide, Key, KeyEncoder, Mods, VtTerminal};
 
 fn spawn_collect(
     shell: &str,
-) -> (NativePty, mpsc::Receiver<Vec<u8>>, std::thread::JoinHandle<()>) {
+) -> (
+    NativePty,
+    mpsc::Receiver<Vec<u8>>,
+    std::thread::JoinHandle<()>,
+) {
     let mut pty = NativePty::new();
     pty.spawn(shell, 80, 24).expect("spawn");
     let reader = pty.take_reader().expect("take_reader");
@@ -60,7 +64,6 @@ fn drain_quiet(rx: &mpsc::Receiver<Vec<u8>>, quiet: Duration, cap: Duration) -> 
     }
     out
 }
-
 
 /// 等待输出中出现 needle（总超时 timeout）；返回（累计输出, 是否命中）。
 fn wait_for(rx: &mpsc::Receiver<Vec<u8>>, needle: &[u8], timeout: Duration) -> (Vec<u8>, bool) {
@@ -357,8 +360,10 @@ fn ctrl_c_probe_cmd_ping_twice() {
 fn probe_note(tag: &str, msg: &str) {
     use std::io::Write;
     let _ = std::fs::create_dir_all("target");
-    if let Ok(mut f) =
-        std::fs::OpenOptions::new().create(true).append(true).open("target/t4-probes.log")
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("target/t4-probes.log")
     {
         let _ = writeln!(f, "[{}] {}", tag, msg);
     }
@@ -394,7 +399,13 @@ fn ctrl_c_probe(shell: &str, cmd: &str, ctrl: &[u8], tag: &str, post_cap: Durati
 /// E1：cmd 空闲提示符下写 \x03（事件是否生成）。
 #[test]
 fn t4_e1_cmd_prompt_ctrl_c() {
-    ctrl_c_probe("cmd.exe", "", b"\x03", "E1-cmd-idle", Duration::from_secs(5));
+    ctrl_c_probe(
+        "cmd.exe",
+        "",
+        b"\x03",
+        "E1-cmd-idle",
+        Duration::from_secs(5),
+    );
 }
 
 /// E2：cmd ping -t + \x03，10s 观察窗。
@@ -514,7 +525,13 @@ fn t4_e8_ffi_ctrl_c_to_ping() {
     let attach = unsafe { AttachConsole(pid) };
     let gen_ret = unsafe { GenerateConsoleCtrlEvent(0, 0) };
     let free = unsafe { FreeConsole() };
-    probe_note("E8-ffi", &format!("AttachConsole={} Generate={} Free={}", attach, gen_ret, free));
+    probe_note(
+        "E8-ffi",
+        &format!(
+            "AttachConsole={} Generate={} Free={}",
+            attach, gen_ret, free
+        ),
+    );
     {
         let w = pty.writer().expect("writer");
         w.write_all(b"echo Ffidone\r").expect("write echo");
@@ -589,16 +606,20 @@ fn t4_e12_cmd_sort_full_data() {
         ),
     );
     let tail_text = String::from_utf8_lossy(&tail).to_string();
-    assert!(tail_text.contains("SORTDONE"), "sort 应被中断且外壳可执行 echo");
+    assert!(
+        tail_text.contains("SORTDONE"),
+        "sort 应被中断且外壳可执行 echo"
+    );
     pty.close().expect("close");
     join_thread_timeout(handle, Duration::from_secs(5)).expect("join");
 }
 
-/// T6 探针：从 C:\dev\tty 为 cwd 起 spawn("cmd.exe")，复现 app 启动环境。
+/// T6 探针：从仓库根目录为 cwd 起 spawn("cmd.exe")，复现 app 启动环境。
 #[test]
 fn t6_probe_spawn_from_devtty_cwd() {
     let saved = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(r"C:\dev\tty").expect("chdir to C:\\dev\\tty");
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    std::env::set_current_dir(&repo_root).expect("chdir to repo root");
     let r = spawn_collect("cmd.exe");
     let (mut pty, rx, handle) = r;
     {
@@ -668,9 +689,21 @@ fn conpty_pair_detection_needs_both_files() {
     fs::write(dll_only.join("conpty.dll"), b"x").unwrap();
     fs::write(exe_only.join("OpenConsole.exe"), b"x").unwrap();
 
-    assert!(!conpty_pair_incomplete(&both), "both files present must not warn");
-    assert!(conpty_pair_incomplete(&dll_only), "conpty.dll without OpenConsole.exe must warn");
-    assert!(!conpty_pair_incomplete(&exe_only), "OpenConsole.exe alone is not the warned shape");
-    assert!(!conpty_pair_incomplete(&none), "empty directory must not warn");
+    assert!(
+        !conpty_pair_incomplete(&both),
+        "both files present must not warn"
+    );
+    assert!(
+        conpty_pair_incomplete(&dll_only),
+        "conpty.dll without OpenConsole.exe must warn"
+    );
+    assert!(
+        !conpty_pair_incomplete(&exe_only),
+        "OpenConsole.exe alone is not the warned shape"
+    );
+    assert!(
+        !conpty_pair_incomplete(&none),
+        "empty directory must not warn"
+    );
     let _ = fs::remove_dir_all(&base);
 }
