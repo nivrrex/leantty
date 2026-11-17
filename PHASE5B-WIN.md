@@ -12,7 +12,7 @@
 | 项目 | 结果 |
 |---|---|
 | `phase5a-done` | `0b7115ef483290e7802930fca35673936c4d2639`（与 `refs/heads/main` 同值；**轻量 tag，无 `^{}` 行**，解引用同值） |
-| 合并 | `--no-ff` 合并为 `bc0b7de`，0 冲突（132 文件，+5482/−1156） |
+| 合并 | `--no-ff` 合并为 `3bb9737`，0 冲突（132 文件，+5482/−1156） |
 | 改名提交 | `f44d639 rename: 项目改名 leantty（二进制/包名/环境变量/配置目录/窗口标题）`；`bb070ad rename: 脚本内的 cargo -p 包名同步` |
 | 改名是否只含标识符/字符串替换 | 是（已验证）：`git show f44d639 -- crates/` 中删除行全部是 `APP_*`/`app` 命名，替换为 `LEANTTY_*`/`leantty`；Windows 专属文件（`crates/pty/src/windows.rs`、`pty_windows.rs`）与 `scripts/windows/**` 的改动同为名字替换（例：`target\debug\app.exe` → `target\debug\leantty.exe`、`APP_DUMP_SNAPSHOT` → `LEANTTY_DUMP_SNAPSHOT`） |
 
