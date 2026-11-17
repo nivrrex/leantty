@@ -72,10 +72,7 @@ where
         }
         // `--config-file=<路径>`：在 OsStr 字节层面切分，避免非 UTF-8 路径被破坏。
         let bytes = arg.as_encoded_bytes();
-        if let Some(prefix) = CONFIG_PREFIXES
-            .iter()
-            .find(|p| bytes.starts_with(**p))
-        {
+        if let Some(prefix) = CONFIG_PREFIXES.iter().find(|p| bytes.starts_with(p)) {
             let value = &bytes[prefix.len()..];
             if value.is_empty() {
                 return Err(CliError::MissingValue("--config-file"));
@@ -137,28 +134,39 @@ mod tests {
         assert_eq!(p(&["--version"]), Ok(Cli::Version));
         // 先出现者优先，且不再校验其余参数
         assert_eq!(p(&["--help", "--bogus"]), Ok(Cli::Help));
-        assert_eq!(p(&["--bogus", "--help"]), Err(CliError::UnknownOption("--bogus".into())));
+        assert_eq!(
+            p(&["--bogus", "--help"]),
+            Err(CliError::UnknownOption("--bogus".into()))
+        );
     }
 
     #[test]
     fn config_file_with_space_and_equals() {
         assert_eq!(
             p(&["--config-file", "a.toml"]),
-            Ok(Cli::Run { config_file: Some("a.toml".into()) })
+            Ok(Cli::Run {
+                config_file: Some("a.toml".into())
+            })
         );
         assert_eq!(
             p(&["--config-file=a.toml"]),
-            Ok(Cli::Run { config_file: Some("a.toml".into()) })
+            Ok(Cli::Run {
+                config_file: Some("a.toml".into())
+            })
         );
         // 路径含空格/等号时按"第一段等号之后整体"取值
         assert_eq!(
             p(&["--config-file=/tmp/a b=c.toml"]),
-            Ok(Cli::Run { config_file: Some("/tmp/a b=c.toml".into()) })
+            Ok(Cli::Run {
+                config_file: Some("/tmp/a b=c.toml".into())
+            })
         );
         // 隐藏别名（既有 Windows 脚本用）
         assert_eq!(
             p(&["--config", "w.toml"]),
-            Ok(Cli::Run { config_file: Some("w.toml".into()) })
+            Ok(Cli::Run {
+                config_file: Some("w.toml".into())
+            })
         );
     }
 
@@ -176,7 +184,10 @@ mod tests {
 
     #[test]
     fn unknown_options_and_positionals() {
-        assert_eq!(p(&["--nope"]), Err(CliError::UnknownOption("--nope".into())));
+        assert_eq!(
+            p(&["--nope"]),
+            Err(CliError::UnknownOption("--nope".into()))
+        );
         assert_eq!(p(&["-x"]), Err(CliError::UnknownOption("-x".into())));
         assert_eq!(
             p(&["foo.toml"]),
@@ -223,7 +234,9 @@ mod tests {
             let arg = OsString::from_vec(raw.clone());
             let got = parse_args([OsString::from("--config-file"), arg]);
             match got {
-                Ok(Cli::Run { config_file: Some(f) }) => {
+                Ok(Cli::Run {
+                    config_file: Some(f),
+                }) => {
                     use std::os::unix::ffi::OsStrExt;
                     assert_eq!(f.as_os_str().as_bytes(), raw.as_slice());
                 }

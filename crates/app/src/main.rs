@@ -31,26 +31,27 @@ fn main() -> Result<(), app::Error> {
     render::mark_start();
     // 阶段 5A t2：参数解析必须发生在创建事件循环与任何显示连接之前，
     // 使 --help / --version 在无 DISPLAY 的环境下也能用。
-    let (cli_config, cli_font, cli_font_size) = match app::cli::parse_args(std::env::args_os().skip(1)) {
-        Ok(app::cli::Cli::Help) => {
-            let default = config::default_config_path()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| "<无法确定：HOME/XDG_CONFIG_HOME 未设置>".to_string());
-            print!("{}", app::cli::help_text(&default));
-            return Ok(());
-        }
-        Ok(app::cli::Cli::Version) => {
-            println!("leantty {}", env!("CARGO_PKG_VERSION"));
-            return Ok(());
-        }
-        Ok(app::cli::Cli::Run { config_file }) => (config_file.map(PathBuf::from), None, None),
-        Err(e) => {
-            // 用法错误：一行说明 + "Try --help"，退出码 2（不开窗口、不建事件循环）。
-            eprintln!("leantty: {e}");
-            eprintln!("Try --help");
-            std::process::exit(2);
-        }
-    };
+    let (cli_config, cli_font, cli_font_size) =
+        match app::cli::parse_args(std::env::args_os().skip(1)) {
+            Ok(app::cli::Cli::Help) => {
+                let default = config::default_config_path()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| "<无法确定：HOME/XDG_CONFIG_HOME 未设置>".to_string());
+                print!("{}", app::cli::help_text(&default));
+                return Ok(());
+            }
+            Ok(app::cli::Cli::Version) => {
+                println!("leantty {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            Ok(app::cli::Cli::Run { config_file }) => (config_file.map(PathBuf::from), None, None),
+            Err(e) => {
+                // 用法错误：一行说明 + "Try --help"，退出码 2（不开窗口、不建事件循环）。
+                eprintln!("leantty: {e}");
+                eprintln!("Try --help");
+                std::process::exit(2);
+            }
+        };
     if let (Some(p), Some(t0)) = (proc_start, app::start_time()) {
         eperf!(
             "[perf] main_ms={:.1} since_start={:.1}",
