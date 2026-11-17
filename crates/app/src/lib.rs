@@ -1069,7 +1069,9 @@ impl ApplicationHandler for AppHandler {
         {
             // X11：WM_CLASS = (instance, class)；Wayland：app_id。两个扩展 trait 都叫
             // `with_name`，必须显式限定调用，不能同时 `use ... as _`。
-            attrs = winit::platform::x11::WindowAttributesExtX11::with_name(attrs, "leantty", "leantty");
+            attrs = winit::platform::x11::WindowAttributesExtX11::with_name(
+                attrs, "leantty", "leantty",
+            );
             attrs = winit::platform::wayland::WindowAttributesExtWayland::with_name(
                 attrs, "leantty", "leantty",
             );
@@ -3851,7 +3853,7 @@ mod icon_tests {
         );
         // 非全零：至少存在一个不透明像素（否则图标是全透明占位图）
         assert!(
-            bytes.chunks_exact(4).any(|px| px[3] > 0),
+            bytes.as_chunks::<4>().0.iter().any(|px| px[3] > 0),
             "图标不应为全透明"
         );
     }
