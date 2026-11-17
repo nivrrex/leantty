@@ -138,51 +138,75 @@ APP_PERF_FRAMES=1 ./target/release/app 2>perf.log
   （Unix 为 `/bin/sh`，Windows 为 `cmd.exe`）。见 `crates/app/src/lib.rs::default_shell`。
 - **`terminal.shell.args`**：参数按 TOML 数组解析；**非数组类型**会告警并整条忽略
   （`terminal.shell.args: expected array, ignored`），数组里的**非字符串元素被静默丢弃**
-  （`crates/config/src/lib.rs` 的 `filter_map`）。当前数据结构把"未配置"与"空数组"都折叠成
-  `args: Vec::new()`（`ShellConfig.args`），这也是下面"显式空数组"规则接线时需要先改成
-  `Option<Vec<String>>` 的原因。
-  - **规则（已批准，Windows 侧接线待 3U）**：用户显式配置的 `args` 优先、原样使用（**显式空数组
-    `args = []` 表示"不要任何参数"**，不会被默认值覆盖）；仅当 `args` 未配置且解析出的 shell
-    文件名（去目录、大小写不敏感、去 `.exe`）为 `cmd` 时，才使用默认值 `/K "chcp 65001"`；
-    未配置且为其它 shell（`pwsh`、`powershell`、`/bin/bash` 等）时为空 args。
-  - **现状（已验证事实）**：`args` 目前只解析不生效——`Pty::spawn(&mut self, shell, cols, rows)`
-    没有 args 参数，app 侧未把 `terminal.shell.args` 传给 PTY 层（`crates/config/src/lib.rs:194`
-    有登记）。Windows 侧当前仍由 `crates/pty/src/windows.rs` 内的
-    `utf8_codepage_args` 按 shell 名注入 `/K "chcp 65001"` 或
-    `-NoLogo -NoExit -Command chcp 65001`，并**忽略**用户配置的 args（3N/3T 以 shim 绕行）。
-    接线需要给 Pty trait 增加带默认实现的方法（不改既有 `spawn` 签名），属下一步工作，
-    最小补丁文本见 `docs/PHASE4W-LINUX.md` §3。
-  - Linux 上该字段无实际作用（`/bin/sh`、`bash` 等无需代码页参数），因此现状与规则不改变
-    Linux 既有 TOML 语义。
+  （`crates/config/src/lib.rs` 的 `filter_map`）。数据结构区分三态：**未配置 = `None`**、
+  **显式空数组 = `Some([])`**、配置了具体参数 = `Some([...])`（`ShellConfig.args:
+  Option<Vec<String>>`）。
+  - **Linux 与 Windows 都已生效**：`Pty::spawn_with_args` 把 `Some([...])` 逐项作为子进程参数
+    （Unix 在 `crates/pty/src/unix.rs`，Windows 在 `crates/pty/src/windows.rs`）。
+  - **用户显式配置优先**：只要写了 `args`（含显式空数组 `args = []`），就**原样使用、不注入任何
+    默认参数**。
+  - **Windows 未配置 `args` 时的默认值**（3U 偏离，已批准）：`cmd.exe` → `/K "chcp 65001"`；
+    `powershell.exe` → `-NoLogo -NoExit -Command chcp 65001`；**`pwsh` 与其它 shell → 无参数**。
+    `pwsh` 在旧实现里也不匹配 `powershell.exe` 这一精确文件名（本来就没有默认参数，谈不上"被取消"），
+    它对中文输出的影响**未核实**；Windows 上建议显式写 `args` 自行控制代码页。
+  - **Unix 未配置 `args` 时的默认值**：无（`/bin/sh`、`bash` 等不需要代码页参数）。
+  - Linux 侧该字段过去被忽略、现在生效：**不配置 `args` 时行为与过去完全一致**
+    （`spawn` 委托 `spawn_with_args(shell, None, …)`，字节序列不变），只有显式写了 `args`
+    才会改变启动参数。
 
-## 已知平台限制
+## 已知限制
 
-以下均为已在本仓库报告中实测证实的事实，不是推测：
+以下每条都来自本仓库的实测或 Windows 侧报告，并标注出处；无出处的一律不写。
 
-> 以下四条凡标注"使用系统 conhost 时仍适用"者，随附官方 ConPTY（见上一节）后可改善。
-- **Windows（系统 conhost，19044）会物化 `ESC[7m`**：到达 PTY 主端的是 `ESC[30m`+`ESC[47m`，因此"默认色反色块"表现为 normal.white 底而不是 primary.foreground；WezTerm conpty 则原样保留 `ESC[7m`（依据：`PHASE3G-WIN.md` §4.1/§4.2，`docs/WIN-NOTES.md` 请求 21）。**使用系统 conhost 时仍适用**；随附官方 ConPTY 后 `ESC[7m` 原样到达（`PHASE3K-WIN.md` §3.3）。
-- **`OSC 104`（重置调色板）在 Windows 两种 ConPTY 下都不到达**：`OSC 4` 改色后无法用 `OSC 104` 复位（依据：`PHASE3G-WIN.md` §4.1 的 s4 行与 §4.2 第 4 条）。**使用系统 conhost 时仍适用**；随附官方 ConPTY 后 `OSC 104` 可达（`PHASE3K-WIN.md` §3.3）。
-- **Windows ConPTY 输入通道会吞掉括号粘贴标记与 SGR 鼠标序列**（`ESC[200~`/`ESC[201~` 只剩中间内容，`ESC[<0;10;5M` 到达 0 字节）；系统 conhost 还会把控制台宽度处的折行物化为 CRLF（依据：`docs/WIN-NOTES.md` 事实补充两条；`PHASE3D-WIN.md` 同类记录）。**使用系统 conhost 时仍适用**；随附官方 ConPTY 后折行不再物化为 CRLF（`PHASE3K-WIN.md` §3.2）。
-- **GPU 后端在两个平台都有，但 Windows 上默认不启用**：Linux 的 `auto` 会先试 GPU、失败回落 CPU；Windows 的 `auto` **恒为 CPU**，要用 GPU 必须显式写 `backend = "gpu"`（实验性）。依据：`PHASE4P-LINUX.md` §2.3（后端语义）与 `PHASE4R-LINUX.md` §5（auto 保持 CPU 的结论与翻转条件）。
-- **Windows 上"粘贴大文本后 Ctrl-C"无法立即恢复输入**：app 侧会丢弃尚未写出的粘贴数据（3H 证据：5MB 粘贴中按 Ctrl-C 后子进程只收到 123130 字节），但**已进入控制台输入缓冲/PSReadLine 行内的部分无法撤回**，之后键入的命令会拼接在已送达文本之后——5MB 粘贴 0/5 通过、100KB 粘贴 0/2、单次 debug 等 90s 仍未恢复；对照"不粘贴直接输入同样命令"263ms 即生效（依据：`PHASE3I-WIN.md` §4）。Linux 无此限制（4H/4K 的 e2e 中 Ctrl-C 后提示符立即返回）。
-### 行为限制（均为实测结论，逐条标出处）
+### 平台与部署
 
-- **粘贴积压超过 12MiB 时整条拒绝**（新粘贴一个字节都不写、不入队，日志 `[perf] paste_rejected
-  … oversized=`）；这是非阻塞设计下的取舍，不是 bug（依据：`PHASE4L-LINUX.md` §2/§3）。
-- **7MB 级粘贴在"回显开启"的 shell 里存在回显背压**：实测只送达 4.19MB（关闭回显后 7,280,000
-  字节精确送达）（依据：`PHASE4H-LINUX.md` §3.5 的说明与 `case39`）。
-- **CPU 后端在有事件时仍走整帧"快照 + 比对"**：空闲已被 4S 修成完全静默，但事件驱动的每一帧
-  仍会构快照（GPU 后端另有空闲跳过作第二道防线）（依据：`PHASE4S-LINUX.md` §7）。
-- **`[perf] loop_gap_ms` 含"空闲等待"**：4S 之后空闲不再被定时唤醒，长间隔可能只是等待而非停顿，
-  判停顿需结合同窗口 CPU tick（依据：`PHASE4S-LINUX.md` §2.6）。
-- **Windows 上子进程退出依赖 1 秒一次的低频存活检查**：ConPTY 输出管道不会因 shell 退出而 EOF，
-  因此空闲时每秒最多唤醒一次（Linux 走读端 EOF 唤醒，完全静默）（依据：`PHASE4T-LINUX.md` §5）。
-- **Windows 侧 CPU 与 GPU 的截图差异主要来自字形光栅，不是滚动条列**（更正 4S §3 的旧归因）：
-  960 宽同内容实测差异 1.0304%，其中滚动条列仅 9 px（0.156%）、列外字形区 4739 px（≈1.03%）；
-  旧解释里"1.46% ≈ 滚动条列 12/800=1.5%"只是宽度凑巧。Linux 上两适配器（NVIDIA / lavapipe）
-  该列差异为 0，未复现同类差异（依据：`PHASE3T-WIN.md` t5、`PHASE4W-LINUX.md` §4）。
-- **`case21`（拖选自动滚动）在 GPU 后端时间标定偏紧**：固定悬停 1.2 秒在 GPU 上跨行更少；
-  受控复现显示两后端速率一致（约 370 行/秒）（依据：`PHASE4U-LINUX.md` §2）。
-- **自身环境变量只识别 4 个**：`WGPU_BACKEND`、`WGPU_ADAPTER_NAME`、`APP_GPU_ALLOW_SOFTWARE`、
-  `APP_PERF_FRAMES`；wgpu 自身的 `WGPU_*` 因 `default-features=false`（无 `std` 特性）全部不生效
+- **DX12 后端未在真实硬件验证**：Windows 的 `gpu` 后端（Vulkan/DX12）只在 WARP（软件适配器）下
+  跑通，Linux 侧只验证到编译与链接成功（依据：`PHASE4P-LINUX.md` §2、`PHASE4X-LINUX.md` §5）。
+- **Windows 发布包（RC1/RC2）未在干净机器上跑过**：只在开发机验证；RC2 的 zip 为 6607474 B、
+  sha256 `868ce25430cc12646282de5a15715a4b5d01c31972e150be8615159828149f2f`，该数值由 Windows 侧
+  自述，Linux 侧**未核实**（依据：`PHASE3U-WIN.md`、`PHASE4X-LINUX.md` §5）。
+- **Windows 侧部分交互用例"未测"**：Windows 上自动输入注入（等价于 `xdotool type` 的手段）不可靠，
+  交互类用例只能人工验证或跳过；这些项在 Windows 报告里标注"未测"，不等同于通过
+  （依据：`PHASE3U-WIN.md`）。
+- **Windows 的 `auto` 后端恒为 CPU**：要用 GPU 必须显式 `backend = "gpu"`（实验性）
+  （依据：`PHASE4R-LINUX.md` §5）。
+- **本项目自身只识别少数环境变量**：`WGPU_BACKEND`（自解析）、`WGPU_ADAPTER_NAME`、
+  `APP_GPU_ALLOW_SOFTWARE`、`APP_PERF_FRAMES`，另有诊断用 `APP_FORCE_LIVENESS_POLL`；
+  wgpu 自身的 `WGPU_*` 因 `default-features = false`（无 `std` 特性）全部不生效
   （依据：`PHASE4R-LINUX.md` §3）。
+- **Windows 系统 conhost（19044）的既有缺陷**：物化 `ESC[7m`（变成 `ESC[30m`+`ESC[47m`）、
+  `OSC 104` 在两种 ConPTY 下都不到达、输入通道吞掉括号粘贴标记与 SGR 鼠标序列、在控制台宽度处
+  把折行物化为 CRLF（依据：`PHASE3G-WIN.md` §4.1/§4.2、`docs/WIN-NOTES.md`）。随附官方 ConPTY
+  后可改善，`OSC 104` 除外（两种 ConPTY 下均不到达，见 `PHASE3K-WIN.md` §3.3）。
+- **Windows 上"粘贴大文本后 Ctrl-C"无法立即恢复输入**：app 侧丢弃尚未写出的粘贴数据，但已进入
+  控制台输入缓冲/PSReadLine 行内的部分无法撤回；5MB 粘贴 0/5 通过、100KB 0/2
+  （依据：`PHASE3I-WIN.md` §4）。Linux 无此限制。
+- **Windows 上子进程退出依赖 1 秒一次的低频存活检查**：ConPTY 输出管道不会因 shell 退出而 EOF
+  （依据：`PHASE4T-LINUX.md` §5、`PHASE4V-LINUX.md`）。
+
+### 渲染
+
+- **Windows 上 CPU 与 WARP 约 1% 的截图差异主要在字形光栅**，不在滚动条列：960 宽实测差异
+  1.0304%，滚动条列仅 9 px（0.156%）、列外字形区 4739 px（≈1.03%）；Linux 上 NVIDIA 与 lavapipe
+  该列差异为 0，未复现同类差异（依据：`PHASE3T-WIN.md` t5、`PHASE4W-LINUX.md` §5；4S §3 的
+  "1.46% ≈ 滚动条列 1.5%"归因已被推翻）。
+- **CPU 后端在有事件时仍走整帧"快照 + 比对"**：空闲已完全静默，但事件驱动的每一帧仍要构快照
+  （GPU 后端另有空闲跳过作第二道防线）（依据：`PHASE4S-LINUX.md` §7）。
+- **`[perf] loop_gap_ms` 含"空闲等待"**：4S 之后空闲不再被定时唤醒，长间隔可能只是等待而非停顿，
+  判停对应结合同窗口 CPU tick（依据：`PHASE4S-LINUX.md` §2.6）。
+
+### 交互与输入
+
+- **`Ctrl-C` 取消粘贴后，已经写进 PTY 的字节仍会被 shell 执行**：撤销只能做到"丢弃未写出的部分"
+  （依据：`PHASE4H-LINUX.md` §3、`PHASE4L-LINUX.md`）。
+- **粘贴积压超过 12MiB 时整条拒绝**（一个字节都不写，日志 `[perf] paste_rejected … oversized=`）
+  （依据：`PHASE4L-LINUX.md` §2/§3）。
+- **7MB 级粘贴在"回显开启"的 shell 里存在回显背压**：实测只送达 4.19MB（关闭回显后 7,280,000
+  字节精确送达）（依据：`PHASE4H-LINUX.md` §3.5、e2e `case39`）。
+
+### 未定位的异常（已知，未解决）
+
+- **CPU 后端 30 分钟 soak 在 21.6 分钟提前退出**：无 panic，退出紧接 Ctrl-C 取消粘贴（子 shell
+  随之退出，app 按设计关闭）；8 轮定向复现未重现，机制**未定位**（依据：`PHASE4U-LINUX.md` §4.2）。
+- **GPU 后端自动滚动偶发 605 行**（同配置其余两次 1094/1099 行，≈369 行/秒）：未定位；推翻条件是
+  稳定出现 ≥25% 差距（依据：`PHASE4U-LINUX.md` §2.3）。
