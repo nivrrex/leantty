@@ -117,9 +117,11 @@ mod console {
             fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
             fn FreeConsole() -> i32;
         }
-        // SAFETY: 见函数注释——空指针 + 长度 0 的查询形式是 documented 用法，
-        // 只读返回计数，不写任何内存。
-        let count = unsafe { GetConsoleProcessList(std::ptr::null_mut(), 0) };
+        // 阶段 5B t4b（已验证事实）：本机 Win10 LTSC 上 `GetConsoleProcessList(null, 0)`
+        // 返回 0 且 GetLastError=87（ERROR_INVALID_PARAMETER），因此旧实现永远不释放；
+        // 传非空缓冲（容量 2）才能得到真实进程数（探针：独占=1、共享=2）。
+        let mut buf = [0u32; 2];
+        let count = unsafe { GetConsoleProcessList(buf.as_mut_ptr(), buf.len() as u32) };
         if !crate::should_free_console(count) {
             return;
         }
