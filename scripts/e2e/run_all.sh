@@ -2830,7 +2830,7 @@ if [ ! -x "$LEANTTY_REL" ] && [ ! -x "$LEANTTY_BIN" ]; then
 else
     OK63=0; TOT63=0
     for spec in "legacy:61 0d 1b 09 1b5b41 01 03 04 10 61" \
-                "kitty7:1b5b3f3775 61 0d 1b 09 1b5b313b313a3141 1b5b39373b3575 1b5b39393b3575 1b5b3130303b3575 1b5b3131323b3575 61" \
+                "kitty7:1b5b3f3775 61 0d 1b5b323775 09 1b5b313b313a3141 1b5b39373b3575 1b5b39393b3575 1b5b3130303b3575 1b5b3131323b3575 61" \
                 "mok2:61 0d 1b 09 1b5b41 01 03 04 10 61"; do
         MODE=${spec%%:*}; WANT=${spec#*:}
         TOT63=$((TOT63+1))
