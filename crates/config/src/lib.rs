@@ -377,7 +377,7 @@ impl Default for Config {
                 fallback: Vec::new(),
                 antialiasing: Antialiasing::Grayscale,
                 subpixel: Subpixel::None,
-                hinting: true,
+                hinting: false,
                 text_gamma: 1.0,
             },
             selection: SelectionConfig {

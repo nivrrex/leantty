@@ -3006,6 +3006,26 @@ else
     wait $A74 2>/dev/null || true
 fi
 
+# case75（阶段 7C H3）：hinting 默认静默、显式开启才提示。
+W75="$OUT/case75"; mkdir -p "$W75"
+if [ ! -x "$LEANTTY_REL" ]; then
+    echo "FAIL case75-hinting-quiet (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$W75/default.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[font]\nhinting = true\n' > "$W75/explicit.toml"
+    OK75=0
+    for spec in "default:0" "explicit:1"; do
+        NAME=${spec%%:*}; WANT=${spec#*:}
+        "$LEANTTY_REL" --config-file "$W75/$NAME.toml" >/dev/null 2>"$W75/$NAME.err" & P75=$!
+        sleep 2.5
+        kill -TERM "$P75" 2>/dev/null; wait "$P75" 2>/dev/null || true
+        N=$(grep -c "fontdue 不支持 hinting" "$W75/$NAME.err" || true)
+        echo "  [c75 $NAME] hinting 提示行数=$N（期望 $WANT）"
+        [ "${N:-0}" -eq "$WANT" ] && OK75=$((OK75+1))
+    done
+    if [ "$OK75" -eq 2 ]; then echo "PASS case75-hinting-quiet (2/2)"; PASS=$((PASS+1)); else echo "FAIL case75-hinting-quiet ($OK75/2)"; FAIL=$((FAIL+1)); fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
