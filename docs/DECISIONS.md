@@ -536,3 +536,9 @@
 - 阶段 7B B4 限制（已验证事实）：UNC `\localhost\C$\Windows` 在本机不可访问（os error 67），可用 UNC 路径**未测**，仅验证不可用 UNC → rc=1。
 - 阶段 7B B5（已验证事实）：CLI 退出码 0/0/2/1、`-e` 缺程序与 `--working-directory` 缺值/重复均 rc=2；`-e` 常驻时 1/3/8s 无本进程控制台窗口；`-e` 使 shell.args 不注入（子命令行 `cmd.exe /k "echo CONSOLE"` 无 chcp）；`-e` 子进程退出后 712 ms 关闭；无 `-e` 时 shell 自退 2033 ms 关闭。
 - 阶段 7B B7（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 390 B / sha256 `01faa5e7…`，10 条目单顶层；zip 内 5 个文档与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
+- 阶段 7C H1（已验证事实）：`hinting` 仅参与 `RenderOptions::fingerprint()` 的字形缓存键（`crates/render/src/lib.rs:164-176`）与一条提示日志，不影响渲染像素（fontdue 未实现 hinting），故把默认值改为 false 不改变帧内容。
+- 阶段 7C H2/H3（已验证事实，用户批准的产品行为变更）：`hinting` 默认值 `true → false`（`crates/config/src/lib.rs:380`、`crates/render/src/lib.rs:155`）；默认配置启动 stderr 为空，显式 `hinting = true` 仍打印 "fontdue 不支持 hinting"；新增 e2e `case75` 断言两者；黄金哈希 `507485fb7945fb8f` 不变、workspace 209 测试通过。
+- 阶段 7C C1（已验证事实）：`phase7b-win-done` 与 `refs/heads/win` 同为 `b9c4f20…`（轻量 tag）；合并仅 `docs/DECISIONS.md` 冲突，双方保留；合并后 `crates/` 相对 `phase7a-done` 共 4 个文件（windows.rs +7、pty_windows.rs +32 来自 Windows 侧；config/render 各 1–2 行为 hinting 默认值）。
+- 阶段 7C C2（已验证事实）：Windows zip 5,791,390 B / `01faa5e7…` 与任务书一致；zip 内 LICENSE 与 THIRD-PARTY-NOTICES 逐字节一致，README×2 / CHANGELOG / leantty.toml 各差 1–2 行文本——均为 7C H2/H4 在打包之后新增/改写的文档行，二进制与其余文档一致。
+- 阶段 7C C3/C5（已验证事实）：deb 0.2.0 = 3,516,768 B / `a823f5b0…`，包内二进制两次构建均为 `f9725440…`，deb 包本身因 changelog 时间戳不可复现（已知）。
+- 阶段 7C C4（已验证事实）：导出 169 文件，扫描 A=0、C=0、B=3、豁免 15、仅报告 2。
