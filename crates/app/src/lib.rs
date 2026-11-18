@@ -4171,3 +4171,113 @@ mod liveness_tests {
         assert_eq!(w2, w1 + INTERVAL);
     }
 }
+
+/// 阶段 6C C4：Windows 键映射单测（`map_logical_key` + 默认 Shift+PageUp/PageDown 绑定）。
+/// 只测纯函数与默认表，不依赖窗口/输入注入；`cfg(windows)` 门控，Linux 侧构建不受影响。
+#[cfg(all(test, windows))]
+mod keymap_tests {
+    use super::*;
+    use winit::keyboard::{Key as WinitKey, NamedKey};
+
+    #[test]
+    fn map_logical_key_named_keys() {
+        let cases = [
+            (NamedKey::Enter, vt::Key::Enter),
+            (NamedKey::Tab, vt::Key::Tab),
+            (NamedKey::Backspace, vt::Key::Backspace),
+            (NamedKey::Escape, vt::Key::Escape),
+            (NamedKey::ArrowUp, vt::Key::ArrowUp),
+            (NamedKey::ArrowDown, vt::Key::ArrowDown),
+            (NamedKey::ArrowLeft, vt::Key::ArrowLeft),
+            (NamedKey::ArrowRight, vt::Key::ArrowRight),
+            (NamedKey::Home, vt::Key::Home),
+            (NamedKey::End, vt::Key::End),
+            (NamedKey::Insert, vt::Key::Insert),
+            (NamedKey::Delete, vt::Key::Delete),
+            (NamedKey::PageUp, vt::Key::PageUp),
+            (NamedKey::PageDown, vt::Key::PageDown),
+            (NamedKey::F1, vt::Key::F1),
+            (NamedKey::F2, vt::Key::F2),
+            (NamedKey::F3, vt::Key::F3),
+            (NamedKey::F4, vt::Key::F4),
+            (NamedKey::F5, vt::Key::F5),
+            (NamedKey::F6, vt::Key::F6),
+            (NamedKey::F7, vt::Key::F7),
+            (NamedKey::F8, vt::Key::F8),
+            (NamedKey::F9, vt::Key::F9),
+            (NamedKey::F10, vt::Key::F10),
+            (NamedKey::F11, vt::Key::F11),
+            (NamedKey::F12, vt::Key::F12),
+        ];
+        for (named, want) in cases {
+            assert_eq!(
+                map_logical_key(&WinitKey::Named(named)),
+                Some(want),
+                "named {:?} 未按预期映射",
+                named
+            );
+        }
+    }
+
+    #[test]
+    fn map_logical_key_punctuation_and_ascii() {
+        let punct = [
+            ('-', vt::Key::Minus),
+            ('=', vt::Key::Equal),
+            (',', vt::Key::Comma),
+            ('.', vt::Key::Period),
+            (';', vt::Key::Semicolon),
+            ('\'', vt::Key::Quote),
+            ('`', vt::Key::Backquote),
+            ('\\', vt::Key::Backslash),
+            ('[', vt::Key::BracketLeft),
+            (']', vt::Key::BracketRight),
+            ('/', vt::Key::Slash),
+            (' ', vt::Key::Space),
+        ];
+        for (c, want) in punct {
+            let s: String = c.to_string();
+            assert_eq!(
+                map_logical_key(&WinitKey::Character(s.into())),
+                Some(want),
+                "符号 {c:?} 未按预期映射"
+            );
+        }
+        // 字母/数字大小写归一
+        assert_eq!(
+            map_logical_key(&WinitKey::Character("a".into())),
+            Some(vt::Key::A)
+        );
+        assert_eq!(
+            map_logical_key(&WinitKey::Character("A".into())),
+            Some(vt::Key::A)
+        );
+        assert_eq!(
+            map_logical_key(&WinitKey::Character("7".into())),
+            Some(vt::Key::Digit7)
+        );
+    }
+
+    #[test]
+    fn default_bindings_shift_pageup_pagedown_are_scroll() {
+        let bindings = default_key_bindings();
+        let has = |key: &str, action: ConfigAction| {
+            bindings.iter().any(|b| {
+                b.mouse.is_none()
+                    && b.key.as_deref() == Some(key)
+                    && b.mods.shift
+                    && !b.mods.control
+                    && !b.mods.alt
+                    && b.action == action
+            })
+        };
+        assert!(
+            has("PageUp", ConfigAction::ScrollPageUp),
+            "缺少 Shift+PageUp -> ScrollPageUp 默认绑定"
+        );
+        assert!(
+            has("PageDown", ConfigAction::ScrollPageDown),
+            "缺少 Shift+PageDown -> ScrollPageDown 默认绑定"
+        );
+    }
+}
