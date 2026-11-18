@@ -518,3 +518,8 @@
 - 阶段 6D D4（已验证事实）：导出 169 文件；扫描 A=0、B=3（Windows 系统常量）、C=0、豁免 15、仅报告 2（两处 "LTSC" 平台说明）。
 - 阶段 7A a0（已验证事实）：`crates/pty/src/unix.rs:65` 显式 `cmd.cwd("/tmp")`，Unix 上子进程工作目录恒为 `/tmp`（既不继承启动目录也不可配置）；Windows 侧无 `lpCurrentDirectory`，继承父进程目录 → 两平台行为不一致，且该行是源码中的绝对路径。
 - 阶段 7A 停止（已验证事实）：命中 a0 停止条件"Unix 路径显式设置了别的工作目录"，未改代码、未打 tag；等待裁定是否删除 `/tmp` 硬编码（行为变更）以及 `--working-directory` 的语义。
+- 阶段 7A A0（已验证事实）：`crates/pty/src/unix.rs` 的 `cmd.cwd("/tmp")` 出自最初骨架提交 `8e2dbdc`，DECISIONS 无记录、无 cwd 之外目的。
+- 阶段 7A 关键发现（已验证事实）：portable-pty 0.8.1 `CommandBuilder::as_command()`（`cmdbuilder.rs:452-458`）在 `cwd=None` 时把子进程工作目录设为 **$HOME** 而非继承父进程；仅删除 `/tmp` 一行会让子进程落到 `$HOME`（实测 `/root`，`HOME=/tmp` 时为 `/tmp`）。
+- 阶段 7A 实现（已验证事实）：`unix.rs` 显式 `cmd.cwd(std::env::current_dir())`；未指定 `--working-directory` 时子进程工作目录 = 启动目录，指定时 = 该目录（app 先 `set_current_dir`）。用户已批准该产品行为变更（默认由 /tmp 改为启动目录）。
+- 阶段 7A 选项语义（已验证事实）：`-e/--command` 其后全部参数原样作为 argv（含以 `-` 开头者），缺程序名 rc=2，参数非 UTF-8 → rc=2；`--working-directory` 缺值/重复均 rc=2（选择"重复报错"）；无效目录 rc=1 且不开窗。
+- 阶段 7A e2e（已验证事实）：新增 case67–case74；完整 e2e **127/127**、GPU 轮 10/10；临时回退 `current_dir()` 使 case67 变红（子进程 cwd=`/root`），恢复后回到启动目录。

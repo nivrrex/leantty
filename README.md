@@ -71,8 +71,20 @@ Unknown keys produce a warning on stderr and are ignored; invalid values fall ba
 | `-h`, `--help` | Print usage and exit (works without a graphical session) |
 | `-V`, `--version` | Print the version (`leantty <version>`) and exit |
 | `--config-file <PATH>` | Use this configuration file instead of the default |
+| `--working-directory <DIR>` | Start the session in this directory (the program inherits it) |
+| `-e`, `--command <PROGRAM> [ARGS...]` | Run PROGRAM instead of the configured shell; every following argument is passed to it verbatim |
 
 Invalid usage exits with status 2 and prints a one-line reason plus `Try --help`.
+
+Examples:
+
+```sh
+leantty -e htop                                  # run a program instead of the shell
+leantty --working-directory ~/src                # start in a specific directory
+leantty -e sh -c 'make test; read -r _'          # shell syntax needs an explicit shell
+leantty -e sh -c 'echo done'                     # the window closes when the program exits
+```
+
 
 ## Keys and mouse
 
@@ -150,6 +162,8 @@ configuration file (see the templates).
 - **Some Ctrl combinations produce no input** (Linux): Ctrl+Semicolon, Ctrl+Comma, Ctrl+Period,
   Ctrl+Apostrophe, Ctrl+Shift+Semicolon, and Ctrl+I / Ctrl+M are not delivered to programs; the
   keysym-to-control-character mapping for these is not provided by the input encoder.
+- **`-e/--command` arguments must be valid UTF-8**; and there is no option to keep the window open
+  after the program exits.
 - **Kitty key release events are not sent**: programs that ask for key-up reporting get key presses
   only.
 

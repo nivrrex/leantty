@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+### Added
+- `-e/--command <PROGRAM> [ARGS...]` runs a program instead of the configured shell; everything after
+  it is passed to that program verbatim (the window closes when it exits).
+- `--working-directory <DIR>` starts the session in the given directory (the program inherits it).
+
+### Changed
+- The default working directory is now the directory leantty was started from, instead of `/tmp`.
+
 ## 0.1.1
 
 ### Fixed

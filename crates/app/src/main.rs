@@ -31,7 +31,7 @@ fn main() -> Result<(), app::Error> {
     render::mark_start();
     // 阶段 5A t2：参数解析必须发生在创建事件循环与任何显示连接之前，
     // 使 --help / --version 在无 DISPLAY 的环境下也能用。
-    let (cli_config, cli_font, cli_font_size) =
+    let (cli_config, cli_font, cli_font_size, cli_command) =
         match app::cli::parse_args(std::env::args_os().skip(1)) {
             Ok(app::cli::Cli::Help) => {
                 let default = config::default_config_path()
@@ -44,7 +44,37 @@ fn main() -> Result<(), app::Error> {
                 println!("leantty {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
-            Ok(app::cli::Cli::Run { config_file }) => (config_file.map(PathBuf::from), None, None),
+            Ok(app::cli::Cli::Run {
+                config_file,
+                command,
+                working_directory,
+            }) => {
+                // 阶段 7A a2：相对路径先绝对化（不用 canonicalize，避免解析符号链接）。
+                let cfg = config_file.map(|p| {
+                    let pb = PathBuf::from(p);
+                    std::path::absolute(&pb).unwrap_or(pb)
+                });
+                if let Some(dir) = working_directory {
+                    let orig = PathBuf::from(dir);
+                    let pb = std::path::absolute(&orig).unwrap_or(orig);
+                    match std::fs::metadata(&pb) {
+                        Ok(m) if m.is_dir() => {}
+                        Ok(_) => {
+                            eprintln!("leantty: not a directory: {}", pb.display());
+                            std::process::exit(1);
+                        }
+                        Err(e) => {
+                            eprintln!("leantty: cannot use working directory '{}': {e}", pb.display());
+                            std::process::exit(1);
+                        }
+                    }
+                    if let Err(e) = std::env::set_current_dir(&pb) {
+                        eprintln!("leantty: cannot enter working directory '{}': {e}", pb.display());
+                        std::process::exit(1);
+                    }
+                }
+                (cfg, None, None, command)
+            }
             Err(e) => {
                 // 用法错误：一行说明 + "Try --help"，退出码 2（不开窗口、不建事件循环）。
                 eprintln!("leantty: {e}");
@@ -76,7 +106,7 @@ fn main() -> Result<(), app::Error> {
             .unwrap_or(0.0)
     );
     let t_app = std::time::Instant::now();
-    let app = app::App::new(config);
+    let app = app::App::new_with_command(config, cli_command);
     // 阶段 4H t2：App::new（配置归一化 + 字体设置解析 + 事件循环句柄）到 run 之间的分段点。
     eperf!(
         "[perf] app_new_ms={:.1} since_start={:.1}",
