@@ -496,3 +496,9 @@
 - 阶段 6B case27 剩余候选（待验证假设）：`map_logical_key` 新增映射、`unshifted_codepoint` 改用 `key_without_modifiers()`、legacy `ctrl+[` 回写三者之一。推翻条件：逐个回退实验后 case27 仍红，则说明引入点在别处（例如 dump 钩子路径的时序）。
 - 阶段 6B case27 复现条件（已验证事实）：隔离会话下用 debug 二进制 + `LEANTTY_DUMP_SNAPSHOT`（与 run_all 的 start_app 等价）跑同一按键序列，HEAD 上差异为 **519**；只有在完整 e2e（case27 前有 26 个用例）时才稳定为 **2444**；phase6a-done 的完整 e2e 为 0 → 该红是"前序用例残留状态 × 6B 改动"的组合效应，而不是 6B 的单点回归。
 - 阶段 6B case27 下一步（待验证假设）：需要实现 `E2E_ONLY`/"前 N 个用例 + case27"过滤后二分 N，定位是哪一个前序用例留下的状态与 6B 的哪一处改动叠加。
+
+- 阶段 6C C1（已验证事实）：`phase6b-done2` = `4b796120…`（轻量 tag，与任务书一致），`--no-ff` 合并 0 冲突；`crates/` 相对 `phase5b-win-done` 仅 5 个文件（app/lib.rs、pty/windows.rs 注释、render 测试、vt/encoder.rs、vt/tests/key_kitty.rs），全部来自 Linux 6A/6B。
+- 阶段 6C C2（已验证事实）：build.ps1 重建成功，`--version` 输出 `leantty 0.1.1`（rc=0）。
+- 阶段 6C C3（已验证事实）：CLI 退出码 0/0/2/2/1；控制台释放后 1s/3s/8s 均无本进程控制台窗口、AttachConsole=False；杀子 shell 后 1404 ms 退出；shell.args 规则（cmd/powershell 保留 chcp、pwsh 与显式空数组不注入、用户 args 原样）符合；`cargo test` 233 passed；clippy 0 error。
+- 阶段 6C C4（已验证事实）：新增 `cfg(windows)` 单测覆盖 `map_logical_key`（F1–F12/Insert/Delete/PageUp/PageDown/符号/字母数字）与默认 Shift+PageUp/PageDown→滚动绑定，3 项全过；ConPTY 键盘转发**未测**（无输入注入通道）。
+- 阶段 6C C5（已验证事实）：`leantty-0.1.1-windows-x86_64.zip` 5 785 895 B / sha256 `fb2d5b79…`，10 条目单顶层目录；zip 内 5 个文档与仓库哈希逐一相同；泄漏扫描与 5B 一致（无用户/主机/仓库路径）。
