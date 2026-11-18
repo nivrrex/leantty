@@ -64,12 +64,18 @@ fn main() -> Result<(), app::Error> {
                             std::process::exit(1);
                         }
                         Err(e) => {
-                            eprintln!("leantty: cannot use working directory '{}': {e}", pb.display());
+                            eprintln!(
+                                "leantty: cannot use working directory '{}': {e}",
+                                pb.display()
+                            );
                             std::process::exit(1);
                         }
                     }
                     if let Err(e) = std::env::set_current_dir(&pb) {
-                        eprintln!("leantty: cannot enter working directory '{}': {e}", pb.display());
+                        eprintln!(
+                            "leantty: cannot enter working directory '{}': {e}",
+                            pb.display()
+                        );
                         std::process::exit(1);
                     }
                 }

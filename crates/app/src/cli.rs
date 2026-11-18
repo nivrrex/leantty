@@ -187,7 +187,14 @@ mod tests {
 
     #[test]
     fn no_args_runs_with_defaults() {
-        assert_eq!(p(&[]), Ok(Cli::Run { config_file: None, command: None, working_directory: None }));
+        assert_eq!(
+            p(&[]),
+            Ok(Cli::Run {
+                config_file: None,
+                command: None,
+                working_directory: None
+            })
+        );
     }
 
     #[test]
@@ -245,8 +252,14 @@ mod tests {
                 working_directory: Some(OsString::from(v)),
             })
         };
-        assert_eq!(parse_args(["--working-directory", "/x"].iter().map(OsString::from)), want("/x"));
-        assert_eq!(parse_args(["--working-directory=/x"].iter().map(OsString::from)), want("/x"));
+        assert_eq!(
+            parse_args(["--working-directory", "/x"].iter().map(OsString::from)),
+            want("/x")
+        );
+        assert_eq!(
+            parse_args(["--working-directory=/x"].iter().map(OsString::from)),
+            want("/x")
+        );
         assert_eq!(
             parse_args(["--working-directory"].iter().map(OsString::from)),
             Err(CliError::MissingValue("--working-directory"))
@@ -256,9 +269,11 @@ mod tests {
             Err(CliError::MissingValue("--working-directory"))
         );
         assert_eq!(
-            parse_args(["--working-directory", "/a", "--working-directory", "/b"]
-                .iter()
-                .map(OsString::from)),
+            parse_args(
+                ["--working-directory", "/a", "--working-directory", "/b"]
+                    .iter()
+                    .map(OsString::from)
+            ),
             Err(CliError::RepeatedOption("--working-directory")),
             "重复给出 --working-directory 报错（DECISIONS 记录）"
         );
