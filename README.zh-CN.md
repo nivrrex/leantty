@@ -120,12 +120,11 @@ leantty --help                       # 查看选项
 4. **GPU 后端启动失败**（`backend = "gpu"` 非零退出）：没有可用的 Vulkan/DX12 适配器，
    改用 `"auto"` 或 `"cpu"`。
 5. **别的程序能粘贴、这里没反应**：终端里的程序可能自己接管了括号粘贴，检查该程序的处理方式。
-6. **在 leantty 里启动 PowerShell 7 时崩溃**，报
-   `System.ArgumentOutOfRangeException: totalWidth ('-17')`，位置在
-   `UpdatesNotification.ShowUpdateNotification`：这发生在 PowerShell 自己的更新提示横幅里，不在终端。规避：
-   启动前把环境变量 `POWERSHELL_UPDATECHECK=Off`。*限制（未核实）：我们在本机无法复现该崩溃——
-   传给 shell 的 ConPTY 网格尺寸是正确的（120x30，与配置一致，resize 后同样更新），`pwsh` 在 25 到 120 列、
-   在 leantty 与同宽度的普通 conhost 中都运行正常。*
+6. **在 leantty 里启动 PowerShell 7 时崩溃**：在 leantty 的 shell 里运行 `pwsh` 会立即失败，报
+   `System.ArgumentOutOfRangeException: totalWidth ('-17')`，由 `String.PadRight` 抛在
+   `UpdatesNotification.ShowUpdateNotification`（PowerShell 自己的更新提示横幅）。规避：启动前把环境变量
+   `POWERSHELL_UPDATECHECK=Off`——已在反馈问题的用户机器上确认有效。*限制：是否只在 leantty 中出现尚未确认；
+   conhost / Windows Terminal 的对照目前未测。*
 
 - **键盘滚动用 Shift+PageUp / Shift+PageDown**；无修饰的 PageUp / PageDown 转发给程序。
   配置里的绑定要写 winit 的键名（`PageUp`、`PageDown`），不能写 X keysym 名（`Page_Up`）。

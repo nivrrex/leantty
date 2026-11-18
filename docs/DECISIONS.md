@@ -508,3 +508,7 @@
 - 阶段 6D W2（工程判断，置信度中）：崩溃栈完全位于 pwsh 的 `UpdatesNotification.ShowUpdateNotification` → `String.PadRight(totalWidth=-17)`，终端侧尺寸因素已排除 → 属 pwsh 缺陷，**不改代码**；README/README.zh-CN 增加故障排查条目（`POWERSHELL_UPDATECHECK=Off` 规避 + 未能复现的限制），未把该变量注入默认配置。
 - 阶段 6D W2（待验证假设）：崩溃确切触发条件未复现；推翻条件=用户机设 `Off` 后仍崩溃，则重新归因到 ConPTY 其它初始化差异。
 - 阶段 6D W3（已验证事实）：cargo test 233 passed、clippy 0 error；重打 zip 5 786 634 B / sha256 `1713d3f5…`，zip 内 5 个文档哈希与仓库一致，泄漏扫描 0 命中。
+
+- 阶段 6E W1（已验证事实）：README/README.zh-CN 的 pwsh 条目按用户机结论改写为三段（现象 / `POWERSHELL_UPDATECHECK=Off` 规避并经用户确认 / "是否仅在 leantty 出现尚未确认"），两份结构一致；未改代码、未注入默认配置。
+- 阶段 6E W2（已验证事实 + 未测）：本机普通 conhost 中清空 `POWERSHELL_UPDATECHECK` 后运行交互 pwsh，15 s 未复现崩溃（pwsh 子进程存活、stderr 空）；Windows Terminal 本机未安装（`wt=absent`）→ **未测**。
+- 阶段 6E W3（已验证事实）：重打 zip 5 786 563 B / sha256 `6203b666…`；zip 内 5 个文档哈希与仓库一致；泄漏扫描 0 命中。
