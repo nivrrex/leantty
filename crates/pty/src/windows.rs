@@ -158,6 +158,13 @@ impl WindowsPty {
         for a in Self::decide_shell_args(shell, configured) {
             cmd.arg(a);
         }
+        // 阶段 7B B6（cfg(windows) 最小修复）：显式指定子进程工作目录为本进程当前目录。
+        // portable-pty 0.8.1 在 `cwd=None` 时把子进程目录设为 `$HOME`（不是继承父进程），
+        // 导致 Windows 上"默认=启动目录"与 `--working-directory` 都不生效（回归测试
+        // `spawn_child_inherits_process_cwd` 修复前为红）。Unix 侧已在 unix.rs 显式设置。
+        if let Ok(dir) = std::env::current_dir() {
+            cmd.cwd(dir);
+        }
         let child = slave.spawn_command(cmd)?;
         drop(slave);
         let writer = master.take_writer()?;

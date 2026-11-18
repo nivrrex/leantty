@@ -707,3 +707,35 @@ fn conpty_pair_detection_needs_both_files() {
     );
     let _ = fs::remove_dir_all(&base);
 }
+
+/// 阶段 7B B6 回归：子进程工作目录应等于本进程的当前目录。
+///
+/// 修复前（红）：Windows 侧 `CommandBuilder` 未设 cwd，portable-pty 默认把子进程
+/// 目录设为 `$HOME`，导致 `--working-directory` 与"默认=启动目录"在 Windows 上失效。
+#[test]
+fn spawn_child_inherits_process_cwd() {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let orig = std::env::current_dir().expect("cwd");
+    let dir = std::env::temp_dir().join(format!("leantty-cwd-probe-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    std::env::set_current_dir(&dir).expect("chdir");
+    let (mut pty, rx, handle) = spawn_collect("cmd.exe");
+    {
+        let w = pty.writer().expect("writer");
+        w.write_all(b"cd\r").expect("write");
+        w.flush().expect("flush");
+    }
+    let out = drain_quiet(&rx, Duration::from_millis(800), Duration::from_secs(8));
+    let _ = pty.close();
+    let _ = join_thread_timeout(handle, Duration::from_secs(5));
+    std::env::set_current_dir(&orig).expect("restore cwd");
+    let text = String::from_utf8_lossy(&out).to_lowercase();
+    let want = dir.display().to_string().to_lowercase();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        text.contains(&want),
+        "子进程工作目录应为进程当前目录 {want}，实际输出={text}"
+    );
+}
