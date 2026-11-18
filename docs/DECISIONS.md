@@ -491,3 +491,6 @@
 - 阶段 6B 启动提示降级（已验证事实）：`request_inner_size: …` 属信息性（异步提交，不是拒绝），改为 `eperf!` 门控；Xvfb 100dpi 实测默认 0 行、`LEANTTY_PERF_FRAMES=1` 时 1 行；失败分支未降级。
 - 阶段 6B case27 复现性（已验证事实）：把其动作序列抽成单跑脚本后，HEAD 上连跑 3 次差异像素为 519 / 0 / 0；两次门禁失败时机器上有其它项目的多 target release 构建（loadavg 6.1–6.3），降到 2.7 后未再稳定复现 → 判为**负载相关的偶发**，非本阶段改动引入的稳定回归；按 r2 第三分支未改产品代码。
 - 阶段 6B ctrl+space（待验证假设）：编码器层已由 crates/vt 单测证明可输出（legacy `00`、kitty `ESC[32;5u`），端到端注入为空 → 暂归"环境限制（Xvfb/xdotool）"。推翻条件：真实键盘或其它注入方式能出字节，则责任在注入侧；若真实键盘仍无输出，则回到应用路由排查。
+- 阶段 6B case27 因果（已验证事实）：phase6a-done 的完整 e2e（独立 worktree、debug+release 重建、loadavg 1.07）case27 **PASS 117/117**；HEAD 同条件 **FAIL 2444**，共 4 次均为 2444 → 判为 6B 引入的稳定回归，而非负载偶发。
+- 阶段 6B case27 排除项（已验证事实）：`request_inner_size` 的调用在 `eperf!` 之外无条件执行，两种模式下窗口几何均为 1560×630；只回退 `route_key` 的"控制字符走编码器"分支后 case27 仍 FAIL 2444 → route_key 不是引入点。
+- 阶段 6B case27 剩余候选（待验证假设）：`map_logical_key` 新增映射、`unshifted_codepoint` 改用 `key_without_modifiers()`、legacy `ctrl+[` 回写三者之一。推翻条件：逐个回退实验后 case27 仍红，则说明引入点在别处（例如 dump 钩子路径的时序）。

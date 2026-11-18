@@ -215,3 +215,54 @@ cargo build），`loadavg` 6.1–6.3；未终止对方进程。等降到 2.7 后
 - **分类**：类别 1（应用数据有误）已全部修复；类别 2 只剩 `ctrl+[`（已按裁决回写）；类别 3 = 上述
   无输出键，记入 README 已知限制；`ctrl+space` 记"待核实（疑注入侧）"。
 - **t3**：不发送 kitty 释放事件（前提不成立，已回退并写入已知限制）。
+
+## 10. case27 因果实验（p1–p3、p5 部分）
+
+### 10.1 p1：启动提示降级不是回归（已验证事实）
+
+`request_inner_size(...)` 是 `if` 的**条件表达式**，位于 `eperf!` 之外，无条件执行；只有那行日志被
+`eperf!` 门控。Xvfb（100 dpi）实测两种模式窗口几何**完全相同**：
+
+```
+plain: WIDTH=1560 HEIGHT=630   (stderr 1 行)
+perf : WIDTH=1560 HEIGHT=630   (stderr 59 行)
+```
+
+### 10.2 p2：harness 与单跑脚本的差异（已验证事实）
+
+`run_all.sh` 的 `start_app` 用 **debug 二进制**（`LEANTTY_BIN=target/debug/leantty`）并注入
+`LEANTTY_DUMP_SNAPSHOT`（每次渲染写一份 dump 文件），而我的单跑脚本用 release、无 dump。
+这就是"harness 稳定红 / 单跑 519·0·0"的最可能来源。
+
+### 10.3 p3：对照组（phase6a-done）与 HEAD 的完整 e2e（已验证事实）
+
+| 运行 | 工作树 | case27 | 汇总 | loadavg(1m) |
+|---|---|---|---|---|
+| HEAD `30e853c` | 主库（已构建） | **FAIL 2444** | 116/117 | 3.36 |
+| 对照 `5ffe7b5`（6A done） | 独立 worktree，debug+release 重建 | **PASS** | 117/117 | 1.07 |
+
+（对照那次 GPU 轮出现 1 个 FAIL、SKIP=0，与本问题无关，属该轮 GPU 用例单次失败。）
+→ 判定为 **p3c 分支 2：6B 引入的回归**。
+
+### 10.4 p5a 第一步：route_key 逐文件回退实验（已验证事实）
+
+在 HEAD 的独立 worktree 里只回退 `route_key` 的"整串控制字符走编码器"那一个条件：
+
+```
+FAIL case27-scroll-incremental-equals-full (差异像素 2444)
+FAIL case63-key-matrix (2/3)          ← 预期（Escape 期望已随修复改变）
+e2e 汇总: PASS=115 FAIL=2
+```
+
+**case27 仍为 2444** → `route_key` 不是引入点。
+
+### 10.5 剩余候选（待验证假设，下一轮第一个实验）
+
+`e7679ea` 中除 `route_key` 外的改动：
+1. `map_logical_key` 新增 F1–F12 / Insert / PageUp / PageDown / Delete / 符号键映射；
+2. `unshifted_codepoint` 改用 `key_without_modifiers()`（原来只读 `logical_key`）；
+3. legacy `ctrl+[` 的受控回写。
+
+建议下一个实验：在独立 worktree 里只回退第 2 项（`unshifted_codepoint` 恢复为只读逻辑键），
+若 case27 转绿则引入点确定；再据其机制提出最小修复（例如仅在已有 `text` 时使用
+`key_without_modifiers`，或把 `key_without_modifiers` 的结果限制在"符号键 + Ctrl"分支）。
