@@ -179,3 +179,39 @@ README 两份删除对应故障排查条目。
 Press。判定条件之一是"t1f 的 98 键按下与释放事件与 alacritty 逐键一致"——leantty 的 Escape/F1 等
 按下编码与 alacritty 就不同（`ESC[27u` vs `1b`、`ESC[1P` vs `ESC[1;1P`），逐键一致的先决条件不成立，
 故按 t3c **回退全部 t3 改动、不上线**，并在 README 已知限制与 DECISIONS 写明"不发送 kitty 释放事件"。
+
+## 7. case27 定位结论（r1）
+
+**方法**：先把 `case27` 的动作序列抽成单跑脚本（起 app → 键入 `seq 1 300` → 4×PageUp → Ctrl+Home →
+2×PageDown → 截图；另一轮带 `LEANTTY_FORCE_FULL_REDRAW=1` 重跑同一序列），逐像素比较。
+
+**负载**：失败那两次门禁里机器上跑着**别的项目**的 release 构建（`/root/Desktop/pi-rust`，多 target
+cargo build），`loadavg` 6.1–6.3；未终止对方进程。等降到 2.7 后复测。
+
+**HEAD 上连跑 3 次**：
+
+| 次 | 差异像素 |
+|---|---|
+| 1 | 519 |
+| 2 | 0 |
+| 3 | 0 |
+
+→ **偶发**，不是本阶段改动引入的稳定回归（差异量也从 2444 掉到 519，随负载变化）。
+按 r2 第三分支：**不改产品代码**，数据交裁定。差异区域特征（2444 那次）约为一整行 120 列
+（≈2400 px），符合"两次运行的滚动偏移差一行"的时序抖动特征。
+
+## 8. r3 ctrl+space 诊断（环境限制）
+
+`crates/vt` 单测已证明编码器可输出（legacy `00`、kitty `ESC[32;5u`），但端到端注入始终为空；
+本轮未再加应用侧日志（上下文预算不足以再做一次带日志构建 + 注入）。结论按 r3 分支一登记为
+**环境限制（Xvfb/xdotool 层）**，编码器层结论不受影响。
+
+## 9. 最终矩阵摘要（98 键）
+
+- **legacy**：除 `ctrl+i` `ctrl+m` `ctrl+space` `ctrl+comma` `ctrl+period` `ctrl+semicolon`
+  `ctrl+apostrophe` `ctrl+shift+semicolon` 外，其余 90 键与 alacritty 一致；`ctrl+[` 由本阶段的
+  受控回写给出 `1b`。
+- **kitty7**：除 `ctrl+space`（疑注入侧）与 `ctrl+shift+semicolon`（上游行为）外，其余 96 键一致。
+- **分类**：类别 1（应用数据有误）已全部修复；类别 2 只剩 `ctrl+[`（已按裁决回写）；类别 3 = 上述
+  无输出键，记入 README 已知限制；`ctrl+space` 记"待核实（疑注入侧）"。
+- **t3**：不发送 kitty 释放事件（前提不成立，已回退并写入已知限制）。
