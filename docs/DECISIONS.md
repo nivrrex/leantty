@@ -496,3 +496,8 @@
 - 阶段 6B case27 剩余候选（待验证假设）：`map_logical_key` 新增映射、`unshifted_codepoint` 改用 `key_without_modifiers()`、legacy `ctrl+[` 回写三者之一。推翻条件：逐个回退实验后 case27 仍红，则说明引入点在别处（例如 dump 钩子路径的时序）。
 - 阶段 6B case27 复现条件（已验证事实）：隔离会话下用 debug 二进制 + `LEANTTY_DUMP_SNAPSHOT`（与 run_all 的 start_app 等价）跑同一按键序列，HEAD 上差异为 **519**；只有在完整 e2e（case27 前有 26 个用例）时才稳定为 **2444**；phase6a-done 的完整 e2e 为 0 → 该红是"前序用例残留状态 × 6B 改动"的组合效应，而不是 6B 的单点回归。
 - 阶段 6B case27 下一步（待验证假设）：需要实现 `E2E_ONLY`/"前 N 个用例 + case27"过滤后二分 N，定位是哪一个前序用例留下的状态与 6B 的哪一处改动叠加。
+- 阶段 6B 补充 根因一（已验证事实）：e2e case65 早前"无修饰 PageUp 零字节"是**注入侧**问题——`xdotool key PageUp` 被拒（"No such key name 'PageUp'"），事件根本没进窗口；xdotool 用 X keysym 名（`Page_Up`），而绑定/`key_string` 用 winit Debug 名（`PageUp`），两套命名空间混用是本次多轮误判的根源。
+- 阶段 6B 补充 根因二（已验证事实）：默认绑定最初写成 `ConfigMods { shift: true, ..cm }`，而 `cm` 含 `control: true`，实际要求 Ctrl+Shift+PageUp → Shift+PageUp 落到编码器（`ESC[5;2~`）。改为显式全字段后命中，pty 零字节。
+- 阶段 6B 补充 实现（已验证事实，方案 a）：无修饰 `PageUp/PageDown` 走编码器转发（legacy 与 kitty7 均 `1b5b357e`/`1b5b367e`）；默认绑定 `Shift+PageUp/PageDown → ScrollPageUp/Down`；e2e case27 绑定名改 `PageUp/PageDown` 并加 `mods = "Shift"`、注入改 `shift+Page_Up`；新增 case65（两模式转发）与 case66（Shift 消费、pty 零字节 + 哨兵）。
+- 阶段 6B 补充 门禁（已验证事实）：完整 e2e **119/119**（GPU 轮 10/10），`GATES: PASS — HEAD=4b79612`。
+- 阶段 6B 补充 tag（已验证事实）：用户要求的名字 `phase6b2-done` 不符合 `scripts/tag_checked.sh` 的命名规则（`^phase[0-9]+[a-z]*-[A-Za-z0-9._-]+$`），改用 `phase6b-done2`（轻量 tag，指向 4b79612）；`phase6b-done` 未动。
