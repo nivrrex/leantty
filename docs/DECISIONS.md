@@ -494,3 +494,5 @@
 - 阶段 6B case27 因果（已验证事实）：phase6a-done 的完整 e2e（独立 worktree、debug+release 重建、loadavg 1.07）case27 **PASS 117/117**；HEAD 同条件 **FAIL 2444**，共 4 次均为 2444 → 判为 6B 引入的稳定回归，而非负载偶发。
 - 阶段 6B case27 排除项（已验证事实）：`request_inner_size` 的调用在 `eperf!` 之外无条件执行，两种模式下窗口几何均为 1560×630；只回退 `route_key` 的"控制字符走编码器"分支后 case27 仍 FAIL 2444 → route_key 不是引入点。
 - 阶段 6B case27 剩余候选（待验证假设）：`map_logical_key` 新增映射、`unshifted_codepoint` 改用 `key_without_modifiers()`、legacy `ctrl+[` 回写三者之一。推翻条件：逐个回退实验后 case27 仍红，则说明引入点在别处（例如 dump 钩子路径的时序）。
+- 阶段 6B case27 复现条件（已验证事实）：隔离会话下用 debug 二进制 + `LEANTTY_DUMP_SNAPSHOT`（与 run_all 的 start_app 等价）跑同一按键序列，HEAD 上差异为 **519**；只有在完整 e2e（case27 前有 26 个用例）时才稳定为 **2444**；phase6a-done 的完整 e2e 为 0 → 该红是"前序用例残留状态 × 6B 改动"的组合效应，而不是 6B 的单点回归。
+- 阶段 6B case27 下一步（待验证假设）：需要实现 `E2E_ONLY`/"前 N 个用例 + case27"过滤后二分 N，定位是哪一个前序用例留下的状态与 6B 的哪一处改动叠加。
