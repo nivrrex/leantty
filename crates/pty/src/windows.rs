@@ -185,7 +185,7 @@ impl WindowsPty {
     ///
     /// 已验证事实：app 由 bash+nohup 直接启动时（PATH 为 POSIX 形态），
     /// portable-pty 的 search_path 解析失败，CreateProcessW 收到拼接 cwd 的
-    /// 错误路径（如 C:\dev\tty\cmd.exe）而 exit code 2。此处在 pty 层自行
+    /// 错误路径（如 <dev-root>\cmd.exe）而 exit code 2。此处在 pty 层自行
     /// 解析，不改 Pty trait、不动上游。解析顺序：已是绝对路径且存在 → 原样；
     /// 否则按 PATH（含 POSIX 形态条目的 Windows 转换）+ PATHEXT 找文件。
     pub fn resolve_program(shell: &str) -> String {

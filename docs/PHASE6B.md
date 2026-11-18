@@ -1,0 +1,25 @@
+# PHASE6B 进度（滚动记录，一行一条）
+
+- [已验证事实] case27 在隔离会话（debug+DUMP 钩子，与 run_all.start_app 等价）跑 HEAD 得 519；完整 e2e（前 26 用例）稳定 2444；phase6a-done 完整 e2e 得 0 → 红是"前序状态 × 6B 改动"组合效应。
+- [已验证事实] 回退 route_key 的"整串控制字符走编码器"后仍 2444 → route_key 排除。
+- [已验证事实] request_inner_size 调用在 eperf! 之外无条件执行；两模式窗口几何均 1560×630 → 启动提示降级不是回归。
+- [已验证事实] H3 实验（worktree 内回退 key_without_modifiers 的使用）第一次运行在 run_all 的 release 告警检查处被拦下（回退后遗留 unused import 触发 warning）→ 该实验无效，需同时清理 import 后重跑。
+- [工程判断] 下一步：worktree 内回退 H3 时同步删除 `KeyEventExtModifierSupport` 相关 use 以消除告警，再跑完整 e2e（约 22 分钟）；若 case27 转绿则引入点=H3，最小修复方向为"仅在 Ctrl+符号键分支使用 key_without_modifiers"。
+- [待验证假设] 2444 ≈ 120 列 × 一行，指向两次运行滚动偏移差一行；疑与 dump 钩子 I/O 时序 + 更少 stderr 写（启动提示降级）叠加有关。
+- [已验证事实] 根因确立：`key_string(Named(PageUp))` 返回 `"PageUp"`，而 case27 配置绑定写 `key = "Page_Up"` → 绑定从未命中；6B 把 PageUp/PageDown 映射进编码器后，`ESC[5~`/`ESC[6~` 被写进 pty，改动行编辑/滚动状态 → case27 由绿变红，差异恰为一行 120 列（2444 px）。
+- [已验证事实] 在 main 移除 PageUp/PageDown 两个映射后，完整 e2e 中 `case27` **PASS**（逐像素一致）；case21/63/64 均 PASS。该轮另有 `case41-bracketed-paste-ctrl-c` 失败（dropped=983040 wedge_ok=0，与本改动无关，待复跑确认）。
+- [已验证事实] H3（unshifted_codepoint 改用 key_without_modifiers）回退后 case27 仍 2444 → H3 排除；route_key 与启动提示降级此前已排除。
+- [待验证假设] PageUp/PageDown 是否应"无修饰传给应用"是产品行为问题，本阶段按裁决保持 0.1.0 行为（不转发），待用户裁定后再改。
+- [已验证事实] 修复后门禁（`scripts/gates.sh` 10 步）全过，e2e **117/117**（GPU 轮 10/10），LOG: `GATES: PASS — HEAD=cb7c85d`。
+- [已验证事实] `frame_bytes_identical` 黄金哈希仍为 `507485fb7945fb8f`（字体指纹 `DejaVuSansMono.ttf:343140:c69b:8x16` 匹配，非 SKIP）。
+- [已验证事实] 已打 `phase6b-done`（轻量 tag，无 `^{}`），`main` 与 tag 均已 push 到 ali：main = `cb7c85dde01a026f45882870092b98b5f714f22b`。
+- [已验证事实] `case41-bracketed-paste-ctrl-c` 在本轮修复后的首次完整 e2e 红（dropped=983040 wedge_ok=0），门禁复跑时通过 → 判为负载相关偶发（当时 loadavg 偏高），与本次 PageUp/PageDown 改动无关。
+- [已验证事实] `key_string` 对命名键返回 winit 的 Debug 名（`PageUp`/`PageDown`/`Home`/`End`…）；`find_key_binding` 用 `b.mods == *mods` 精确比较；仓库里只有 e2e case27 的内联配置写过 `"Page_Up"`（永不匹配），`config/leantty.*.toml` 模板与 README 从未提供键盘滚动绑定 → 键盘滚动此前等于不存在。
+- [已验证事实] 编码器层面 `Key::PageUp` 在 legacy 与 kitty7 下均输出 `1b 5b 35 7e`（`ESC[5~`），与 alacritty 一致（crates/vt 单测实测）。
+- [已验证事实] 按方案 (a) 实现（恢复 PageUp/PageDown 映射 + 默认 `Shift+PageUp/PageDown → ScrollPageUp/Down` 绑定 + case27 绑定名/修饰键对齐）后：**case27 PASS**（逐像素一致），但新增的 case65（无修饰 PageUp 转发）实测 pty **零字节**，case66（Shift+PageUp 应被绑定消费、pty 零字节）实测 pty 收到 `1b5b353b327e`（`ESC[5;2~`）→ 即"绑定未命中、按键仍走向编码器"，与 case65 的空输出相互矛盾，原因未定位。
+- [待验证假设] 上述矛盾疑与 e2e 注入路径（`xdotool key --window` 的键名 → winit 逻辑键/modifiers 状态）有关：`shift+Page_Up` 能被编码器识别为 Shift+PageUp，说明事件到达且修饰可用；而无修饰时应用侧未产出字节，可能是绑定之外的另一处消费（`run_action` 分支或 follow/滚动路径）。
+- [工程判断] 为避免在未定位状态下把 main 留在 e2e 2 红的状态，已把 A2 的实现与 case65/66 回退到 `cb7c85d`（6B done，e2e 117/117 绿），本次结论与矛盾点留在本文件，等待裁定或下一轮继续定位。
+- [已验证事实] case65/66 早前失败不是产品缺陷：`xdotool key PageUp` 被 xdotool 拒绝（"No such key name 'PageUp'"），所以**根本没注入**；绑定名与注入名属两套命名空间——绑定/`key_string` 用 winit Debug 名（`PageUp`），xdotool 用 X keysym（`Page_Up`）。
+- [已验证事实] 诊断日志（临时 worktree）显示：无修饰 PageUp → `logical=Named(PageUp) mods_state=0x0 bound=None encoded=Ok(4)`（pty 收到 `1b5b357e`）；Shift+PageUp → `mods_state=SHIFT kmods.shift=true bound=Some(ScrollPageUp)` 且 pty 零字节 → 方案 (a) 的实现本身正确。
+- [已验证事实] 早前"Shift+PageUp 被编码成 ESC[5;2~" 的原因是我把默认绑定写成 `ConfigMods{ shift:true, ..cm }`，而 `cm` 含 `control:true` → 实际要求 Ctrl+Shift+PageUp。改为显式全字段后绑定命中。
+- [已验证事实] 修复后完整 e2e **119/119**：`case27` 逐像素一致、`case65`（legacy/kitty7 转发，实收 `1b5b357e`/`1b5b367e`）2/2、`case66`（Shift+PageUp/Down pty 零字节 + 2 个哨兵 `a`）PASS。

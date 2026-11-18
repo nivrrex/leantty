@@ -1,0 +1,21 @@
+# 发布扫描豁免清单（阶段 5C s4）。每行： <文件路径 glob>|<命中文本正则>|<原因>
+# 只允许以下四类；其余 A/C 类命中必须处理到零，不得在此新增豁免。
+#
+# 1) 单元测试里的合成路径（不是本机身份信息）
+crates/app/src/cli.rs|/home/u/|单元测试里构造的合成配置路径，仅用于断言帮助文本
+#
+# 2) 回环地址仅作 ping 目标（不是本地代理/服务）
+crates/pty/tests/pty_windows.rs|127\.0\.0\.1|Windows PTY 测试向 ping 发送的目标地址
+#
+# 3) Windows 系统常量（B 类：系统自带目录，非身份信息）
+crates/pty/src/windows.rs|C:\\Windows|系统常量：conhost.exe / cmd.exe 的默认安装目录
+scripts/windows/*|C:\\Windows|系统常量：ConPTY 相关系统目录
+scripts/windows/*|127\.0\.0\.1|ConPTY 下载脚本里的代理示例占位（已改为 <proxy-url>，保留以防旧路径）
+#
+# 4) vendor/ 上游文档（上游作者信息与示例路径，按规则单独列出，不算命中）
+vendor/*|/home/user/|上游 libghostty-rs 文档里的示例路径
+vendor/*|127\.0\.0\.1|上游示例里的本地 HTTP 服务地址
+#
+# 5) 随附的 Microsoft ConPTY 二进制（conpty.dll / OpenConsole.exe）内部含系统路径常量
+conpty.dll|.|B 类：Microsoft 随附 ConPTY 二进制内的系统路径常量（非本项目身份信息）
+OpenConsole.exe|.|B 类：同上

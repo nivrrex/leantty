@@ -1143,10 +1143,12 @@ backend = "cpu"
 [window]
 dimensions = { columns = 120, lines = 30 }
 [[keyboard.bindings]]
-key = "Page_Up"
+key = "PageUp"
+mods = "Shift"
 action = "ScrollPageUp"
 [[keyboard.bindings]]
-key = "Page_Down"
+key = "PageDown"
+mods = "Shift"
 action = "ScrollPageDown"
 [[keyboard.bindings]]
 key = "Home"
@@ -1163,10 +1165,10 @@ scroll_seq() { # $1=png
     x11 xdotool key --window "$WID" Return
     sleep 1.0
     # 上滚/下滚多次（走 ScrollPageUp/Down 绑定，避免滚轮事件抖动）
-    i=0; while [ $i -lt 4 ]; do x11 xdotool key --window "$WID" Page_Up; sleep 0.12; i=$((i+1)); done
+    i=0; while [ $i -lt 4 ]; do x11 xdotool key --window "$WID" shift+Page_Up; sleep 0.12; i=$((i+1)); done
     sleep 0.4
     x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
-    i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" Page_Down; sleep 0.12; i=$((i+1)); done
+    i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" shift+Page_Down; sleep 0.12; i=$((i+1)); done
     sleep 0.6
     x11 import -window "$WID" "$1" 2>/dev/null
 }
@@ -2818,6 +2820,109 @@ else
             echo "PASS case62-window-ident"; PASS=$((PASS+1))
         else
             echo "FAIL case62-window-ident (WM_CLASS 或 _NET_WM_ICON 不符)"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    fi
+fi
+
+# case63（阶段 6A t5c）：键盘编码矩阵。kitty 键盘协议下 Ctrl+字母必须是 CSI-u，
+# legacy 与 modifyOtherKeys 仍是单字节控制字符。每条都带"普通字母 a"作为注入生效证据。
+if [ ! -x "$LEANTTY_REL" ] && [ ! -x "$LEANTTY_BIN" ]; then
+    echo "FAIL case63-key-matrix (缺二进制)"; FAIL=$((FAIL+1))
+else
+    OK63=0; TOT63=0
+    for spec in "legacy:61 0d 1b 09 1b5b41 01 03 04 10 61" \
+                "kitty7:1b5b3f3775 61 0d 1b5b323775 09 1b5b313b313a3141 1b5b39373b3575 1b5b39393b3575 1b5b3130303b3575 1b5b3131323b3575 61" \
+                "mok2:61 0d 1b 09 1b5b41 01 03 04 10 61"; do
+        MODE=${spec%%:*}; WANT=${spec#*:}
+        TOT63=$((TOT63+1))
+        GOT=$(sh "$ROOT/scripts/e2e/keymatrix.sh" "$MODE" "$OUT/case63-$MODE.log" 2>/dev/null | tail -1)
+        echo "  [c63 $MODE] 实收=[$GOT]"
+        if [ "$GOT" = "$WANT" ]; then
+            OK63=$((OK63+1))
+        else
+            echo "  [c63 $MODE] 期望=[$WANT]"
+        fi
+    done
+    if [ "$OK63" -eq "$TOT63" ]; then
+        echo "PASS case63-key-matrix ($OK63/$TOT63)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case63-key-matrix ($OK63/$TOT63)"; FAIL=$((FAIL+1))
+    fi
+fi
+
+# case64（阶段 6A t5d）：真实 pi 端到端 —— 空编辑器下 Ctrl-D 应让 pi 退出。
+# 临时 HOME、无 API key、无网络；只按自己记录的 PID 关闭。
+if [ ! -x "$LEANTTY_REL" ] || [ ! -x /root/pi/pi ]; then
+    echo "  [c64] 跳过（缺 leantty release 二进制或本机未安装 pi）"
+else
+    PHOME=$(mktemp -d /tmp/pi-home-XXXXXX)
+    CFG64="$OUT/case64-pi.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/usr/bin/env"\nargs = ["HOME=%s", "TERM=xterm-256color", "/root/pi/pi"]\n' "$PHOME" > "$CFG64"
+    LEANTTY_CONFIG="$CFG64" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case64.out" 2>"$OUT/case64.err" &
+    LEANTTY_PID=$!
+    if ! wait_window; then
+        echo "FAIL case64-pi-ctrl-d (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
+    else
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 6
+        x11 xdotool type "a"; sleep 0.8
+        x11 xdotool key BackSpace; sleep 0.8
+        PIPID=$(pgrep -P "$LEANTTY_PID" 2>/dev/null | head -1)
+        ALIVE_BEFORE=$(kill -0 "$PIPID" 2>/dev/null && echo yes || echo no)
+        x11 xdotool key ctrl+d; sleep 3
+        ST=$(ps -o stat= -p "$PIPID" 2>/dev/null | tr -d ' ')
+        if [ "$ALIVE_BEFORE" = yes ] && { [ -z "$ST" ] || [ "$ST" = "Z" ]; }; then
+            echo "PASS case64-pi-ctrl-d (注入前存活=yes，Ctrl-D 后 pi 已退出)"; PASS=$((PASS+1))
+        else
+            echo "FAIL case64-pi-ctrl-d (注入前=$ALIVE_BEFORE Ctrl-D 后状态='${ST:-已退出}')"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    fi
+    rm -rf "$PHOME"
+fi
+
+# case65/66（阶段 6B 补充）：PageUp/PageDown 转发（无修饰）与 Shift+PageUp 回看。
+# 注意两套命名空间：xdotool 用 X keysym（Page_Up/Page_Down），winit 逻辑键与绑定用
+# Debug 名（PageUp/PageDown）——混用会导致"注入被忽略"或"绑定永不命中"。
+if [ ! -x "$LEANTTY_REL" ]; then
+    echo "FAIL case65-pageup-forward (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    OK65=0; TOT65=0
+    for spec in "legacy:1b5b357e 1b5b367e" "kitty7:1b5b357e 1b5b367e"; do
+        MODE=${spec%%:*}; WANT=${spec#*:}
+        TOT65=$((TOT65+1))
+        printf 'Page_Up\nPage_Down\n' > /tmp/kd-pg.txt
+        sh "$ROOT/scripts/e2e/keydiff.sh" leantty "$MODE" "$OUT/case65-$MODE.tsv" /tmp/kd-pg.txt >/dev/null 2>&1 || true
+        GOT=$(awk -F'\t' '$1=="Page_Up"{a=$3} $1=="Page_Down"{b=$3} END{print a" "b}' "$OUT/case65-$MODE.tsv")
+        echo "  [c65 $MODE] 实收=[$GOT] 期望=[$WANT]"
+        [ "$GOT" = "$WANT" ] && OK65=$((OK65+1))
+    done
+    if [ "$OK65" -eq "$TOT65" ]; then echo "PASS case65-pageup-forward ($OK65/$TOT65)"; PASS=$((PASS+1)); else echo "FAIL case65-pageup-forward ($OK65/$TOT65)"; FAIL=$((FAIL+1)); fi
+
+    LOG66="$OUT/case66.log"; CFG66="$OUT/case66.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 24 }\n[terminal.shell]\nprogram = "/usr/bin/python3"\nargs = ["%s/scripts/e2e/keyprobe.py", "--mode", "legacy", "--log", "%s", "--settle", "0.4"]\n' "$ROOT" "$LOG66" > "$CFG66"
+    rm -f "$LOG66"
+    LEANTTY_CONFIG="$CFG66" SHELL=/bin/sh "$LEANTTY_REL" >/dev/null 2>/dev/null &
+    LEANTTY_PID=$!
+    if ! wait_window; then
+        echo "FAIL case66-shift-pageup-no-pty (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
+    else
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.5
+        x11 xdotool key a; sleep 0.3
+        x11 xdotool key shift+Page_Up; sleep 0.3
+        x11 xdotool key shift+Page_Down; sleep 0.3
+        x11 xdotool key a; sleep 0.4
+        MID=$(awk '/^[0-9]+ IN /{rec[++n]=$3} END{first=0;last=0;for(i=1;i<=n;i++) if(rec[i]=="61"){first=i;break} for(i=n;i>=1;i--) if(rec[i]=="61"){last=i;break} out=""; if(first>0&&last>first) for(i=first+1;i<last;i++) out=out rec[i]" "; sub(/ $/,"",out); print out}' "$LOG66")
+        SENT=$(grep -c " 61$" "$LOG66")
+        echo "  [c66] Shift+PageUp/Down 期间 pty 收到=[${MID:-<空>}]（期望空），哨兵 a 记录数=$SENT（≥2 才算注入生效）"
+        if [ -z "${MID:-}" ] && [ "${SENT:-0}" -ge 2 ]; then
+            echo "PASS case66-shift-pageup-no-pty"; PASS=$((PASS+1))
+        else
+            echo "FAIL case66-shift-pageup-no-pty (pty='${MID:-}' 哨兵=$SENT)"; FAIL=$((FAIL+1))
         fi
         stop_app
     fi

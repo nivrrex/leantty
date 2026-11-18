@@ -157,8 +157,12 @@ pub fn route_key(text: Option<&str>, key: Option<vt::Key>, mods: Mods) -> KeyRou
     if mods.intersects(Mods::CTRL | Mods::ALT) {
         return KeyRoute::Encoded { key, mods };
     }
+    // 阶段 6B t2c：winit 给 Delete/Backspace 等命名键的 text 是控制字符本身
+    //（例如 Delete = "\u{7f}"）。若走文本直写就会变成 0x7f，而规范要求 ESC[3~；
+    // 因此"整串都是控制字符"的文本一律交给编码器，由它按当前模式决定字节。
     if let Some(t) = text
         && !t.is_empty()
+        && !t.chars().all(|c| (c as u32) < 0x20 || c == '\u{7f}')
     {
         return KeyRoute::Text(t.to_string());
     }
@@ -1400,7 +1404,8 @@ impl ApplicationHandler for AppHandler {
                 // 结果稍后经 WindowEvent::Resized 返回"，不是被窗口管理器拒绝
                 // （阶段 4B-fix1 任务 B 取证）。实际尺寸以 Resized 为准，
                 // Resized 分支会按窗口真实像素反算 cols/rows 并 resize vt/pty。
-                eprintln!("request_inner_size: 尺寸请求异步提交，实际尺寸以 Resized 事件为准");
+                // 阶段 6B t4：这是信息性提示（不是失败），默认不输出；仅诊断开关下打印。
+                eperf!("request_inner_size: 尺寸请求异步提交，实际尺寸以 Resized 事件为准");
             }
             (cw, ch)
         } else {
@@ -1578,7 +1583,16 @@ impl ApplicationHandler for AppHandler {
                                 if let (Some(key), Some(vt)) = (key, self.vt.as_mut()) {
                                     match vt.key_encoder() {
                                         Ok(mut enc) => {
-                                            match enc.encode_key(key, mods, Action::Press) {
+                                            // 阶段 6A：kitty 模式下必须提供 unshifted codepoint，
+                                            // 否则组合键被上游编码器静默丢弃（Ctrl+D/P/C 全丢）。
+                                            let unshifted = unshifted_codepoint(&event);
+                                            match enc.encode_key_full(
+                                                key,
+                                                mods,
+                                                Action::Press,
+                                                unshifted,
+                                                None,
+                                            ) {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
                                                     // 写线程只能丢弃"已在队列里"的块（并补发括号
@@ -1586,6 +1600,19 @@ impl ApplicationHandler for AppHandler {
                                                     // 会在下一帧继续回灌，粘贴实际没停（实测：
                                                     // 首次 Ctrl-C 后仍持续写入，第二次 Ctrl-C 又丢
                                                     // 1MiB）。中断语义要求粘贴整体作废，故此处清空。
+                                                    // 阶段 6B t2j：legacy 模式下上游编码器对
+                                                    // ctrl+[ 不产出字节（ctrl+space 已由编码器给出
+                                                    // 0x00、ctrl+] \ / 分别给出 1d/1c/1f）。按裁决
+                                                    // 仅对此一键按 xterm 规则回写 ESC，不新增通用表。
+                                                    let bytes = if bytes.is_empty()
+                                                        && mods.intersects(Mods::CTRL)
+                                                        && !mods.intersects(Mods::ALT)
+                                                        && key == vt::Key::BracketLeft
+                                                    {
+                                                        vec![0x1b]
+                                                    } else {
+                                                        bytes
+                                                    };
                                                     if bytes.contains(&0x03) {
                                                         self.pending_paste.clear();
                                                     }
@@ -3388,6 +3415,33 @@ fn default_key_bindings() -> Vec<config::Binding> {
     vec![
         config::Binding {
             mouse: None,
+            // 键盘滚动回看：只 Shift（不能复用 cm，它含 control=true）
+            key: Some("PageUp".to_string()),
+            mods: ConfigMods {
+                control: false,
+                shift: true,
+                alt: false,
+                super_: false,
+                hyper: false,
+                meta: false,
+            },
+            action: ConfigAction::ScrollPageUp,
+        },
+        config::Binding {
+            mouse: None,
+            key: Some("PageDown".to_string()),
+            mods: ConfigMods {
+                control: false,
+                shift: true,
+                alt: false,
+                super_: false,
+                hyper: false,
+                meta: false,
+            },
+            action: ConfigAction::ScrollPageDown,
+        },
+        config::Binding {
+            mouse: None,
             key: Some("c".to_string()),
             mods: cm,
             action: ConfigAction::Copy,
@@ -3556,6 +3610,38 @@ const DIGITS: [vt::Key; 10] = [
 ];
 
 /// winit 逻辑键 → vt::Key（阶段1 子集：命名键 + ASCII 字母数字）。
+/// 取"未按 Shift 的码点"（阶段 6A 修复，纯函数）。
+///
+/// Kitty 键盘协议要求非功能键带上这个码点；缺省为 0 时上游编码器找不到 kitty 表项，
+/// 会**静默不输出**（见 `vendor/ghostty-src/src/input/key_encode.zig` 的 `kitty()`）。
+/// winit 的 `logical_key` 在 Shift 按下时给的是大写字母，因此这里统一折成小写，
+/// 与 kitty 规范里"unshifted code point"的语义一致。
+pub fn unshifted_codepoint(event: &winit::event::KeyEvent) -> Option<char> {
+    use winit::platform::modifier_supplement::KeyEventExtModifierSupplement as _;
+    // 优先用 winit 提供的"去掉所有修饰键后的键"（X11 与 Windows 后端都实现了，
+    // 见 winit-0.30.13 `src/platform/modifier_supplement.rs:6/26`）：
+    // 它按当前键盘布局给出未加修饰的字符，符号键也能拿到。
+    let base = event.key_without_modifiers();
+    if let WinitKey::Character(s) = &base
+        && s.as_ref().chars().count() == 1
+        && let Some(c) = s.as_ref().chars().next()
+    {
+        return Some(c);
+    }
+    // 回退：用逻辑键的单字符结果（多字符、命名键不适用），ASCII 大写折小写。
+    match &event.logical_key {
+        WinitKey::Character(s) if s.as_ref().chars().count() == 1 => {
+            let c = s.as_ref().chars().next()?;
+            Some(if c.is_ascii_uppercase() {
+                c.to_ascii_lowercase()
+            } else {
+                c
+            })
+        }
+        _ => None,
+    }
+}
+
 fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
     match key {
         WinitKey::Named(NamedKey::Enter) => Some(vt::Key::Enter),
@@ -3568,6 +3654,25 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
         WinitKey::Named(NamedKey::ArrowRight) => Some(vt::Key::ArrowRight),
         WinitKey::Named(NamedKey::Home) => Some(vt::Key::Home),
         WinitKey::Named(NamedKey::End) => Some(vt::Key::End),
+        // 阶段 6B t2b：功能键此前未映射，导致 F1–F12 / Insert / PageUp / PageDown 静默丢失。
+        WinitKey::Named(NamedKey::Insert) => Some(vt::Key::Insert),
+        // 阶段 6B 补充（用户裁定方案 a）：无修饰 PageUp/PageDown 转发给应用，
+        // 键盘滚动回看由默认的 Shift+PageUp/PageDown 绑定承担（见 default_key_bindings）。
+        WinitKey::Named(NamedKey::PageUp) => Some(vt::Key::PageUp),
+        WinitKey::Named(NamedKey::PageDown) => Some(vt::Key::PageDown),
+        WinitKey::Named(NamedKey::Delete) => Some(vt::Key::Delete),
+        WinitKey::Named(NamedKey::F1) => Some(vt::Key::F1),
+        WinitKey::Named(NamedKey::F2) => Some(vt::Key::F2),
+        WinitKey::Named(NamedKey::F3) => Some(vt::Key::F3),
+        WinitKey::Named(NamedKey::F4) => Some(vt::Key::F4),
+        WinitKey::Named(NamedKey::F5) => Some(vt::Key::F5),
+        WinitKey::Named(NamedKey::F6) => Some(vt::Key::F6),
+        WinitKey::Named(NamedKey::F7) => Some(vt::Key::F7),
+        WinitKey::Named(NamedKey::F8) => Some(vt::Key::F8),
+        WinitKey::Named(NamedKey::F9) => Some(vt::Key::F9),
+        WinitKey::Named(NamedKey::F10) => Some(vt::Key::F10),
+        WinitKey::Named(NamedKey::F11) => Some(vt::Key::F11),
+        WinitKey::Named(NamedKey::F12) => Some(vt::Key::F12),
         WinitKey::Character(s) => {
             let s: &str = s.as_ref();
             if let Some(c) = s.chars().next() {
@@ -3579,6 +3684,27 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
                 }
                 if c.is_ascii_digit() {
                     return Some(DIGITS[(c as u8 - b'0') as usize]);
+                }
+                // 阶段 6B t2b：符号键此前未映射，Ctrl+符号（ctrl+minus、ctrl+semicolon 等）
+                // 在 Encoded 路径下 key 为 None → 一个字节都不写。这里映射到 vt::Key
+                // 已有的对应项，具体字节仍由上游编码器决定。
+                let punct = match c {
+                    '-' => Some(vt::Key::Minus),
+                    '=' => Some(vt::Key::Equal),
+                    ',' => Some(vt::Key::Comma),
+                    '.' => Some(vt::Key::Period),
+                    ';' => Some(vt::Key::Semicolon),
+                    '\'' => Some(vt::Key::Quote),
+                    '`' => Some(vt::Key::Backquote),
+                    '\\' => Some(vt::Key::Backslash),
+                    '[' => Some(vt::Key::BracketLeft),
+                    ']' => Some(vt::Key::BracketRight),
+                    '/' => Some(vt::Key::Slash),
+                    ' ' => Some(vt::Key::Space),
+                    _ => None,
+                };
+                if punct.is_some() {
+                    return punct;
                 }
             }
             None
