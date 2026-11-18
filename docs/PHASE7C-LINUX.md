@@ -41,21 +41,25 @@ b9c4f200c7f18a385e59fcd463acb745f2575963	refs/tags/phase7b-win-done   ← 轻量
 | `crates/config/src/lib.rs` | 1 行：hinting 默认 false | 7C H2 |
 | `crates/render/src/lib.rs` | 2 行：hinting 默认 false + 文档 | 7C H2 |
 
-## C2 Windows zip 核对（已核对，存在文档滞后）
+## C2 Windows zip 核对（已核对，重打包后全部一致）
 
-zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`
-- 大小 **5,791,390 B**、sha256 **`01faa5e72812af78633fece06f529a15b02146fcd996de0d4e802a0889714c11`**，与任务书一致。
-- 顶层 `leantty-0.2.0-windows-x86_64/`，10 条目（含 CHANGELOG.md）。
+zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`（Windows 侧重打包版本）
+- 大小 **5,791,602 B**、sha256 **`a60b16433d561c787abaea6306732cebf2920f9b31613de92b1c870ef5a3a965`**
+- 顶层 `leantty-0.2.0-windows-x86_64/`，10 条目（leantty.exe、conpty.dll、OpenConsole.exe、leantty.toml、
+  leantty-portable.cmd、LICENSE、THIRD-PARTY-NOTICES.md、README.md、README.zh-CN.md、CHANGELOG.md）
 
-| 文件 | 结果 |
-|---|---|
-| `LICENSE` | 一致（`45c88805…`）|
-| `THIRD-PARTY-NOTICES.md` | 一致（`cd28e4b0…`）|
-| `README.md` / `README.zh-CN.md` | **不一致**：差 1 行（7C H2 新增的 `font.hinting` 说明）|
-| `CHANGELOG.md` | **不一致**：差 2 行（7C H4 新增的 hinting 条目）|
-| `leantty.toml`（对 `config/leantty.windows.toml`）| **不一致**：差 1 行注释（模板 hinting 注释改写）|
+逐文件与仓库比对（**全部一致**）：
 
-原因：zip 由 Windows 侧在我完成 H2/H4 之前打包；差异**仅限这三处文档文本**，二进制与其余文档一致。
+| 文件 | sha256（前 16 位）| 结论 |
+|---|---|---|
+| README.md | `a3eac279f1e5a76d` | 一致（字节级也一致，无 CRLF 差异）|
+| README.zh-CN.md | `1c9ea674806355ea` | 一致 |
+| CHANGELOG.md | `e20c6113b6548458` | 一致 |
+| LICENSE | `45c88805fba0e684` | 一致 |
+| THIRD-PARTY-NOTICES.md | `cd28e4b0c6324e26` | 一致 |
+| leantty.toml（对 `config/leantty.windows.toml`）| `8824111bd1fda252` | 一致 |
+
+（首版 zip `01faa5e7…` / 5,791,390 B 曾滞后于 H2/H4 的文档改动，已由 Windows 侧重打包取代。）
 
 ## C3 deb 0.2.0（已验证事实）
 
@@ -77,7 +81,7 @@ zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`
 | 文件 | 大小 | sha256 |
 |---|---|---|
 | `leantty_0.2.0_amd64.deb` | 3,516,768 B | `a823f5b0b1b9c246d675448f7ca81eecb1d5d960506f68c0c063a4a836e7eeba` |
-| `leantty-0.2.0-windows-x86_64.zip` | 5,791,390 B | `01faa5e72812af78633fece06f529a15b02146fcd996de0d4e802a0889714c11` |
+| `leantty-0.2.0-windows-x86_64.zip` | 5,791,602 B | `a60b16433d561c787abaea6306732cebf2920f9b31613de92b1c870ef5a3a965` |
 | `SHA256SUMS` | 189 B | 仅两个文件名 |
 
 ## C6 0.1.1 → 0.2.0 逐文件差异（15 个文件，无增删）
