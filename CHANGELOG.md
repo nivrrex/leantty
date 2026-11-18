@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+### Changed
+- Mouse selections are now **streaming (reading order)**: dragging across several lines selects
+  the whole line in between, instead of a rectangular block.
+- A single click no longer leaves a small highlighted cell behind; it just clears the previous
+  selection.
+
+### Fixed
+- Copying a multi-line drag that passes over shorter lines no longer drops the middle of the text.
+
 ## 0.2.0
 
 ### Added

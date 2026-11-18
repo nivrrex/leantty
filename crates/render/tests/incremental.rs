@@ -274,11 +274,11 @@ fn incremental_matches_full_pixel_exact() {
         h.sync_appearance(&snap, sel, None, None);
         // app 侧行为：选区变化时旧区域与新区域的行都标脏（含变为 None 时清旧区域）。
         if sel != last_sel {
-            if let Some((_, r0, _, r1)) = last_sel {
-                snap.mark_rows_dirty(r0, r1);
+            if let Some((ar, _, fr, _)) = last_sel {
+                snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
             }
-            if let Some((_, r0, _, r1)) = sel {
-                snap.mark_rows_dirty(r0, r1);
+            if let Some((ar, _, fr, _)) = sel {
+                snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
             }
             last_sel = sel;
         }
@@ -454,13 +454,14 @@ fn incremental_random_sequence_3000_steps() {
                 let c1 = (rnd() % cols as u32) as u16;
                 let r0 = (rnd() % rows as u32) as u16;
                 let r1 = (rnd() % rows as u32) as u16;
-                let new_sel = Some((c0.min(c1), r0.min(r1), c0.max(c1), r0.max(r1)));
+                // 阶段 8A：选区元组语义为 (anchor_row, anchor_col, focus_row, focus_col)
+                let new_sel = Some((r0, c0, r1, c1));
                 if new_sel != sel {
-                    if let Some((_, r0o, _, r1o)) = sel {
-                        snap.mark_rows_dirty(r0o, r1o);
+                    if let Some((ar, _, fr, _)) = sel {
+                        snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
                     }
-                    if let Some((_, r0n, _, r1n)) = new_sel {
-                        snap.mark_rows_dirty(r0n, r1n);
+                    if let Some((ar, _, fr, _)) = new_sel {
+                        snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
                     }
                     sel = new_sel;
                 }

@@ -36,6 +36,8 @@ pub struct DecideCtx<'a> {
     pub row_len: usize,
     pub bg_default: u32,
     pub fg_default: u32,
+    /// 流式（阅读顺序）选区：(anchor_row, anchor_col, focus_row, focus_col)，
+    /// 均为视口坐标；`None` 表示无选区。
     pub selection: Option<(u16, u16, u16, u16)>,
     pub palette: &'a Palette,
     pub draw_bold_with_bright: bool,
@@ -52,8 +54,29 @@ pub fn decide(cell: &Cell, ctx: &DecideCtx<'_>) -> CellDecision {
     } else {
         1
     };
-    let in_sel = ctx.selection.is_some_and(|(c0, r0, c1, r1)| {
-        (ctx.x as u16) >= c0 && (ctx.x as u16) <= c1 && (ctx.y as u16) >= r0 && (ctx.y as u16) <= r1
+    let in_sel = ctx.selection.is_some_and(|(ar, ac, fr, fc)| {
+        let (start_row, start_col, end_row, end_col) = if ar <= fr {
+            (ar, ac, fr, fc)
+        } else {
+            (fr, fc, ar, ac)
+        };
+        let cols = ctx.row_len.max(1) as u16;
+        let last = cols.saturating_sub(1);
+        let row = ctx.y as u16;
+        let col = ctx.x as u16;
+        if row < start_row || row > end_row {
+            return false;
+        }
+        let (c0, c1) = if start_row == end_row {
+            (start_col.min(end_col), start_col.max(end_col))
+        } else if row == start_row {
+            (start_col, last)
+        } else if row == end_row {
+            (0, end_col.min(last))
+        } else {
+            (0, last)
+        };
+        col >= c0 && col <= c1
     });
     let sel = in_sel && !is_tail;
     let orig_bg = cell.bg.map(rgb_to_u32).unwrap_or(ctx.bg_default);
@@ -175,7 +198,7 @@ mod tests {
         let mut c = cell();
         c.inverse = true;
         let mut cx = ctx(&p);
-        cx.selection = Some((0, 0, 10, 10));
+        cx.selection = Some((0, 0, 10, 10)); // (ar, ac, fr, fc)：第 0 行第 0 列 → 第 10 行第 10 列
         let d = decide(&c, &cx);
         // 选区：底色=原前景(白)、字色=原背景(黑)
         assert_eq!(d.blend_bg, 0xFFFFFF);

@@ -78,6 +78,40 @@ impl Selection {
     }
 }
 
+/// 流式（阅读顺序）选区在某一行的列范围（含端点）；行不在选区内返回 None。
+///
+/// 规则与 alacritty 一致：起始行从 anchor 列到行尾（向下拖）或从 0 到 anchor 列（向上拖），
+/// 结束行对称；中间行取整行。
+pub fn stream_row_range(
+    anchor: CellPos,
+    focus: CellPos,
+    row: u16,
+    cols: u16,
+) -> Option<(u16, u16)> {
+    if cols == 0 {
+        return None;
+    }
+    let last = cols - 1;
+    // 方向：向下拖（anchor 在上）时首行取 anchor.col..行尾、末行取 0..focus.col；
+    // 向上拖时相反。中间行恒为整行（流式/阅读顺序）。
+    let downward = anchor.row <= focus.row;
+    let (top, bottom) = if downward { (anchor, focus) } else { (focus, anchor) };
+    if row < top.row || row > bottom.row {
+        return None;
+    }
+    let (c0, c1) = if top.row == bottom.row {
+        (anchor.col.min(focus.col), anchor.col.max(focus.col))
+    } else if row == top.row {
+        if downward { (top.col, last) } else { (0, top.col) }
+    } else if row == bottom.row {
+        if downward { (0, bottom.col) } else { (bottom.col, last) }
+    } else {
+        (0, last)
+    };
+    Some((c0.min(last), c1.min(last)))
+}
+
+
 /// 双击选词边界：以 semantic_escape_chars 为分隔符，从 focus 列向两侧扩展
 /// 至边界；focus 字符本身是分隔符时仅选自身。
 pub fn word_region(line: &str, focus_col: usize, escape_chars: &str) -> (usize, usize) {
@@ -98,6 +132,24 @@ pub fn word_region(line: &str, focus_col: usize, escape_chars: &str) -> (usize, 
         end += 1;
     }
     (start, end)
+}
+
+/// 流式选区文本提取：逐行按各自列范围取内容，软折行处不插换行（与 `extract_text` 同规则）。
+pub fn extract_text_stream(rows: &[(&[Cell], bool)], spans: &[(u16, u16)], cols: u16) -> String {
+    let mut out = String::new();
+    let mut pending_wrap = false;
+    for (idx, (cells, wrapped)) in rows.iter().enumerate() {
+        let Some(&(c0, c1)) = spans.get(idx) else {
+            continue;
+        };
+        let seg = extract_rows(&[(cells, *wrapped)], c0, c1.min(cols.saturating_sub(1)));
+        if idx > 0 && !pending_wrap {
+            out.push('\n');
+        }
+        out.push_str(&seg);
+        pending_wrap = *wrapped;
+    }
+    out
 }
 
 /// 选区文本提取（任务 2C.1）：软折行处拼接不插分隔（snap.wrapped 标记）；
@@ -429,4 +481,42 @@ pub fn auto_scroll_step(
         new_offset
     };
     (new_offset, focus_abs.min(last_visible))
+}
+
+#[cfg(test)]
+mod stream_tests {
+    use super::*;
+
+    fn pos(col: u16, row: u16) -> CellPos {
+        CellPos { col, row }
+    }
+
+    #[test]
+    fn three_row_drag_is_streaming() {
+        // 从 (col 5, row 0) 拖到 (col 3, row 2)，列数 10：
+        // 首行 5..9、中间行整行 0..9、末行 0..3（矩形会是 3..5 三段）
+        let a = pos(5, 0);
+        let f = pos(3, 2);
+        assert_eq!(stream_row_range(a, f, 0, 10), Some((5, 9)));
+        assert_eq!(stream_row_range(a, f, 1, 10), Some((0, 9)), "中间行必须整行");
+        assert_eq!(stream_row_range(a, f, 2, 10), Some((0, 3)));
+        assert_eq!(stream_row_range(a, f, 3, 10), None, "选区外无范围");
+    }
+
+    #[test]
+    fn upward_drag_is_streaming() {
+        // 反向拖：从 (col 3, row 2) 到 (col 5, row 0)
+        let a = pos(3, 2);
+        let f = pos(5, 0);
+        assert_eq!(stream_row_range(a, f, 0, 10), Some((0, 5)));
+        assert_eq!(stream_row_range(a, f, 1, 10), Some((0, 9)));
+        assert_eq!(stream_row_range(a, f, 2, 10), Some((3, 9)));
+    }
+
+    #[test]
+    fn single_row_and_zero_length() {
+        let a = pos(2, 1);
+        assert_eq!(stream_row_range(a, pos(6, 1), 1, 10), Some((2, 6)));
+        assert_eq!(stream_row_range(a, pos(6, 1), 0, 10), None);
+    }
 }

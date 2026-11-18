@@ -124,6 +124,10 @@ configuration file (see the templates).
 - `font.hinting` is accepted for compatibility but has no effect (the rasterizer does not
   implement hinting); enabling it prints a one-line notice at startup.
 
+- Mouse selection is streaming (reading order): dragging across lines takes whole middle lines;
+  a single click clears the selection and leaves no highlight. Double-click selects a word,
+  triple-click selects the line.
+
 ## Known limitations
 
 - **Windows console quirks (system conhost)**: `ESC[7m` may be rewritten into explicit colours,
