@@ -95,22 +95,33 @@ pub fn stream_row_range(
     // 方向：向下拖（anchor 在上）时首行取 anchor.col..行尾、末行取 0..focus.col；
     // 向上拖时相反。中间行恒为整行（流式/阅读顺序）。
     let downward = anchor.row <= focus.row;
-    let (top, bottom) = if downward { (anchor, focus) } else { (focus, anchor) };
+    let (top, bottom) = if downward {
+        (anchor, focus)
+    } else {
+        (focus, anchor)
+    };
     if row < top.row || row > bottom.row {
         return None;
     }
     let (c0, c1) = if top.row == bottom.row {
         (anchor.col.min(focus.col), anchor.col.max(focus.col))
     } else if row == top.row {
-        if downward { (top.col, last) } else { (0, top.col) }
+        if downward {
+            (top.col, last)
+        } else {
+            (0, top.col)
+        }
     } else if row == bottom.row {
-        if downward { (0, bottom.col) } else { (bottom.col, last) }
+        if downward {
+            (0, bottom.col)
+        } else {
+            (bottom.col, last)
+        }
     } else {
         (0, last)
     };
     Some((c0.min(last), c1.min(last)))
 }
-
 
 /// 双击选词边界：以 semantic_escape_chars 为分隔符，从 focus 列向两侧扩展
 /// 至边界；focus 字符本身是分隔符时仅选自身。
@@ -498,7 +509,11 @@ mod stream_tests {
         let a = pos(5, 0);
         let f = pos(3, 2);
         assert_eq!(stream_row_range(a, f, 0, 10), Some((5, 9)));
-        assert_eq!(stream_row_range(a, f, 1, 10), Some((0, 9)), "中间行必须整行");
+        assert_eq!(
+            stream_row_range(a, f, 1, 10),
+            Some((0, 9)),
+            "中间行必须整行"
+        );
         assert_eq!(stream_row_range(a, f, 2, 10), Some((0, 3)));
         assert_eq!(stream_row_range(a, f, 3, 10), None, "选区外无范围");
     }

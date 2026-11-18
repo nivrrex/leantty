@@ -330,8 +330,7 @@ pub use paste::{
 pub use scrollbar::{ScrollbarGeom, scrollbar_geometry, track_y_to_offset};
 pub use selection::{
     CellPos, Selection, abs_to_viewport, auto_scroll_step, extract_rows, extract_text,
-    extract_text_stream, stream_row_range,
-    selection_viewport_region, viewport_to_abs, word_region,
+    extract_text_stream, selection_viewport_region, stream_row_range, viewport_to_abs, word_region,
 };
 
 /// 帧耗时诊断统计（LEANTTY_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
@@ -2181,12 +2180,7 @@ impl ApplicationHandler for AppHandler {
                         };
                         let (ar, ac) = clamp(s.anchor)?;
                         let (fr, fc) = clamp(s.focus)?;
-                        Some((
-                            ar.saturating_sub(top),
-                            ac,
-                            fr.saturating_sub(top),
-                            fc,
-                        ))
+                        Some((ar.saturating_sub(top), ac, fr.saturating_sub(top), fc))
                     });
                     if vis_region != self.last_sel_region {
                         if let Some((ar, _, fr, _)) = self.last_sel_region {
@@ -2961,9 +2955,12 @@ impl AppHandler {
             let v1 = (bot_abs as usize - offset).min(u16::MAX as usize) as u16;
             let rows: Vec<(&[Cell], bool)> = (v0..=v1)
                 .filter_map(|r| {
-                    snap.cells
-                        .get(r as usize)
-                        .map(|cs| (cs.as_slice(), snap.wrapped.get(r as usize).copied().unwrap_or(false)))
+                    snap.cells.get(r as usize).map(|cs| {
+                        (
+                            cs.as_slice(),
+                            snap.wrapped.get(r as usize).copied().unwrap_or(false),
+                        )
+                    })
                 })
                 .collect();
             let spans: Vec<(u16, u16)> = (top_abs..=bot_abs)
