@@ -496,7 +496,11 @@
 - 阶段 6B case27 剩余候选（待验证假设）：`map_logical_key` 新增映射、`unshifted_codepoint` 改用 `key_without_modifiers()`、legacy `ctrl+[` 回写三者之一。推翻条件：逐个回退实验后 case27 仍红，则说明引入点在别处（例如 dump 钩子路径的时序）。
 - 阶段 6B case27 复现条件（已验证事实）：隔离会话下用 debug 二进制 + `LEANTTY_DUMP_SNAPSHOT`（与 run_all 的 start_app 等价）跑同一按键序列，HEAD 上差异为 **519**；只有在完整 e2e（case27 前有 26 个用例）时才稳定为 **2444**；phase6a-done 的完整 e2e 为 0 → 该红是"前序用例残留状态 × 6B 改动"的组合效应，而不是 6B 的单点回归。
 - 阶段 6B case27 下一步（待验证假设）：需要实现 `E2E_ONLY`/"前 N 个用例 + case27"过滤后二分 N，定位是哪一个前序用例留下的状态与 6B 的哪一处改动叠加。
-
+- 阶段 6B 补充 根因一（已验证事实）：e2e case65 早前"无修饰 PageUp 零字节"是**注入侧**问题——`xdotool key PageUp` 被拒（"No such key name 'PageUp'"），事件根本没进窗口；xdotool 用 X keysym 名（`Page_Up`），而绑定/`key_string` 用 winit Debug 名（`PageUp`），两套命名空间混用是本次多轮误判的根源。
+- 阶段 6B 补充 根因二（已验证事实）：默认绑定最初写成 `ConfigMods { shift: true, ..cm }`，而 `cm` 含 `control: true`，实际要求 Ctrl+Shift+PageUp → Shift+PageUp 落到编码器（`ESC[5;2~`）。改为显式全字段后命中，pty 零字节。
+- 阶段 6B 补充 实现（已验证事实，方案 a）：无修饰 `PageUp/PageDown` 走编码器转发（legacy 与 kitty7 均 `1b5b357e`/`1b5b367e`）；默认绑定 `Shift+PageUp/PageDown → ScrollPageUp/Down`；e2e case27 绑定名改 `PageUp/PageDown` 并加 `mods = "Shift"`、注入改 `shift+Page_Up`；新增 case65（两模式转发）与 case66（Shift 消费、pty 零字节 + 哨兵）。
+- 阶段 6B 补充 门禁（已验证事实）：完整 e2e **119/119**（GPU 轮 10/10），`GATES: PASS — HEAD=4b79612`。
+- 阶段 6B 补充 tag（已验证事实）：用户要求的名字 `phase6b2-done` 不符合 `scripts/tag_checked.sh` 的命名规则（`^phase[0-9]+[a-z]*-[A-Za-z0-9._-]+$`），改用 `phase6b-done2`（轻量 tag，指向 4b79612）；`phase6b-done` 未动。
 - 阶段 6C C1（已验证事实）：`phase6b-done2` = `4b796120…`（轻量 tag，与任务书一致），`--no-ff` 合并 0 冲突；`crates/` 相对 `phase5b-win-done` 仅 5 个文件（app/lib.rs、pty/windows.rs 注释、render 测试、vt/encoder.rs、vt/tests/key_kitty.rs），全部来自 Linux 6A/6B。
 - 阶段 6C C2（已验证事实）：build.ps1 重建成功，`--version` 输出 `leantty 0.1.1`（rc=0）。
 - 阶段 6C C3（已验证事实）：CLI 退出码 0/0/2/2/1；控制台释放后 1s/3s/8s 均无本进程控制台窗口、AttachConsole=False；杀子 shell 后 1404 ms 退出；shell.args 规则（cmd/powershell 保留 chcp、pwsh 与显式空数组不注入、用户 args 原样）符合；`cargo test` 233 passed；clippy 0 error。
@@ -508,6 +512,18 @@
 - 阶段 6D W2（工程判断，置信度中）：崩溃栈完全位于 pwsh 的 `UpdatesNotification.ShowUpdateNotification` → `String.PadRight(totalWidth=-17)`，终端侧尺寸因素已排除 → 属 pwsh 缺陷，**不改代码**；README/README.zh-CN 增加故障排查条目（`POWERSHELL_UPDATECHECK=Off` 规避 + 未能复现的限制），未把该变量注入默认配置。
 - 阶段 6D W2（待验证假设）：崩溃确切触发条件未复现；推翻条件=用户机设 `Off` 后仍崩溃，则重新归因到 ConPTY 其它初始化差异。
 - 阶段 6D W3（已验证事实）：cargo test 233 passed、clippy 0 error；重打 zip 5 786 634 B / sha256 `1713d3f5…`，zip 内 5 个文档哈希与仓库一致，泄漏扫描 0 命中。
+- 阶段 6D D1（已验证事实）：`refs/heads/win` 与 `phase6d-win-fix` 同为 `9575229…`（轻量 tag）；合并冲突仅在 `docs/DECISIONS.md`（双方文件尾追加），按双方保留解决；`crates/` 相对 `phase6b-done2` 只增 `crates/app/src/lib.rs` 的 `#[cfg(all(test, windows))] mod keymap_tests`（+110 行），无 Linux 行为变化。
+- 阶段 6D D2（已验证事实）：Windows zip 5,786,634 B / `1713d3f5…` 与任务书一致；zip 内 CHANGELOG/LICENSE/THIRD-PARTY-NOTICES/leantty.toml 与仓库逐字节一致；两份 README 仅行尾不同（zip 为 CRLF），去 CRLF 后内容一致。
+- 阶段 6D D3/D5（已验证事实）：deb 0.1.1 = 3,516,304 B / `031e49f6…`，Depends 9 项 + Recommends libvulkan1，Maintainer 占位未替换；**包内二进制**可复现（两次构建与 `target/release/leantty` 均 `2074d934…`），**deb 包本身不可复现**（`changelog.Debian.gz` 内嵌 `date -R` 时间戳，两次 031e49f6… vs a794ad2a…）。
+- 阶段 6D D4（已验证事实）：导出 169 文件；扫描 A=0、B=3（Windows 系统常量）、C=0、豁免 15、仅报告 2（两处 "LTSC" 平台说明）。
+- 阶段 7A a0（已验证事实）：`crates/pty/src/unix.rs:65` 显式 `cmd.cwd("/tmp")`，Unix 上子进程工作目录恒为 `/tmp`（既不继承启动目录也不可配置）；Windows 侧无 `lpCurrentDirectory`，继承父进程目录 → 两平台行为不一致，且该行是源码中的绝对路径。
+- 阶段 7A 停止（已验证事实）：命中 a0 停止条件"Unix 路径显式设置了别的工作目录"，未改代码、未打 tag；等待裁定是否删除 `/tmp` 硬编码（行为变更）以及 `--working-directory` 的语义。
+- 阶段 7A A0（已验证事实）：`crates/pty/src/unix.rs` 的 `cmd.cwd("/tmp")` 出自最初骨架提交 `8e2dbdc`，DECISIONS 无记录、无 cwd 之外目的。
+- 阶段 7A 关键发现（已验证事实）：portable-pty 0.8.1 `CommandBuilder::as_command()`（`cmdbuilder.rs:452-458`）在 `cwd=None` 时把子进程工作目录设为 **$HOME** 而非继承父进程；仅删除 `/tmp` 一行会让子进程落到 `$HOME`（实测 `/root`，`HOME=/tmp` 时为 `/tmp`）。
+- 阶段 7A 实现（已验证事实）：`unix.rs` 显式 `cmd.cwd(std::env::current_dir())`；未指定 `--working-directory` 时子进程工作目录 = 启动目录，指定时 = 该目录（app 先 `set_current_dir`）。用户已批准该产品行为变更（默认由 /tmp 改为启动目录）。
+- 阶段 7A 选项语义（已验证事实）：`-e/--command` 其后全部参数原样作为 argv（含以 `-` 开头者），缺程序名 rc=2，参数非 UTF-8 → rc=2；`--working-directory` 缺值/重复均 rc=2（选择"重复报错"）；无效目录 rc=1 且不开窗。
+- 阶段 7A e2e（已验证事实）：新增 case67–case74；完整 e2e **127/127**、GPU 轮 10/10；临时回退 `current_dir()` 使 case67 变红（子进程 cwd=`/root`），恢复后回到启动目录。
+
 
 - 阶段 6E W1（已验证事实）：README/README.zh-CN 的 pwsh 条目按用户机结论改写为三段（现象 / `POWERSHELL_UPDATECHECK=Off` 规避并经用户确认 / "是否仅在 leantty 出现尚未确认"），两份结构一致；未改代码、未注入默认配置。
 - 阶段 6E W2（已验证事实 + 未测）：本机普通 conhost 中清空 `POWERSHELL_UPDATECHECK` 后运行交互 pwsh，15 s 未复现崩溃（pwsh 子进程存活、stderr 空）；Windows Terminal 本机未安装（`wt=absent`）→ **未测**。

@@ -66,8 +66,20 @@ leantty --help                       # 查看选项
 | `-h`、`--help` | 打印用法并退出（无图形会话也可用） |
 | `-V`、`--version` | 打印版本（`leantty <版本>`）并退出 |
 | `--config-file <路径>` | 使用指定的配置文件 |
+| `--working-directory <目录>` | 在该目录中启动会话（子程序继承该目录）|
+| `-e`、`--command <程序> [参数...]` | 用指定程序替代配置的 shell，其后所有参数原样传给该程序 |
 
 用法错误时退出码为 2，并在 stderr 给出一行原因与 `Try --help`。
+
+示例：
+
+```sh
+leantty -e htop                                  # 用指定程序替代 shell
+leantty --working-directory ~/src                # 在指定目录中启动
+leantty -e sh -c 'make test; read -r _'          # 需要 shell 语法时显式写 shell
+leantty -e sh -c 'echo done'                     # 程序退出后窗口随之关闭
+```
+
 
 ## 键鼠
 
@@ -130,6 +142,7 @@ leantty --help                       # 查看选项
   配置里的绑定要写 winit 的键名（`PageUp`、`PageDown`），不能写 X keysym 名（`Page_Up`）。
 - **部分 Ctrl 组合没有输入**（Linux）：Ctrl+Semicolon、Ctrl+Comma、Ctrl+Period、Ctrl+Apostrophe、
   Ctrl+Shift+Semicolon 以及 Ctrl+I / Ctrl+M 不会送到程序，编码器未提供这些键到控制字符的映射。
+- **`-e/--command` 的参数必须是合法 UTF-8**；没有"程序退出后保持窗口"的选项。
 - **不发送 kitty 键盘协议的按键释放事件**：请求上报 key-up 的程序只能收到按下事件。
 
 ## 许可证

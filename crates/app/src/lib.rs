@@ -422,6 +422,8 @@ pub struct App {
     pub cols: u16,
     /// 初始行数。
     pub rows: u16,
+    /// `-e/--command` 覆盖（程序 + 参数）；`None` 表示走配置的 shell。
+    exec_command: Option<Vec<String>>,
     /// shell 路径。
     pub shell: String,
     /// 字体设置（config 转换，含四组 style 与 fallback）。
@@ -440,6 +442,11 @@ pub struct App {
 impl App {
     /// 新建应用配置（由强类型 Config 驱动；shell 优先级 terminal.shell.program > SHELL > 平台默认）。
     pub fn new(config: config::Config) -> Self {
+        Self::new_with_command(config, None)
+    }
+
+    /// 带 `-e/--command` 覆盖的构造（阶段 7A）：argv 首项为程序，其余为参数。
+    pub fn new_with_command(config: config::Config, command: Option<Vec<String>>) -> Self {
         let shell = config
             .terminal
             .shell
@@ -451,6 +458,7 @@ impl App {
             cols: config.window.dimensions.columns,
             rows: config.window.dimensions.lines,
             shell,
+            exec_command: command,
             font_settings: render_font_settings(&config),
             options: render_options(&config),
             palette: render_palette(&config.colors),
@@ -473,12 +481,14 @@ impl App {
                 t0.elapsed().as_secs_f64() * 1000.0
             );
         }
+        let exec_command = self.exec_command.clone();
         let mut handler = AppHandler {
             perf_reset_at: std::env::var("LEANTTY_PERF_RESET_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
                 .map(|ms| Instant::now() + std::time::Duration::from_millis(ms)),
             config: Some(self),
+            exec_command,
             selection: None,
             mouse_down: false,
             last_click: None,
@@ -924,6 +934,8 @@ fn build_gpu(
 
 struct AppHandler {
     config: Option<App>,
+    /// 阶段 7A：`-e/--command` 覆盖（程序 + 参数），仅在本次启动使用。
+    exec_command: Option<Vec<String>>,
     vt: Option<VtTerminal>,
     pty: Option<NativePty>,
     renderer: Option<RendererBackend>,
@@ -1294,15 +1306,26 @@ impl ApplicationHandler for AppHandler {
         let t_spawn = Instant::now();
         let mut pty = NativePty::new();
         // 阶段 3U：用户配置的 terminal.shell.args 优先（None=未配置，Some([])=显式空数组）。
-        let shell_args = config
-            .config
-            .terminal
-            .shell
-            .as_ref()
-            .and_then(|s| s.args.clone());
+        // 阶段 7A：`-e/--command` 覆盖 program 与 args；args 一律作为 Some(向量)，
+        // 使 Windows 侧 decide_shell_args 不注入 cmd.exe/powershell 的默认 chcp 参数。
+        let (spawn_program, spawn_args) = match self.exec_command.as_ref() {
+            Some(argv) => (
+                argv.first().cloned().unwrap_or_default(),
+                Some(argv[1..].to_vec()),
+            ),
+            None => {
+                let args = config
+                    .config
+                    .terminal
+                    .shell
+                    .as_ref()
+                    .and_then(|s| s.args.clone());
+                (config.shell.clone(), args)
+            }
+        };
         if let Err(e) = pty.spawn_with_args(
-            &config.shell,
-            shell_args.as_deref(),
+            &spawn_program,
+            spawn_args.as_deref(),
             config.cols,
             config.rows,
         ) {

@@ -62,7 +62,13 @@ impl Pty for NativePty {
             pixel_height: 0,
         })?;
         let mut cmd = CommandBuilder::new(shell);
-        cmd.cwd("/tmp");
+        // 注意：portable-pty 0.8.1 的 `as_command()` 在 `cwd` 为 None 时会把子进程工作目录
+        // 设为 **$HOME**（`cmdbuilder.rs:452-458` 的 `unwrap_or(home)`），不是继承父进程。
+        // 因此这里显式传入本进程当前目录：未指定 `--working-directory` 时即启动目录，
+        // 指定时 app 已 `set_current_dir`，子进程随之继承。
+        if let Ok(dir) = std::env::current_dir() {
+            cmd.cwd(dir);
+        }
         // 阶段 4X t2：用户显式配置的 `terminal.shell.args` 逐项透传（`None` = 未配置，
         // 与 4W 之前的行为逐字节一致；Unix 侧不注入任何默认参数）。
         if let Some(list) = args {

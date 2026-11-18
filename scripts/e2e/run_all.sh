@@ -118,9 +118,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     local log=${2:-$OUT/app-run.log}
     local attempt=1
     if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" "$LEANTTY_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
     else
-        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$LEANTTY_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
     fi
     LEANTTY_PID=$!
     if ! wait_window; then
@@ -131,9 +131,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
             echo "retry start_app: 第 $((attempt-1)) 次启动进程已退出，1s 后重试" >&2
             sleep 1
             if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" "$LEANTTY_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
             else
-                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh "$LEANTTY_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
             fi
             LEANTTY_PID=$!
             if wait_window; then
@@ -2926,6 +2926,84 @@ else
         fi
         stop_app
     fi
+fi
+
+# case67..case74（阶段 7A）：-e/--command 与 --working-directory，以及"默认工作目录=启动目录"。
+W7="$OUT/case7x"; mkdir -p "$W7"
+LEANTTY_ABS="$(cd "$(dirname "$LEANTTY_REL")" && pwd)/$(basename "$LEANTTY_REL")" 2>/dev/null || LEANTTY_ABS="$LEANTTY_REL"
+if [ ! -x "$LEANTTY_REL" ]; then
+    echo "FAIL case67..74 (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    # 67：不加 --working-directory 时子进程工作目录 = 启动目录（回退 unix.rs 删除行会变红）
+    T67="$W7/launch"; rm -rf "$T67"; mkdir -p "$T67"; M67="$W7/c67.txt"; rm -f "$M67"
+    ( cd "$T67" && "$LEANTTY_ABS" -e sh -c "pwd -P > '$M67'; sleep 1" >/dev/null 2>&1 ) & A67=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M67" ]; do sleep 0.2; i=$((i+1)); done
+    GOT67=$(cat "$M67" 2>/dev/null); WANT67=$(cd "$T67" && pwd -P)
+    echo "  [c67] 子进程 pwd=[$GOT67] 启动目录=[$WANT67]"
+    if [ "$GOT67" = "$WANT67" ]; then echo "PASS case67-default-cwd-is-launch-dir"; PASS=$((PASS+1)); else echo "FAIL case67-default-cwd-is-launch-dir (pwd=$GOT67)"; FAIL=$((FAIL+1)); fi
+    wait $A67 2>/dev/null || true
+
+    # 68：-e 进程退出后窗口 ≤5s 关闭
+    M68="$W7/c68.txt"; rm -f "$M68"
+    "$LEANTTY_ABS" -e sh -c "echo ok > '$M68'; sleep 1" >/dev/null 2>&1 & A68=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M68" ]; do sleep 0.2; i=$((i+1)); done
+    T68=$(date +%s%N); GONE=""; k=0
+    while [ $k -le 50 ]; do ST=$(ps -o stat= -p "$A68" 2>/dev/null | tr -d ' '); case "$ST" in ""|Z*) GONE=1; break;; esac; sleep 0.1; k=$((k+1)); done
+    MS68=$(( ($(date +%s%N) - T68) / 1000000 ))
+    if [ -s "$M68" ] && [ -n "$GONE" ] && [ "$MS68" -le 5000 ]; then echo "PASS case68-command-exits-window-closes (marker=ok ${MS68}ms)"; PASS=$((PASS+1)); else echo "FAIL case68-command-exits-window-closes (marker=$(cat "$M68" 2>/dev/null) gone=$GONE ${MS68}ms)"; FAIL=$((FAIL+1)); fi
+
+    # 69：--working-directory D -e pwd
+    D69="$W7/wd"; rm -rf "$D69"; mkdir -p "$D69"; M69="$W7/c69.txt"; rm -f "$M69"
+    "$LEANTTY_ABS" --working-directory "$D69" -e sh -c "pwd -P > '$M69'; sleep 1" >/dev/null 2>&1 & A69=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M69" ]; do sleep 0.2; i=$((i+1)); done
+    GOT69=$(cat "$M69" 2>/dev/null); WANT69=$(cd "$D69" && pwd -P)
+    if [ "$GOT69" = "$WANT69" ]; then echo "PASS case69-working-directory ($GOT69)"; PASS=$((PASS+1)); else echo "FAIL case69-working-directory (got=$GOT69 want=$WANT69)"; FAIL=$((FAIL+1)); fi
+    wait $A69 2>/dev/null || true
+
+    # 70：只有 --working-directory，用配置里的 shell.args 验证
+    M70="$W7/c70.txt"; rm -f "$M70"
+    printf '[renderer]\nbackend = "cpu"\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "pwd -P > %s; sleep 1"]\n' "$M70" > "$W7/c70.toml"
+    "$LEANTTY_ABS" --config-file "$W7/c70.toml" --working-directory "$D69" >/dev/null 2>&1 & A70=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M70" ]; do sleep 0.2; i=$((i+1)); done
+    GOT70=$(cat "$M70" 2>/dev/null)
+    if [ "$GOT70" = "$WANT69" ]; then echo "PASS case70-working-directory-config-shell"; PASS=$((PASS+1)); else echo "FAIL case70-working-directory-config-shell (got=$GOT70)"; FAIL=$((FAIL+1)); fi
+    wait $A70 2>/dev/null || true
+
+    # 71：相对 --config-file 相对启动目录解析；相对 --working-directory 同样
+    A71="$W7/a"; B71="$W7/a/b"; rm -rf "$W7/a"; mkdir -p "$B71"; M71="$W7/c71.txt"; rm -f "$M71"
+    printf '[renderer]\nbackend = "cpu"\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "pwd -P > %s; sleep 1"]\n' "$M71" > "$A71/rel.toml"
+    ( cd "$A71" && "$LEANTTY_ABS" --config-file rel.toml --working-directory b >/dev/null 2>&1 ) & A71P=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M71" ]; do sleep 0.2; i=$((i+1)); done
+    GOT71=$(cat "$M71" 2>/dev/null); WANT71=$(cd "$B71" && pwd -P)
+    if [ "$GOT71" = "$WANT71" ]; then echo "PASS case71-relative-paths ($GOT71)"; PASS=$((PASS+1)); else echo "FAIL case71-relative-paths (got=$GOT71 want=$WANT71)"; FAIL=$((FAIL+1)); fi
+    wait $A71P 2>/dev/null || true
+
+    # 72：无效目录（不存在 / 是文件）→ rc=1，无窗口
+    OK72=0
+    for bad in "$W7/no-such-dir" "$A71/rel.toml"; do
+        ERR=$("$LEANTTY_ABS" --working-directory "$bad" -e true 2>&1 >/dev/null); RC=$?
+        W=$(x11 xdotool search --class leantty 2>/dev/null | wc -l)
+        echo "  [c72] $bad → rc=$RC stderr=$(printf '%s' "$ERR" | head -1)"
+        [ "$RC" -eq 1 ] && [ "$W" -eq 0 ] && OK72=$((OK72+1))
+    done
+    if [ "$OK72" -eq 2 ]; then echo "PASS case72-invalid-working-directory (2/2)"; PASS=$((PASS+1)); else echo "FAIL case72-invalid-working-directory ($OK72/2)"; FAIL=$((FAIL+1)); fi
+
+    # 73：-e 缺程序 → rc=2；-e 之后的 --config-file 是子进程参数
+    "$LEANTTY_ABS" -e >/dev/null 2>&1; R73A=$?
+    M73="$W7/c73.txt"; rm -f "$M73"
+    "$LEANTTY_ABS" -e sh -c "echo \"\$1\" > '$M73'; sleep 1" sh --config-file >/dev/null 2>&1 & A73=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M73" ]; do sleep 0.2; i=$((i+1)); done
+    GOT73=$(cat "$M73" 2>/dev/null)
+    if [ "$R73A" -eq 2 ] && [ "$GOT73" = "--config-file" ]; then echo "PASS case73-command-arg-parsing (rc2, arg=$GOT73)"; PASS=$((PASS+1)); else echo "FAIL case73-command-arg-parsing (rc=$R73A arg=$GOT73)"; FAIL=$((FAIL+1)); fi
+    wait $A73 2>/dev/null || true
+
+    # 74：含空格与引号的参数原样传递（legacy legacy 证据：标记文件内容）
+    M74="$W7/c74.txt"; rm -f "$M74"
+    "$LEANTTY_ABS" -e sh -c "printf %s \"\$1\" > '$M74'; sleep 1" sh 'a b "c"' >/dev/null 2>&1 & A74=$!
+    i=0; while [ $i -lt 60 ] && [ ! -s "$M74" ]; do sleep 0.2; i=$((i+1)); done
+    GOT74=$(cat "$M74" 2>/dev/null)
+    if [ "$GOT74" = 'a b "c"' ]; then echo "PASS case74-quoted-args ($GOT74)"; PASS=$((PASS+1)); else echo "FAIL case74-quoted-args (got=$GOT74)"; FAIL=$((FAIL+1)); fi
+    wait $A74 2>/dev/null || true
 fi
 
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
