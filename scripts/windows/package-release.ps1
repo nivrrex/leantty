@@ -15,7 +15,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $repo = (Get-Item $here).Parent.Parent.FullName
-$version = '0.1.0'
+$versionLine = (Select-String -Path (Join-Path $repo 'Cargo.toml') -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1)
+if (-not $versionLine) { throw 'cannot read version from Cargo.toml' }
+$version = $versionLine.Matches[0].Groups[1].Value
 $top = "leantty-$version-windows-x86_64"
 
 if (-not $OutDir) { $OutDir = Join-Path $repo 'vt-verify-win\dist-release' }
@@ -56,7 +58,7 @@ try {
     # 3) 配置模板 / 便携启动器 / 授权 / 文档
     Copy-Item (Join-Path $repo 'config\leantty.windows.toml') (Join-Path $stageTop 'leantty.toml')
     Copy-Item (Join-Path $repo 'packaging\windows\leantty-portable.cmd') (Join-Path $stageTop 'leantty-portable.cmd')
-    foreach ($f in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md', 'README.zh-CN.md')) {
+    foreach ($f in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md', 'README.zh-CN.md', 'CHANGELOG.md')) {
         $src = Join-Path $repo "packaging\windows\$f"
         if (-not (Test-Path $src)) { $src = Join-Path $repo $f }
         if (-not (Test-Path $src)) { throw "release doc missing: $f" }

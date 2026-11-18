@@ -135,6 +135,14 @@ configuration file (see the templates).
    adapter; use `"auto"` or `"cpu"`.
 5. **Paste does nothing in the terminal but works in other apps**: the shell may have bracketed
    paste enabled and the application inside can ignore it — check the program's own handling.
+6. **PowerShell 7 crashes at startup inside leantty** with
+   `System.ArgumentOutOfRangeException: totalWidth ('-17')` from
+   `UpdatesNotification.ShowUpdateNotification`: this happens inside PowerShell's own update
+   banner, not in the terminal. Workaround: set `POWERSHELL_UPDATECHECK=Off` in the environment
+   before launching the shell. *Limitation (unverified): we could not reproduce the crash on our
+   machines — the ConPTY grid size reported to the shell was correct (120x30 matching the
+   configured grid, including after resize) and `pwsh` ran normally at widths from 25 to 120
+   columns, both inside leantty and in a plain conhost of the same width.*
 
 - **Keyboard scrolling uses Shift+PageUp / Shift+PageDown**; unmodified PageUp / PageDown are
   forwarded to the program. Bindings in a configuration file must use the winit key names
