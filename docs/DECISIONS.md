@@ -542,3 +542,9 @@
 - 阶段 7C C2（已验证事实）：Windows zip 5,791,390 B / `01faa5e7…` 与任务书一致；zip 内 LICENSE 与 THIRD-PARTY-NOTICES 逐字节一致，README×2 / CHANGELOG / leantty.toml 各差 1–2 行文本——均为 7C H2/H4 在打包之后新增/改写的文档行，二进制与其余文档一致。
 - 阶段 7C C3/C5（已验证事实）：deb 0.2.0 = 3,516,768 B / `a823f5b0…`，包内二进制两次构建均为 `f9725440…`，deb 包本身因 changelog 时间戳不可复现（已知）。
 - 阶段 7C C4（已验证事实）：导出 169 文件，扫描 A=0、C=0、B=3、豁免 15、仅报告 2。
+
+- 阶段 7D D1（已验证事实）：`phase7c-done` = `1bd78510…`（轻量 tag）与任务书一致；`--no-ff` 合并 0 冲突（合并提交 `6dbf583`）；`crates/` 相对 `phase7b-win-done` 仅 3 行——config 与 render 的 `hinting` 默认值 true→false 及 render 一处文档注释。
+- 阶段 7D D2（已验证事实）：build.ps1 rc=0，`--version` = `leantty 0.2.0`；`cargo test --workspace` 236 passed；clippy `-D warnings` 0 error。
+- 阶段 7D D3（已验证事实）：不写 `hinting` 时 stderr 长度 0（空）；显式 `hinting = true` 时打印 `hinting: fontdue 不支持 hinting，已解析未生效（unsupported）`（stderr 54 B）。两次运行均按记录 PID + 命令行核对后结束。
+- 阶段 7D D4（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 rc=2；`--working-directory` 正常目录 cwd 正确、无效目录 rc=1 且 stderr 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 615 ms 关闭。
+- 阶段 7D D5（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 602 B / sha256 `a60b1643…`，10 条目单顶层；zip 内 6 个文档（含 `leantty.toml` ↔ `config/leantty.windows.toml`）与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。

@@ -1,0 +1,13 @@
+ZIG=E:\dev\tty\scripts\windows\zig-inject-target.cmd (wrapper over ZIG_REAL=C:\vt\toolchain\zig\zig.exe)
+GHOSTTY_SOURCE_DIR=C:\vt\vendor\ghostty-src
+GHOSTTY_ZIG_SYSTEM_DIR=C:\vt\zig-system
+RUSTFLAGS remap: repo=E:\dev\tty cargo=E:\dev\rust\cargo rustup=E:\dev\rust\rustup
+   Compiling leantty-config v0.2.0 (E:\dev\tty\crates\config)
+   Compiling leantty-render v0.2.0 (E:\dev\tty\crates\render)
+   Compiling leantty-app v0.2.0 (E:\dev\tty\crates\app)
+    Finished `release` profile [optimized] target(s) in 20.17s
+icon: windres -> E:\dev\tty\target\windows\leantty-res.o
+   Compiling leantty-app v0.2.0 (E:\dev\tty\crates\app)
+    Finished `release` profile [optimized] target(s) in 5.49s
+icon linked into leantty.exe
+build.ps1 OK
