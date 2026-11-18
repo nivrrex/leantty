@@ -528,3 +528,11 @@
 - 阶段 6E W1（已验证事实）：README/README.zh-CN 的 pwsh 条目按用户机结论改写为三段（现象 / `POWERSHELL_UPDATECHECK=Off` 规避并经用户确认 / "是否仅在 leantty 出现尚未确认"），两份结构一致；未改代码、未注入默认配置。
 - 阶段 6E W2（已验证事实 + 未测）：本机普通 conhost 中清空 `POWERSHELL_UPDATECHECK` 后运行交互 pwsh，15 s 未复现崩溃（pwsh 子进程存活、stderr 空）；Windows Terminal 本机未安装（`wt=absent`）→ **未测**。
 - 阶段 6E W3（已验证事实）：重打 zip 5 786 563 B / sha256 `6203b666…`；zip 内 5 个文档哈希与仓库一致；泄漏扫描 0 命中。
+
+- 阶段 7B B1（已验证事实）：`phase7a-done` = `ae3af654…`（轻量 tag）与任务书一致；合并冲突仅 `docs/DECISIONS.md`（双方追加，按双方保留解决，合并提交 `aa48889`）；README 双语同时保留 7A 的 `-e`/`--working-directory` 与 win 的 pwsh 条目，两份结构一致；`crates/` 相对 `phase6d-win-fix` 仅 cli.rs/main.rs/lib.rs/unix.rs 四文件（随合并进入）。
+- 阶段 7B B2（已验证事实）：build.ps1 rc=0，`--version` = `leantty 0.2.0`；`cargo test --workspace` 235→236 passed（B6 修复后新增一例）；clippy `-D warnings` 0 error。
+- 阶段 7B B3（已验证事实）：`-e` 的 argv 往返 9 例（普通/空格/双引号/反斜杠含尾反斜杠/空串/中文/`-` 开头/`-e` 后的 `--config-file`/混合）全部逐项一致，均以子进程标记文件为"确实启动"证据。
+- 阶段 7B B4/B6（已验证事实）：修复前 `--working-directory` 在 Windows 上完全失效（子进程 cwd = `$HOME`）——根因是 portable-pty 0.8.1 `CommandBuilder` 的 `cwd=None` 默认；`shared:` 提交 `18a19de` 在 `crates/pty/src/windows.rs::spawn_inner` 显式 `cmd.cwd(current_dir())`，回归测试 `spawn_child_inherits_process_cwd` 修复前红、修复后绿；修复后普通/空格/中文/相对目录的 cwd 均正确、缺目录与文件 rc=1 且带路径、cmd.exe 可在目标目录运行、cwd 无 `\?\` 前缀。
+- 阶段 7B B4 限制（已验证事实）：UNC `\localhost\C$\Windows` 在本机不可访问（os error 67），可用 UNC 路径**未测**，仅验证不可用 UNC → rc=1。
+- 阶段 7B B5（已验证事实）：CLI 退出码 0/0/2/1、`-e` 缺程序与 `--working-directory` 缺值/重复均 rc=2；`-e` 常驻时 1/3/8s 无本进程控制台窗口；`-e` 使 shell.args 不注入（子命令行 `cmd.exe /k "echo CONSOLE"` 无 chcp）；`-e` 子进程退出后 712 ms 关闭；无 `-e` 时 shell 自退 2033 ms 关闭。
+- 阶段 7B B7（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 390 B / sha256 `01faa5e7…`，10 条目单顶层；zip 内 5 个文档与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
