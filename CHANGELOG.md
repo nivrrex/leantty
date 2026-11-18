@@ -9,6 +9,8 @@
 
 ### Changed
 - The default working directory is now the directory leantty was started from, instead of `/tmp`.
+- Startup no longer prints a notice about font hinting being unsupported; the notice only appears if
+  `hinting` is explicitly enabled.
 
 ## 0.1.1
 

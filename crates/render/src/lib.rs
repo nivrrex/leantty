@@ -139,7 +139,7 @@ pub enum Subpixel {
 pub struct RenderOptions {
     pub antialiasing: Antialiasing,
     pub subpixel: Subpixel,
-    /// fontdue 不支持 hinting：解析后不生效，new() 时打印一次 unsupported 日志。
+    /// fontdue 不支持 hinting：解析后不生效；默认 false，仅当用户显式设为 true 时打印一次提示。
     pub hinting: bool,
     /// 文字对比度（抗锯齿覆盖率 → alpha 映射）。
     pub text_gamma: f32,
@@ -152,7 +152,7 @@ impl Default for RenderOptions {
         Self {
             antialiasing: Antialiasing::Grayscale,
             subpixel: Subpixel::None,
-            hinting: true,
+            hinting: false,
             text_gamma: 1.0,
             draw_bold_with_bright: false,
         }

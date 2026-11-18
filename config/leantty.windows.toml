@@ -44,7 +44,7 @@ fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
 antialiasing = "grayscale"
 # Subpixel layout when antialiasing = "subpixel": "rgb" or "bgr".
 subpixel = "none"
-# The rasterizer has no hinting support; keep it false to avoid a startup warning.
+# The rasterizer has no hinting support; setting this to true only prints a notice.
 hinting = false
 # Text gamma used when blending glyphs, 0.1 - 0.9.
 text_gamma = 1.0

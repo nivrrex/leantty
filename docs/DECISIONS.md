@@ -523,8 +523,8 @@
 - 阶段 7A 实现（已验证事实）：`unix.rs` 显式 `cmd.cwd(std::env::current_dir())`；未指定 `--working-directory` 时子进程工作目录 = 启动目录，指定时 = 该目录（app 先 `set_current_dir`）。用户已批准该产品行为变更（默认由 /tmp 改为启动目录）。
 - 阶段 7A 选项语义（已验证事实）：`-e/--command` 其后全部参数原样作为 argv（含以 `-` 开头者），缺程序名 rc=2，参数非 UTF-8 → rc=2；`--working-directory` 缺值/重复均 rc=2（选择"重复报错"）；无效目录 rc=1 且不开窗。
 - 阶段 7A e2e（已验证事实）：新增 case67–case74；完整 e2e **127/127**、GPU 轮 10/10；临时回退 `current_dir()` 使 case67 变红（子进程 cwd=`/root`），恢复后回到启动目录。
-
-
+- 阶段 7C H0（已验证事实）：`hinting: fontdue 不支持 hinting，已解析未生效（unsupported）` 打印于 `crates/render/src/lib.rs:552-554`，条件是 `options.hinting == true`；而**默认值就是 true**（`crates/config/src/lib.rs:380`、`crates/render/src/lib.rs:155`）→ **默认配置（不写任何 hinting）启动即打印该行**。仓库两份模板已显式写 `hinting = false`（`config/leantty.linux.toml:48`、`config/leantty.windows.toml:48`），用模板启动时 **stderr 为空**；显式 `hinting = true` 时按预期打印。
+- 阶段 7C H0 判定（已验证事实）：默认配置触发 → 属缺陷；两种最小修法待用户裁定：(1) 从模板移除 hinting 项（但模板已设 false，移除后会用默认 true，反而变吵，故此选项实际不成立）；(2) 仅在用户显式写了 hinting 时才提示，默认静默——需要在 config 解析时区分"未配置/显式配置"。
 - 阶段 6E W1（已验证事实）：README/README.zh-CN 的 pwsh 条目按用户机结论改写为三段（现象 / `POWERSHELL_UPDATECHECK=Off` 规避并经用户确认 / "是否仅在 leantty 出现尚未确认"），两份结构一致；未改代码、未注入默认配置。
 - 阶段 6E W2（已验证事实 + 未测）：本机普通 conhost 中清空 `POWERSHELL_UPDATECHECK` 后运行交互 pwsh，15 s 未复现崩溃（pwsh 子进程存活、stderr 空）；Windows Terminal 本机未安装（`wt=absent`）→ **未测**。
 - 阶段 6E W3（已验证事实）：重打 zip 5 786 563 B / sha256 `6203b666…`；zip 内 5 个文档哈希与仓库一致；泄漏扫描 0 命中。
@@ -536,3 +536,9 @@
 - 阶段 7B B4 限制（已验证事实）：UNC `\localhost\C$\Windows` 在本机不可访问（os error 67），可用 UNC 路径**未测**，仅验证不可用 UNC → rc=1。
 - 阶段 7B B5（已验证事实）：CLI 退出码 0/0/2/1、`-e` 缺程序与 `--working-directory` 缺值/重复均 rc=2；`-e` 常驻时 1/3/8s 无本进程控制台窗口；`-e` 使 shell.args 不注入（子命令行 `cmd.exe /k "echo CONSOLE"` 无 chcp）；`-e` 子进程退出后 712 ms 关闭；无 `-e` 时 shell 自退 2033 ms 关闭。
 - 阶段 7B B7（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 390 B / sha256 `01faa5e7…`，10 条目单顶层；zip 内 5 个文档与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
+- 阶段 7C H1（已验证事实）：`hinting` 仅参与 `RenderOptions::fingerprint()` 的字形缓存键（`crates/render/src/lib.rs:164-176`）与一条提示日志，不影响渲染像素（fontdue 未实现 hinting），故把默认值改为 false 不改变帧内容。
+- 阶段 7C H2/H3（已验证事实，用户批准的产品行为变更）：`hinting` 默认值 `true → false`（`crates/config/src/lib.rs:380`、`crates/render/src/lib.rs:155`）；默认配置启动 stderr 为空，显式 `hinting = true` 仍打印 "fontdue 不支持 hinting"；新增 e2e `case75` 断言两者；黄金哈希 `507485fb7945fb8f` 不变、workspace 209 测试通过。
+- 阶段 7C C1（已验证事实）：`phase7b-win-done` 与 `refs/heads/win` 同为 `b9c4f20…`（轻量 tag）；合并仅 `docs/DECISIONS.md` 冲突，双方保留；合并后 `crates/` 相对 `phase7a-done` 共 4 个文件（windows.rs +7、pty_windows.rs +32 来自 Windows 侧；config/render 各 1–2 行为 hinting 默认值）。
+- 阶段 7C C2（已验证事实）：Windows zip 5,791,390 B / `01faa5e7…` 与任务书一致；zip 内 LICENSE 与 THIRD-PARTY-NOTICES 逐字节一致，README×2 / CHANGELOG / leantty.toml 各差 1–2 行文本——均为 7C H2/H4 在打包之后新增/改写的文档行，二进制与其余文档一致。
+- 阶段 7C C3/C5（已验证事实）：deb 0.2.0 = 3,516,768 B / `a823f5b0…`，包内二进制两次构建均为 `f9725440…`，deb 包本身因 changelog 时间戳不可复现（已知）。
+- 阶段 7C C4（已验证事实）：导出 169 文件，扫描 A=0、C=0、B=3、豁免 15、仅报告 2。

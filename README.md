@@ -121,6 +121,9 @@ configuration file (see the templates).
 - Automatic high-DPI scaling, IME input and clipboard integration work the same way as on Linux,
   but see the known limitations below.
 
+- `font.hinting` is accepted for compatibility but has no effect (the rasterizer does not
+  implement hinting); enabling it prints a one-line notice at startup.
+
 ## Known limitations
 
 - **Windows console quirks (system conhost)**: `ESC[7m` may be rewritten into explicit colours,

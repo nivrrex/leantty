@@ -111,6 +111,8 @@ leantty -e sh -c 'echo done'                     # 程序退出后窗口随之�
 - `leantty-portable.cmd` 会用同目录下的配置文件启动便携版。
 - 高 DPI 缩放、输入法与剪贴板的行为与 Linux 一致，但请留意下面的已知限制。
 
+- `font.hinting` 仅为兼容保留、当前不生效（光栅器未实现 hinting）；显式开启会在启动时打印一行提示。
+
 ## 已知限制
 
 - **Windows 系统 conhost 的既有问题**：`ESC[7m` 可能被改写成显式配色、`OSC 104`（重置调色板）
