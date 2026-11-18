@@ -502,3 +502,9 @@
 - 阶段 6C C3（已验证事实）：CLI 退出码 0/0/2/2/1；控制台释放后 1s/3s/8s 均无本进程控制台窗口、AttachConsole=False；杀子 shell 后 1404 ms 退出；shell.args 规则（cmd/powershell 保留 chcp、pwsh 与显式空数组不注入、用户 args 原样）符合；`cargo test` 233 passed；clippy 0 error。
 - 阶段 6C C4（已验证事实）：新增 `cfg(windows)` 单测覆盖 `map_logical_key`（F1–F12/Insert/Delete/PageUp/PageDown/符号/字母数字）与默认 Shift+PageUp/PageDown→滚动绑定，3 项全过；ConPTY 键盘转发**未测**（无输入注入通道）。
 - 阶段 6C C5（已验证事实）：`leantty-0.1.1-windows-x86_64.zip` 5 785 895 B / sha256 `fb2d5b79…`，10 条目单顶层目录；zip 内 5 个文档与仓库哈希逐一相同；泄漏扫描与 5B 一致（无用户/主机/仓库路径）。
+
+- 阶段 6D W1（已验证事实）：leantty 内 `mode con` 与 `$Host.UI.RawUI.WindowSize` 均为 120×30，与配置网格一致；ConPTY 初始尺寸来自 config.cols/rows（0 值显式报错），SetWindowPos 后 `frames_resize=1` 证明 resize 到达 PTY。
+- 阶段 6D W1（已验证事实）：pwsh 7.6.6 在 leantty（cmd/直接 pwsh 两种入口、25/40/60/80/120 列、含最小化）与同宽度普通 conhost 中均未复现崩溃；GitHub API latest=v7.7.0 > 本机 7.6.6（存在可用更新）。
+- 阶段 6D W2（工程判断，置信度中）：崩溃栈完全位于 pwsh 的 `UpdatesNotification.ShowUpdateNotification` → `String.PadRight(totalWidth=-17)`，终端侧尺寸因素已排除 → 属 pwsh 缺陷，**不改代码**；README/README.zh-CN 增加故障排查条目（`POWERSHELL_UPDATECHECK=Off` 规避 + 未能复现的限制），未把该变量注入默认配置。
+- 阶段 6D W2（待验证假设）：崩溃确切触发条件未复现；推翻条件=用户机设 `Off` 后仍崩溃，则重新归因到 ConPTY 其它初始化差异。
+- 阶段 6D W3（已验证事实）：cargo test 233 passed、clippy 0 error；重打 zip 5 786 634 B / sha256 `1713d3f5…`，zip 内 5 个文档哈希与仓库一致，泄漏扫描 0 命中。
