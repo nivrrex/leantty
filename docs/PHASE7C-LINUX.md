@@ -64,7 +64,8 @@ zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`（Wind
 ## C3 deb 0.2.0（已验证事实）
 
 `scripts/gates.sh` 10 步全过（`GATES: PASS — HEAD=a32cd66`，e2e 128/128）后构建：
-- `leantty_0.2.0_amd64.deb` **3,516,768 B**，sha256 `a823f5b0b1b9c246d675448f7ca81eecb1d5d960506f68c0c063a4a836e7eeba`
+- `leantty_0.2.0_amd64.deb` **3,520,632 B**，sha256 `9b51a2d4411ae6eaceea3de7f3e07fb7ffb477f133131ba25b1d293e4b137915`
+  （首版 3,516,768 B / `a823f5b0…` 缺 `changelog.Debian.gz`，见下方缺陷与修复）
 - `Version: 0.2.0`（脚本无硬编码）；`Maintainer: leantty <noreply@example.invalid>`（占位）
 - `Depends: libc6, libwayland-client0, libx11-6, libx11-xcb1, libxcb1, libxcursor1, libxi6, libxkbcommon0, libxkbcommon-x11-0`；`Recommends: libvulkan1`
 - 内容清单含 `/usr/bin/leantty`、desktop、hicolor 8 尺寸 + scalable SVG、doc 下 README/README.zh-CH/CHANGELOG/THIRD-PARTY-NOTICES/copyright/changelog.Debian.gz/examples/leantty.toml
@@ -80,7 +81,7 @@ zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`（Wind
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.0_amd64.deb` | 3,516,768 B | `a823f5b0b1b9c246d675448f7ca81eecb1d5d960506f68c0c063a4a836e7eeba` |
+| `leantty_0.2.0_amd64.deb` | 3,520,632 B | `9b51a2d4411ae6eaceea3de7f3e07fb7ffb477f133131ba25b1d293e4b137915` |
 | `leantty-0.2.0-windows-x86_64.zip` | 5,791,602 B | `a60b16433d561c787abaea6306732cebf2920f9b31613de92b1c870ef5a3a965` |
 | `SHA256SUMS` | 189 B | 仅两个文件名 |
 
@@ -100,3 +101,13 @@ zip：`/root/dev/leantty-release-inputs/leantty-0.2.0-windows-x86_64.zip`（Wind
 | `crates/pty/src/windows.rs` | Windows 侧同款 cwd 修复（7B）|
 | `crates/pty/tests/pty_windows.rs` | Windows cwd 回归测试（7B）|
 | `README.md` / `README.zh-CN.md` | 新选项、示例、已知限制、hinting 说明 |
+
+## C8 打包缺陷与修复（已验证事实）
+
+`scripts/release/build-deb.sh` 原先把 `changelog.Debian.gz` 写到 `$PKGROOT` 下，而该目录在写 changelog
+**之前**已经被 `cp -a "$PKGROOT/." "$WORK/debian-tmp/"` 复制走 → **changelog.Debian.gz 从未进入 deb**
+（0.1.1 与 0.2.0 首版均缺，`dpkg-deb -c` 可证）。
+
+修复：改为直接写入 `$WORK/debian-tmp/usr/share/doc/leantty/changelog.Debian{,.gz}`。
+重建后 `dpkg-deb -c` 含 `changelog.Debian.gz`，内容为 0.2.0 条目；包内二进制仍为 `f9725440…`；
+新 deb = **3,520,632 B** / sha256 **`9b51a2d4…`**；资产目录与 `SHA256SUMS` 同步更新。
