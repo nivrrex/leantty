@@ -516,3 +516,5 @@
 - 阶段 6D D2（已验证事实）：Windows zip 5,786,634 B / `1713d3f5…` 与任务书一致；zip 内 CHANGELOG/LICENSE/THIRD-PARTY-NOTICES/leantty.toml 与仓库逐字节一致；两份 README 仅行尾不同（zip 为 CRLF），去 CRLF 后内容一致。
 - 阶段 6D D3/D5（已验证事实）：deb 0.1.1 = 3,516,304 B / `031e49f6…`，Depends 9 项 + Recommends libvulkan1，Maintainer 占位未替换；**包内二进制**可复现（两次构建与 `target/release/leantty` 均 `2074d934…`），**deb 包本身不可复现**（`changelog.Debian.gz` 内嵌 `date -R` 时间戳，两次 031e49f6… vs a794ad2a…）。
 - 阶段 6D D4（已验证事实）：导出 169 文件；扫描 A=0、B=3（Windows 系统常量）、C=0、豁免 15、仅报告 2（两处 "LTSC" 平台说明）。
+- 阶段 7A a0（已验证事实）：`crates/pty/src/unix.rs:65` 显式 `cmd.cwd("/tmp")`，Unix 上子进程工作目录恒为 `/tmp`（既不继承启动目录也不可配置）；Windows 侧无 `lpCurrentDirectory`，继承父进程目录 → 两平台行为不一致，且该行是源码中的绝对路径。
+- 阶段 7A 停止（已验证事实）：命中 a0 停止条件"Unix 路径显式设置了别的工作目录"，未改代码、未打 tag；等待裁定是否删除 `/tmp` 硬编码（行为变更）以及 `--working-directory` 的语义。
