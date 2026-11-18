@@ -14,3 +14,8 @@
 - [已验证事实] `frame_bytes_identical` 黄金哈希仍为 `507485fb7945fb8f`（字体指纹 `DejaVuSansMono.ttf:343140:c69b:8x16` 匹配，非 SKIP）。
 - [已验证事实] 已打 `phase6b-done`（轻量 tag，无 `^{}`），`main` 与 tag 均已 push 到 ali：main = `cb7c85dde01a026f45882870092b98b5f714f22b`。
 - [已验证事实] `case41-bracketed-paste-ctrl-c` 在本轮修复后的首次完整 e2e 红（dropped=983040 wedge_ok=0），门禁复跑时通过 → 判为负载相关偶发（当时 loadavg 偏高），与本次 PageUp/PageDown 改动无关。
+- [已验证事实] `key_string` 对命名键返回 winit 的 Debug 名（`PageUp`/`PageDown`/`Home`/`End`…）；`find_key_binding` 用 `b.mods == *mods` 精确比较；仓库里只有 e2e case27 的内联配置写过 `"Page_Up"`（永不匹配），`config/leantty.*.toml` 模板与 README 从未提供键盘滚动绑定 → 键盘滚动此前等于不存在。
+- [已验证事实] 编码器层面 `Key::PageUp` 在 legacy 与 kitty7 下均输出 `1b 5b 35 7e`（`ESC[5~`），与 alacritty 一致（crates/vt 单测实测）。
+- [已验证事实] 按方案 (a) 实现（恢复 PageUp/PageDown 映射 + 默认 `Shift+PageUp/PageDown → ScrollPageUp/Down` 绑定 + case27 绑定名/修饰键对齐）后：**case27 PASS**（逐像素一致），但新增的 case65（无修饰 PageUp 转发）实测 pty **零字节**，case66（Shift+PageUp 应被绑定消费、pty 零字节）实测 pty 收到 `1b5b353b327e`（`ESC[5;2~`）→ 即"绑定未命中、按键仍走向编码器"，与 case65 的空输出相互矛盾，原因未定位。
+- [待验证假设] 上述矛盾疑与 e2e 注入路径（`xdotool key --window` 的键名 → winit 逻辑键/modifiers 状态）有关：`shift+Page_Up` 能被编码器识别为 Shift+PageUp，说明事件到达且修饰可用；而无修饰时应用侧未产出字节，可能是绑定之外的另一处消费（`run_action` 分支或 follow/滚动路径）。
+- [工程判断] 为避免在未定位状态下把 main 留在 e2e 2 红的状态，已把 A2 的实现与 case65/66 回退到 `cb7c85d`（6B done，e2e 117/117 绿），本次结论与矛盾点留在本文件，等待裁定或下一轮继续定位。
