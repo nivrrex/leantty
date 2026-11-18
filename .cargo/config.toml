@@ -1,0 +1,10 @@
+# 仅 Windows agent 修改。
+# W3 实测：GNU ld --gc-sections 与 zig COFF 对象对 ___chkstk_ms 的引用交互
+# 致归档抽取未解析；--no-gc-sections 后写覆盖 rustc 自带的 --gc-sections。
+#
+# 5B t5：exe 资源（图标）不能写进本文件的 rustflags——该段同时作用于 build script
+# 与 proc-macro 的宿主链接，静态/相对对象路径会让它们链接失败（实测 collect2 error）。
+# 因此由 scripts/windows/build.ps1 在构建时生成 COFF 资源对象，并用
+# `cargo rustc -p leantty-app --bin leantty -- -C link-arg=<runtime path>` 只注入最终二进制。
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "link-arg=-Wl,--no-gc-sections"]

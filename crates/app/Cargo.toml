@@ -1,0 +1,26 @@
+[package]
+name = "leantty-app"
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "app"
+
+[[bin]]
+name = "leantty"
+path = "src/main.rs"
+
+[dependencies]
+leantty-config = { path = "../config" }
+leantty-pty = { path = "../pty" }
+leantty-render = { path = "../render" }
+leantty-vt = { path = "../vt" }
+softbuffer.workspace = true
+winit.workspace = true
+raw-window-handle = "0.6"
+thiserror.workspace = true
+arboard = { version = "3.7.0", default-features = false }

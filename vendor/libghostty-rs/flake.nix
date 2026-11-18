@@ -1,0 +1,346 @@
+{
+  description = "Rust bindings and safe API for libghostty";
+
+  nixConfig = {
+    extra-substituters = ["https://ghostty.cachix.org"];
+    extra-trusted-public-keys = ["ghostty.cachix.org-1:QB389yTa6gTyneehvqG58y0WnHjQOqgnA+wBnpWWxns="];
+  };
+
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/release-26.05";
+    flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    zig = {
+      url = "github:mitchellh/zig-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    ghostty = {
+      url = "github:ghostty-org/ghostty/0b8b9984ee560456194262d190aa850224edb1f4";
+    };
+  };
+
+  outputs = {
+    nixpkgs,
+    flake-utils,
+    crane,
+    rust-overlay,
+    zig,
+    ghostty,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [(import rust-overlay)];
+        };
+
+        rustVersion = "1.96.0";
+        # crane's devShell puts this toolchain's cargo/rustc ahead of the
+        # devToolchain in packages, so it must carry the cross targets too or
+        # its sysroot (without their std) shadows the devToolchain's.
+        buildToolchain = pkgs.rust-bin.stable.${rustVersion}.minimal.override {
+          targets = rustTargets;
+        };
+        rustTargets =
+          ["wasm32-unknown-unknown"]
+          ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            "x86_64-unknown-linux-gnu"
+            "x86_64-unknown-linux-musl"
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+            # iOS builds go through the vendored zig xcframework path and
+            # need the target's std so the dev shell can cargo-check them.
+            "aarch64-apple-ios"
+            "aarch64-apple-ios-sim"
+          ];
+
+        checkToolchain = pkgs.rust-bin.stable.${rustVersion}.default.override {
+          extensions = ["clippy" "rustfmt"];
+        };
+
+        devToolchain = pkgs.rust-bin.stable.${rustVersion}.default.override {
+          extensions = ["rust-src" "rust-std" "clippy" "rustfmt" "rust-analyzer"];
+          targets = rustTargets;
+        };
+
+        miriToolchain = pkgs.rust-bin.selectLatestNightlyWith (
+          toolchain:
+            toolchain.default.override {
+              extensions = ["rust-src" "rust-std" "miri"];
+              targets = rustTargets;
+            }
+        );
+
+        craneLib = (crane.mkLib pkgs).overrideToolchain buildToolchain;
+        craneCheckLib = (crane.mkLib pkgs).overrideToolchain checkToolchain;
+        unfilteredRoot = ./.;
+
+        # Ghostty patches Zig 0.17 so cross-compiling C sources for iOS does
+        # not instantiate process spawning code iOS lacks. Take the patch from
+        # the pinned ghostty input so it tracks the version we build against.
+        zigPkg = zig.packages.${system}."0.17.0".overrideAttrs (previousAttrs: {
+          patches =
+            (previousAttrs.patches or [])
+            ++ ["${ghostty}/nix/patches/zig-0.17-ios-process-replace.patch"];
+        });
+        ghosttyLib = ghostty.packages.${system}.libghostty-vt;
+
+        miriCommand = pkgs.writeShellApplication {
+          name = "libghostty-miri";
+          runtimeInputs = [miriToolchain];
+          text = ''
+            cargo miri test --locked -p libghostty-vt-sys --lib
+            cargo miri test --locked -p libghostty-vt --lib alloc::tests::
+            # Issue #74 soundness regression tests (both clipboard findings
+            # live in this module), plus tests that need the mock C API to
+            # produce shapes real libghostty can't yet. Miri aborts the test
+            # process at the first UB it finds, so a broken tree reports only
+            # the first failing test.
+            cargo miri test --locked -p libghostty-vt --lib miri_soundness
+          '';
+        };
+
+        src = pkgs.lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = pkgs.lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            (pkgs.lib.fileset.fileFilter (
+              file:
+                file.hasExt "h"
+                || file.hasExt "zig"
+                || file.hasExt "zon"
+                || file.hasExt "md"
+                || file.hasExt "ttf"
+            ) unfilteredRoot)
+          ];
+        };
+
+        commonArgs =
+          {
+            pname = "libghostty-rs";
+            version = "0.2.1";
+            inherit src;
+            strictDeps = true;
+            # No workspace member enables the optional `png` feature, so turn it
+            # on here; otherwise the PNG decoder is never type-checked, linted,
+            # doc-checked or tested in CI. Setting it in the shared arguments
+            # also builds the dependency artifacts with it, so the checks
+            # below don't each rebuild png and its dependencies.
+            cargoExtraArgs = "--locked --features libghostty-vt-sys/pkg-config --features libghostty-vt/png";
+
+            nativeBuildInputs = [
+              pkgs.pkg-config
+              pkgs.clang
+            ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.cctools
+              pkgs.xcbuild
+            ];
+
+            buildInputs =
+              [
+                ghosttyLib
+                pkgs.libclang
+                pkgs.openssl
+              ]
+              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+                pkgs.apple-sdk
+                pkgs.libiconv
+              ];
+          }
+          // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+            DEVELOPER_DIR = "${pkgs.apple-sdk}";
+            SDKROOT = "${pkgs.apple-sdk.sdkroot}";
+          };
+
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+        application = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+          }
+        );
+      in {
+        packages.default = application;
+
+        checks = {
+          default = application;
+
+          cargo-check = craneLib.mkCargoDerivation (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              pnameSuffix = "-check";
+              buildPhaseCargoCommand = "cargoWithProfile check ${commonArgs.cargoExtraArgs} --workspace --all-targets";
+            }
+          );
+
+          cargo-clippy = craneCheckLib.cargoClippy (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              # Without denying warnings, clippy findings never fail CI.
+              cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
+            }
+          );
+
+          cargo-doc = craneCheckLib.cargoDoc (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoDocExtraArgs = "--workspace --no-deps";
+              RUSTDOCFLAGS = "-D warnings";
+            }
+          );
+
+          # Regenerate the bindings from the pinned Ghostty headers and fail if
+          # they differ from the checked-in ones. GHOSTTY_INCLUDE_DIR is used
+          # instead of GHOSTTY_SOURCE_DIR so that the build script keeps linking
+          # the prebuilt library rather than building Ghostty from source.
+          #
+          # The headers come from the flake input, but users build against
+          # the commit pinned in build.rs. Nothing else ties the two together,
+          # so check that they agree first; otherwise bumping only one of them
+          # would leave this check green while comparing the wrong headers.
+          bindings-fresh = craneCheckLib.mkCargoDerivation (
+            commonArgs
+            // {
+              # The shared deps are built without the bindgen-tool feature and in
+              # the release profile, so they would be unpacked and then ignored.
+              # A dev build of just the generator is quicker than a release one.
+              cargoArtifacts = null;
+              pnameSuffix = "-bindings";
+              GHOSTTY_INCLUDE_DIR = "${ghostty}/include";
+              LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+              buildPhaseCargoCommand = ''
+                if ! grep -qF 'const GHOSTTY_COMMIT: &str = "${ghostty.rev}";' \
+                  crates/libghostty-vt-sys/build.rs; then
+                  echo "error: the Ghostty pin in flake.nix (${ghostty.rev}) does not" >&2
+                  echo "match GHOSTTY_COMMIT in crates/libghostty-vt-sys/build.rs." >&2
+                  echo "Bump both to the same commit." >&2
+                  exit 1
+                fi
+                # Not commonArgs.cargoExtraArgs: it also enables libghostty-vt
+                # features, which cargo rejects with only the -sys crate selected.
+                cargo run --locked --features libghostty-vt-sys/pkg-config -p libghostty-vt-sys \
+                  --features libghostty-vt-sys/bindgen-tool --bin gen-bindings
+                cargo fmt -p libghostty-vt-sys
+                for file in bindings.rs layouts.rs; do
+                  if ! diff -u ${src}/crates/libghostty-vt-sys/src/$file \
+                    crates/libghostty-vt-sys/src/$file; then
+                    echo "error: crates/libghostty-vt-sys/src/$file is out of date." >&2
+                    echo "Regenerate it from the dev shell with:" >&2
+                    echo "  cargo run -p libghostty-vt-sys --features bindgen-tool --bin gen-bindings && cargo fmt -p libghostty-vt-sys" >&2
+                    exit 1
+                  fi
+                done
+              '';
+              doInstallCargoArtifacts = false;
+              installPhaseCommand = "touch $out";
+            }
+          );
+
+          cargo-fmt = craneCheckLib.cargoFmt {
+            pname = "libghostty-rs";
+            version = "0.2.1";
+            inherit src;
+          };
+
+          cargo-test = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoTestExtraArgs = "--workspace --all-targets";
+            }
+          );
+
+          # `--all-targets` does not include doctests, so run them separately.
+          # Only for the safe crate: the -sys bindings carry C header comments
+          # that rustdoc would otherwise try to compile as Rust.
+          cargo-doctest = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              pnameSuffix = "-doctest";
+              cargoTestExtraArgs = "-p libghostty-vt --doc";
+            }
+          );
+
+          # Upstream ghostty exercises both link modes in CI, so run the test
+          # suite against the shared library as well. Cargo adds the emitted
+          # link-search paths to the test binaries' library path, so the
+          # ghostty .so is found at runtime.
+          cargo-test-dynamic = craneLib.cargoTest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoExtraArgs = "${commonArgs.cargoExtraArgs} --features libghostty-vt-sys/link-dynamic";
+              cargoTestExtraArgs = "--workspace --all-targets";
+            }
+          );
+        };
+
+        apps.miri = flake-utils.lib.mkApp {
+          drv = miriCommand;
+        };
+
+        devShells.default = craneLib.devShell {
+          packages = [
+            devToolchain
+            zigPkg
+            pkgs.nodejs
+            pkgs.clang
+            pkgs.libclang
+            pkgs.pkg-config
+            pkgs.openssl
+            pkgs.cmake
+            pkgs.ninja
+          ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+            pkgs.libx11
+            pkgs.libxcursor
+            pkgs.libxrandr
+            pkgs.libxinerama
+            pkgs.libxi
+            pkgs.libGL
+            pkgs.libxkbcommon
+            pkgs.wayland
+          ];
+
+          shellHook = ''
+            export LIBCLANG_PATH=${pkgs.libclang.lib}/lib
+          '' + pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+            # Unset Nix Darwin SDK env vars and remove the xcbuild
+            # xcrun wrapper so Zig's SDK detection uses the real
+            # system xcrun/xcode-select.
+            unset SDKROOT
+            unset DEVELOPER_DIR
+            export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v xcbuild | tr '\n' ':')
+          '' + pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+            # Make Ghostling able to find libGL on Linux.
+            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath [
+              pkgs.libglvnd
+              pkgs.wayland
+              pkgs.libx11
+              pkgs.libxkbcommon
+              pkgs.libxi
+            ]}"
+          '';
+        };
+
+        devShells.miri = pkgs.mkShell {
+          packages = [miriToolchain];
+        };
+
+        # Rust ships no wasm64 std; reuse the nightly toolchain with rust-src
+        # to build it with -Zbuild-std, without changing the native MSRV.
+        devShells.wasm64 = pkgs.mkShell {
+          packages = [miriToolchain zigPkg pkgs.nodejs];
+        };
+      }
+    );
+}

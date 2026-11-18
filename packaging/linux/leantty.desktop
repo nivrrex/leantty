@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=leantty
+Comment=Lightweight terminal emulator
+Exec=leantty
+Icon=leantty
+Terminal=false
+Categories=System;TerminalEmulator;
+StartupWMClass=leantty

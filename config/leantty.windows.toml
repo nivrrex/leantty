@@ -1,0 +1,118 @@
+# leantty configuration — Windows template
+#
+# Copy this file to the default location and edit as needed:
+#   %APPDATA%\leantty\leantty.toml
+# or pass it explicitly:
+#   leantty.exe --config-file C:\path\to\leantty.toml
+#
+# Every line below is a supported key with its default value. Commented-out lines show
+# the default; uncomment and change to override. Unknown keys are reported on stderr and
+# ignored; invalid values fall back to the default with a warning.
+
+[window]
+# Initial window position in logical pixels (omit to let the window manager decide).
+# position = { x = 50, y = 40 }
+# Initial window size in character cells.
+dimensions = { columns = 120, lines = 30 }
+# Extra padding around the grid, in logical pixels.
+padding = { x = 0, y = 0 }
+# Follow the title reported by the program running inside (OSC 0/2).
+dynamic_title = true
+# Window opacity, 0.0 - 1.0.
+opacity = 1.0
+
+[scrolling]
+# Number of lines kept in scrollback.
+history = 10000
+# Mouse wheel multiplier in lines.
+multiplier = 10
+# Let the wheel send arrow keys while an application uses the alternate screen.
+alt_screen_scroll = true
+
+[font]
+# Font size in points.
+size = 13.0
+# Primary monospace font. Keep it small and common; it is parsed synchronously at startup.
+normal = { family = "Consolas", style = "Regular" }
+bold = { family = "Consolas", style = "Bold" }
+italic = { family = "Consolas", style = "Italic" }
+bold_italic = { family = "Consolas", style = "Bold Italic" }
+# Fallback fonts, tried in order for characters the primary font lacks (e.g. CJK).
+# They load in the background; missing glyphs show as boxes until they are ready.
+fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
+# Antialiasing mode: "grayscale" or "subpixel".
+antialiasing = "grayscale"
+# Subpixel layout when antialiasing = "subpixel": "rgb" or "bgr".
+subpixel = "none"
+# The rasterizer has no hinting support; setting this to true only prints a notice.
+hinting = false
+# Text gamma used when blending glyphs, 0.1 - 0.9.
+text_gamma = 1.0
+
+[terminal.shell]
+# Shell to start. Windows default is cmd.exe (the process must pass a shell).
+# program = "cmd.exe"
+# Arguments passed to the shell verbatim. Omit to pass none.
+# args = ["/K", "chcp 65001"]
+
+[renderer]
+# "auto" tries the GPU first and falls back to CPU; "cpu" forces software rendering;
+# "gpu" forces the GPU backend and fails to start when it is unavailable.
+backend = "auto"
+
+[selection]
+# Also copy selections to the system clipboard.
+save_to_clipboard = true
+# Characters treated as word boundaries for double-click selection.
+semantic_escape_chars = ",│`|:\"' ()[]{}<>"
+
+[colors]
+# Draw bold text using the bright color variants.
+draw_bold_text_with_bright_colors = true
+
+[colors.primary]
+background = "#1a1b26"
+foreground = "#c0caf5"
+
+[colors.cursor]
+text = "#1a1b26"
+cursor = "#c0caf5"
+
+[colors.normal]
+black = "#15161e"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#a9b1d6"
+
+[colors.bright]
+black = "#414868"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#c0caf5"
+
+# Key and mouse bindings (these are the defaults).
+[[mouse.bindings]]
+mouse = "Middle"
+action = "Copy"
+
+[[mouse.bindings]]
+mouse = "Right"
+action = "Paste"
+
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Control"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "Insert"
+mods = "Shift"
+action = "Paste"

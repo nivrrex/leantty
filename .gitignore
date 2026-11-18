@@ -1,0 +1,52 @@
+target/
+*.pdb
+/vt-verify/toolchain/
+/vt-verify/zig-system/
+/vt-verify/zig-system-link
+/vt-verify/vendor/ghostty-src/
+/vt-verify/build*.log
+scripts/e2e/out/
+/vt-verify-win/conpty-test/
+/vt-verify-win/perfdata/
+/vt-verify-win/probe_render_win/target/
+/vt-verify-win/probe_inv/target/
+/vt-verify-win/osc/*.txt
+/vt-verify-win/conpty-dl/
+/vt-verify-win/dist/
+/vt-verify-win/*.zip
+/vt-verify-win/probe_logcost/target/
+/vt-verify-win/logs/3l-deploy/dist*/
+/vt-verify-win/logs/3l-deploy/tty dist*/
+/vt-verify-win/logs/3l-deploy/*.png
+/vt-verify-win/logs/3m-deploy/dist*/
+/vt-verify-win/start-S/
+/vt-verify-win/start-N/
+/vt-verify-win/logs/3m-start/*.log
+/vt-verify-win/tonight-kit/
+/vt-verify-win/tonight-kit-v1.zip
+/vt-verify-win/kit-run/
+/vt-verify-win/kit-trial*/
+/vt-verify-win/logs/3n/*.json
+/vt-verify-win/tonight-kit-v2/
+/vt-verify-win/tonight-kit-v2.zip
+/vt-verify-win/start-S3o/
+/vt-verify-win/3o-warn/
+/vt-verify-win/3o-warn-full/
+/vt-verify-win/3o-mem/*.csv
+/vt-verify-win/3o-mem/*.json
+/vt-verify-win/tonight-kit-v3/
+/vt-verify-win/tonight-kit-v3.zip
+/vt-verify-win/3p-kit/
+/vt-verify-win/3p-oom/
+/vt-verify-win/kit-trial v3/
+/vt-verify-win/probe_wgpuenv/target/
+/vt-verify-win/tonight-kit-v4/
+/vt-verify-win/tonight-kit-v4.zip
+/vt-verify-win/3q-kit/
+/vt-verify-win/3q-warp/
+/vt-verify-win/3q-backend/
+/vt-verify-win/kit-trial v4/
+/vt-verify-win/kit v4 中文 路径/
+/vt-verify-win/p2-block.ps1
+/vt-verify-win/dist-release/
+/vt-verify-win/probe_console5b/*.exe

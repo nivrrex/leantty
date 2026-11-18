@@ -1,0 +1,19 @@
+[package]
+name = "leantty-pty"
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+description.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "pty"
+
+[dependencies]
+anyhow = "1"
+portable-pty.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+leantty-vt = { path = "../vt" }
