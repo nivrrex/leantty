@@ -3415,6 +3415,33 @@ fn default_key_bindings() -> Vec<config::Binding> {
     vec![
         config::Binding {
             mouse: None,
+            // 键盘滚动回看：只 Shift（不能复用 cm，它含 control=true）
+            key: Some("PageUp".to_string()),
+            mods: ConfigMods {
+                control: false,
+                shift: true,
+                alt: false,
+                super_: false,
+                hyper: false,
+                meta: false,
+            },
+            action: ConfigAction::ScrollPageUp,
+        },
+        config::Binding {
+            mouse: None,
+            key: Some("PageDown".to_string()),
+            mods: ConfigMods {
+                control: false,
+                shift: true,
+                alt: false,
+                super_: false,
+                hyper: false,
+                meta: false,
+            },
+            action: ConfigAction::ScrollPageDown,
+        },
+        config::Binding {
+            mouse: None,
             key: Some("c".to_string()),
             mods: cm,
             action: ConfigAction::Copy,
@@ -3629,10 +3656,10 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
         WinitKey::Named(NamedKey::End) => Some(vt::Key::End),
         // 阶段 6B t2b：功能键此前未映射，导致 F1–F12 / Insert / PageUp / PageDown 静默丢失。
         WinitKey::Named(NamedKey::Insert) => Some(vt::Key::Insert),
-        // 阶段 6B 回退（已验证事实）：PageUp/PageDown 在 6B 之前既无绑定也无输出。
-        // 新映射会把 ESC[5~/ESC[6~ 写进 pty，与本终端既有的"滚轮回看"语义冲突
-        // （e2e case27 因此由绿变红，差异恰为一行 120 列）。按裁决先恢复旧行为，
-        // "无修饰 PageUp/PageDown 是否应传给应用"作为产品问题另行裁定。
+        // 阶段 6B 补充（用户裁定方案 a）：无修饰 PageUp/PageDown 转发给应用，
+        // 键盘滚动回看由默认的 Shift+PageUp/PageDown 绑定承担（见 default_key_bindings）。
+        WinitKey::Named(NamedKey::PageUp) => Some(vt::Key::PageUp),
+        WinitKey::Named(NamedKey::PageDown) => Some(vt::Key::PageDown),
         WinitKey::Named(NamedKey::Delete) => Some(vt::Key::Delete),
         WinitKey::Named(NamedKey::F1) => Some(vt::Key::F1),
         WinitKey::Named(NamedKey::F2) => Some(vt::Key::F2),

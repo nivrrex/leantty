@@ -136,8 +136,9 @@ configuration file (see the templates).
 5. **Paste does nothing in the terminal but works in other apps**: the shell may have bracketed
    paste enabled and the application inside can ignore it — check the program's own handling.
 
-- **PageUp / PageDown are not forwarded to programs**: they keep the behaviour of 0.1.0
-  (no bytes are sent); paging inside applications works through the application's own keys.
+- **Keyboard scrolling uses Shift+PageUp / Shift+PageDown**; unmodified PageUp / PageDown are
+  forwarded to the program. Bindings in a configuration file must use the winit key names
+  (`PageUp`, `PageDown`), not the X keysym names (`Page_Up`).
 - **Some Ctrl combinations produce no input** (Linux): Ctrl+Semicolon, Ctrl+Comma, Ctrl+Period,
   Ctrl+Apostrophe, Ctrl+Shift+Semicolon, and Ctrl+I / Ctrl+M are not delivered to programs; the
   keysym-to-control-character mapping for these is not provided by the input encoder.

@@ -121,8 +121,8 @@ leantty --help                       # 查看选项
    改用 `"auto"` 或 `"cpu"`。
 5. **别的程序能粘贴、这里没反应**：终端里的程序可能自己接管了括号粘贴，检查该程序的处理方式。
 
-- **PageUp / PageDown 不转发给程序**：与 0.1.0 行为一致（不发送任何字节）；程序内翻页请用程序
-  自己的键位。
+- **键盘滚动用 Shift+PageUp / Shift+PageDown**；无修饰的 PageUp / PageDown 转发给程序。
+  配置里的绑定要写 winit 的键名（`PageUp`、`PageDown`），不能写 X keysym 名（`Page_Up`）。
 - **部分 Ctrl 组合没有输入**（Linux）：Ctrl+Semicolon、Ctrl+Comma、Ctrl+Period、Ctrl+Apostrophe、
   Ctrl+Shift+Semicolon 以及 Ctrl+I / Ctrl+M 不会送到程序，编码器未提供这些键到控制字符的映射。
 - **不发送 kitty 键盘协议的按键释放事件**：请求上报 key-up 的程序只能收到按下事件。

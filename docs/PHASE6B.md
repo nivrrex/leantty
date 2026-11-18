@@ -19,3 +19,7 @@
 - [已验证事实] 按方案 (a) 实现（恢复 PageUp/PageDown 映射 + 默认 `Shift+PageUp/PageDown → ScrollPageUp/Down` 绑定 + case27 绑定名/修饰键对齐）后：**case27 PASS**（逐像素一致），但新增的 case65（无修饰 PageUp 转发）实测 pty **零字节**，case66（Shift+PageUp 应被绑定消费、pty 零字节）实测 pty 收到 `1b5b353b327e`（`ESC[5;2~`）→ 即"绑定未命中、按键仍走向编码器"，与 case65 的空输出相互矛盾，原因未定位。
 - [待验证假设] 上述矛盾疑与 e2e 注入路径（`xdotool key --window` 的键名 → winit 逻辑键/modifiers 状态）有关：`shift+Page_Up` 能被编码器识别为 Shift+PageUp，说明事件到达且修饰可用；而无修饰时应用侧未产出字节，可能是绑定之外的另一处消费（`run_action` 分支或 follow/滚动路径）。
 - [工程判断] 为避免在未定位状态下把 main 留在 e2e 2 红的状态，已把 A2 的实现与 case65/66 回退到 `cb7c85d`（6B done，e2e 117/117 绿），本次结论与矛盾点留在本文件，等待裁定或下一轮继续定位。
+- [已验证事实] case65/66 早前失败不是产品缺陷：`xdotool key PageUp` 被 xdotool 拒绝（"No such key name 'PageUp'"），所以**根本没注入**；绑定名与注入名属两套命名空间——绑定/`key_string` 用 winit Debug 名（`PageUp`），xdotool 用 X keysym（`Page_Up`）。
+- [已验证事实] 诊断日志（临时 worktree）显示：无修饰 PageUp → `logical=Named(PageUp) mods_state=0x0 bound=None encoded=Ok(4)`（pty 收到 `1b5b357e`）；Shift+PageUp → `mods_state=SHIFT kmods.shift=true bound=Some(ScrollPageUp)` 且 pty 零字节 → 方案 (a) 的实现本身正确。
+- [已验证事实] 早前"Shift+PageUp 被编码成 ESC[5;2~" 的原因是我把默认绑定写成 `ConfigMods{ shift:true, ..cm }`，而 `cm` 含 `control:true` → 实际要求 Ctrl+Shift+PageUp。改为显式全字段后绑定命中。
+- [已验证事实] 修复后完整 e2e **119/119**：`case27` 逐像素一致、`case65`（legacy/kitty7 转发，实收 `1b5b357e`/`1b5b367e`）2/2、`case66`（Shift+PageUp/Down pty 零字节 + 2 个哨兵 `a`）PASS。
