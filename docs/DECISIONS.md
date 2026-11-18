@@ -523,3 +523,5 @@
 - 阶段 7A 实现（已验证事实）：`unix.rs` 显式 `cmd.cwd(std::env::current_dir())`；未指定 `--working-directory` 时子进程工作目录 = 启动目录，指定时 = 该目录（app 先 `set_current_dir`）。用户已批准该产品行为变更（默认由 /tmp 改为启动目录）。
 - 阶段 7A 选项语义（已验证事实）：`-e/--command` 其后全部参数原样作为 argv（含以 `-` 开头者），缺程序名 rc=2，参数非 UTF-8 → rc=2；`--working-directory` 缺值/重复均 rc=2（选择"重复报错"）；无效目录 rc=1 且不开窗。
 - 阶段 7A e2e（已验证事实）：新增 case67–case74；完整 e2e **127/127**、GPU 轮 10/10；临时回退 `current_dir()` 使 case67 变红（子进程 cwd=`/root`），恢复后回到启动目录。
+- 阶段 7C H0（已验证事实）：`hinting: fontdue 不支持 hinting，已解析未生效（unsupported）` 打印于 `crates/render/src/lib.rs:552-554`，条件是 `options.hinting == true`；而**默认值就是 true**（`crates/config/src/lib.rs:380`、`crates/render/src/lib.rs:155`）→ **默认配置（不写任何 hinting）启动即打印该行**。仓库两份模板已显式写 `hinting = false`（`config/leantty.linux.toml:48`、`config/leantty.windows.toml:48`），用模板启动时 **stderr 为空**；显式 `hinting = true` 时按预期打印。
+- 阶段 7C H0 判定（已验证事实）：默认配置触发 → 属缺陷；两种最小修法待用户裁定：(1) 从模板移除 hinting 项（但模板已设 false，移除后会用默认 true，反而变吵，故此选项实际不成立）；(2) 仅在用户显式写了 hinting 时才提示，默认静默——需要在 config 解析时区分"未配置/显式配置"。
