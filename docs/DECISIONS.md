@@ -512,3 +512,7 @@
 - 阶段 6D W2（工程判断，置信度中）：崩溃栈完全位于 pwsh 的 `UpdatesNotification.ShowUpdateNotification` → `String.PadRight(totalWidth=-17)`，终端侧尺寸因素已排除 → 属 pwsh 缺陷，**不改代码**；README/README.zh-CN 增加故障排查条目（`POWERSHELL_UPDATECHECK=Off` 规避 + 未能复现的限制），未把该变量注入默认配置。
 - 阶段 6D W2（待验证假设）：崩溃确切触发条件未复现；推翻条件=用户机设 `Off` 后仍崩溃，则重新归因到 ConPTY 其它初始化差异。
 - 阶段 6D W3（已验证事实）：cargo test 233 passed、clippy 0 error；重打 zip 5 786 634 B / sha256 `1713d3f5…`，zip 内 5 个文档哈希与仓库一致，泄漏扫描 0 命中。
+- 阶段 6D D1（已验证事实）：`refs/heads/win` 与 `phase6d-win-fix` 同为 `9575229…`（轻量 tag）；合并冲突仅在 `docs/DECISIONS.md`（双方文件尾追加），按双方保留解决；`crates/` 相对 `phase6b-done2` 只增 `crates/app/src/lib.rs` 的 `#[cfg(all(test, windows))] mod keymap_tests`（+110 行），无 Linux 行为变化。
+- 阶段 6D D2（已验证事实）：Windows zip 5,786,634 B / `1713d3f5…` 与任务书一致；zip 内 CHANGELOG/LICENSE/THIRD-PARTY-NOTICES/leantty.toml 与仓库逐字节一致；两份 README 仅行尾不同（zip 为 CRLF），去 CRLF 后内容一致。
+- 阶段 6D D3/D5（已验证事实）：deb 0.1.1 = 3,516,304 B / `031e49f6…`，Depends 9 项 + Recommends libvulkan1，Maintainer 占位未替换；**包内二进制**可复现（两次构建与 `target/release/leantty` 均 `2074d934…`），**deb 包本身不可复现**（`changelog.Debian.gz` 内嵌 `date -R` 时间戳，两次 031e49f6… vs a794ad2a…）。
+- 阶段 6D D4（已验证事实）：导出 169 文件；扫描 A=0、B=3（Windows 系统常量）、C=0、豁免 15、仅报告 2（两处 "LTSC" 平台说明）。
