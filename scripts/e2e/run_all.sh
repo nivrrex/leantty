@@ -3026,6 +3026,61 @@ else
     if [ "$OK75" -eq 2 ]; then echo "PASS case75-hinting-quiet (2/2)"; PASS=$((PASS+1)); else echo "FAIL case75-hinting-quiet ($OK75/2)"; FAIL=$((FAIL+1)); fi
 fi
 
+# case76/77（阶段 8A S2/S3）：流式选区与单击不留标记。
+# 76：三行文本从第 1 行中间拖到第 3 行中间 → PRIMARY 应包含整行第 2 行（流式），
+#     矩形选区只会取相同列区间；用 PRIMARY 内容取证。
+# 77：已有选区后单击（不拖动）→ 不产生新的复制（PRIMARY 保持上一次内容），且不残留零长度选区。
+if [ ! -x "$LEANTTY_REL" ]; then
+    echo "FAIL case76/77-selection (缺 release 二进制)"; FAIL=$((FAIL+1))
+else
+    CFG76="$OUT/case76.toml"
+    printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "printf \x27aaaaaaaaaa\\nbbbbbbbbbb\\ncccccccccc\\n\x27; sleep 30"]\n' > "$CFG76"
+    printf 'SENTINEL-PREV\n' | x11 xclip -selection primary -i >/dev/null 2>&1
+    LEANTTY_CONFIG="$CFG76" SHELL=/bin/sh "$LEANTTY_REL" >/dev/null 2>"$OUT/case76.err" &
+    LEANTTY_PID=$!
+    if ! wait_window; then
+        echo "FAIL case76-stream-selection (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
+    else
+        x11 xdotool windowactivate "$WID" >/dev/null 2>&1
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+        sleep 1.2
+        GEO=$(x11 xdotool getwindowgeometry --shell "$WID")
+        GX=$(printf '%s' "$GEO" | grep '^X=' | cut -d= -f2); GY=$(printf '%s' "$GEO" | grep '^Y=' | cut -d= -f2)
+        # 三行文本大致位置：行高约取窗口高度的 1/24；从第 2 行中间拖到第 4 行中间
+        H=$(printf '%s' "$GEO" | grep '^HEIGHT=' | cut -d= -f2)
+        LH=$(( H / 24 ))
+        Y1=$(( GY + LH / 2 ))
+        Y2=$(( GY + LH * 2 + LH / 2 ))
+        x11 xdotool mousemove $(( GX + 60 )) "$Y1"
+        x11 xdotool mousedown 1
+        x11 xdotool mousemove $(( GX + 60 )) "$Y2"
+        sleep 0.2
+        x11 xdotool mouseup 1
+        sleep 0.6
+        SEL=$(x11 xclip -selection primary -o 2>/dev/null || true)
+        printf '%s\n' "$SEL" | head -4 | sed 's/^/    /' | head -4
+        MID_FULL=$(printf '%s' "$SEL" | grep -c '^bbbbbbbbbb$' || true)
+        echo "  [c76] PRIMARY 行数=$(printf '%s' "$SEL" | grep -c '' ) 中间整行命中=$MID_FULL"
+        if [ "${MID_FULL:-0}" -ge 1 ]; then
+            echo "PASS case76-stream-selection"; PASS=$((PASS+1))
+        else
+            echo "FAIL case76-stream-selection (PRIMARY='$(printf '%s' "$SEL" | head -2 | tr '\n' '|')')"; FAIL=$((FAIL+1))
+        fi
+        # 77：单击（不拖动）后不应产生新复制
+        BEFORE=$(x11 xclip -selection primary -o 2>/dev/null || true)
+        x11 xdotool mousemove $(( GX + 40 )) $(( GY + LH / 2 ))
+        x11 xdotool click 1
+        sleep 0.5
+        AFTER=$(x11 xclip -selection primary -o 2>/dev/null || true)
+        if [ "$BEFORE" = "$AFTER" ]; then
+            echo "PASS case77-single-click-no-mark (PRIMARY 未变，长度=${#AFTER})"; PASS=$((PASS+1))
+        else
+            echo "FAIL case77-single-click-no-mark (before='${BEFORE:0:30}' after='${AFTER:0:30}')"; FAIL=$((FAIL+1))
+        fi
+        stop_app
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

@@ -330,7 +330,7 @@ pub use paste::{
 pub use scrollbar::{ScrollbarGeom, scrollbar_geometry, track_y_to_offset};
 pub use selection::{
     CellPos, Selection, abs_to_viewport, auto_scroll_step, extract_rows, extract_text,
-    selection_viewport_region, viewport_to_abs, word_region,
+    extract_text_stream, selection_viewport_region, stream_row_range, viewport_to_abs, word_region,
 };
 
 /// 帧耗时诊断统计（LEANTTY_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
@@ -2162,16 +2162,32 @@ impl ApplicationHandler for AppHandler {
                         snap.full_redraw = true;
                     }
                     // 选区变化：旧区域与新区域的所有行标脏。
+                    // 阶段 8A S2：流式（阅读顺序）选区 + 零长度不绘制（单击不留痕迹）。
                     let vis_region = self.selection.and_then(|s| {
-                        let (c0, a0, c1, a1) = s.region();
-                        selection_viewport_region((c0, a0, c1, a1), self.offset_from_top, self.rows)
+                        if s.anchor == s.focus {
+                            return None;
+                        }
+                        let top = self.offset_from_top as u16;
+                        let bottom = top.saturating_add(self.rows.saturating_sub(1));
+                        let clamp = |p: CellPos| -> Option<(u16, u16)> {
+                            if p.row < top {
+                                Some((top, 0))
+                            } else if p.row > bottom {
+                                Some((bottom, self.cols.saturating_sub(1)))
+                            } else {
+                                Some((p.row, p.col))
+                            }
+                        };
+                        let (ar, ac) = clamp(s.anchor)?;
+                        let (fr, fc) = clamp(s.focus)?;
+                        Some((ar.saturating_sub(top), ac, fr.saturating_sub(top), fc))
                     });
                     if vis_region != self.last_sel_region {
-                        if let Some((_, r0, _, r1)) = self.last_sel_region {
-                            snap.mark_rows_dirty(r0, r1);
+                        if let Some((ar, _, fr, _)) = self.last_sel_region {
+                            snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
                         }
-                        if let Some((_, r0, _, r1)) = vis_region {
-                            snap.mark_rows_dirty(r0, r1);
+                        if let Some((ar, _, fr, _)) = vis_region {
+                            snap.mark_rows_dirty(ar.min(fr), ar.max(fr));
                         }
                         self.last_sel_region = vis_region;
                     }
@@ -2866,8 +2882,16 @@ impl AppHandler {
             }),
             _ => Some(Selection::new(abs_pos)),
         };
-        if let Some(r) = region {
-            self.selection = Some(r);
+        // 单击（count==1）不留可见标记，并清除既有选区；拖动时 focus 变化才出现。
+        match region {
+            Some(r) if count == 1 => {
+                self.selection = Some(r);
+                if let Some(w) = self.window.as_ref() {
+                    w.request_redraw();
+                }
+            }
+            Some(r) => self.selection = Some(r),
+            None => self.selection = None,
         }
     }
 
@@ -2914,22 +2938,44 @@ impl AppHandler {
         let Ok(snap) = vt.snapshot() else {
             return;
         };
-        // 绝对行→视口行（视口内走 snapshot；跨视口走 rows_text 只读读历史，
-        // 同语义提取 extract_rows，不改变视口）。
-        let (c0, a0, c1, a1) = sel.region();
+        // 阶段 8A S2：按流式（阅读顺序）逐行取列范围；零长度选区不产生文本。
+        let (anchor, focus) = (sel.anchor, sel.focus);
+        if anchor == focus {
+            return;
+        }
         let offset = self.offset_from_top;
         let viewport_rows = self.rows as usize;
-        let in_viewport = (a0 as usize) >= offset && (a1 as usize) < offset + viewport_rows;
+        let cols = self.cols;
+        let top_abs = anchor.row.min(focus.row);
+        let bot_abs = anchor.row.max(focus.row);
+        let in_viewport =
+            (top_abs as usize) >= offset && (bot_abs as usize) < offset + viewport_rows;
         let text = if in_viewport {
-            let v0 = (a0 as usize - offset).min(u16::MAX as usize) as u16;
-            let v1 = (a1 as usize - offset).min(u16::MAX as usize) as u16;
-            extract_text(&snap, (c0, v0, c1, v1))
+            let v0 = (top_abs as usize - offset).min(u16::MAX as usize) as u16;
+            let v1 = (bot_abs as usize - offset).min(u16::MAX as usize) as u16;
+            let rows: Vec<(&[Cell], bool)> = (v0..=v1)
+                .filter_map(|r| {
+                    snap.cells.get(r as usize).map(|cs| {
+                        (
+                            cs.as_slice(),
+                            snap.wrapped.get(r as usize).copied().unwrap_or(false),
+                        )
+                    })
+                })
+                .collect();
+            let spans: Vec<(u16, u16)> = (top_abs..=bot_abs)
+                .filter_map(|row| stream_row_range(anchor, focus, row, cols))
+                .collect();
+            extract_text_stream(&rows, &spans, cols)
         } else {
-            match vt.rows_text(a0 as usize, a1 as usize, self.cols) {
+            match vt.rows_text(top_abs as usize, bot_abs as usize, cols) {
                 Ok(history) => {
                     let rows_ref: Vec<(&[Cell], bool)> =
                         history.iter().map(|(cs, w)| (cs.as_slice(), *w)).collect();
-                    extract_rows(&rows_ref, c0, c1)
+                    let spans: Vec<(u16, u16)> = (top_abs..=bot_abs)
+                        .filter_map(|row| stream_row_range(anchor, focus, row, cols))
+                        .collect();
+                    extract_text_stream(&rows_ref, &spans, cols)
                 }
                 Err(e) => {
                     eprintln!("rows_text: {}", e);

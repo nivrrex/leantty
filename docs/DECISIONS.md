@@ -542,6 +542,13 @@
 - 阶段 7C C2（已验证事实）：Windows zip 5,791,390 B / `01faa5e7…` 与任务书一致；zip 内 LICENSE 与 THIRD-PARTY-NOTICES 逐字节一致，README×2 / CHANGELOG / leantty.toml 各差 1–2 行文本——均为 7C H2/H4 在打包之后新增/改写的文档行，二进制与其余文档一致。
 - 阶段 7C C3/C5（已验证事实）：deb 0.2.0 = 3,516,768 B / `a823f5b0…`，包内二进制两次构建均为 `f9725440…`，deb 包本身因 changelog 时间戳不可复现（已知）。
 - 阶段 7C C4（已验证事实）：导出 169 文件，扫描 A=0、C=0、B=3、豁免 15、仅报告 2。
+- 阶段 7C C2 复核对（已验证事实）：Windows 侧重打包后的 `leantty-0.2.0-windows-x86_64.zip` = 5,791,602 B / sha256 `a60b1643…`；zip 内 README×2、CHANGELOG、LICENSE、THIRD-PARTY-NOTICES、leantty.toml 与仓库**全部一致**（本轮连字节级都一致，无 CRLF 差异）；`crates/` 相对 `phase7c-done` 差异为零 → 该 zip 与仓库源码同源。资产目录已替换为新 zip 并重写 SHA256SUMS。
+- 阶段 7C C8（已验证事实）：`build-deb.sh` 曾把 `changelog.Debian.gz` 写入 `$PKGROOT`，而该目录在写入前已被复制到 `$WORK/debian-tmp`，导致 **0.1.1 与 0.2.0 首版 deb 均缺 `changelog.Debian.gz`**；已改为直接写入 debian-tmp，重建后包含该项，包内二进制不变（`f9725440…`），新 deb = 3,520,632 B / `9b51a2d4…`。
+- 阶段 8A S0（已验证事实）：选区模型为矩形块选（`Selection::region()` 取 min/max 列行），单击创建 anchor==focus 的零长度选区 → 渲染成一个反色格，这就是用户看到的"黑框"；双击选词、三击选行均已存在。
+- 阶段 8A S2（已验证事实）：改为流式（阅读顺序）——`stream_row_range` 方向感知（下拖首行 anchor.col..行尾、末行 0..focus.col；上拖对称；中间行整行），渲染与复制共用；单击不再提交选区（无可见标记）。行尾空白沿用 `extract_rows` 既有规则（与 alacritty 一致：复制时去行尾空白）。
+- 阶段 8A S3（已验证事实）：单测 `selection::stream_tests` 3 例，回退为矩形时 2 例变红；e2e case76/77 覆盖三行拖动与单击不留标记，完整 e2e 130/130；黄金哈希 `507485fb7945fb8f` 不变，workspace 212 测试通过。
+- 阶段 8A S0 附带（已验证事实）：alacritty 未观察到块选修饰键，故未实现块选模式（不新增配置项）。
+
 
 - 阶段 7D D1（已验证事实）：`phase7c-done` = `1bd78510…`（轻量 tag）与任务书一致；`--no-ff` 合并 0 冲突（合并提交 `6dbf583`）；`crates/` 相对 `phase7b-win-done` 仅 3 行——config 与 render 的 `hinting` 默认值 true→false 及 render 一处文档注释。
 - 阶段 7D D2（已验证事实）：build.ps1 rc=0，`--version` = `leantty 0.2.0`；`cargo test --workspace` 236 passed；clippy `-D warnings` 0 error。
