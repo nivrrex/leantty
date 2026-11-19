@@ -1910,7 +1910,25 @@ impl ApplicationHandler for AppHandler {
             }
         }
         // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
-        if let Some(rx) = &self.bg_rx
+        // debug-only：人为延迟回退字体就绪，用于 e2e 复现"先画方块后恢复"（release 不含）。
+        #[cfg(debug_assertions)]
+        let bg_ready = {
+            static DELAY_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+            let d = *DELAY_MS.get_or_init(|| {
+                std::env::var("LEANTTY_TEST_DELAY_BG_FONTS_MS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0)
+            });
+            d == 0
+                || crate::start_time()
+                    .map(|t| t.elapsed().as_millis() >= d as u128)
+                    .unwrap_or(true)
+        };
+        #[cfg(not(debug_assertions))]
+        let bg_ready = true;
+        if bg_ready
+            && let Some(rx) = &self.bg_rx
             && let Ok(fonts) = rx.try_recv()
             && let Some(r) = self.renderer.as_mut()
         {
@@ -1924,6 +1942,14 @@ impl ApplicationHandler for AppHandler {
                 );
             }
             r.add_background_fonts(fonts);
+            // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
+            // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
+            // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经
+            // 既有出口（request_redraw + finish_wake）请求重绘，不新增控制流出口。
+            self.urgent_render = true;
+            if let Some(w) = self.window.as_ref() {
+                w.request_redraw();
+            }
         }
         // 2. channel 收字节 → 喂 vt（auto-follow：开启时新输出后回底）
         if let Some(rx) = self.rx.as_ref()

@@ -3081,6 +3081,35 @@ else
     fi
 fi
 
+# case81（阶段 9A）：回退字体就绪后必须重画（GPU 空闲跳过曾吞掉该帧 → 方块不消失）。
+# 用 debug-only 钩子延迟字体并入：就绪前（2s）与就绪后（8s）截图必须不同；回退修复即变红。
+if [ ! -x "$LEANTTY_BIN" ]; then
+    echo "FAIL case81-fallback-font-repaint (缺 debug 二进制)"; FAIL=$((FAIL+1))
+else
+    OK81=0; TOT81=0
+    for b81 in cpu gpu; do
+        TOT81=$((TOT81+1))
+        CFG81="$OUT/case81-$b81.toml"; L81="$OUT/case81-$b81.log"
+        printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "printf \x27中文目录 临时\\n\x27; sleep 30"]\n[font]\nfallback = [ { family = "Noto Sans CJK SC", style = "Regular" } ]\n' "$b81" > "$CFG81"
+        LEANTTY_TEST_DELAY_BG_FONTS_MS=2000 LEANTTY_CONFIG="$CFG81" "$LEANTTY_BIN" >/dev/null 2>"$L81" &
+        LEANTTY_PID=$!
+        if ! wait_window; then
+            echo "  [c81 $b81] 窗口未出现"; stop_app; continue
+        fi
+        sleep 2; x11 import -window "$WID" "$OUT/case81-$b81-before.png" 2>/dev/null
+        sleep 6; x11 import -window "$WID" "$OUT/case81-$b81-after.png" 2>/dev/null
+        D81=$(compare -metric AE "$OUT/case81-$b81-before.png" "$OUT/case81-$b81-after.png" null: 2>&1 | head -1 | tr -dc '0-9')
+        echo "  [c81 $b81] 就绪前后像素差=${D81:-NA}（应 >0）"
+        [ "${D81:-0}" -gt 0 ] && OK81=$((OK81+1))
+        stop_app
+    done
+    if [ "$OK81" -eq "$TOT81" ] && [ "$TOT81" -eq 2 ]; then
+        echo "PASS case81-fallback-font-repaint (2/2)"; PASS=$((PASS+1))
+    else
+        echo "FAIL case81-fallback-font-repaint ($OK81/2)"; FAIL=$((FAIL+1))
+    fi
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"
