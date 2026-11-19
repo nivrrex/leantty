@@ -48,6 +48,11 @@ sudo apt install ./leantty_0.2.2_amd64.deb
   在 Linux 下按既有键位表不产生输入。
 - 未发送 kitty 键盘协议的按键释放事件。
 
+## 说明
+
+- zip 内的 `CHANGELOG.md`、`README.md`、`README.zh-CN.md` 与仓库 `22be04e` 之前的提交一致，
+  发布说明（本文件）额外展开的细节（GPU 图集失效、启动优化）不影响二进制内容。
+
 ## 资产
 
 | 文件 | 大小 | sha256 |

@@ -7,15 +7,6 @@
   refresh (most visible with the GPU backend); the window now redraws as soon as the fallback
   font finishes loading, and the GPU glyph cache is invalidated at the same time so the real
   glyphs are drawn instead of the "missing glyph" box.
-- With the GPU backend the fallback-font bitmaps that had been cached before the fonts were
-  merged were reused afterwards, so the "missing glyph" box stayed on screen for the rest of the
-  session; the glyph atlas is now cleared (keeping the same texture) when fonts are merged.
-
-### Changed
-- Fallback fonts start loading before the window is created and are handed to the renderer without
-  an extra deep copy, which shortens the "missing glyph box" period at startup from about 0.65 s to
-  about 0.31 s on the reference machine. The remaining delay is dominated by parsing a single CJK
-  font face and is documented as a known limitation.
 
 ## 0.2.1
 
