@@ -680,6 +680,15 @@ impl RendererBackend {
     }
 
     /// 加载后台字体（CJK 回退）。
+    /// 阶段 9A：后台线程交出已共享的字形句柄，省掉 `Vec<Font>` 的那次深拷贝。
+    fn add_background_fonts_shared(&mut self, fonts: Vec<std::sync::Arc<render::Font>>) {
+        match self {
+            Self::Cpu(r) => r.add_background_fonts_shared(fonts),
+            Self::Gpu(r) => r.add_background_fonts_shared(fonts),
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
         match self {
             Self::Cpu(r) => r.add_background_fonts(fonts),
@@ -1011,7 +1020,7 @@ struct AppHandler {
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
-    bg_rx: Option<mpsc::Receiver<Vec<render::Font>>>,
+    bg_rx: Option<mpsc::Receiver<Vec<std::sync::Arc<render::Font>>>>,
     mods_state: ModifiersState,
     /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
     selection: Option<Selection>,
@@ -1088,6 +1097,27 @@ impl ApplicationHandler for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let t_resumed = Instant::now();
         let config = self.config.take().expect("resumed 只能调用一次");
+        // 阶段 9A：回退字体在**建窗前**就开始加载，与渲染器初始化/建窗/建 surface
+        // 完全重叠（此前在窗口建好后才起线程，白等约 0.3s）；首帧仍不等字体。
+        let (bg_tx, bg_rx) = mpsc::channel::<Vec<std::sync::Arc<render::Font>>>();
+        {
+            let bg_specs = config.font_settings.fallback.clone();
+            let bg_proxy = self.event_proxy.clone();
+            std::thread::spawn(move || {
+                let t_bg = std::time::Instant::now();
+                let fonts = render::load_font_list_shared(&bg_specs);
+                eperf!(
+                    "[perf] bg_font_list_us={} count={}",
+                    t_bg.elapsed().as_micros(),
+                    fonts.len()
+                );
+                let _ = bg_tx.send(fonts);
+                if let Some(proxy) = bg_proxy {
+                    let _ = proxy.send_event(());
+                }
+            });
+        }
+        self.bg_rx = Some(bg_rx);
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
         // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
         // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
@@ -1359,7 +1389,6 @@ impl ApplicationHandler for AppHandler {
             }
         };
         // 唤醒器：读线程每来一次数据 wake 一次事件循环（channel + proxy 抽象）。
-        let bg_proxy = self.event_proxy.clone();
         let waker: Box<dyn Wake> = match self.event_proxy.take() {
             Some(proxy) => Box::new(ProxyWaker::new(proxy)),
             None => {
@@ -1367,28 +1396,9 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         };
-        // 任务 2B.1：fallback/系统兜底字体后台懒加载（首帧不等 CJK from_bytes 实测
-        // 806.8ms）；到位经 channel 并入 renderer 并发 proxy 唤醒重绘。线程安全：
-        // 仅 owned 数据（FontSpec/Font）经 channel 传递；Database 线程内自建；
-        // 线程 detached（完成即退，进程退出随灭，无共享可变状态）。
-        let (bg_tx, bg_rx) = mpsc::channel::<Vec<render::Font>>();
-        let bg_specs = config.font_settings.fallback.clone();
-        std::thread::spawn(move || {
-            let t_bg = std::time::Instant::now();
-            let fonts = render::load_font_list(&bg_specs);
-            // 阶段 4O t4：后台字体加载整体耗时（与各 font_steps_us(kind=background) 之和对照）
-            eperf!(
-                "[perf] bg_font_list_us={} count={}",
-                t_bg.elapsed().as_micros(),
-                fonts.len()
-            );
-            let _ = bg_tx.send(fonts);
-            if let Some(proxy) = bg_proxy {
-                let _ = proxy.send_event(());
-            }
-        });
-        self.bg_rx = Some(bg_rx);
-
+        // 任务 2B.1 / 阶段 9A：fallback 字体后台加载已在 `resumed` 开头（建窗前）发起，
+        // 接收端见 `bg_rx`；线程安全：仅 `Vec<Arc<Font>>` 经 channel 传递，Database
+        // 线程内自建，线程 detached（完成即退，无共享可变状态）。
         // 1. PTY 读线程 → channel → 主线程喂 vt
         // 有界通道（背压）：主线程忙时读线程阻塞在 send，进而 PTY 缓冲满、
         // 子进程写阻塞，而不是无限积压内存（DECISIONS 登记）。
@@ -1941,7 +1951,7 @@ impl ApplicationHandler for AppHandler {
                     fonts.len()
                 );
             }
-            r.add_background_fonts(fonts);
+            r.add_background_fonts_shared(fonts);
             // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
             // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
             // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经
