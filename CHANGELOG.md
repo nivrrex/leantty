@@ -5,7 +5,8 @@
 ### Fixed
 - On startup the shell prompt could keep showing Chinese directory names as boxes and never
   refresh (most visible with the GPU backend); the window now redraws as soon as the fallback
-  font finishes loading.
+  font finishes loading, and the GPU glyph cache is invalidated at the same time so the real
+  glyphs are drawn instead of the "missing glyph" box.
 
 ## 0.2.1
 
