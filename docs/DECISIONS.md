@@ -556,3 +556,6 @@
 - 阶段 7D D4（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 rc=2；`--working-directory` 正常目录 cwd 正确、无效目录 rc=1 且 stderr 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 615 ms 关闭。
 - 阶段 7D D5（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 602 B / sha256 `a60b1643…`，10 条目单顶层；zip 内 6 个文档（含 `leantty.toml` ↔ `config/leantty.windows.toml`）与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
 - 启动早期约 0.31 s 的缺字形方块**作为遗留问题保留**（已验证事实：首帧 230 ms、回退字体并入 545 ms、HYQiHei 单面解析 305 ms）；否决"首帧等字体"（窗口出现推迟 315 ms）与"共享主线程 Database"（后台线程本就并行扫描，净收益约 −17 ms，且需改 `CpuRenderer::new` 等 56 处调用点）。
+- 阶段 9D（已验证事实，依据 alacritty 源码 `alacritty/src/display/window.rs::update_ime_position`）：IME 锚点须用**物理像素**（传 `PhysicalPosition/PhysicalSize`，否则 winit 在 HiDPI 下再乘一次 scale）、X11 上 y 需**下移一行**（XIM 只收 spot 点、不收矩形，否则候选窗盖住当前行）、宽度取**两格**（面板在可用宽度过窄时会把候选窗甩到窗口右下角）。本仓库原实现三点均不符：`Advanced` 逻辑坐标 + 同行 y + 一格宽。
+- 阶段 9D（待验证假设）：上述三点修正后 ibus 候选窗在真实桌面上的跟随/上下翻转行为；本机 headless 环境里 ibus-rime 引擎启动正常但输入无回显（`XMODIFIERS=@im=ibus` 已设），无法本地复现，需用户在真实会话中确认。
+

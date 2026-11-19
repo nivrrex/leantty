@@ -544,6 +544,7 @@ impl App {
             pad_x: 0,
             pad_y: 0,
             scale_factor: 1.0,
+            is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
             bg_rx: None,
             mods_state: ModifiersState::default(),
@@ -964,6 +965,9 @@ struct AppHandler {
     pad_y: u16,
     /// 当前缩放因子（winit scale_factor）。
     scale_factor: f64,
+    /// 窗口是否为 X11：XIM 只接受 spot 点而非矩形，需把 IME 锚点下移一行
+    /// （与 alacritty 的 `is_x11` 处理一致）。窗口创建后按 raw handle 判定。
+    is_x11: bool,
     /// 首帧 present 耗时日志标志（perf 钩子，仅打印一次）。
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
@@ -1201,6 +1205,15 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         });
+        // 阶段 9D：判定窗口后端是否为 X11（决定 IME 锚点是否要下移一行）。
+        // 用 raw handle 而不是猜环境变量：Win32/Xlib/Wayland 在 handle 类型上一目了然。
+        {
+            use raw_window_handle::HasWindowHandle;
+            self.is_x11 = matches!(
+                window.window_handle().map(|h| h.as_raw()),
+                Ok(raw_window_handle::RawWindowHandle::Xlib(_))
+            );
+        }
         // window.position：winit 0.30 的 X11 后端在创建路径上不应用 attributes.position
         // （只在映射后经 set_outer_position 生效），因此创建后显式设置一次。
         // Wayland 下合成器可能忽略（已有提示日志）；越界交给窗口管理器。
@@ -2730,6 +2743,13 @@ impl AppHandler {
     }
 
     /// 更新 IME 光标区（快照光标所在格像素矩形；窗口未建时跳过）。
+    ///
+    /// 与 alacritty 对齐的三处细节（阶段 9D）：
+    /// 1. 传**物理像素**（`PhysicalPosition/PhysicalSize`）；此前传的是"已乘过 scale 的值 +
+    ///    Logical" → 在 HiDPI 下会被 winit 再乘一次 scale，锚点整体偏移。
+    /// 2. X11 的 XIM 只接受一个 spot 点、不支持矩形，故把 y 下移**一行**（锚在光标格底边），
+    ///    否则候选窗直接盖住正在输入的那一行。
+    /// 3. 宽度取**两格**：部分合成器/IM 面板在可用宽度太窄时会把候选窗甩到窗口右下角。
     fn update_ime_cursor_area(&self) {
         let (Some(window), Some(vt)) = (self.window.as_ref(), self.vt.as_ref()) else {
             return;
@@ -2745,13 +2765,21 @@ impl AppHandler {
             snap.cols,
             snap.rows,
         );
-        let cx = u32::from(cx_cell);
-        let cy = u32::from(cy_cell);
-        let x = f64::from(self.pad_x) * self.scale_factor + f64::from(cx) * f64::from(self.cell_w);
-        let y = f64::from(self.pad_y) * self.scale_factor + f64::from(cy) * f64::from(self.cell_h);
+        let (x, y, w, h) = ime_area_rect(
+            ImeGeometry {
+                pad_x: self.pad_x,
+                pad_y: self.pad_y,
+                scale: self.scale_factor,
+                cell_w: self.cell_w,
+                cell_h: self.cell_h,
+                is_x11: self.is_x11,
+            },
+            cx_cell,
+            cy_cell,
+        );
         window.set_ime_cursor_area(
-            winit::dpi::LogicalPosition::new(x, y),
-            winit::dpi::LogicalSize::new(f64::from(self.cell_w), f64::from(self.cell_h)),
+            winit::dpi::PhysicalPosition::new(x, y),
+            winit::dpi::PhysicalSize::new(w, h),
         );
     }
 
@@ -3388,6 +3416,33 @@ pub fn ime_preedit_update(event: &winit::event::Ime) -> (bool, String, Option<(u
 
 /// IME 候选窗定位格：Preedit 非空时返回组合末尾格（layout_end_position），
 /// 否则返回终端光标格（任务 2C.3；纯函数便于单测）。
+/// IME 锚点所需的几何参数（物理像素与逻辑 padding 混用，集中在一处换算）。
+#[derive(Debug, Clone, Copy)]
+pub struct ImeGeometry {
+    pub pad_x: u16,
+    pub pad_y: u16,
+    pub scale: f64,
+    pub cell_w: u32,
+    pub cell_h: u32,
+    pub is_x11: bool,
+}
+
+/// 计算 IME 锚点矩形（物理像素，窗口内坐标）。返回 `(x, y, w, h)`。
+///
+/// - `pad_*` 是配置里的逻辑值，乘一次 `scale` 得到物理 padding（只乘一次）。
+/// - X11 的 XIM 只接受一个 spot 点、不支持矩形：`y` 下移一行（锚在光标格底边），
+///   否则候选窗会盖住正在输入的行。
+/// - 宽度取两格：给 IM 面板留出避开窗口右缘的余量（alacritty 同样做法）。
+pub fn ime_area_rect(g: ImeGeometry, cx: u16, cy: u16) -> (f64, f64, f64, f64) {
+    let x = f64::from(g.pad_x) * g.scale + f64::from(cx) * f64::from(g.cell_w);
+    let line_offset = u16::from(g.is_x11);
+    let y = f64::from(g.pad_y) * g.scale
+        + f64::from(cy.saturating_add(line_offset)) * f64::from(g.cell_h);
+    let w = f64::from(g.cell_w) * 2.0;
+    let h = f64::from(g.cell_h);
+    (x, y, w, h)
+}
+
 pub fn ime_cursor_cell(
     preedit: &str,
     cursor_x: u16,
@@ -4081,6 +4136,51 @@ mod ime_cursor_tests {
 }
 
 /// IME 事件状态更新单测（任务 2C.3：Preedit/Commit/Disabled 清空语义）。
+#[cfg(test)]
+mod ime_area_tests {
+    use super::{ImeGeometry, ime_area_rect};
+
+    fn geom(is_x11: bool, scale: f64) -> ImeGeometry {
+        ImeGeometry {
+            pad_x: 8,
+            pad_y: 4,
+            scale,
+            cell_w: 10,
+            cell_h: 20,
+            is_x11,
+        }
+    }
+
+    #[test]
+    fn x11_anchor_is_below_the_cursor_row() {
+        let (x, y, w, h) = ime_area_rect(geom(true, 1.0), 5, 3);
+        assert_eq!(x, 58.0, "x = pad_x*scale + col*cell_w");
+        assert_eq!(y, 84.0, "X11 把锚点下移一行：pad_y + (row+1)*cell_h");
+        assert_eq!((w, h), (20.0, 20.0), "宽两格、高一格");
+    }
+
+    #[test]
+    fn non_x11_anchor_is_the_cursor_row_top() {
+        let (_x, y, w, h) = ime_area_rect(geom(false, 1.0), 5, 3);
+        assert_eq!(y, 64.0, "非 X11（Wayland text-input）给的是光标格本身");
+        assert_eq!((w, h), (20.0, 20.0));
+    }
+
+    #[test]
+    fn padding_is_scaled_once() {
+        // 逻辑 padding 8/4 在 2 倍缩放下是物理 16/8，cell 已是物理像素（不再乘）。
+        let (x, y, _, _) = ime_area_rect(geom(true, 2.0), 2, 1);
+        assert_eq!(x, 36.0, "16 + 2*10");
+        assert_eq!(y, 48.0, "8 + (1+1)*20");
+    }
+
+    #[test]
+    fn bottom_row_does_not_overflow_the_cell_index() {
+        let (_x, y, _, _) = ime_area_rect(geom(true, 1.0), 0, u16::MAX);
+        assert!(y.is_finite() && y > 0.0, "饱和加法不应回绕");
+    }
+}
+
 #[cfg(test)]
 mod ime_event_tests {
     use super::*;

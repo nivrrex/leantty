@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The IME candidate window no longer covers the line being typed and now follows the cursor
+  reliably: the anchor is passed in physical pixels (it was scaled twice on HiDPI), and on X11
+  (where the input method only accepts a single point instead of a rectangle) it is placed just
+  below the cursor cell, with a two-cell-wide area so panels do not push the popup to the window
+  corner.
+
 ## 0.2.2
 
 ### Fixed
