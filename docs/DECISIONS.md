@@ -567,3 +567,8 @@
 - 阶段 9B F3（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 2；`--working-directory` 正常 cwd、无效目录 rc=1 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 479 ms 关闭；默认配置 stderr 空。
 - 阶段 9B F4（已验证事实，debug 构建）：`LEANTTY_TEST_DELAY_BG_FONTS_MS=2000` 下，2 s 时该行是方块、9 s 后变 `中文目录 临时`，期间无新输出（ping 静默），像素差 665 px、bbox `(8,31)-(108,43)` → 字体并入后的重绘路径在 Windows 生效。**release 冷启动未测**（钩子 debug-only）；该路径**无单测**（需重构 `AppHandler`，超出允许范围）。
 - 阶段 9B F5（已验证事实）：`leantty-0.2.2-windows-x86_64.zip` 5 793 973 B / sha256 `f80d82fe…`，10 条目单顶层；zip 内 6 个文档与仓库 raw 及去 CR 后哈希均相同；泄漏扫描 0 命中。
+
+- 阶段 9C W1（已验证事实）：`phase9a-done2`=`5675ac73…`、`phase9a-perf`=`b785881c…`（均轻量 tag）与任务书一致；两次 `--no-ff` 合并（`b6243dd`、`a4cfc41`）**0 冲突**（DECISIONS 预期冲突未发生）；`crates/` 相对 `phase8c-win-done` 恰为 4 文件：`render/src/gpu/atlas.rs`、`render/src/gpu/mod.rs`、`render/src/lib.rs`、`app/src/lib.rs`。
+- 阶段 9C W3（已验证事实）：`cargo test --workspace` 239 passed；clippy debug/release 各 0 error；`cargo check --target x86_64-pc-windows-gnu --workspace --tests` rc=0；release `--version`=`leantty 0.2.2`。
+- 阶段 9C W4（已验证事实，WARP）：CPU vs GPU 8 s 截图差异 516/460800（0.1120%，通道差 ≤32，仅中文行）；GPU 2 s 与 8 s 完全一致；`bg_fonts_ms` CPU 756 / GPU 1005、`first_frame_ms` CPU 412 / GPU 1044；窗口出现后首帧即中文（方块期未捕获）。
+- 阶段 9C W5（已验证事实 + 偏离）：按任务书重打 6 条目 zip（5 181 473 B / sha256 `29944c2a…`，exe `12f4b468…`）；与上一版 10 条目（含 ConPTY 对）不同，本版运行时回落系统 conhost。
