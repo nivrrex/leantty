@@ -13,3 +13,39 @@
 - 0.2.1 → 0.2.2 差异：`Cargo.toml`/`Cargo.lock`（版本）、`CHANGELOG.md`（0.2.2 Fixed）、
   `crates/app/src/lib.rs`（字体就绪后置 urgent_render + request_redraw，含 debug-only 延迟钩子）、
   `scripts/e2e/run_all.sh`（新增 case81）。
+
+## 0.2.2 重打（GPU 字形修复后，2026-11-19）
+
+- 修复提交：`5675ac7`（GPU `add_background_fonts` 同时清 atlas，且 `GlyphAtlas::clear(queue)`
+  **保留同一张纹理**——若用 `reset()` 会新建 texture/view 而绑定组仍是旧的，所有字形会采样空纹理）。
+- 验证：同配置（size=16 / Consolas + HYQiHei）下 **CPU 与 GPU 就绪后截图逐像素一致（差 0）**；
+  `case81` 增强为 3 项（CPU/GPU 各自前后变化 + CPU 与 GPU 一致），gates 10 步全过、e2e 131/131。
+- tag：`phase9a-done2` = `5675ac7`（轻量；`phase9a-done` = `7628b13` 保留为第一版"仅重绘"修复）。
+- 重新打包：`leantty_0.2.2_amd64.deb` **3,523,336 B**、sha256 `610543d0977854d74c886a98462b971c53b3b910bc8a4790027aa71614616124`，
+  包内 `/usr/bin/leantty` = `568860f8…`，`changelog.Debian.gz` 为 0.2.2 条目；导出 169 文件、`version = 0.2.2`、
+  scan A=0/C=0/B=3。
+- **注意**：`/root/dev/leantty-release-inputs/leantty-0.2.2-windows-x86_64.zip`（`f80d82fe…`）是
+  按 `phase9a-done` 打的，**不含本次 GPU 字形修复**，需 Windows 侧 9B 合并 `phase9a-done2` 后重打。
+
+## 启动早期"方块 → 中文"约 1 秒的成因（实测拆解）
+
+`:99`、用户配置（`size=16`、`normal=Consolas`、`fallback=HYQiHei`）、CPU 后端：
+
+| 打点 | 值 |
+|---|---|
+| `first_frame_ms` | **306**（首帧画出来时中文还没就绪 → 方块）|
+| `bg_db_new_us` | 1 µs |
+| `bg_fontdb_us`（`load_system_fonts` 扫描系统字体）| **80 ms** |
+| `bg_font_clone_us`（一个 CJK 面的 `deep_copy`）| **137.6 ms** |
+| `bg_font_list_us`（后台加载总计）| **645.6 ms** |
+| `bg_fonts_merge_us` | 9 µs |
+
+即：首帧 306 ms 时先画方块，字体在 ~950 ms 才并入 → 方块持续约 **0.65 s**（用户体感"1 秒"）。
+耗时主要在**解析 CJK 字体（`from_bytes`，约 0.43 s）**、扫描系统字体（80 ms）与一次**深拷贝**（137 ms）。
+这是既有设计取舍：主字体同步加载、回退字体后台加载，避免把首帧拖慢到 1 秒以上。
+
+**可选改法（需用户裁定）**
+1. **并行提前**：把回退字体的加载在进程启动早期就发起（与建窗/建 GL 并行），并去掉那 137 ms 的深拷贝，
+   首帧仍不等字体，但方块持续时间预计可从 ~650 ms 降到 ~200 ms（估计）。
+2. **首帧等字体**：首帧前阻塞等待回退字体就绪，彻底没有方块，但窗口出现时间从 ~306 ms 推迟到 ~950 ms。
+3. **保持现状**，仅文档说明。
