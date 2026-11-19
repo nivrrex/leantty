@@ -555,3 +555,9 @@
 - 阶段 7D D3（已验证事实）：不写 `hinting` 时 stderr 长度 0（空）；显式 `hinting = true` 时打印 `hinting: fontdue 不支持 hinting，已解析未生效（unsupported）`（stderr 54 B）。两次运行均按记录 PID + 命令行核对后结束。
 - 阶段 7D D4（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 rc=2；`--working-directory` 正常目录 cwd 正确、无效目录 rc=1 且 stderr 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 615 ms 关闭。
 - 阶段 7D D5（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 602 B / sha256 `a60b1643…`，10 条目单顶层；zip 内 6 个文档（含 `leantty.toml` ↔ `config/leantty.windows.toml`）与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
+
+- 阶段 8C 第一部分（已验证事实）：`phase8a-done` = `bc5735c6…`（轻量）合并 `71076d8`（冲突仅 DECISIONS，双方保留）；`crates/` 相对 `phase7d-win-done` 为 4 文件（app/lib.rs、app/selection.rs、render/decide.rs、render/tests/incremental.rs）；0.2.1 重建 239 passed、clippy 0；zip 5 793 626 B / sha256 `25d47aa9…`，6 文档哈希一致、泄漏 0。
+- 阶段 8C 第二部分（已验证事实）：数据集 71 566 目录 / 116 950 文件；基线 ptime 17.358/15.991/14.242 s；conhost 120×30 103.769/113.113/91.179 s；leantty 120×30 106.845/87.989/32.838 s；leantty/conhost 中位比值 0.85 → 用户 2.27× 差异在本机**未复现**。
+- 阶段 8C 第二部分（未测）：wezterm 三次失败（`initial_lines` 非法字段；msys 把 `/c` 改写为 `C:/`），按红线不得结束 wezterm-gui → T4 未测，残留 wezterm-gui 17304（本任务启动）与 19372（既有）均只记录。
+- 阶段 8C 第二部分（待验证假设）：用户机 0.2.1 的 conhost/leantty 对照与 wezterm 基线；`[perf]` 缺"累计"字段（读线程字节数与阻塞、feed/present 累计），若需定位须先补观测。
+- 阶段 8C 第二部分（已验证事实）：新增诊断脚本 `scripts/windows/gen-tree.ps1`（非导出），未改代码。
