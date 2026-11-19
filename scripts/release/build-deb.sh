@@ -158,8 +158,10 @@ DOCPKG="$WORK/debian-tmp/usr/share/doc/$PKG"
 {
     echo "$PKG ($VER) unstable; urgency=medium"
     echo
-    echo "  * Kitty keyboard protocol input (Ctrl+C/D/P) fixed; function keys,
-     Insert/Delete/PageUp/PageDown and Ctrl+[ now produce input."
+    echo "  * IME candidate window now follows the cursor and no longer covers
+     the line being edited; the anchor is passed in physical pixels (was scaled
+     twice on HiDPI) and, on X11, placed below the cursor cell with a two-cell
+     wide area."
     echo
     echo " -- leantty <noreply@example.invalid>  $(date -R)"
 } > "$DOCPKG/changelog.Debian"

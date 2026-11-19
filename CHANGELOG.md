@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.3
 
 ### Fixed
 - The IME candidate window no longer covers the line being typed and now follows the cursor
