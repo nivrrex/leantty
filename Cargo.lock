@@ -811,7 +811,7 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "leantty-app"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "arboard",
  "leantty-config",
@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-config"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "thiserror 2.0.21",
  "toml",
@@ -834,7 +834,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-pty"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "leantty-vt",
@@ -844,7 +844,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-render"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "fontdb",
  "fontdue",
@@ -858,7 +858,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-vt"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "libghostty-vt",
  "thiserror 2.0.21",
