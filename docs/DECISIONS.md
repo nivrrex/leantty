@@ -548,3 +548,10 @@
 - 阶段 8A S2（已验证事实）：改为流式（阅读顺序）——`stream_row_range` 方向感知（下拖首行 anchor.col..行尾、末行 0..focus.col；上拖对称；中间行整行），渲染与复制共用；单击不再提交选区（无可见标记）。行尾空白沿用 `extract_rows` 既有规则（与 alacritty 一致：复制时去行尾空白）。
 - 阶段 8A S3（已验证事实）：单测 `selection::stream_tests` 3 例，回退为矩形时 2 例变红；e2e case76/77 覆盖三行拖动与单击不留标记，完整 e2e 130/130；黄金哈希 `507485fb7945fb8f` 不变，workspace 212 测试通过。
 - 阶段 8A S0 附带（已验证事实）：alacritty 未观察到块选修饰键，故未实现块选模式（不新增配置项）。
+
+
+- 阶段 7D D1（已验证事实）：`phase7c-done` = `1bd78510…`（轻量 tag）与任务书一致；`--no-ff` 合并 0 冲突（合并提交 `6dbf583`）；`crates/` 相对 `phase7b-win-done` 仅 3 行——config 与 render 的 `hinting` 默认值 true→false 及 render 一处文档注释。
+- 阶段 7D D2（已验证事实）：build.ps1 rc=0，`--version` = `leantty 0.2.0`；`cargo test --workspace` 236 passed；clippy `-D warnings` 0 error。
+- 阶段 7D D3（已验证事实）：不写 `hinting` 时 stderr 长度 0（空）；显式 `hinting = true` 时打印 `hinting: fontdue 不支持 hinting，已解析未生效（unsupported）`（stderr 54 B）。两次运行均按记录 PID + 命令行核对后结束。
+- 阶段 7D D4（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 rc=2；`--working-directory` 正常目录 cwd 正确、无效目录 rc=1 且 stderr 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 615 ms 关闭。
+- 阶段 7D D5（已验证事实）：`leantty-0.2.0-windows-x86_64.zip` 5 791 602 B / sha256 `a60b1643…`，10 条目单顶层；zip 内 6 个文档（含 `leantty.toml` ↔ `config/leantty.windows.toml`）与仓库 raw 及去 CR 后哈希均相同（无 CRLF 差异）；泄漏扫描 0 命中。
