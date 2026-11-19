@@ -141,6 +141,12 @@ configuration file (see the templates).
 - **Windows DX12** is compiled but only tested with the WARP software adapter.
 - The CPU and GPU screenshots on Windows differ by about 1% of pixels; the difference is in glyph
   rasterisation, not in layout. This was not observed on Linux.
+- **A "missing glyph box" flash of ~0.3 s at startup (known leftover)**: the primary font loads
+  synchronously while `font.fallback` is loaded in the background, so the first frame (~230 ms)
+  paints boxes and the real glyphs appear once the fallback fonts are merged (~545 ms). Loading now
+  starts before the window is created and one redundant CJK deep copy was removed (0.65 s → 0.31 s);
+  what remains is dominated by parsing a single CJK face (~0.3 s), which cannot be shortened
+  without making the first frame wait for the font.
 
 ## Troubleshooting
 
