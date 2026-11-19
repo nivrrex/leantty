@@ -226,6 +226,10 @@ impl GpuRenderer {
             t_merge.elapsed().as_micros()
         );
         self.char_font.clear();
+        // 阶段 9A（GPU 字形缓存）：atlas 键是 (group, ch, px, scale)，**不含字体索引**；
+        // 并入前"缺字形"已按 notdef 存进 atlas，并入后同键仍命中旧槽位 → 永远画方块
+        // （CPU 侧因 glyph_cache.clear() 不受影响）。字形来源变了，整表失效。
+        self.atlas.clear(&self.gpu.queue);
     }
 
     /// 选区（内容绝对坐标，含端点）。

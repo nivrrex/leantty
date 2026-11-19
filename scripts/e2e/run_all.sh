@@ -3103,10 +3103,16 @@ else
         [ "${D81:-0}" -gt 0 ] && OK81=$((OK81+1))
         stop_app
     done
-    if [ "$OK81" -eq "$TOT81" ] && [ "$TOT81" -eq 2 ]; then
-        echo "PASS case81-fallback-font-repaint (2/2)"; PASS=$((PASS+1))
+    # CPU 与 GPU 在字体就绪后必须逐像素一致（证明 GPU 画的是真实字形而不是更大号的 notdef）
+    if [ -s "$OUT/case81-cpu-after.png" ] && [ -s "$OUT/case81-gpu-after.png" ]; then
+        DCPU=$(compare -metric AE "$OUT/case81-cpu-after.png" "$OUT/case81-gpu-after.png" null: 2>&1 | head -1 | tr -dc '0-9')
+        echo "  [c81] CPU vs GPU 就绪后像素差=${DCPU:-NA}（应 0）"
+        [ "${DCPU:-1}" -eq 0 ] && OK81=$((OK81+1))
+    fi
+    if [ "$OK81" -eq 3 ]; then
+        echo "PASS case81-fallback-font-repaint (3/3)"; PASS=$((PASS+1))
     else
-        echo "FAIL case81-fallback-font-repaint ($OK81/2)"; FAIL=$((FAIL+1))
+        echo "FAIL case81-fallback-font-repaint ($OK81/3)"; FAIL=$((FAIL+1))
     fi
 fi
 
