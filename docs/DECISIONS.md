@@ -572,3 +572,4 @@
 - 阶段 9C W3（已验证事实）：`cargo test --workspace` 239 passed；clippy debug/release 各 0 error；`cargo check --target x86_64-pc-windows-gnu --workspace --tests` rc=0；release `--version`=`leantty 0.2.2`。
 - 阶段 9C W4（已验证事实，WARP）：CPU vs GPU 8 s 截图差异 516/460800（0.1120%，通道差 ≤32，仅中文行）；GPU 2 s 与 8 s 完全一致；`bg_fonts_ms` CPU 756 / GPU 1005、`first_frame_ms` CPU 412 / GPU 1044；窗口出现后首帧即中文（方块期未捕获）。
 - 阶段 9C W5（已验证事实 + 偏离）：按任务书重打 6 条目 zip（5 181 473 B / sha256 `29944c2a…`，exe `12f4b468…`）；与上一版 10 条目（含 ConPTY 对）不同，本版运行时回落系统 conhost。
+- 启动早期约 0.31 s 的缺字形方块**作为遗留问题保留**（已验证事实：首帧 230 ms、回退字体并入 545 ms、HYQiHei 单面解析 305 ms）；否决"首帧等字体"（窗口出现推迟 315 ms）与"共享主线程 Database"（后台线程本就并行扫描，净收益约 −17 ms，且需改 `CpuRenderer::new` 等 56 处调用点）。
