@@ -70,3 +70,14 @@
 未达最初"≤200 ms"的估计：剩余 ~315 ms 由**后台线程自己的 fontdb 扫描（128 ms）**与 CJK 解析（~0.38 s）构成。
 再压需要把主线程已建好的 `Database` 共享给后台线程（可省 ~128 ms，预计方块期 ≈150 ms），
 但那要改 `CpuRenderer::new` / `create_renderer` 的签名，与"不改 Renderer 既有签名"的约束冲突，暂未做。
+
+## Windows zip 定稿（9C 返工后）
+
+- 来源：Windows 侧 `win` 分支 `2c3ff22`（合并 `origin/rel-0.2.2` 全部 6 个文档提交；唯一冲突 `docs/DECISIONS.md`，双方保留），
+  由 `scripts/windows/package-release.ps1` 直接产出（脚本未改动）。
+- 产物：`leantty-0.2.2-windows-x86_64.zip` **5,795,070 B**、
+  sha256 `d3ae8a3d79eddb4f779bd1a1bf5f2562fe46bdbd79568746a75164bc5e02e5e9`，10 条目（前缀 `leantty-0.2.2-windows-x86_64/`）。
+- Linux 侧复核（解压实测）：10 项 sha256 **全部与期望表一致**；`README.md`/`README.zh-CN.md`/`CHANGELOG.md` 与仓库 `5ec6b31` 逐字节一致；
+  `leantty.toml` 与 `config/leantty.windows.toml` 一致；`leantty.exe` 12,802,560 B = `12f4b468…`（与合入前的构建相同，证明未混入源码改动）。
+- 前一轮交付被判不合格的偏差已消除：条目数 6→10、配置名 `config.toml`→`leantty.toml`、README.zh-CN 由 `80bdcd63…`（b785881）更新为 `7a8f781d…`（含遗留问题条目）。
+- 资产目录 `/root/dev/leantty-release-assets-9a2/` 与 `SHA256SUMS` 已更新为上述 zip 与 deb `dc8404ae…`。
