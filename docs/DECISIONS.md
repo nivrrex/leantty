@@ -561,3 +561,9 @@
 - 阶段 8C 第二部分（未测）：wezterm 三次失败（`initial_lines` 非法字段；msys 把 `/c` 改写为 `C:/`），按红线不得结束 wezterm-gui → T4 未测，残留 wezterm-gui 17304（本任务启动）与 19372（既有）均只记录。
 - 阶段 8C 第二部分（待验证假设）：用户机 0.2.1 的 conhost/leantty 对照与 wezterm 基线；`[perf]` 缺"累计"字段（读线程字节数与阻塞、feed/present 累计），若需定位须先补观测。
 - 阶段 8C 第二部分（已验证事实）：新增诊断脚本 `scripts/windows/gen-tree.ps1`（非导出），未改代码。
+
+- 阶段 9B F1（已验证事实）：`phase9a-done` = `7628b13e…`（轻量 tag）与 Linux 给出的一致；`--no-ff` 合并 0 冲突（`6db06c5`）；`crates/` 相对 `phase8c-win-done` 仅 `crates/app/src/lib.rs`（+27/−1）：回退字体并入后置 `urgent_render` + `request_redraw`，以及 debug-only 的 `LEANTTY_TEST_DELAY_BG_FONTS_MS` 钩子。
+- 阶段 9B F2（已验证事实）：build.ps1 rc=0，`--version` = `leantty 0.2.2`；`cargo test --workspace` 239 passed；clippy `-D warnings` 0 error。
+- 阶段 9B F3（已验证事实）：CLI 0/0/2/1、`-e` 缺程序 2；`--working-directory` 正常 cwd、无效目录 rc=1 带路径；控制台 1/3/8s 全 0；`-e` 子进程退出后 479 ms 关闭；默认配置 stderr 空。
+- 阶段 9B F4（已验证事实，debug 构建）：`LEANTTY_TEST_DELAY_BG_FONTS_MS=2000` 下，2 s 时该行是方块、9 s 后变 `中文目录 临时`，期间无新输出（ping 静默），像素差 665 px、bbox `(8,31)-(108,43)` → 字体并入后的重绘路径在 Windows 生效。**release 冷启动未测**（钩子 debug-only）；该路径**无单测**（需重构 `AppHandler`，超出允许范围）。
+- 阶段 9B F5（已验证事实）：`leantty-0.2.2-windows-x86_64.zip` 5 793 973 B / sha256 `f80d82fe…`，10 条目单顶层；zip 内 6 个文档与仓库 raw 及去 CR 后哈希均相同；泄漏扫描 0 命中。

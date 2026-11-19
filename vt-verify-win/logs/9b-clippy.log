@@ -1,0 +1,6 @@
+    Checking leantty-vt v0.2.2 (E:\dev\tty\crates\vt)
+    Checking leantty-pty v0.2.2 (E:\dev\tty\crates\pty)
+    Checking leantty-config v0.2.2 (E:\dev\tty\crates\config)
+    Checking leantty-render v0.2.2 (E:\dev\tty\crates\render)
+    Checking leantty-app v0.2.2 (E:\dev\tty\crates\app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.94s
