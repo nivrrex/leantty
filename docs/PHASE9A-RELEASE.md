@@ -92,3 +92,16 @@
 - 回下载校验：deb 与 zip 的 sha256 与本地资产目录**逐字节一致**（GitHub 侧 digest 亦相同）。
 - 发布用 token 只经掩码输入注入，未落盘；发布结束后删除本地临时克隆（其 remote 含 token）。
 - 已知未修：deb `Maintainer` 仍为占位符 `leantty <noreply@example.invalid>`（未获用户提供的真实联系地址）。
+
+## v0.2.3 发布（9D：IME 候选窗定位）
+
+- 分支 `rel-0.2.3`：`a966db7`（修复）→ `66df59e`（版本 0.2.3 + 发布说明 + deb changelog 条目更新）。
+- 交付物：`leantty_0.2.3_amd64.deb` 3,522,972 B / `58a3c4e5…`（包内 `/usr/bin/leantty` = `815f6c65…`，`--version` = `leantty 0.2.3`）；
+  `leantty-0.2.3-windows-x86_64.zip` 5,799,702 B / `992d0b2c…`（10 条目，`leantty.exe` 12,812,800 B）。
+- Windows 二进制**在 Linux 上交叉编译**（`cargo rustc --release --target x86_64-pc-windows-gnu` + `x86_64-w64-mingw32-windres` 注入图标资源），
+  已验：PE `i386:x86-64`、`.rsrc` 段存在（0x1ac78）、字符串含 `leantty 0.2.3`；ConPTY 对取自 0.2.2 归档并校验 sha256 与脚本内固定值一致。
+  **未在 Windows 实机运行**（发布说明中已标注）。
+- GitHub：公开仓库提交 `a75cf99`「leantty 0.2.3」、tag `v0.2.3`、release id `451143897`
+  （<https://github.com/nivrrex/leantty/releases/tag/v0.2.3>），3 资产回下载校验与本地一致、`sha256sum -c` 通过。
+- 未打 phase tag：`scripts/tag_checked.sh` 要求 `gates_ok == HEAD`，而全量 gates 含 Linux e2e（约 25 分钟），本次按"只测受影响范围"的要求未运行；
+  如需 phase tag 需先跑一次全量 gates。
