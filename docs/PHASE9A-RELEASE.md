@@ -81,3 +81,14 @@
   `leantty.toml` 与 `config/leantty.windows.toml` 一致；`leantty.exe` 12,802,560 B = `12f4b468…`（与合入前的构建相同，证明未混入源码改动）。
 - 前一轮交付被判不合格的偏差已消除：条目数 6→10、配置名 `config.toml`→`leantty.toml`、README.zh-CN 由 `80bdcd63…`（b785881）更新为 `7a8f781d…`（含遗留问题条目）。
 - 资产目录 `/root/dev/leantty-release-assets-9a2/` 与 `SHA256SUMS` 已更新为上述 zip 与 deb `dc8404ae…`。
+
+## v0.2.2 发布（GitHub）
+
+- 公开仓库 `nivrrex/leantty` 新增提交 `ddfd285` "leantty 0.2.2"（相对 `08b55b4` 改 15 文件：`Cargo.toml`/`Cargo.lock` 版本、`crates/app/src/{lib,selection}.rs`、
+  `crates/render/src/{decide,gpu/atlas,gpu/mod,lib}.rs`、`crates/render/tests/incremental.rs`、`CHANGELOG.md`、`README*.md`、`scripts/release/build-deb.sh`、`scripts/windows/{conpty/fetch-conpty.ps1,package.ps1}`）。
+- tag `v0.2.2` = `ddfd285`；`v0.1.0`/`v0.2.0` 仍指向 `08b55b4`（顺序无法调整，已裁定维持）。
+- release：<https://github.com/nivrrex/leantty/releases/tag/v0.2.2>，说明取自 `docs/RELEASE-0.2.2.md`，3 个资产：
+  `leantty_0.2.2_amd64.deb`（3,518,280 B / `dc8404ae…`）、`leantty-0.2.2-windows-x86_64.zip`（5,795,070 B / `d3ae8a3d…`）、`SHA256SUMS`（189 B / `870980b9…`）。
+- 回下载校验：deb 与 zip 的 sha256 与本地资产目录**逐字节一致**（GitHub 侧 digest 亦相同）。
+- 发布用 token 只经掩码输入注入，未落盘；发布结束后删除本地临时克隆（其 remote 含 token）。
+- 已知未修：deb `Maintainer` 仍为占位符 `leantty <noreply@example.invalid>`（未获用户提供的真实联系地址）。
