@@ -49,3 +49,24 @@
    首帧仍不等字体，但方块持续时间预计可从 ~650 ms 降到 ~200 ms（估计）。
 2. **首帧等字体**：首帧前阻塞等待回退字体就绪，彻底没有方块，但窗口出现时间从 ~306 ms 推迟到 ~950 ms。
 3. **保持现状**，仅文档说明。
+
+## 启动方块期优化（已实施，`b785881` / tag `phase9a-perf`）
+
+实测（`:99`、`size=16` / Consolas + HYQiHei、CPU 后端）：
+
+| 指标 | 改前 | 改后 |
+|---|---|---|
+| `first_frame_ms` | 306 | **230** |
+| `bg_font_list_us` | 645.6 ms | **510.9 ms** |
+| `bg_fonts_ms`（并入时刻）| ~950 | **545** |
+| **方块可见时长** | ~0.65 s | **~0.31 s（−52%）** |
+
+做法（全部新增入口，既有签名未变）：
+1. `render::load_font_list_shared` / `CpuRenderer::add_background_fonts_shared` /
+   `GpuRenderer::add_background_fonts_shared`：后台线程本来按 `Arc<Font>` 缓存字体，改为一并交出去，
+   省掉 `Vec<Font>` 的那次深拷贝（每 CJK 面 ≈137 ms）；旧入口保留并委托，行为不变。
+2. 回退字体线程提前到 `resumed` 开头（**建窗之前**）发起，与建窗、建 surface、首帧完全重叠。
+
+未达最初"≤200 ms"的估计：剩余 ~315 ms 由**后台线程自己的 fontdb 扫描（128 ms）**与 CJK 解析（~0.38 s）构成。
+再压需要把主线程已建好的 `Database` 共享给后台线程（可省 ~128 ms，预计方块期 ≈150 ms），
+但那要改 `CpuRenderer::new` / `create_renderer` 的签名，与"不改 Renderer 既有签名"的约束冲突，暂未做。
