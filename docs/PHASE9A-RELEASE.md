@@ -13,3 +13,16 @@
 - 0.2.1 → 0.2.2 差异：`Cargo.toml`/`Cargo.lock`（版本）、`CHANGELOG.md`（0.2.2 Fixed）、
   `crates/app/src/lib.rs`（字体就绪后置 urgent_render + request_redraw，含 debug-only 延迟钩子）、
   `scripts/e2e/run_all.sh`（新增 case81）。
+
+## 0.2.2 重打（GPU 字形修复后，2026-11-19）
+
+- 修复提交：`5675ac7`（GPU `add_background_fonts` 同时清 atlas，且 `GlyphAtlas::clear(queue)`
+  **保留同一张纹理**——若用 `reset()` 会新建 texture/view 而绑定组仍是旧的，所有字形会采样空纹理）。
+- 验证：同配置（size=16 / Consolas + HYQiHei）下 **CPU 与 GPU 就绪后截图逐像素一致（差 0）**；
+  `case81` 增强为 3 项（CPU/GPU 各自前后变化 + CPU 与 GPU 一致），gates 10 步全过、e2e 131/131。
+- tag：`phase9a-done2` = `5675ac7`（轻量；`phase9a-done` = `7628b13` 保留为第一版"仅重绘"修复）。
+- 重新打包：`leantty_0.2.2_amd64.deb` **3,523,336 B**、sha256 `610543d0977854d74c886a98462b971c53b3b910bc8a4790027aa71614616124`，
+  包内 `/usr/bin/leantty` = `568860f8…`，`changelog.Debian.gz` 为 0.2.2 条目；导出 169 文件、`version = 0.2.2`、
+  scan A=0/C=0/B=3。
+- **注意**：`/root/dev/leantty-release-inputs/leantty-0.2.2-windows-x86_64.zip`（`f80d82fe…`）是
+  按 `phase9a-done` 打的，**不含本次 GPU 字形修复**，需 Windows 侧 9B 合并 `phase9a-done2` 后重打。
