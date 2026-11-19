@@ -285,6 +285,14 @@ const GROUP_BOLD_ITALIC: usize = 3;
 /// 返回按序字体列表。线程安全：仅 owned 数据（FontSpec/Font）经 channel 传递；
 /// Database 在调用线程内自建（fontdb Database 非共享设计）。
 pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
+    load_font_list_shared(fallbacks)
+        .into_iter()
+        .map(|f| (*f).clone())
+        .collect()
+}
+
+/// 同 `load_font_list`，但返回共享句柄（避免每个 CJK 面一次深拷贝，实测 ≈137ms/面）。
+pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
     // 打点自身的开销（把 eperf 的耗时累加进来，使"各步之和"能与总时长对齐）
     let mut prints_us: u128 = 0;
     let t_new = std::time::Instant::now();
@@ -323,17 +331,8 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
                     t_face.elapsed().as_micros()
                 );
                 prints_us += tp.elapsed().as_micros();
-                // 阶段 4O t4：`load_font_list` 返回 `Vec<Font>`（公共签名未变），
-                // 因此这里仍有一次**深拷贝**——实测 CJK 面约 140ms，单独成点。
-                let t_clone = std::time::Instant::now();
-                fonts.push((*f).clone());
-                let tp = std::time::Instant::now();
-                eperf!(
-                    "[perf] bg_font_clone_us family='{}' deep_copy_us={}",
-                    fs.family,
-                    t_clone.elapsed().as_micros()
-                );
-                prints_us += tp.elapsed().as_micros();
+                // 阶段 9A：不再深拷贝——直接把缓存里的 `Arc<Font>` 交出去。
+                fonts.push(f);
             }
             Err(e) => eprintln!(
                 "font fallback '{}' '{}' load failed: {}; skipped",
@@ -358,7 +357,7 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
                     t_gen.elapsed().as_micros()
                 );
                 prints_us += tp.elapsed().as_micros();
-                fonts.push(f);
+                fonts.push(std::sync::Arc::new(f));
             }
             Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
         }
@@ -371,9 +370,8 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
         );
         prints_us += tp.elapsed().as_micros();
     }
-    // 阶段 4O t4：`load_font_list` 返回 Vec<Font>（公共签名未变），所以每个回退面既被
-    // 深拷贝一次、原实例随后被释放——释放 300MB 级的 CJK 实例本身要几毫秒到十几毫秒，
-    // 单独成点才能把"各步之和"与 `bg_font_list_us` 对齐。
+    // 阶段 9A：不再深拷贝，`cache` 只是释放多余句柄（实例由返回值持有），单独成点用于
+    // 把"各步之和"与 `bg_font_list_us` 对齐。
     let t_free = std::time::Instant::now();
     drop(cache);
     drop(db);
@@ -710,8 +708,17 @@ impl CpuRenderer {
     pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
         // 阶段 4N t3：每个回退字体只包一次 Arc，四个样式组共享同一份实例
         // （此前 `cloned()` 会把每个回退字体深拷贝 4 份，每个 CJK 面 ≈300MB）。
-        let t_merge = std::time::Instant::now();
         let shared: Vec<Arc<Font>> = fonts.into_iter().map(Arc::new).collect();
+        self.add_background_fonts_shared(shared);
+    }
+
+    /// 同 `add_background_fonts`，但直接接收已共享的句柄。
+    ///
+    /// 阶段 9A：后台加载线程本来就是按 `Arc<Font>` 缓存字体的，
+    /// `load_font_list` 返回 `Vec<Font>` 时不得不再深拷贝一次（实测 CJK 面 ≈137ms）。
+    /// 这里跳过那次拷贝。
+    pub fn add_background_fonts_shared(&mut self, shared: Vec<Arc<Font>>) {
+        let t_merge = std::time::Instant::now();
         for g in Arc::make_mut(&mut self.groups) {
             g.extend(shared.iter().cloned());
         }

@@ -152,6 +152,9 @@ install -m 0755 -d "$WORK/debian-tmp/DEBIAN"
 chmod 0644 "$WORK/debian-tmp/DEBIAN/control"
 cp -a "$PKGROOT/." "$WORK/debian-tmp/"
 
+# 注意：$PKGROOT 在上一行已经 cp 到 $WORK/debian-tmp，此处必须直接写进 debian-tmp，
+# 否则 changelog.Debian.gz 不会被打进包（0.1.1 与 0.2.0 首版实测缺失）。
+DOCPKG="$WORK/debian-tmp/usr/share/doc/$PKG"
 {
     echo "$PKG ($VER) unstable; urgency=medium"
     echo
@@ -159,9 +162,9 @@ cp -a "$PKGROOT/." "$WORK/debian-tmp/"
      Insert/Delete/PageUp/PageDown and Ctrl+[ now produce input."
     echo
     echo " -- leantty <noreply@example.invalid>  $(date -R)"
-} > "$DOC/changelog.Debian"
-gzip -9 -n "$DOC/changelog.Debian"
-chmod 0644 "$DOC/changelog.Debian.gz"
+} > "$DOCPKG/changelog.Debian"
+gzip -9 -n "$DOCPKG/changelog.Debian"
+chmod 0644 "$DOCPKG/changelog.Debian.gz"
 
 # 规范化权限：目录 0755、文件 0644、二进制 0755
 find "$WORK/debian-tmp" -type d -exec chmod 0755 {} +

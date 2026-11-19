@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed
+- On startup the shell prompt could keep showing Chinese directory names as boxes and never
+  refresh (most visible with the GPU backend); the window now redraws as soon as the fallback
+  font finishes loading, and the GPU glyph cache is invalidated at the same time so the real
+  glyphs are drawn instead of the "missing glyph" box.
+
+## 0.2.1
+
+### Changed
+- Mouse selections are now **streaming (reading order)**: dragging across several lines selects
+  the whole line in between, instead of a rectangular block.
+- A single click no longer leaves a small highlighted cell behind; it just clears the previous
+  selection.
+
+### Fixed
+- Copying a multi-line drag that passes over shorter lines no longer drops the middle of the text.
+
 ## 0.2.0
 
 ### Added
