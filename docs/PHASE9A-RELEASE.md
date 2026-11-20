@@ -164,3 +164,16 @@
     alacritty 1680×900（格 14×30）；修复后 leantty 也是 1680×900。
 - 资产：deb **3,529,976 B** / `aba26e58…`；zip **5,811,470 B** / `1d3f8923…`；tag `v0.2.6` = `91f1aec`；
   回下载 `sha256sum -c` 通过。远端临时诊断二进制与 `/tmp/off*` 已清理，用户机器上的 desktop 文件已改回 `Exec=leantty`。
+
+## v0.2.7（9I：下划线样式 + 符号字体兜底）
+
+- 逐项核对 `leantty-zig/RUST-AGENT-TASKS.md`（对照 v0.2.4 的清单）：
+  - **T1 成立但不完全**：`Double/Dotted/Dashed` 其实已有，只是点线/虚线用"每 N 像素点一次"且**Curly 退化成实线**。
+    重写为：线宽 `max(h/16,1)`、基线 `h-(线宽+max(h/12,1))`，Double 两条独立线、Curly 每 2 px 上下交替、
+    Dotted 1 亮 1 灭、Dashed 2 亮 2 灭。新增 `crates/render/tests/underline_styles.rs` 锁死（回退成实线即变红）。
+  - **T2 成立**：回退链只来自用户配置。新增内置兜底 `Symbola` / `DejaVu Sans` / `Noto Sans Symbols2`（追加在用户链之后，
+    缺失自动跳过）；实测 `😀 🚀 🦄` 由豆腐块变为单色符号。彩色 emoji（CBDT）仍不支持，已记入发布说明。
+  - **T3 已在 0.2.5/0.2.6 解决**：其测量用的是 v0.2.4（`font.size` 当时还当像素用）。在用户 office 机上用同一份配置实测
+    0.2.7 与 alacritty 窗口均为 **1680×900**，Zig 清单里的"小 20%"不再成立。
+- 交付：deb **3,525,412 B** / `cefe8e2c…`；zip **5,812,483 B** / `304855d0…`；tag `v0.2.7` = `dcccc14`；
+  release id `452472552`；回下载 `sha256sum -c` 通过。
