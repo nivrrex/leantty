@@ -259,11 +259,13 @@ pub fn cell_metrics(font: &Font, size: f32, scale: f64) -> (u32, u32) {
     let advance_w = font.metrics('0', px).advance_width;
     let w = advance_w.round() as u32;
     let h = match font.horizontal_line_metrics(px) {
-        Some(lm) => lm.new_line_size.ceil() as u32,
+        // 行高按**四舍五入**（alacritty 同口径）。此前 ceil：13pt/1.5 缩放下实测
+        // 每格高 31px，而 alacritty 为 30px（30 行累计高 30px，"leantty 看着更大"）。
+        Some(lm) => lm.new_line_size.round() as u32,
         None => {
             // 字体缺行度量表：用 'M' 的轮廓高兜底，再兜底 px 向上取整。
             let m = font.metrics('M', px);
-            let bounds_h = m.bounds.height.ceil() as u32;
+            let bounds_h = m.bounds.height.round() as u32;
             bounds_h.max(px.ceil() as u32)
         }
     };
