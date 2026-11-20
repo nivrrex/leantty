@@ -1,14 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-- `Alt+Tab` no longer leaves a Tab (or a shell completion) behind: window-manager shortcuts
-  (`Super` combinations and `Alt+Tab`) are no longer forwarded to the program.
-- Keys pressed while the window is not focused are ignored, and modifier state is reset when the
-  window loses focus, so switching windows while holding Alt no longer makes the next characters
-  arrive with an `ESC` prefix.
-
 ## 0.2.3
 
 ### Fixed
