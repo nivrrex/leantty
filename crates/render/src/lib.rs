@@ -302,6 +302,8 @@ pub struct CpuRenderer {
     band_backup: Option<Vec<u32>>,
     /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
     damage: Vec<(u32, u32, u32, u32)>,
+    /// 基线缓存 ((格高, scale 位), 基线)；每帧每行都会用到，避免重复量测。
+    baseline_cache: std::cell::Cell<Option<((u32, u64), i32)>>,
 }
 
 impl CpuRenderer {
@@ -358,6 +360,7 @@ impl CpuRenderer {
             last_preedit: None,
             band_backup: None,
             damage: Vec::new(),
+            baseline_cache: std::cell::Cell::new(None),
         });
         eperf!(
             "[perf] cpu_state_ms={:.2} since_start={:.1}",
@@ -373,11 +376,24 @@ impl CpuRenderer {
     /// 格内不被裁剪，又保证字形上缘不越界。等价于"ascent 向上取整后再为 descent
     /// 与 line_gap 让出空间"，与 `cell_metrics` 的
     /// `cell_h = ceil(ascent - descent + line_gap)` 配套。
+    /// 基线（带缓存）：同一 (字号, 缩放, 格高) 下结果固定。
+    ///
+    /// 每帧每行都会问一次；若每次都进 `FontSet` 锁并触发 FreeType 量测，
+    /// 吞吐会明显下降（实测 loop_gap 8ms → 45ms）。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
-        self.fonts
+        let key = (cell_h, self.scale.to_bits());
+        if let Some((k, v)) = self.baseline_cache.get() {
+            if k == key {
+                return v;
+            }
+        }
+        let v = self
+            .fonts
             .lock()
             .map(|mut f| f.baseline(self.font_size, self.scale, cell_h))
-            .unwrap_or(0)
+            .unwrap_or(0);
+        self.baseline_cache.set(Some((key, v)));
+        v
     }
 
     /// 缩放因子变化：更新 scale 并整体清空字形位图缓存（位图尺寸随 scale 变；

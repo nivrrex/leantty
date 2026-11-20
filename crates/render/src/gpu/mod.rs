@@ -64,6 +64,8 @@ struct Gpu {
 
 /// GPU 渲染器（离屏；t4 起支持 surface）。
 pub struct GpuRenderer {
+    /// 基线缓存 ((格高, scale 位), 基线)。
+    baseline_cache: std::cell::Cell<Option<((u32, u64), i32)>>,
     gpu: Gpu,
     pipelines: Pipelines,
     atlas: GlyphAtlas,
@@ -161,6 +163,7 @@ impl GpuRenderer {
             pipelines,
             atlas,
             fonts,
+            baseline_cache: std::cell::Cell::new(None),
             acquire,
             font_size: settings.size,
             scale: 1.0,
@@ -241,10 +244,19 @@ impl GpuRenderer {
 
     /// 基线相对格顶的偏移（像素），与 `CpuRenderer::baseline_px` 同公式。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
-        self.fonts
+        let key = (cell_h, self.scale.to_bits());
+        if let Some((k, v)) = self.baseline_cache.get() {
+            if k == key {
+                return v;
+            }
+        }
+        let v = self
+            .fonts
             .lock()
             .map(|mut f| f.baseline(self.font_size, self.scale, cell_h))
-            .unwrap_or(0)
+            .unwrap_or(0);
+        self.baseline_cache.set(Some((key, v)));
+        v
     }
 
     /// 组内字体索引（第一个含该码点的字体；全无则 None → 用组首字体画 U+25A1）。
@@ -732,6 +744,7 @@ impl GpuRenderer {
         );
         let t_state = std::time::Instant::now();
         let me = Ok(Self {
+            baseline_cache: std::cell::Cell::new(None),
             gpu,
             pipelines,
             atlas,
