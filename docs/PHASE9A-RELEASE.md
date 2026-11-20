@@ -105,3 +105,15 @@
   （<https://github.com/nivrrex/leantty/releases/tag/v0.2.3>），3 资产回下载校验与本地一致、`sha256sum -c` 通过。
 - 未打 phase tag：`scripts/tag_checked.sh` 要求 `gates_ok == HEAD`，而全量 gates 含 Linux e2e（约 25 分钟），本次按"只测受影响范围"的要求未运行；
   如需 phase tag 需先跑一次全量 gates。
+
+## v0.2.3 覆盖发布（含 9E：WM 组合键/失焦修饰键修复）
+
+- 代码：`faf5905`（WM 组合键不写 PTY、失焦清修饰键、无焦点丢弃按键）+ `8d42a27`（R4 评估留档，未改）；
+  版本号保持 **0.2.3**，CHANGELOG 的 9E 条目并入 0.2.3 段。
+- 重新构建：deb `leantty_0.2.3_amd64.deb` **3,522,352 B** / `11dc05ac…`；
+  Windows zip **5,800,053 B** / `c703db96…`（10 条目，`leantty.exe` 12,813,312 B，`.rsrc` 图标资源已验，
+  版本串 `leantty 0.2.3`；ConPTY 对 sha256 仍与 `package-release.ps1` 固定值一致）。
+- GitHub：公开仓库新提交 `2cba2ce`「leantty 0.2.3 (repack: Alt+Tab / Super 组合键修复)」；
+  release `451143897` 的 3 个资产已删除并重新上传，回下载 `sha256sum -c` 通过。
+- 说明：tag `v0.2.3` 仍指向上一版提交 `a75cf99`（不改写 tag，规则禁止 force/移动 tag），
+  因此该 tag 的源码快照不含 9E；release 资产以本记录与 `SHA256SUMS` 为准。
