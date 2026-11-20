@@ -500,6 +500,7 @@ impl App {
         }
         let exec_command = self.exec_command.clone();
         let mut handler = AppHandler {
+            last_resize_poll: None,
             perf_reset_at: std::env::var("LEANTTY_PERF_RESET_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
@@ -974,6 +975,8 @@ struct AppHandler {
     scale_factor: f64,
     /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
     key_trace: Option<std::fs::File>,
+    /// 上次轮询窗口尺寸并 apply_resize 的时刻（限速用）。
+    last_resize_poll: Option<Instant>,
     /// 后台字体是否已记录过"首次并入"时刻（逐个并入后用）。
     /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
     /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
@@ -1814,10 +1817,16 @@ impl ApplicationHandler for AppHandler {
         // 请求 1008px 被裁到 696px，导致渲染/滚动条按错误高度计算）。
         if let Some(w) = self.window.as_ref() {
             let sz = w.inner_size();
-            if sz.width > 0
+            let changed = sz.width > 0
                 && sz.height > 0
-                && self.last_size != Some((sz.width, sz.height))
-            {
+                && self.last_size != Some((sz.width, sz.height));
+            // 限速：WM 抖动时每轮都 resize 会与输入处理抢主线程（实测粘贴/键入被饿死）。
+            let due = self
+                .last_resize_poll
+                .map(|t| t.elapsed() >= std::time::Duration::from_millis(200))
+                .unwrap_or(true);
+            if changed && due {
+                self.last_resize_poll = Some(Instant::now());
                 self.apply_resize(sz.width, sz.height);
             }
         }

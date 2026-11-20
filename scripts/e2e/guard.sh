@@ -14,7 +14,7 @@
 E2E_DISPLAY=":99"
 # guard 自身所在目录（source 时 $0 是调用脚本，故由调用方设置 E2E_GUARD_DIR）。
 E2E_GUARD_DIR="${E2E_GUARD_DIR:-}"
-E2E_SCREEN_GEOM="${E2E_SCREEN_GEOM:-1920x1080x24}"
+E2E_SCREEN_GEOM="${E2E_SCREEN_GEOM:-1920x1440x24}"
 
 # --- 1) 强制 DISPLAY ---
 if [ -n "${DISPLAY:-}" ] && [ "$DISPLAY" != "$E2E_DISPLAY" ]; then

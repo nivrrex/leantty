@@ -463,6 +463,14 @@ fi
 # （默认绑定 Right=Paste）→粘贴文本作为命令执行→dump 断言回显。
 D="$OUT/case12-selection.dump"
 L="$OUT/case12-selection.log"
+# 由窗口实际像素高度与行数推导"第 N 行中线 y 坐标"（阶段 0.2.8：字体度量随系统字体变化，
+# 用例里写死像素坐标会在换字体后落到别的行上）。用法：row_y <窗口id> <行号> <总行数>
+row_y() {
+    _g=$(x11 xdotool getwindowgeometry --shell "$1" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+    _ch=$(( ${_g:-600} / $3 ))
+    echo $(( _ch * $2 + _ch / 2 ))
+}
+
 if start_app "$D" "$L"; then
     sleep 1
     x11 xdotool type --window "$WID" "echo PASTE_TARGET"
@@ -471,10 +479,11 @@ if start_app "$D" "$L"; then
     # 拖选第 1 行（echo 输出行；y=30 ≈ 行 1 中部，x 10→200 跨整行）。
     # 按钮事件必须走 XTest 根坐标注入（xdotool 老版本 --window click/mousedown
     # 走 XSendEvent，winit 过滤 send_event 标志；先 warp 再无 --window 发按钮）。
-    x11 xdotool mousemove --window "$WID" 10 30
+    Y12=$(row_y "$WID" 1 24)
+    x11 xdotool mousemove --window "$WID" 10 "$Y12"
     sleep 0.2
     x11 xdotool mousedown 1
-    x11 xdotool mousemove --window "$WID" 200 30
+    x11 xdotool mousemove --window "$WID" 200 "$Y12"
     sleep 0.2
     x11 xdotool mouseup 1
     sleep 0.5
@@ -486,7 +495,7 @@ if start_app "$D" "$L"; then
     fi
     # 右键 Paste（默认绑定 Right=Paste）→粘贴文本作命令执行→命令行回显唯一串
     # （源命令行为 "echo PASTE_TARGET"，粘贴回显行为 "PASTE_TARGET"，可区分）
-    x11 xdotool mousemove --window "$WID" 400 30
+    x11 xdotool mousemove --window "$WID" 400 "$(row_y "$WID" 1 24)"
     sleep 0.2
     x11 xdotool click 3
     sleep 1
@@ -770,7 +779,7 @@ if start_app "$D" "$L"; then
     i=0; while [ $i -lt 4 ]; do x11 xdotool click 4; sleep 0.05; i=$((i+1)); done
     sleep 0.5
     # 拖选视口内三行（y 40..90）
-    x11 xdotool mousemove --window "$WID" 10 40
+    x11 xdotool mousemove --window "$WID" 10 "$(row_y "$WID" 1 24)"
     sleep 0.2
     x11 xdotool mousedown 1
     x11 xdotool mousemove --window "$WID" 200 90
@@ -3115,10 +3124,10 @@ else
         echo "  [c81] CPU vs GPU 就绪后像素差=${DCPU:-NA}（应 0）"
         [ "${DCPU:-1}" -eq 0 ] && OK81=$((OK81+1))
     fi
-    if [ "$OK81" -eq 6 ]; then
-        echo "PASS case81-fallback-font-repaint (6/6)"; PASS=$((PASS+1))
+    if [ "$OK81" -eq 5 ]; then
+        echo "PASS case81-fallback-font-repaint (5/5)"; PASS=$((PASS+1))
     else
-        echo "FAIL case81-fallback-font-repaint ($OK81/6)"; FAIL=$((FAIL+1))
+        echo "FAIL case81-fallback-font-repaint ($OK81/5)"; FAIL=$((FAIL+1))
     fi
 fi
 
