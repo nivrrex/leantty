@@ -304,8 +304,24 @@ pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
         .collect()
 }
 
+/// 逐个产出回退字体（阶段 9J）：每解析好一个就回调一次。
+///
+/// 动机：`load_font_list_shared` 要等**整个链**解析完才返回，fontdue 是"整文件解析"，
+/// CJK 面约 0.3 s、符号字体再各 0.05–0.11 s，全部就位才能并入 → 启动后方块要留到 0.8 s。
+/// 改为逐个回调后，先就位的字体立刻并入并重绘，方块窗口显著缩短。
+pub fn for_each_fallback_font(fallbacks: &[FontSpec], f: &mut dyn FnMut(Arc<Font>)) {
+    load_fonts_into(fallbacks, f);
+}
+
 /// 同 `load_font_list`，但返回共享句柄（避免每个 CJK 面一次深拷贝，实测 ≈137ms/面）。
 pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
+    let mut fonts = Vec::new();
+    load_fonts_into(fallbacks, &mut |f| fonts.push(f));
+    fonts
+}
+
+/// 逐个解析回退字体并回调（阶段 9J；调用方可在每个字体就位时立即并入）。
+pub fn load_fonts_into(fallbacks: &[FontSpec], emit: &mut dyn FnMut(Arc<Font>)) {
     // 打点自身的开销（把 eperf 的耗时累加进来，使"各步之和"能与总时长对齐）
     let mut prints_us: u128 = 0;
     let t_new = std::time::Instant::now();
@@ -323,7 +339,6 @@ pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
         eperf!("[perf] bg_fontdb_us={}", t_db.elapsed().as_micros());
         prints_us += tp.elapsed().as_micros();
     }
-    let mut fonts = Vec::new();
     // 阶段 4O t4：后台（回退）字体走与主字体**同一条**加载+打点函数（label=background），
     // 因而每个回退面都会打印一行 `font_steps_us ... kind=background`。
     let mut cache: std::collections::HashMap<fontdb::ID, Arc<Font>> =
@@ -345,7 +360,7 @@ pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
                 );
                 prints_us += tp.elapsed().as_micros();
                 // 阶段 9A：不再深拷贝——直接把缓存里的 `Arc<Font>` 交出去。
-                fonts.push(f);
+                emit(f);
             }
             Err(e) => eprintln!(
                 "font fallback '{}' '{}' load failed: {}; skipped",
@@ -370,7 +385,7 @@ pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
                     t_gen.elapsed().as_micros()
                 );
                 prints_us += tp.elapsed().as_micros();
-                fonts.push(std::sync::Arc::new(f));
+                emit(std::sync::Arc::new(f));
             }
             Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
         }
@@ -390,7 +405,6 @@ pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
     drop(db);
     eperf!("[perf] bg_font_free_us={}", t_free.elapsed().as_micros());
     eperf!("[perf] bg_print_us={}", prints_us);
-    fonts
 }
 
 /// 构建四组字体链（CPU 与 GPU 后端共用）：每组 = [主字体, 后台 fallback..., 系统兜底]。
@@ -1540,19 +1554,16 @@ fn draw_style_lines(
     let ww = w as i32;
     // 画一条厚度 thick 的线；`on/period` 控制打点（period<=0 为实线）。
     // 用具名函数而不是闭包，避免与下面的逐列绘制争用 `fb` 的可变借用。
-    fn line(
-        fb: &mut [u32],
-        width: u32,
-        origin: (u32, u32),
+    struct LineCtx {
+        x0: u32,
+        y0: u32,
         ww: i32,
         hh: i32,
         thick: i32,
-        line_top: i32,
-        on: i32,
-        period: i32,
         color: u32,
-    ) {
-        let (x0, y0) = origin;
+    }
+    fn line(fb: &mut [u32], width: u32, c: &LineCtx, line_top: i32, on: i32, period: i32) {
+        let (x0, y0, ww, hh, thick, color) = (c.x0, c.y0, c.ww, c.hh, c.thick, c.color);
         for t in 0..thick {
             let row = line_top + t;
             if row < 0 || row >= hh {
@@ -1565,16 +1576,17 @@ fn draw_style_lines(
             }
         }
     }
+    let lc = LineCtx { x0, y0, ww, hh, thick, color };
     match cell.underline {
         Underline::None => {}
-        Underline::Single => line(fb, width, (x0, y0), ww, hh, thick, base, 0, 0, color),
+        Underline::Single => line(fb, width, &lc, base, 0, 0),
         Underline::Double => {
-            line(fb, width, (x0, y0), ww, hh, thick, base, 0, 0, color);
-            line(fb, width, (x0, y0), ww, hh, thick, base - thick - 1, 0, 0, color);
+            line(fb, width, &lc, base, 0, 0);
+            line(fb, width, &lc, base - thick - 1, 0, 0);
         }
         // 点线 1 亮 1 灭；虚线 2 亮 2 灭（alacritty 口径）。
-        Underline::Dotted => line(fb, width, (x0, y0), ww, hh, thick, base, 1, 2, color),
-        Underline::Dashed => line(fb, width, (x0, y0), ww, hh, thick, base, 2, 4, color),
+        Underline::Dotted => line(fb, width, &lc, base, 1, 2),
+        Underline::Dashed => line(fb, width, &lc, base, 2, 4),
         // 波浪线：每 2 px 在基线与基线-线宽之间交替（此前退化成直线）。
         Underline::Curly => {
             for i in 0..ww {
@@ -1590,10 +1602,10 @@ fn draw_style_lines(
         }
     }
     if cell.strikethrough {
-        line(fb, width, (x0, y0), ww, hh, thick, hh / 2, 0, 0, color);
+        line(fb, width, &lc, hh / 2, 0, 0);
     }
     if cell.overline {
-        line(fb, width, (x0, y0), ww, hh, thick, 1, 0, 0, color);
+        line(fb, width, &lc, 1, 0, 0);
     }
 }
 

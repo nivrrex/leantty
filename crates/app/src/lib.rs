@@ -568,6 +568,7 @@ impl App {
                     .open(p)
                     .ok()
             }),
+            bg_first_merge_logged: false,
             focused_at: None,
             alt_released_at: None,
             focused: true,
@@ -994,6 +995,8 @@ struct AppHandler {
     scale_factor: f64,
     /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
     key_trace: Option<std::fs::File>,
+    /// 后台字体是否已记录过"首次并入"时刻（逐个并入后用）。
+    bg_first_merge_logged: bool,
     /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
     /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
     /// 那一击才是残留 Tab 的真正来源。
@@ -1149,13 +1152,22 @@ impl ApplicationHandler for AppHandler {
             let bg_proxy = self.event_proxy.clone();
             std::thread::spawn(move || {
                 let t_bg = std::time::Instant::now();
-                let fonts = render::load_font_list_shared(&bg_specs);
+                let mut count = 0usize;
+                // 阶段 9J：**逐个**送出，解析好一个就并入一个。此前整条链解析完才送，
+                // CJK+符号字体合计 0.8 s，方块要留到那一刻。
+                render::for_each_fallback_font(&bg_specs, &mut |font| {
+                    count += 1;
+                    if bg_tx.send(vec![font]).is_ok()
+                        && let Some(proxy) = bg_proxy.as_ref()
+                    {
+                        let _ = proxy.send_event(());
+                    }
+                });
                 eperf!(
                     "[perf] bg_font_list_us={} count={}",
                     t_bg.elapsed().as_micros(),
-                    fonts.len()
+                    count
                 );
-                let _ = bg_tx.send(fonts);
                 if let Some(proxy) = bg_proxy {
                     let _ = proxy.send_event(());
                 }
@@ -2080,21 +2092,24 @@ impl ApplicationHandler for AppHandler {
         };
         #[cfg(not(debug_assertions))]
         let bg_ready = true;
-        if bg_ready
-            && let Some(rx) = &self.bg_rx
-            && let Ok(fonts) = rx.try_recv()
-            && let Some(r) = self.renderer.as_mut()
-        {
-            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）到位时刻，
-            // 与首帧耗时同口径（相对进程启动），仅打印一次。
-            if let Some(t0) = crate::start_time() {
-                eperf!(
-                    "[perf] bg_fonts_ms={} count={}",
-                    t0.elapsed().as_millis(),
-                    fonts.len()
-                );
+        let mut merged_any = false;
+        if bg_ready {
+            while let (Some(rx), Some(r)) = (self.bg_rx.as_ref(), self.renderer.as_mut())
+                && let Ok(fonts) = rx.try_recv()
+            {
+                r.add_background_fonts_shared(fonts);
+                merged_any = true;
             }
-            r.add_background_fonts_shared(fonts);
+        }
+        if merged_any {
+            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）首次到位时刻，
+            // 与首帧耗时同口径（相对进程启动）。逐个并入后只关心第一份。
+            if !self.bg_first_merge_logged {
+                self.bg_first_merge_logged = true;
+                if let Some(t0) = crate::start_time() {
+                    eperf!("[perf] bg_fonts_ms={}", t0.elapsed().as_millis());
+                }
+            }
             // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
             // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
             // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经

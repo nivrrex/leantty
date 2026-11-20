@@ -100,7 +100,7 @@ fn styles_differ_from_each_other() {
                 assert_eq!(rows.len(), thick * 2, "双线应占 {} 行", thick * 2)
             }
             Underline::Curly => assert!(
-                rows.len() >= thick + 1,
+                rows.len() > thick,
                 "波浪线应至少跨 {} 行，实测 {rows:?}",
                 thick + 1
             ),
