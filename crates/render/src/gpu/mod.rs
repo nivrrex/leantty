@@ -245,10 +245,8 @@ impl GpuRenderer {
     /// 基线相对格顶的偏移（像素），与 `CpuRenderer::baseline_px` 同公式。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
         let key = (cell_h, self.scale.to_bits());
-        if let Some((k, v)) = self.baseline_cache.get() {
-            if k == key {
-                return v;
-            }
+        if let Some((k, v)) = self.baseline_cache.get() && k == key {
+            return v;
         }
         let v = self
             .fonts

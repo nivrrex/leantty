@@ -382,10 +382,8 @@ impl CpuRenderer {
     /// 吞吐会明显下降（实测 loop_gap 8ms → 45ms）。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
         let key = (cell_h, self.scale.to_bits());
-        if let Some((k, v)) = self.baseline_cache.get() {
-            if k == key {
-                return v;
-            }
+        if let Some((k, v)) = self.baseline_cache.get() && k == key {
+            return v;
         }
         let v = self
             .fonts
