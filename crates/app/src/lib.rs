@@ -544,6 +544,14 @@ impl App {
             pad_x: 0,
             pad_y: 0,
             scale_factor: 1.0,
+            key_trace: std::env::var_os("LEANTTY_KEY_TRACE").and_then(|p| {
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(p)
+                    .ok()
+            }),
+            alt_released_at: None,
             focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
@@ -966,6 +974,11 @@ struct AppHandler {
     pad_y: u16,
     /// 当前缩放因子（winit scale_factor）。
     scale_factor: f64,
+    /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
+    key_trace: Option<std::fs::File>,
+    /// 最近一次"Alt 被释放"的时刻。用于识别 WM 组合键尾巴：`Alt+Tab` 在某些 WM/时序下
+    /// Tab 的 press 会晚于 Alt 的 release 到达，此时 mods 里已没有 ALT。
+    alt_released_at: Option<Instant>,
     /// 窗口当前是否持有焦点（阶段 9E）。`Alt+Tab` 切走的过程中会收到本窗口的
     /// `Focused(false)`，若随后仍把按键写进 PTY（切窗口时 Tab 的 release/press
     /// 次序在不同 WM 下不一致），终端里就会残留一个 Tab。
@@ -1600,11 +1613,25 @@ impl ApplicationHandler for AppHandler {
                 self.urgent_render = true;
                 self.on_ime_event(ime);
             }
-            WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
+            WindowEvent::ModifiersChanged(m) => {
+                let prev = self.mods_state;
+                self.mods_state = m.state();
+                if prev.alt_key() && !self.mods_state.alt_key() {
+                    self.alt_released_at = Some(Instant::now());
+                }
+                self.trace_key(format!(
+                    "mods shift={} ctrl={} alt={} super={}",
+                    self.mods_state.shift_key(),
+                    self.mods_state.control_key(),
+                    self.mods_state.alt_key(),
+                    self.mods_state.super_key()
+                ));
+            }
             // 阶段 9E：失焦时清空修饰键状态。`Alt+Tab` 切走后 Alt 的 release 事件会送到
             // 新获得焦点的窗口，我们这边永远收不到 → `mods_state` 卡在 ALT，之后每敲一个
             // 字符都会被编码成 `ESC` 前缀（表现为"切换回来打字出现怪字符"）。
             WindowEvent::Focused(focused) => {
+                self.trace_key(format!("focus {focused}"));
                 self.focused = focused;
                 if !focused {
                     self.mods_state = ModifiersState::default();
@@ -1612,6 +1639,16 @@ impl ApplicationHandler for AppHandler {
                 self.urgent_render = true;
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                self.trace_key(format!(
+                    "key {:?} {:?} mods(shift={} ctrl={} alt={} super={}) text={:?}",
+                    event.state,
+                    event.logical_key,
+                    self.mods_state.shift_key(),
+                    self.mods_state.control_key(),
+                    self.mods_state.alt_key(),
+                    self.mods_state.super_key(),
+                    event.text.as_deref().unwrap_or("")
+                ));
                 // 阶段 9E：切窗口过度期间的按键归属窗口管理器，不写进 PTY。
                 if !self.focused {
                     return;
@@ -1621,7 +1658,14 @@ impl ApplicationHandler for AppHandler {
                     // 阶段 9E：窗口管理器保留的组合（Super 组合、Alt+Tab）不写进 PTY。
                     // 绑定查表之前先挡掉：这类组合属于桌面快捷键，即使将来有人把它们
                     // 写进 keyboard.bindings 也不该在我们这里生效。
-                    if wm_reserved_key(&self.mods_state, map_logical_key(&event.logical_key)) {
+                    let mapped_key = map_logical_key(&event.logical_key);
+                    if wm_reserved_key(&self.mods_state, mapped_key)
+                        || tab_is_alt_tab_tail(
+                            mapped_key,
+                            self.mods_state.alt_key(),
+                            self.alt_released_at.map(|t| t.elapsed()),
+                        )
+                    {
                         return;
                     }
                     // 绑定执行优先（任务 2.5）：keyboard.bindings 查表（空则内置默认
@@ -2767,6 +2811,19 @@ impl AppHandler {
         self.update_ime_cursor_area();
     }
 
+    /// 键盘诊断：`LEANTTY_KEY_TRACE` 设置时把事件追加到文件（每行立即 flush）。
+    fn trace_key(&mut self, line: String) {
+        use std::io::Write as _;
+        let Some(f) = self.key_trace.as_mut() else {
+            return;
+        };
+        let ms = crate::start_time()
+            .map(|t| t.elapsed().as_millis())
+            .unwrap_or(0);
+        let _ = writeln!(f, "{ms} {line}");
+        let _ = f.flush();
+    }
+
     /// 更新 IME 光标区（快照光标所在格像素矩形；窗口未建时跳过）。
     ///
     /// 与 alacritty 对齐的三处细节（阶段 9D）：
@@ -3495,6 +3552,21 @@ pub fn ime_cursor_cell(
 ///
 /// 处置：`Super` 按下时不转发任何键；`Alt+Tab`（含 Shift）不转发。其余 Alt 组合
 /// 保持 xterm 行为（`Alt+a` = `ESC a`），不受影响。
+/// `Alt+Tab` 的"尾巴"判定：Tab 到达时 ALT 已经释放（某些 WM/时序下先发 Alt release）。
+///
+/// 只吞"Alt 刚松开 ≤200 ms 内的裸 Tab"，其余裸 Tab 照常转发——人不会松开 Alt 后
+/// 200 ms 内什么都不按直接敲 Tab，而 WM 切换窗口的按键尾巴正好落在这个窗口里。
+pub fn tab_is_alt_tab_tail(
+    key: Option<vt::Key>,
+    alt_currently_down: bool,
+    since_alt_release: Option<std::time::Duration>,
+) -> bool {
+    if alt_currently_down || key != Some(vt::Key::Tab) {
+        return false;
+    }
+    since_alt_release.is_some_and(|d| d <= std::time::Duration::from_millis(200))
+}
+
 pub fn wm_reserved_key(m: &ModifiersState, key: Option<vt::Key>) -> bool {
     if m.super_key() {
         return true;
@@ -4178,6 +4250,64 @@ mod ime_cursor_tests {
 }
 
 /// IME 事件状态更新单测（任务 2C.3：Preedit/Commit/Disabled 清空语义）。
+#[cfg(test)]
+mod alt_tab_tail_tests {
+    use super::tab_is_alt_tab_tail;
+    use std::time::Duration;
+    use vt::Key;
+
+    #[test]
+    fn tab_shortly_after_alt_release_is_swallowed() {
+        assert!(tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(40))
+        ));
+        assert!(tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(200))
+        ));
+    }
+
+    #[test]
+    fn plain_tab_later_is_forwarded() {
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(400))
+        ));
+        assert!(
+            !tab_is_alt_tab_tail(Some(Key::Tab), false, None),
+            "从未按过 Alt"
+        );
+    }
+
+    #[test]
+    fn alt_still_held_is_handled_elsewhere() {
+        // Alt 按住时由 wm_reserved_key 负责，这里返回 false 以免重复判定。
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            true,
+            Some(Duration::from_millis(10))
+        ));
+    }
+
+    #[test]
+    fn non_tab_keys_are_untouched() {
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::A),
+            false,
+            Some(Duration::from_millis(10))
+        ));
+        assert!(!tab_is_alt_tab_tail(
+            None,
+            false,
+            Some(Duration::from_millis(10))
+        ));
+    }
+}
+
 #[cfg(test)]
 mod wm_reserved_tests {
     use super::wm_reserved_key;
