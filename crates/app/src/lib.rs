@@ -544,6 +544,7 @@ impl App {
             pad_x: 0,
             pad_y: 0,
             scale_factor: 1.0,
+            focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
             bg_rx: None,
@@ -965,6 +966,10 @@ struct AppHandler {
     pad_y: u16,
     /// 当前缩放因子（winit scale_factor）。
     scale_factor: f64,
+    /// 窗口当前是否持有焦点（阶段 9E）。`Alt+Tab` 切走的过程中会收到本窗口的
+    /// `Focused(false)`，若随后仍把按键写进 PTY（切窗口时 Tab 的 release/press
+    /// 次序在不同 WM 下不一致），终端里就会残留一个 Tab。
+    focused: bool,
     /// 窗口是否为 X11：XIM 只接受 spot 点而非矩形，需把 IME 锚点下移一行
     /// （与 alacritty 的 `is_x11` 处理一致）。窗口创建后按 raw handle 判定。
     is_x11: bool,
@@ -1596,9 +1601,29 @@ impl ApplicationHandler for AppHandler {
                 self.on_ime_event(ime);
             }
             WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
+            // 阶段 9E：失焦时清空修饰键状态。`Alt+Tab` 切走后 Alt 的 release 事件会送到
+            // 新获得焦点的窗口，我们这边永远收不到 → `mods_state` 卡在 ALT，之后每敲一个
+            // 字符都会被编码成 `ESC` 前缀（表现为"切换回来打字出现怪字符"）。
+            WindowEvent::Focused(focused) => {
+                self.focused = focused;
+                if !focused {
+                    self.mods_state = ModifiersState::default();
+                }
+                self.urgent_render = true;
+            }
             WindowEvent::KeyboardInput { event, .. } => {
+                // 阶段 9E：切窗口过度期间的按键归属窗口管理器，不写进 PTY。
+                if !self.focused {
+                    return;
+                }
                 self.urgent_render = true;
                 if event.state == ElementState::Pressed {
+                    // 阶段 9E：窗口管理器保留的组合（Super 组合、Alt+Tab）不写进 PTY。
+                    // 绑定查表之前先挡掉：这类组合属于桌面快捷键，即使将来有人把它们
+                    // 写进 keyboard.bindings 也不该在我们这里生效。
+                    if wm_reserved_key(&self.mods_state, map_logical_key(&event.logical_key)) {
+                        return;
+                    }
                     // 绑定执行优先（任务 2.5）：keyboard.bindings 查表（空则内置默认
                     // Ctrl+Shift+C/V）；命中即执行动作，不再走 route_key。
                     let kmods = config_mods(&self.mods_state);
@@ -3460,6 +3485,23 @@ pub fn ime_cursor_cell(
 }
 
 /// winit 修饰键状态 → vt::Mods（KeyEncoder/encode_button 共用）。
+/// 该按键组合是否属于**窗口管理器保留**、不应写进 PTY 的一类（纯函数，可单测）。
+///
+/// 现象（阶段 9E，用户反馈）：`Alt+Tab` 切换窗口后，终端里留下一个 Tab。原因是 WM
+/// 抓键失败（或抓键前先送到客户端）时我们照样把它当"Alt+Tab"编码成 `ESC` + `\t`
+/// 写进 PTY，shell 收到后就是一次补全/Tab。同理，`Super` 组合（Super+Space、
+/// Super+Tab 等桌面快捷键）在当前实现里被 `vt_mods_from` 直接丢弃修饰位 → 退化成
+/// **裸键**写进 PTY（按 Super+Space 会打出空格）。
+///
+/// 处置：`Super` 按下时不转发任何键；`Alt+Tab`（含 Shift）不转发。其余 Alt 组合
+/// 保持 xterm 行为（`Alt+a` = `ESC a`），不受影响。
+pub fn wm_reserved_key(m: &ModifiersState, key: Option<vt::Key>) -> bool {
+    if m.super_key() {
+        return true;
+    }
+    m.alt_key() && matches!(key, Some(vt::Key::Tab))
+}
+
 fn vt_mods_from(m: &ModifiersState) -> Mods {
     let mut mods = Mods::empty();
     if m.shift_key() {
@@ -4136,6 +4178,67 @@ mod ime_cursor_tests {
 }
 
 /// IME 事件状态更新单测（任务 2C.3：Preedit/Commit/Disabled 清空语义）。
+#[cfg(test)]
+mod wm_reserved_tests {
+    use super::wm_reserved_key;
+    use vt::Key;
+    use winit::keyboard::ModifiersState;
+
+    fn mods(shift: bool, ctrl: bool, alt: bool, sup: bool) -> ModifiersState {
+        let mut m = ModifiersState::empty();
+        m.set(ModifiersState::SHIFT, shift);
+        m.set(ModifiersState::CONTROL, ctrl);
+        m.set(ModifiersState::ALT, alt);
+        m.set(ModifiersState::SUPER, sup);
+        m
+    }
+
+    #[test]
+    fn alt_tab_is_not_forwarded() {
+        assert!(wm_reserved_key(
+            &mods(true, false, true, false),
+            Some(Key::Tab)
+        ));
+        assert!(wm_reserved_key(
+            &mods(false, false, true, false),
+            Some(Key::Tab)
+        ));
+    }
+
+    #[test]
+    fn plain_tab_is_forwarded() {
+        assert!(!wm_reserved_key(
+            &mods(false, false, false, false),
+            Some(Key::Tab)
+        ));
+    }
+
+    #[test]
+    fn alt_letter_still_reaches_the_shell() {
+        // Alt+a 走 xterm 规则（ESC a），不属于 WM 保留组合。
+        assert!(!wm_reserved_key(&mods(false, false, true, false), None));
+        assert!(!wm_reserved_key(
+            &mods(false, false, true, false),
+            Some(Key::A)
+        ));
+    }
+
+    #[test]
+    fn super_combinations_are_reserved() {
+        // Super 组合是桌面快捷键：任何键都不该写进 PTY（此前修饰位被丢弃 →
+        // Super+Space 会打出空格）。
+        assert!(wm_reserved_key(&mods(false, false, false, true), None));
+        assert!(wm_reserved_key(
+            &mods(false, false, false, true),
+            Some(Key::Space)
+        ));
+        assert!(wm_reserved_key(
+            &mods(true, false, false, true),
+            Some(Key::Tab)
+        ));
+    }
+}
+
 #[cfg(test)]
 mod ime_area_tests {
     use super::{ImeGeometry, ime_area_rect};
