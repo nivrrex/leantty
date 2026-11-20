@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.5
+
+### Changed
+- `font.size` is now interpreted in **points**, like alacritty: pixels = size × scale × 96/72. Before,
+  the value was used directly as pixels, so the same number produced text about 25% smaller; matching
+  alacritty now uses the same number in both programs.
+- Cell width is rounded to the nearest pixel instead of rounded up, which made every column 1 px wider
+  than alacritty (an 80-column window was 1600 px instead of 1520 px at the same font size).
+
+### Fixed
+- `Ctrl+Space` sent nothing at all without an input method; it now sends `0x00` like xterm/alacritty.
+- `Ctrl+Shift+<letter>` and `Ctrl+Shift+<symbol>` sent nothing or a kitty `CSI u` sequence; on terminals
+  that did not enable the kitty keyboard protocol they now send the xterm control byte
+  (`Ctrl+Shift+A` → `0x01`, `Ctrl+Shift+[` → `0x1b`), matching alacritty.
+
 ## 0.2.4
 
 ### Changed

@@ -1715,12 +1715,18 @@ impl ApplicationHandler for AppHandler {
                                             // 阶段 6A：kitty 模式下必须提供 unshifted codepoint，
                                             // 否则组合键被上游编码器静默丢弃（Ctrl+D/P/C 全丢）。
                                             let unshifted = unshifted_codepoint(&event);
+                                            // 阶段 9F：把按键文本一并交给编码器。ghostty 的
+                                            // legacy 分支在 `Ctrl+<char>` 上要么用 `event.utf8`、
+                                            // 要么用逻辑键自带码点；`Ctrl+Shift+字母/符号` 又进不了
+                                            // `ctrlSeq`（unset_mods 不是 ctrl_only）→ 此前一个字节都不写
+                                            // （实测 `Ctrl+Space`/`Ctrl+Shift+A`/`Ctrl+Shift+[` 全丢）。
+                                            let text = event.text.as_deref();
                                             match enc.encode_key_full(
                                                 key,
                                                 mods,
                                                 Action::Press,
                                                 unshifted,
-                                                None,
+                                                text,
                                             ) {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
@@ -1739,6 +1745,30 @@ impl ApplicationHandler for AppHandler {
                                                         && key == vt::Key::BracketLeft
                                                     {
                                                         vec![0x1b]
+                                                    } else {
+                                                        bytes
+                                                    };
+                                                    // 阶段 9F：应用没启用 Kitty 键盘协议时，上游编码器
+                                                    // 对 `Ctrl+Shift+<字符>` 仍会产出 `CSI u`（实测
+                                                    // `Ctrl+Shift+A` → `ESC[97;6u`），传统应用会把这一串当
+                                                    // 普通字符回显。此时按 xterm 口径回写控制字节
+                                                    // （`Ctrl+Shift+A`→0x01、`Ctrl+Shift+[`→0x1b），与 alacritty 一致。
+                                                    let bytes = if is_csi_u(&bytes)
+                                                        && !self
+                                                            .vt
+                                                            .as_ref()
+                                                            .is_some_and(|v| v.kitty_keyboard_enabled())
+                                                    {
+                                                        let ch = unshifted.or_else(|| {
+                                                            event
+                                                                .text
+                                                                .as_deref()
+                                                                .and_then(|t| t.chars().next())
+                                                        });
+                                                        match ch.and_then(ctrl_byte) {
+                                                            Some(b) => vec![b],
+                                                            None => bytes,
+                                                        }
                                                     } else {
                                                         bytes
                                                     };
@@ -3598,6 +3628,29 @@ pub fn tab_is_alt_tab_tail(
     since_alt_release.is_some_and(|d| d <= std::time::Duration::from_millis(200))
 }
 
+/// 是否为 `CSI u`（Kitty 键盘协议）序列：`ESC [` … `u`。
+pub fn is_csi_u(bytes: &[u8]) -> bool {
+    bytes.len() >= 4 && bytes.starts_with(b"\x1b[") && bytes.ends_with(b"u")
+}
+
+/// `Ctrl+<字符>` 的 xterm 控制字节（`Ctrl+A`→0x01 … `Ctrl+Z`→0x1a，符号按 xterm 表）。
+///
+/// 仅用于"传统模式（应用未启用 Kitty 键盘协议）"下修正上游编码器的 `CSI u` 输出。
+pub fn ctrl_byte(ch: char) -> Option<u8> {
+    let c = ch.to_ascii_lowercase();
+    Some(match c {
+        'a'..='z' => (c as u8) - b'a' + 1,
+        '@' | ' ' | '`' => 0x00,
+        '[' | '{' => 0x1b,
+        '\\' | '|' => 0x1c,
+        ']' | '}' => 0x1d,
+        '^' => 0x1e,
+        '_' => 0x1f,
+        '?' => 0x7f,
+        _ => return None,
+    })
+}
+
 pub fn wm_reserved_key(m: &ModifiersState, key: Option<vt::Key>) -> bool {
     if m.super_key() {
         return true;
@@ -3950,6 +4003,9 @@ pub fn unshifted_codepoint(event: &winit::event::KeyEvent) -> Option<char> {
 fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
     match key {
         WinitKey::Named(NamedKey::Enter) => Some(vt::Key::Enter),
+        // 阶段 9F：`Named(Space)` 此前没有映射 → `key` 为 None，编码分支直接跳过，
+        // 导致 `Ctrl+Space` 在无输入法环境里一个字节都不发（应为 0x00）。
+        WinitKey::Named(NamedKey::Space) => Some(vt::Key::Space),
         WinitKey::Named(NamedKey::Tab) => Some(vt::Key::Tab),
         WinitKey::Named(NamedKey::Backspace) => Some(vt::Key::Backspace),
         WinitKey::Named(NamedKey::Escape) => Some(vt::Key::Escape),
@@ -4001,9 +4057,9 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
                     ';' => Some(vt::Key::Semicolon),
                     '\'' => Some(vt::Key::Quote),
                     '`' => Some(vt::Key::Backquote),
-                    '\\' => Some(vt::Key::Backslash),
-                    '[' => Some(vt::Key::BracketLeft),
-                    ']' => Some(vt::Key::BracketRight),
+                    '[' | '{' => Some(vt::Key::BracketLeft),
+                    ']' | '}' => Some(vt::Key::BracketRight),
+                    '\\' | '|' => Some(vt::Key::Backslash),
                     '/' => Some(vt::Key::Slash),
                     ' ' => Some(vt::Key::Space),
                     _ => None,
@@ -4402,6 +4458,33 @@ mod focus_replay_tests {
             false,
             Some(Duration::from_millis(5))
         ));
+    }
+}
+
+#[cfg(test)]
+mod ctrl_byte_tests {
+    use super::{ctrl_byte, is_csi_u};
+
+    #[test]
+    fn letters_and_symbols_follow_xterm() {
+        assert_eq!(ctrl_byte('a'), Some(0x01));
+        assert_eq!(ctrl_byte('A'), Some(0x01), "按 unshifted 字符换算，大小写等价");
+        assert_eq!(ctrl_byte('z'), Some(0x1a));
+        assert_eq!(ctrl_byte(' '), Some(0x00));
+        assert_eq!(ctrl_byte('['), Some(0x1b));
+        assert_eq!(ctrl_byte('\\'), Some(0x1c));
+        assert_eq!(ctrl_byte(']'), Some(0x1d));
+        assert_eq!(ctrl_byte('?'), Some(0x7f));
+        assert_eq!(ctrl_byte('1'), None, "数字没有对应的控制字节");
+    }
+
+    #[test]
+    fn csi_u_detection() {
+        assert!(is_csi_u(b"\x1b[97;6u"));
+        assert!(is_csi_u(b"\x1b[123;5u"));
+        assert!(!is_csi_u(b"\x1b[A"));
+        assert!(!is_csi_u(b"\x01"));
+        assert!(!is_csi_u(b""));
     }
 }
 
