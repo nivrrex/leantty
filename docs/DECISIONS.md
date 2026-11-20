@@ -568,4 +568,10 @@
 - 阶段 9E-2（未复现）：用户报告 0.2.4 仍残留 Tab。本机 openbox 无论是否配置 `A-Tab` 都会抓走该键（客户端收不到），所以无法复现其环境的事件序列；已加 `LEANTTY_KEY_TRACE=<path>` 诊断输出（记录 focus / mods / 每个按键的 state+key+mods+text，行内带毫秒），待用户提供一次复现记录后再定位，避免继续猜测式改代码。
 - 阶段 9E-2（已验证事实，用户机器 `LEANTTY_KEY_TRACE` 实测序列）：`Alt+Tab` 被 openbox 抓走 → 客户端只收到 `Tab Released`（无 press）、随后 `Focused(false)`；焦点回来时 `Focused(true)` 之后 **0–13 ms 内补投一次裸 `Tab Pressed`（mods 全空、Ctrl 也空）**，那次补投才是残留 Tab 的来源（三例间隔分别 +7 ms / +0 ms / +1 ms / +5 ms）。
 - 阶段 9E-2（处置）：新增 `tab_is_focus_replay`——裸 Tab 且距 `Focused(true)` ≤100 ms 时丢弃；保留 `tab_is_alt_tab_tail`（Alt 释放后 ≤200 ms 的 Tab）。两条规则都把"无修饰 Tab"的其他情形（粘贴后 Tab、从容按 Tab）留给正常转发。
+- 阶段 9G（已验证事实，Xvfb :99 + openbox，同一份配置 DejaVu Sans Mono 16pt / 40×10 / padding 0）：
+  leantty 与 alacritty 窗口均为 **760×380**，首行文字墨迹顶边均为 **+7 px** → 格宽格高与首行位置一致；
+  用 `-e /bin/sh -c 'printf "A\nB\nC\n"'` 也没有出现"首行空行"。用户的空行现象未能本地复现，
+  待其提供截图或复现命令。
+- 阶段 9G（已验证事实，`Xft.dpi=144` 即分数缩放）：leantty 窗口 2160×1140（每格 18×38）、
+  alacritty 2040×1110（每格 17×37），每格差 1 px；未定位是 scale 取值还是取整口径导致，暂不改。
 
