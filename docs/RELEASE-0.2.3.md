@@ -44,10 +44,10 @@ sudo apt install ./leantty_0.2.3_amd64.deb
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.3_amd64.deb` | 见 SHA256SUMS | 见 SHA256SUMS |
-| `leantty-0.2.3-windows-x86_64.zip` | 见 SHA256SUMS | 见 SHA256SUMS |
+| `leantty_0.2.3_amd64.deb` | 3,522,352 B | `11dc05aca0df3f5807e9a3f9a0096fc9354ef08a615214c8121c60855dbd20d8` |
+| `leantty-0.2.3-windows-x86_64.zip` | 5,800,053 B | `c703db96deb11632cd09551db5f7fecff78976ca04237d2f450f54bbc1753398` |
 
-sha256 以随发布的 `SHA256SUMS` 为准（资产在归档后不再变动）。
+本版为覆盖发布：资产已替换为包含 `Alt+Tab`/Super 组合键修复后的构建（版本号仍为 0.2.3）。
 
 ## 已知限制
 
