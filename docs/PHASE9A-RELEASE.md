@@ -138,3 +138,17 @@
 - 新资产：deb **3,523,868 B** / `cc5373b3…`；zip **5,803,695 B** / `9c32993f…`；release id `452326017`，
   tag `v0.2.4` = `c85b67d`；回下载 `sha256sum -c` 通过。
 - 再次踩到同一个坑：删除/重指 tag 会连带删除该 tag 的 release（这次是 v0.2.4），需重建 release 并重传资产。
+
+## v0.2.5 发布（9F：字号对齐 + 三类丢键修复）
+
+- 依据 `leantty-zig/RUST-ISSUES.md` §4 的按键对拍结论，逐条核实后修复：
+  - `Ctrl+Space` 无输出 → `Named(Space)` 未映射到 `vt::Key`，编码分支整体跳过；补映射后发 `0x00`。
+  - `Ctrl+Shift+<字母/符号>` 无输出或发 `CSI u` → 编码器第 5 参数 `utf8` 恒为 `None`，且移位字符（`{`/`}`/`|`）
+    映射不到按键枚举。改为把 `event.text` 交给编码器，并在**未启用 Kitty 协议**时把 `CSI u` 回写成
+    xterm 控制字节（新增 `ctrl_byte` / `is_csi_u`，`VtTerminal::kitty_keyboard_enabled`）。
+    探针实测：`Ctrl+Space→00`、`Ctrl+Shift+A→01`、`Ctrl+Shift+[→1b`、`Ctrl+A→01`、`Ctrl+Shift+Z→1a`。
+- 字号对齐 alacritty：`font.size` 改按点解释（`px = pt × scale × 96/72`，新增 `px_from_pt`），
+  格宽由 `ceil` 改 `round`。对照实测（80×24、padding 0、DejaVu Sans Mono 16）：两程序窗口均为 **1520×912**
+  （改前 leantty 1600×912）。
+- 资产：deb **3,519,740 B** / `411b7512…`；zip **5,804,355 B** / `5e2f2604…`；release id `452344379`、
+  tag `v0.2.5` = `e2d37d4`；回下载 `sha256sum -c` 通过。0.2.4 的 release 说明已重写（不再是"与 0.2.3 功能相同"）。
