@@ -116,9 +116,8 @@ fn render_char_cell_differs_from_bg() {
     // 下划线格：格底附近（cell_h=24 的下半部分）应有一条贯穿的前景线。
     // 线宽/基线按 alacritty 口径（`max(h/16,1)`、`h-(线宽+max(h/12,1))`），
     // 不再固定 h-2，因此这里扫描整行而不是固定 y。
-    let underline_line = (18u32..24u32).any(|y| {
-        (2 * w..3 * w).all(|x| fb[(y * 48 + x) as usize] != 0xFF00_0000)
-    });
+    let underline_line =
+        (18u32..24u32).any(|y| (2 * w..3 * w).all(|x| fb[(y * 48 + x) as usize] != 0xFF00_0000));
     assert!(underline_line, "下划线格底线附近应有贯穿的前景线");
 }
 

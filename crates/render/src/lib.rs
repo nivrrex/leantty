@@ -382,7 +382,9 @@ impl CpuRenderer {
     /// 吞吐会明显下降（实测 loop_gap 8ms → 45ms）。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
         let key = (cell_h, self.scale.to_bits());
-        if let Some((k, v)) = self.baseline_cache.get() && k == key {
+        if let Some((k, v)) = self.baseline_cache.get()
+            && k == key
+        {
             return v;
         }
         let v = self
@@ -458,7 +460,10 @@ impl CpuRenderer {
 
     /// 当前字体在 scale 下的格子尺寸（物理像素）；字体未加载时回落阶段1 常量 8x16。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        { let mut f = self.fonts.borrow_mut(); f.cell_metrics(self.font_size, scale) }
+        {
+            let mut f = self.fonts.borrow_mut();
+            f.cell_metrics(self.font_size, scale)
+        }
     }
 
     /// 码点在组内回退链中的字体索引（主字体 → fallback → 系统 Monospace/Sans）；
@@ -508,8 +513,6 @@ impl CpuRenderer {
         );
         Some((m, b))
     }
-
-
 }
 
 /// 单元格属性 → 字体组序号（bold/italic 组合映射四组）。
@@ -1054,7 +1057,9 @@ impl CpuRenderer {
                     let ch = cell.chars.chars().next().expect("非空 chars");
                     let group = group_for(cell);
                     let font_idx = self.font_index_for(group, ch);
-                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px).unwrap_or_default();
+                    let (m, bitmap) = self
+                        .rasterize_glyph(group, font_idx, ch, px)
+                        .unwrap_or_default();
                     blit(
                         &mut self.framebuffer,
                         width,
@@ -1188,7 +1193,9 @@ impl CpuRenderer {
             // 字形：宽字符按 2 格内缩放绘制（与终端宽字符规则一致）。
             let group = GROUP_NORMAL as u8;
             let font_idx = self.font_index_for(group, pc.ch);
-            let (m, bitmap) = self.rasterize_glyph(group, font_idx, pc.ch, px).unwrap_or_default();
+            let (m, bitmap) = self
+                .rasterize_glyph(group, font_idx, pc.ch, px)
+                .unwrap_or_default();
             let bw = m.width.max(1) as f32;
             let bh = m.height.max(1) as f32;
             let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -1335,7 +1342,6 @@ fn draw_style_lines(
         fill_rect(fb, width, x0 + rx, y0 + ry, rw, rh, color);
     }
 }
-
 
 fn rgb_to_u32(c: Rgb) -> u32 {
     0xFF00_0000 | (u32::from(c.r) << 16) | (u32::from(c.g) << 8) | u32::from(c.b)
@@ -1504,7 +1510,6 @@ fn scale_bitmap(bitmap: &[u8], w: usize, h: usize, tw: usize, th: usize) -> Vec<
     }
     out
 }
-
 
 #[cfg(test)]
 mod blit_tests {

@@ -73,11 +73,19 @@ fn has_ink(fb: &[u32]) -> bool {
 fn cjk_glyph_available_immediately_after_construction() {
     // 主字体 DejaVu Sans Mono 无汉字；回退链在构造时已加载，因此构造后立刻能画出字形。
     let Some(fb) = render_one("中") else { return };
-    assert!(has_ink(&fb), "构造完成后汉字应立即有字形（不应是空白/占位）");
+    assert!(
+        has_ink(&fb),
+        "构造完成后汉字应立即有字形（不应是空白/占位）"
+    );
 }
 
 #[test]
 fn emoji_falls_back_to_symbol_font_immediately() {
-    let Some(fb) = render_one("\u{1F600}") else { return };
-    assert!(has_ink(&fb), "emoji 应由兜底符号字体立即渲染，而不是留空或方块");
+    let Some(fb) = render_one("\u{1F600}") else {
+        return;
+    };
+    assert!(
+        has_ink(&fb),
+        "emoji 应由兜底符号字体立即渲染，而不是留空或方块"
+    );
 }

@@ -1,7 +1,5 @@
 //! 格子度量：字号/缩放联动（阶段 0.2.8 起由 crossfont 提供度量）。
 
-
-
 #[test]
 fn cell_metrics_scales_with_size_and_scale_factor() {
     // 阶段 0.2.8：度量改由 crossfont 提供（不再暴露 fontdue::Font）。

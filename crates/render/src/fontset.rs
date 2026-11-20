@@ -11,8 +11,8 @@
 //! - 逐字符回退：先查缓存，再按组内顺序找"该 face 含此码点"的第一个；
 //! - 字形位图：8 位覆盖率 + 与 fontdue `Metrics` 兼容的度量（xmin/ymin/width/height/advance）。
 
-use std::collections::HashMap;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crossfont::{BitmapBuffer, FontDesc, FontKey, GlyphKey, Rasterize, Rasterizer, Size, Style};
@@ -120,8 +120,10 @@ impl FontSet {
             char_font: HashMap::new(),
             line_metrics: HashMap::new(),
         };
-        set.line_metrics
-            .insert(set.groups[GROUP_NORMAL][0], set.read_line_metrics(set.groups[GROUP_NORMAL][0], size));
+        set.line_metrics.insert(
+            set.groups[GROUP_NORMAL][0],
+            set.read_line_metrics(set.groups[GROUP_NORMAL][0], size),
+        );
         crate::eperf!(
             "[perf] fontset_load_ms={:.2} families={} groups={}",
             t.elapsed().as_secs_f64() * 1000.0,
@@ -248,7 +250,10 @@ impl FontSet {
             Ok(m) => m.line_height as f32,
             Err(_) => px * 1.2,
         };
-        (advance.round().max(1.0) as u32, line.round().max(1.0) as u32)
+        (
+            advance.round().max(1.0) as u32,
+            line.round().max(1.0) as u32,
+        )
     }
 
     /// 基线相对格顶的偏移：ascent = 行高 - |descent|。

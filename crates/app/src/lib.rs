@@ -259,7 +259,13 @@ pub fn reader_body_with_depth<R: std::io::Read>(
     // 诊断（`LEANTTY_PTY_TRACE=<path>`）：把 PTY 读到的前 4 KiB 以十六进制落盘，
     // 用于判断"首行多一个空行"是子进程写出来的还是我们渲染出来的。
     let mut trace: Option<(std::fs::File, usize)> = std::env::var_os("LEANTTY_PTY_TRACE")
-        .and_then(|p| std::fs::OpenOptions::new().create(true).append(true).open(p).ok())
+        .and_then(|p| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(p)
+                .ok()
+        })
         .map(|f| (f, 0usize));
     loop {
         match reader.read(&mut buf) {
@@ -1715,7 +1721,11 @@ impl ApplicationHandler for AppHandler {
                                             );
                                             if matches!(&enc_result, Ok(b) if b.is_empty()) {
                                                 enc_result = enc.encode_key_full(
-                                                    key, mods, Action::Press, unshifted, text,
+                                                    key,
+                                                    mods,
+                                                    Action::Press,
+                                                    unshifted,
+                                                    text,
                                                 );
                                             }
                                             match enc_result {
@@ -1745,11 +1755,9 @@ impl ApplicationHandler for AppHandler {
                                                     // 普通字符回显。此时按 xterm 口径回写控制字节
                                                     // （`Ctrl+Shift+A`→0x01、`Ctrl+Shift+[`→0x1b），与 alacritty 一致。
                                                     let bytes = if is_csi_u(&bytes)
-                                                        && !self
-                                                            .vt
-                                                            .as_ref()
-                                                            .is_some_and(|v| v.kitty_keyboard_enabled())
-                                                    {
+                                                        && !self.vt.as_ref().is_some_and(|v| {
+                                                            v.kitty_keyboard_enabled()
+                                                        }) {
                                                         let ch = unshifted.or_else(|| {
                                                             event
                                                                 .text
@@ -1817,9 +1825,8 @@ impl ApplicationHandler for AppHandler {
         // 请求 1008px 被裁到 696px，导致渲染/滚动条按错误高度计算）。
         if let Some(w) = self.window.as_ref() {
             let sz = w.inner_size();
-            let changed = sz.width > 0
-                && sz.height > 0
-                && self.last_size != Some((sz.width, sz.height));
+            let changed =
+                sz.width > 0 && sz.height > 0 && self.last_size != Some((sz.width, sz.height));
             // 限速：WM 抖动时每轮都 resize 会与输入处理抢主线程（实测粘贴/键入被饿死）。
             let due = self
                 .last_resize_poll
@@ -2532,7 +2539,8 @@ impl AppHandler {
         self.urgent_render = true;
         let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
         let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
-        let Some((cols, rows)) = resize_target(width, height, self.cell_w, self.cell_h, pad_x, pad_y)
+        let Some((cols, rows)) =
+            resize_target(width, height, self.cell_w, self.cell_h, pad_x, pad_y)
         else {
             #[cfg(debug_assertions)]
             eperf!("[perf] resize_ignored {width}x{height}（小于一个字符格）");
@@ -2833,7 +2841,13 @@ impl AppHandler {
         let row0: String = snap
             .as_ref()
             .and_then(|s| s.cells.first())
-            .map(|r| r.iter().map(|c| c.chars.as_str()).collect::<String>().trim_end().to_string())
+            .map(|r| {
+                r.iter()
+                    .map(|c| c.chars.as_str())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
             .unwrap_or_default();
         let ncells = snap.as_ref().map(|s| s.cells.len()).unwrap_or(0);
         let sb = snap.as_ref().map(|s| s.scrollback_rows).unwrap_or(0);
@@ -2850,7 +2864,9 @@ impl AppHandler {
             env("COLUMNS"),
             env("LINES"),
             env("GDK_SCALE"),
-            std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "-".into())
+            std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "-".into())
         );
         eprintln!(
             "[geom] {why} window={vw}x{vh} scale={:.3} cell={}x{} cfg_cols={} cfg_rows={} vt={}x{} offset={} pad={}x{}",
@@ -4510,7 +4526,11 @@ mod ctrl_byte_tests {
     #[test]
     fn letters_and_symbols_follow_xterm() {
         assert_eq!(ctrl_byte('a'), Some(0x01));
-        assert_eq!(ctrl_byte('A'), Some(0x01), "按 unshifted 字符换算，大小写等价");
+        assert_eq!(
+            ctrl_byte('A'),
+            Some(0x01),
+            "按 unshifted 字符换算，大小写等价"
+        );
         assert_eq!(ctrl_byte('z'), Some(0x1a));
         assert_eq!(ctrl_byte(' '), Some(0x00));
         assert_eq!(ctrl_byte('['), Some(0x1b));

@@ -19,7 +19,12 @@ fn settings() -> FontSettings {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: vec![spec("Noto Sans CJK SC", "Regular"), spec("Noto Sans CJK JP", "Regular"), spec("WenQuanYi Zen Hei", "Regular"), spec("DejaVu Sans", "Regular")],
+        fallback: vec![
+            spec("Noto Sans CJK SC", "Regular"),
+            spec("Noto Sans CJK JP", "Regular"),
+            spec("WenQuanYi Zen Hei", "Regular"),
+            spec("DejaVu Sans", "Regular"),
+        ],
     }
 }
 

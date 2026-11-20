@@ -195,7 +195,10 @@ impl GpuRenderer {
 
     /// 当前字体的格子尺寸（物理像素）。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        { let mut f = self.fonts.borrow_mut(); f.cell_metrics(self.font_size, scale) }
+        {
+            let mut f = self.fonts.borrow_mut();
+            f.cell_metrics(self.font_size, scale)
+        }
     }
 
     /// 更新缩放因子（字形缓存键含缩放，无需清空）。
@@ -242,7 +245,9 @@ impl GpuRenderer {
     /// 基线相对格顶的偏移（像素），与 `CpuRenderer::baseline_px` 同公式。
     fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
         let key = (cell_h, self.scale.to_bits());
-        if let Some((k, v)) = self.baseline_cache.get() && k == key {
+        if let Some((k, v)) = self.baseline_cache.get()
+            && k == key
+        {
             return v;
         }
         let v = self
@@ -435,7 +440,8 @@ impl GpuRenderer {
                             .ok_or_else(|| Error::Backend("光标格字符为空".to_string()))?;
                         let group = group_for(cell);
                         let font_idx = self.font_index_for(group, ch);
-                        let (m, bitmap) = self.rasterize(group, font_idx, ch, px).unwrap_or_default();
+                        let (m, bitmap) =
+                            self.rasterize(group, font_idx, ch, px).unwrap_or_default();
                         let gw = m.width as u32;
                         let gh = m.height as u32;
                         if gw > 0 && gh > 0 {
@@ -554,7 +560,9 @@ impl GpuRenderer {
                     // 字形：与终端宽字符相同的缩放规则。
                     let group = 0u8;
                     let font_idx = self.font_index_for(group, pc.ch);
-                    let (m, bitmap) = self.rasterize(group, font_idx, pc.ch, px).unwrap_or_default();
+                    let (m, bitmap) = self
+                        .rasterize(group, font_idx, pc.ch, px)
+                        .unwrap_or_default();
                     let bw = m.width.max(1) as f32;
                     let bh = m.height.max(1) as f32;
                     let sc = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);

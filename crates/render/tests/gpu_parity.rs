@@ -34,10 +34,14 @@ fn settings(size: f32) -> FontSettings {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: vec![spec("Noto Sans CJK SC", "Regular"), spec("Noto Sans CJK JP", "Regular"), spec("WenQuanYi Zen Hei", "Regular"), spec("DejaVu Sans", "Regular")],
+        fallback: vec![
+            spec("Noto Sans CJK SC", "Regular"),
+            spec("Noto Sans CJK JP", "Regular"),
+            spec("WenQuanYi Zen Hei", "Regular"),
+            spec("DejaVu Sans", "Regular"),
+        ],
     }
 }
-
 
 fn make_cpu(scale: f64) -> Option<CpuRenderer> {
     let mut r = CpuRenderer::new(
@@ -131,7 +135,11 @@ fn compare(cpu: &[u32], gpu_rgba: &[u8], w: u32, h: u32) -> Diff {
             .max((cb - gb).unsigned_abs());
         d.all_max = d.all_max.max(maxd);
         if maxd > 1 && std::env::var_os("PARITY_DEBUG").is_some() && d.glyph_diff < 8 {
-            eprintln!("  diff px=({},{}) cpu=({cr},{cg},{cb}) gpu=({gr},{gg},{gb}) d={maxd}", i as u32 % w, i as u32 / w);
+            eprintln!(
+                "  diff px=({},{}) cpu=({cr},{cg},{cb}) gpu=({gr},{gg},{gb}) d={maxd}",
+                i as u32 % w,
+                i as u32 / w
+            );
         }
         let is_bg = (c & 0x00FF_FFFF) == bg_u32;
         if is_bg {
