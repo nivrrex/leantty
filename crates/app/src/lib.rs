@@ -1786,60 +1786,7 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
-                self.next_frame_origin = 2; // 缩放/尺寸事件触发
-                self.urgent_render = true;
-                let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
-                let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
-                // 零尺寸/小于一格（Windows 最小化会发 1×1 或 0×0）：保持原网格、
-                // 原渲染尺寸与 surface 配置不变，只请求一次重绘（恢复时的 Resized
-                // 会走正常路径）。若在此处 resize，内容会被裁成 1×1 且不可恢复。
-                let Some((cols, rows)) = resize_target(
-                    physical_size.width,
-                    physical_size.height,
-                    self.cell_w,
-                    self.cell_h,
-                    pad_x,
-                    pad_y,
-                ) else {
-                    #[cfg(debug_assertions)]
-                    eperf!(
-                        "[perf] resize_ignored {}x{}（小于一个字符格）",
-                        physical_size.width,
-                        physical_size.height
-                    );
-                    return;
-                };
-                // 幂等：网格未变时不重复 resize（恢复尺寸与最小化前相同时必须无副作用）。
-                let unchanged = (cols, rows) == (self.cols, self.rows);
-                if !unchanged {
-                    if let Some(vt) = self.vt.as_mut()
-                        && let Err(e) = vt.resize(cols, rows)
-                    {
-                        eprintln!("vt resize: {}", e);
-                    }
-                    if let Some(pty) = self.pty.as_mut()
-                        && let Err(e) = pty.resize(cols, rows)
-                    {
-                        eprintln!("pty resize: {}", e);
-                    }
-                    self.cols = cols;
-                    self.rows = rows;
-                }
-                self.last_size = Some((physical_size.width, physical_size.height));
-                if let Some(r) = self.renderer.as_mut()
-                    && r.is_gpu()
-                {
-                    r.resize_surface(physical_size.width, physical_size.height);
-                }
-                if let Some(surface) = self.surface.as_mut()
-                    && let (Some(w), Some(h)) = (
-                        std::num::NonZeroU32::new(physical_size.width),
-                        std::num::NonZeroU32::new(physical_size.height),
-                    )
-                    && let Err(e) = surface.resize(w, h)
-                {
-                    eprintln!("surface resize: {}", e);
-                }
+                self.apply_resize(physical_size.width, physical_size.height);
             }
             _ => {}
         }
@@ -1863,6 +1810,17 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+        // 轮询真实窗口像素尺寸：WM 可能在映射时裁窗且不投递 Resized（实测 720p 屏幕上
+        // 请求 1008px 被裁到 696px，导致渲染/滚动条按错误高度计算）。
+        if let Some(w) = self.window.as_ref() {
+            let sz = w.inner_size();
+            if sz.width > 0
+                && sz.height > 0
+                && self.last_size != Some((sz.width, sz.height))
+            {
+                self.apply_resize(sz.width, sz.height);
+            }
+        }
         // 阶段 4I t3：观测窗口重置（LEANTTY_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -2555,6 +2513,54 @@ impl ApplicationHandler for AppHandler {
 }
 
 impl AppHandler {
+    /// 应用窗口像素尺寸变化：重算网格、resize vt/pty、更新 surface 与缓存尺寸。
+    ///
+    /// 除 `WindowEvent::Resized` 外，`about_to_wait` 还会**轮询** `window.inner_size()`
+    /// （窗口管理器可能在映射时悄悄裁窗而不发事件——实测 1280x720 屏幕上 24 行请求
+    /// 1008px 被裁到 696px，若不轮询，渲染与滚动条仍按 1008px 计算，滚动条画到窗口外）。
+    fn apply_resize(&mut self, width: u32, height: u32) {
+        self.next_frame_origin = 2;
+        self.urgent_render = true;
+        let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
+        let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
+        let Some((cols, rows)) = resize_target(width, height, self.cell_w, self.cell_h, pad_x, pad_y)
+        else {
+            #[cfg(debug_assertions)]
+            eperf!("[perf] resize_ignored {width}x{height}（小于一个字符格）");
+            return;
+        };
+        let unchanged = (cols, rows) == (self.cols, self.rows);
+        if !unchanged {
+            if let Some(vt) = self.vt.as_mut()
+                && let Err(e) = vt.resize(cols, rows)
+            {
+                eprintln!("vt resize: {}", e);
+            }
+            if let Some(pty) = self.pty.as_mut()
+                && let Err(e) = pty.resize(cols, rows)
+            {
+                eprintln!("pty resize: {}", e);
+            }
+            self.cols = cols;
+            self.rows = rows;
+        }
+        self.last_size = Some((width, height));
+        if let Some(r) = self.renderer.as_mut()
+            && r.is_gpu()
+        {
+            r.resize_surface(width, height);
+        }
+        if let Some(surface) = self.surface.as_mut()
+            && let (Some(w), Some(h)) = (
+                std::num::NonZeroU32::new(width),
+                std::num::NonZeroU32::new(height),
+            )
+            && let Err(e) = surface.resize(w, h)
+        {
+            eprintln!("surface resize: {}", e);
+        }
+    }
+
     /// 存活检查的下一次到期时刻（阶段 4V t2，无副作用）。
     ///
     /// Windows 恒启用（ConPTY 输出管道不会因 shell 退出而 EOF，只能轮询 `try_wait`）；
