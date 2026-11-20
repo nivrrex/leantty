@@ -256,6 +256,11 @@ pub fn reader_body_with_depth<R: std::io::Read>(
     depth: Option<&std::sync::atomic::AtomicUsize>,
 ) {
     let mut buf = [0u8; 4096];
+    // 诊断（`LEANTTY_PTY_TRACE=<path>`）：把 PTY 读到的前 4 KiB 以十六进制落盘，
+    // 用于判断"首行多一个空行"是子进程写出来的还是我们渲染出来的。
+    let mut trace: Option<(std::fs::File, usize)> = std::env::var_os("LEANTTY_PTY_TRACE")
+        .and_then(|p| std::fs::OpenOptions::new().create(true).append(true).open(p).ok())
+        .map(|f| (f, 0usize));
     loop {
         match reader.read(&mut buf) {
             Ok(0) | Err(_) => {
@@ -266,6 +271,18 @@ pub fn reader_body_with_depth<R: std::io::Read>(
                 break;
             }
             Ok(n) => {
+                if let Some((f, written)) = trace.as_mut() {
+                    use std::io::Write as _;
+                    if *written < 4096 {
+                        let mut hex = String::with_capacity(n * 3);
+                        for b in &buf[..n] {
+                            hex.push_str(&format!("{b:02x}"));
+                        }
+                        let _ = writeln!(f, "{hex}");
+                        let _ = f.flush();
+                        *written += n;
+                    }
+                }
                 if let Some(d) = depth {
                     d.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
@@ -2863,7 +2880,34 @@ impl AppHandler {
             return;
         }
         let (vw, vh) = self.last_size.unwrap_or((0, 0));
-        let (vcols, vrows) = self.vt.as_ref().and_then(|v| v.snapshot().ok()).map(|s| (s.cols, s.rows)).unwrap_or((0, 0));
+        let snap = self.vt.as_ref().and_then(|v| v.snapshot().ok());
+        let (vcols, vrows) = snap.as_ref().map(|s| (s.cols, s.rows)).unwrap_or((0, 0));
+        let (cur_x, cur_y) = snap
+            .as_ref()
+            .map(|s| (s.cursor.x, s.cursor.y))
+            .unwrap_or((0, 0));
+        let row0: String = snap
+            .as_ref()
+            .and_then(|s| s.cells.first())
+            .map(|r| r.iter().map(|c| c.chars.as_str()).collect::<String>().trim_end().to_string())
+            .unwrap_or_default();
+        let ncells = snap.as_ref().map(|s| s.cells.len()).unwrap_or(0);
+        let sb = snap.as_ref().map(|s| s.scrollback_rows).unwrap_or(0);
+        eprintln!(
+            "[geom] {why} cursor=({cur_x},{cur_y}) cells_len={ncells} sb_rows={sb} rows_field={vrows} row0_len={} row0={:?}",
+            row0.chars().count(),
+            row0.chars().take(24).collect::<String>()
+        );
+        let env = |k: &str| std::env::var(k).unwrap_or_else(|_| "-".into());
+        eprintln!(
+            "[geom] {why} TERM={} SHELL={} COLUMNS={} LINES={} GDK_SCALE={} cwd={}",
+            env("TERM"),
+            env("SHELL"),
+            env("COLUMNS"),
+            env("LINES"),
+            env("GDK_SCALE"),
+            std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "-".into())
+        );
         eprintln!(
             "[geom] {why} window={vw}x{vh} scale={:.3} cell={}x{} cfg_cols={} cfg_rows={} vt={}x{} offset={} pad={}x{}",
             self.scale_factor,

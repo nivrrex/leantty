@@ -76,6 +76,17 @@ impl Pty for NativePty {
                 cmd.arg(a);
             }
         }
+        // 阶段 9H：子进程必须有可用的 TERM。桌面启动（lxpanel/openbox）时环境里没有 TERM，
+        // bash 会按 "dumb" 处理：收到 SIGWINCH 后它用空格重画提示符，把第一行擦成空白，
+        // 于是看起来"首行多了一个空行"（用户实测：命令行启动无此现象，桌面启动有）。
+        // 其它终端（xterm/alacritty）都会给子进程设 TERM，这里同样兜底。
+        let term_missing = std::env::var_os("TERM")
+            .and_then(|v| v.into_string().ok())
+            .map(|v| v.is_empty() || v == "dumb")
+            .unwrap_or(true);
+        if term_missing {
+            cmd.env("TERM", "xterm-256color");
+        }
         let child = slave.spawn_command(cmd)?;
         drop(slave);
         let writer = master.take_writer()?;

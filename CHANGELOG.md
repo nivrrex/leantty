@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.6
+
+### Fixed
+- Starting from a desktop launcher showed an empty first line: the desktop session has no `TERM`,
+  so the shell fell back to a "dumb" terminal and redrew its prompt as spaces after the initial
+  window resize, erasing the first row. `TERM` is now defaulted to `xterm-256color` when it is
+  missing or `dumb`, like other terminals do.
+
+### Changed
+- Cell height is rounded to the nearest pixel instead of rounded up. At 125–150 % scaling the row
+  height was one pixel taller than alacritty (13 pt / 150 %: 31 px vs 30 px), which made a 30-row
+  window 30 px taller and the text look larger even though the glyphs were the same width.
+
 ## 0.2.5
 
 ### Changed
