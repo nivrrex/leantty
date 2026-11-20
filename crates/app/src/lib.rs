@@ -259,7 +259,13 @@ pub fn reader_body_with_depth<R: std::io::Read>(
     // 诊断（`LEANTTY_PTY_TRACE=<path>`）：把 PTY 读到的前 4 KiB 以十六进制落盘，
     // 用于判断"首行多一个空行"是子进程写出来的还是我们渲染出来的。
     let mut trace: Option<(std::fs::File, usize)> = std::env::var_os("LEANTTY_PTY_TRACE")
-        .and_then(|p| std::fs::OpenOptions::new().create(true).append(true).open(p).ok())
+        .and_then(|p| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(p)
+                .ok()
+        })
         .map(|f| (f, 0usize));
     loop {
         match reader.read(&mut buf) {
@@ -500,6 +506,7 @@ impl App {
         }
         let exec_command = self.exec_command.clone();
         let mut handler = AppHandler {
+            last_resize_poll: None,
             perf_reset_at: std::env::var("LEANTTY_PERF_RESET_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
@@ -573,7 +580,6 @@ impl App {
             focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
-            bg_rx: None,
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
@@ -707,25 +713,7 @@ impl RendererBackend {
         }
     }
 
-    /// 加载后台字体（CJK 回退）。
-    /// 阶段 9A：后台线程交出已共享的字形句柄，省掉 `Vec<Font>` 的那次深拷贝。
-    fn add_background_fonts_shared(&mut self, fonts: Vec<std::sync::Arc<render::Font>>) {
-        match self {
-            Self::Cpu(r) => r.add_background_fonts_shared(fonts),
-            Self::Gpu(r) => r.add_background_fonts_shared(fonts),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
-        match self {
-            Self::Cpu(r) => r.add_background_fonts(fonts),
-            #[cfg(any(target_os = "linux", target_os = "windows"))]
-            Self::Gpu(r) => r.add_background_fonts(fonts),
-        }
-    }
-
-    /// 选区块（内容绝对坐标，含端点）。
+    /// 选区高亮（网格坐标，含端点）。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         match self {
             Self::Cpu(r) => r.set_selection(region),
@@ -734,7 +722,7 @@ impl RendererBackend {
         }
     }
 
-    /// 滚动条拇指几何 (thumb_y, thumb_h)。
+    /// 滚动条拇指几何。
     pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
         match self {
             Self::Cpu(r) => r.set_scrollbar(geom),
@@ -752,7 +740,6 @@ impl RendererBackend {
         }
     }
 
-    /// 渲染一帧（CPU：写入内部帧缓冲，随后由 softbuffer 提交）。
     pub fn render(
         &mut self,
         frame: &vt::FrameSnapshot,
@@ -862,7 +849,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(false)); // auto 永远忽略软件开关
@@ -893,7 +880,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(true)); // 显式 gpu 才可能允许
@@ -935,7 +922,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>,
+    existing_fonts: Option<std::rc::Rc<std::cell::RefCell<render::FontSet>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
@@ -948,8 +935,8 @@ fn build_gpu(
         .as_raw();
     let size = window.inner_size();
     // 复用窗口前 CPU 渲染器已构建的字体链（stage 4E t3：省掉一次 fontdb + 字体解析）
-    let reuse = existing_cpu_groups;
-    let mut gpu = render::gpu::GpuRenderer::new_surface_with_groups(
+    let reuse = existing_fonts;
+    let mut gpu = render::gpu::GpuRenderer::new_surface_with_fonts(
         font_settings,
         options,
         palette,
@@ -994,6 +981,9 @@ struct AppHandler {
     scale_factor: f64,
     /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
     key_trace: Option<std::fs::File>,
+    /// 上次轮询窗口尺寸并 apply_resize 的时刻（限速用）。
+    last_resize_poll: Option<Instant>,
+    /// 后台字体是否已记录过"首次并入"时刻（逐个并入后用）。
     /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
     /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
     /// 那一击才是残留 Tab 的真正来源。
@@ -1064,7 +1054,6 @@ struct AppHandler {
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
-    bg_rx: Option<mpsc::Receiver<Vec<std::sync::Arc<render::Font>>>>,
     mods_state: ModifiersState,
     /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
     selection: Option<Selection>,
@@ -1143,25 +1132,6 @@ impl ApplicationHandler for AppHandler {
         let config = self.config.take().expect("resumed 只能调用一次");
         // 阶段 9A：回退字体在**建窗前**就开始加载，与渲染器初始化/建窗/建 surface
         // 完全重叠（此前在窗口建好后才起线程，白等约 0.3s）；首帧仍不等字体。
-        let (bg_tx, bg_rx) = mpsc::channel::<Vec<std::sync::Arc<render::Font>>>();
-        {
-            let bg_specs = config.font_settings.fallback.clone();
-            let bg_proxy = self.event_proxy.clone();
-            std::thread::spawn(move || {
-                let t_bg = std::time::Instant::now();
-                let fonts = render::load_font_list_shared(&bg_specs);
-                eperf!(
-                    "[perf] bg_font_list_us={} count={}",
-                    t_bg.elapsed().as_micros(),
-                    fonts.len()
-                );
-                let _ = bg_tx.send(fonts);
-                if let Some(proxy) = bg_proxy {
-                    let _ = proxy.send_event(());
-                }
-            });
-        }
-        self.bg_rx = Some(bg_rx);
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
         // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
         // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
@@ -1738,13 +1708,27 @@ impl ApplicationHandler for AppHandler {
                                             // `ctrlSeq`（unset_mods 不是 ctrl_only）→ 此前一个字节都不写
                                             // （实测 `Ctrl+Space`/`Ctrl+Shift+A`/`Ctrl+Shift+[` 全丢）。
                                             let text = event.text.as_deref();
-                                            match enc.encode_key_full(
+                                            // 先按"不带 utf8"编码：保持 modifyOtherKeys 等既有模式的行为
+                                            // （带 utf8 会让 mok2 从 `0x01` 变成 `ESC[27;5;97~`）。
+                                            // 只有当这种编码**一个字节都不产出**时，才带 utf8 重试，
+                                            // 用于修 `Ctrl+Shift+字母/符号`（上游只认 utf8 的那条路径）。
+                                            let mut enc_result = enc.encode_key_full(
                                                 key,
                                                 mods,
                                                 Action::Press,
                                                 unshifted,
-                                                text,
-                                            ) {
+                                                None,
+                                            );
+                                            if matches!(&enc_result, Ok(b) if b.is_empty()) {
+                                                enc_result = enc.encode_key_full(
+                                                    key,
+                                                    mods,
+                                                    Action::Press,
+                                                    unshifted,
+                                                    text,
+                                                );
+                                            }
+                                            match enc_result {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
                                                     // 写线程只能丢弃"已在队列里"的块（并补发括号
@@ -1771,11 +1755,9 @@ impl ApplicationHandler for AppHandler {
                                                     // 普通字符回显。此时按 xterm 口径回写控制字节
                                                     // （`Ctrl+Shift+A`→0x01、`Ctrl+Shift+[`→0x1b），与 alacritty 一致。
                                                     let bytes = if is_csi_u(&bytes)
-                                                        && !self
-                                                            .vt
-                                                            .as_ref()
-                                                            .is_some_and(|v| v.kitty_keyboard_enabled())
-                                                    {
+                                                        && !self.vt.as_ref().is_some_and(|v| {
+                                                            v.kitty_keyboard_enabled()
+                                                        }) {
                                                         let ch = unshifted.or_else(|| {
                                                             event
                                                                 .text
@@ -1815,60 +1797,7 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
-                self.next_frame_origin = 2; // 缩放/尺寸事件触发
-                self.urgent_render = true;
-                let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
-                let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
-                // 零尺寸/小于一格（Windows 最小化会发 1×1 或 0×0）：保持原网格、
-                // 原渲染尺寸与 surface 配置不变，只请求一次重绘（恢复时的 Resized
-                // 会走正常路径）。若在此处 resize，内容会被裁成 1×1 且不可恢复。
-                let Some((cols, rows)) = resize_target(
-                    physical_size.width,
-                    physical_size.height,
-                    self.cell_w,
-                    self.cell_h,
-                    pad_x,
-                    pad_y,
-                ) else {
-                    #[cfg(debug_assertions)]
-                    eperf!(
-                        "[perf] resize_ignored {}x{}（小于一个字符格）",
-                        physical_size.width,
-                        physical_size.height
-                    );
-                    return;
-                };
-                // 幂等：网格未变时不重复 resize（恢复尺寸与最小化前相同时必须无副作用）。
-                let unchanged = (cols, rows) == (self.cols, self.rows);
-                if !unchanged {
-                    if let Some(vt) = self.vt.as_mut()
-                        && let Err(e) = vt.resize(cols, rows)
-                    {
-                        eprintln!("vt resize: {}", e);
-                    }
-                    if let Some(pty) = self.pty.as_mut()
-                        && let Err(e) = pty.resize(cols, rows)
-                    {
-                        eprintln!("pty resize: {}", e);
-                    }
-                    self.cols = cols;
-                    self.rows = rows;
-                }
-                self.last_size = Some((physical_size.width, physical_size.height));
-                if let Some(r) = self.renderer.as_mut()
-                    && r.is_gpu()
-                {
-                    r.resize_surface(physical_size.width, physical_size.height);
-                }
-                if let Some(surface) = self.surface.as_mut()
-                    && let (Some(w), Some(h)) = (
-                        std::num::NonZeroU32::new(physical_size.width),
-                        std::num::NonZeroU32::new(physical_size.height),
-                    )
-                    && let Err(e) = surface.resize(w, h)
-                {
-                    eprintln!("surface resize: {}", e);
-                }
+                self.apply_resize(physical_size.width, physical_size.height);
             }
             _ => {}
         }
@@ -1892,6 +1821,22 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+        // 轮询真实窗口像素尺寸：WM 可能在映射时裁窗且不投递 Resized（实测 720p 屏幕上
+        // 请求 1008px 被裁到 696px，导致渲染/滚动条按错误高度计算）。
+        if let Some(w) = self.window.as_ref() {
+            let sz = w.inner_size();
+            let changed =
+                sz.width > 0 && sz.height > 0 && self.last_size != Some((sz.width, sz.height));
+            // 限速：WM 抖动时每轮都 resize 会与输入处理抢主线程（实测粘贴/键入被饿死）。
+            let due = self
+                .last_resize_poll
+                .map(|t| t.elapsed() >= std::time::Duration::from_millis(200))
+                .unwrap_or(true);
+            if changed && due {
+                self.last_resize_poll = Some(Instant::now());
+                self.apply_resize(sz.width, sz.height);
+            }
+        }
         // 阶段 4I t3：观测窗口重置（LEANTTY_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -2059,48 +2004,6 @@ impl ApplicationHandler for AppHandler {
                 // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
                 // 同时置 urgent：排空期间内容在变，下一帧应尽快到来（4B-fix3）。
                 self.urgent_render = true;
-                w.request_redraw();
-            }
-        }
-        // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
-        // debug-only：人为延迟回退字体就绪，用于 e2e 复现"先画方块后恢复"（release 不含）。
-        #[cfg(debug_assertions)]
-        let bg_ready = {
-            static DELAY_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
-            let d = *DELAY_MS.get_or_init(|| {
-                std::env::var("LEANTTY_TEST_DELAY_BG_FONTS_MS")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(0)
-            });
-            d == 0
-                || crate::start_time()
-                    .map(|t| t.elapsed().as_millis() >= d as u128)
-                    .unwrap_or(true)
-        };
-        #[cfg(not(debug_assertions))]
-        let bg_ready = true;
-        if bg_ready
-            && let Some(rx) = &self.bg_rx
-            && let Ok(fonts) = rx.try_recv()
-            && let Some(r) = self.renderer.as_mut()
-        {
-            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）到位时刻，
-            // 与首帧耗时同口径（相对进程启动），仅打印一次。
-            if let Some(t0) = crate::start_time() {
-                eperf!(
-                    "[perf] bg_fonts_ms={} count={}",
-                    t0.elapsed().as_millis(),
-                    fonts.len()
-                );
-            }
-            r.add_background_fonts_shared(fonts);
-            // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
-            // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
-            // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经
-            // 既有出口（request_redraw + finish_wake）请求重绘，不新增控制流出口。
-            self.urgent_render = true;
-            if let Some(w) = self.window.as_ref() {
                 w.request_redraw();
             }
         }
@@ -2626,6 +2529,55 @@ impl ApplicationHandler for AppHandler {
 }
 
 impl AppHandler {
+    /// 应用窗口像素尺寸变化：重算网格、resize vt/pty、更新 surface 与缓存尺寸。
+    ///
+    /// 除 `WindowEvent::Resized` 外，`about_to_wait` 还会**轮询** `window.inner_size()`
+    /// （窗口管理器可能在映射时悄悄裁窗而不发事件——实测 1280x720 屏幕上 24 行请求
+    /// 1008px 被裁到 696px，若不轮询，渲染与滚动条仍按 1008px 计算，滚动条画到窗口外）。
+    fn apply_resize(&mut self, width: u32, height: u32) {
+        self.next_frame_origin = 2;
+        self.urgent_render = true;
+        let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
+        let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
+        let Some((cols, rows)) =
+            resize_target(width, height, self.cell_w, self.cell_h, pad_x, pad_y)
+        else {
+            #[cfg(debug_assertions)]
+            eperf!("[perf] resize_ignored {width}x{height}（小于一个字符格）");
+            return;
+        };
+        let unchanged = (cols, rows) == (self.cols, self.rows);
+        if !unchanged {
+            if let Some(vt) = self.vt.as_mut()
+                && let Err(e) = vt.resize(cols, rows)
+            {
+                eprintln!("vt resize: {}", e);
+            }
+            if let Some(pty) = self.pty.as_mut()
+                && let Err(e) = pty.resize(cols, rows)
+            {
+                eprintln!("pty resize: {}", e);
+            }
+            self.cols = cols;
+            self.rows = rows;
+        }
+        self.last_size = Some((width, height));
+        if let Some(r) = self.renderer.as_mut()
+            && r.is_gpu()
+        {
+            r.resize_surface(width, height);
+        }
+        if let Some(surface) = self.surface.as_mut()
+            && let (Some(w), Some(h)) = (
+                std::num::NonZeroU32::new(width),
+                std::num::NonZeroU32::new(height),
+            )
+            && let Err(e) = surface.resize(w, h)
+        {
+            eprintln!("surface resize: {}", e);
+        }
+    }
+
     /// 存活检查的下一次到期时刻（阶段 4V t2，无副作用）。
     ///
     /// Windows 恒启用（ConPTY 输出管道不会因 shell 退出而 EOF，只能轮询 `try_wait`）；
@@ -2889,7 +2841,13 @@ impl AppHandler {
         let row0: String = snap
             .as_ref()
             .and_then(|s| s.cells.first())
-            .map(|r| r.iter().map(|c| c.chars.as_str()).collect::<String>().trim_end().to_string())
+            .map(|r| {
+                r.iter()
+                    .map(|c| c.chars.as_str())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
             .unwrap_or_default();
         let ncells = snap.as_ref().map(|s| s.cells.len()).unwrap_or(0);
         let sb = snap.as_ref().map(|s| s.scrollback_rows).unwrap_or(0);
@@ -2906,7 +2864,9 @@ impl AppHandler {
             env("COLUMNS"),
             env("LINES"),
             env("GDK_SCALE"),
-            std::env::current_dir().map(|p| p.display().to_string()).unwrap_or_else(|_| "-".into())
+            std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "-".into())
         );
         eprintln!(
             "[geom] {why} window={vw}x{vh} scale={:.3} cell={}x{} cfg_cols={} cfg_rows={} vt={}x{} offset={} pad={}x{}",
@@ -4566,7 +4526,11 @@ mod ctrl_byte_tests {
     #[test]
     fn letters_and_symbols_follow_xterm() {
         assert_eq!(ctrl_byte('a'), Some(0x01));
-        assert_eq!(ctrl_byte('A'), Some(0x01), "按 unshifted 字符换算，大小写等价");
+        assert_eq!(
+            ctrl_byte('A'),
+            Some(0x01),
+            "按 unshifted 字符换算，大小写等价"
+        );
         assert_eq!(ctrl_byte('z'), Some(0x1a));
         assert_eq!(ctrl_byte(' '), Some(0x00));
         assert_eq!(ctrl_byte('['), Some(0x1b));

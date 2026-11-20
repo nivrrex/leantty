@@ -21,7 +21,10 @@ fn encode(key: Key, mods: Mods, unshifted: Option<char>, utf8: Option<&str>) -> 
 #[test]
 fn ctrl_space_sends_nul() {
     // 不带文本时上游也给 0x00；带文本同样。
-    assert_eq!(encode(Key::Space, Mods::CTRL, Some(' '), Some(" ")), vec![0x00]);
+    assert_eq!(
+        encode(Key::Space, Mods::CTRL, Some(' '), Some(" ")),
+        vec![0x00]
+    );
     assert_eq!(encode(Key::Space, Mods::CTRL, None, None), vec![0x00]);
 }
 
@@ -37,7 +40,12 @@ fn ctrl_shift_letter_is_csi_u_upstream() {
 #[test]
 fn ctrl_shift_bracket_is_csi_u_upstream() {
     assert_eq!(
-        encode(Key::BracketLeft, Mods::CTRL | Mods::SHIFT, Some('['), Some("{")),
+        encode(
+            Key::BracketLeft,
+            Mods::CTRL | Mods::SHIFT,
+            Some('['),
+            Some("{")
+        ),
         b"\x1b[123;5u".to_vec()
     );
 }

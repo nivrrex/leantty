@@ -12,11 +12,10 @@
 #![cfg(any(target_os = "linux", target_os = "windows"))]
 
 use crate::eperf;
-use std::collections::HashMap;
 
-use vt::{Cell, FrameSnapshot, Underline};
+use vt::{Cell, FrameSnapshot};
 
-use crate::{Error, Font, FontSettings, Palette, PreeditOverlay, RenderOptions, Renderer};
+use crate::{Error, FontSet, FontSettings, Palette, PreeditOverlay, RenderOptions, Renderer};
 
 mod atlas;
 mod instances;
@@ -65,11 +64,13 @@ struct Gpu {
 
 /// GPU 渲染器（离屏；t4 起支持 surface）。
 pub struct GpuRenderer {
+    /// 基线缓存 ((格高, scale 位), 基线)。
+    baseline_cache: std::cell::Cell<Option<((u32, u64), i32)>>,
     gpu: Gpu,
     pipelines: Pipelines,
     atlas: GlyphAtlas,
     /// 四组字体链（与 CPU 后端同源，`Arc` 共享以避免重复加载）。
-    groups: std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>,
+    fonts: std::rc::Rc<std::cell::RefCell<FontSet>>,
     font_size: f32,
     scale: f64,
     options: RenderOptions,
@@ -84,7 +85,6 @@ pub struct GpuRenderer {
     /// 上一帧回读的 RGBA 数据（t3 对拍用）。
     rgba: Vec<u8>,
     /// 字形 → 组内字体索引缓存（与 CPU 同规则）。
-    char_font: HashMap<(u8, char), Option<usize>>,
     /// 上次渲染尺寸（尺寸变化时重建离屏目标）。
     pixel: (u32, u32),
 }
@@ -148,7 +148,7 @@ impl GpuRenderer {
         allow_software: bool,
     ) -> Result<Self, Error> {
         let gpu = Gpu::new(allow_software)?;
-        let groups = std::sync::Arc::new(crate::build_font_groups(settings)?);
+        let fonts = FontSet::load(settings)?;
         let atlas = GlyphAtlas::new(
             &gpu.device,
             &gpu.queue,
@@ -162,7 +162,8 @@ impl GpuRenderer {
             gpu,
             pipelines,
             atlas,
-            groups,
+            fonts,
+            baseline_cache: std::cell::Cell::new(None),
             acquire,
             font_size: settings.size,
             scale: 1.0,
@@ -173,7 +174,6 @@ impl GpuRenderer {
             preedit: None,
             target,
             rgba: Vec::new(),
-            char_font: HashMap::new(),
             pixel: (1, 1),
         })
     }
@@ -195,46 +195,15 @@ impl GpuRenderer {
 
     /// 当前字体的格子尺寸（物理像素）。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        match self.groups.first().and_then(|g| g.first()) {
-            Some(f) => crate::cell_metrics(f, self.font_size, scale),
-            None => (8, 16),
+        {
+            let mut f = self.fonts.borrow_mut();
+            f.cell_metrics(self.font_size, scale)
         }
     }
 
     /// 更新缩放因子（字形缓存键含缩放，无需清空）。
     pub fn set_scale_factor(&mut self, scale: f64) {
         self.scale = scale;
-    }
-
-    /// 并入后台字体（CJK fallback）。
-    pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
-        // 阶段 4N t3：与 CPU 渲染器一致——每个回退字体只包一次 Arc，四组共享。
-        let shared: Vec<std::sync::Arc<Font>> =
-            fonts.into_iter().map(std::sync::Arc::new).collect();
-        self.add_background_fonts_shared(shared);
-    }
-
-    /// 同 `add_background_fonts`，但直接接收已共享的句柄（阶段 9A：省掉一次深拷贝）。
-    pub fn add_background_fonts_shared(&mut self, shared: Vec<std::sync::Arc<Font>>) {
-        let t_merge = std::time::Instant::now();
-        for g in std::sync::Arc::make_mut(&mut self.groups) {
-            g.extend(shared.iter().cloned());
-        }
-        crate::eperf!(
-            "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
-            shared.len(),
-            self.groups.len(),
-            shared
-                .iter()
-                .map(std::sync::Arc::strong_count)
-                .collect::<Vec<_>>(),
-            t_merge.elapsed().as_micros()
-        );
-        self.char_font.clear();
-        // 阶段 9A（GPU 字形缓存）：atlas 键是 (group, ch, px, scale)，**不含字体索引**；
-        // 并入前"缺字形"已按 notdef 存进 atlas，并入后同键仍命中旧槽位 → 永远画方块
-        // （CPU 侧因 glyph_cache.clear() 不受影响）。字形来源变了，整表失效。
-        self.atlas.clear(&self.gpu.queue);
     }
 
     /// 选区（内容绝对坐标，含端点）。
@@ -274,25 +243,24 @@ impl GpuRenderer {
     }
 
     /// 基线相对格顶的偏移（像素），与 `CpuRenderer::baseline_px` 同公式。
-    fn baseline_px(&self, px: f32, cell_h: u32) -> i32 {
-        self.groups
-            .first()
-            .and_then(|g| g.first())
-            .and_then(|f| f.horizontal_line_metrics(px))
-            .map(|lm| crate::baseline_from_metrics(cell_h, &lm))
-            .unwrap_or(0)
+    fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
+        let key = (cell_h, self.scale.to_bits());
+        if let Some((k, v)) = self.baseline_cache.get()
+            && k == key
+        {
+            return v;
+        }
+        let v = self
+            .fonts
+            .borrow_mut()
+            .baseline(self.font_size, self.scale, cell_h);
+        self.baseline_cache.set(Some((key, v)));
+        v
     }
 
     /// 组内字体索引（第一个含该码点的字体；全无则 None → 用组首字体画 U+25A1）。
     fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
-        if let Some(&i) = self.char_font.get(&(group, ch)) {
-            return i;
-        }
-        let idx = self.groups[group as usize]
-            .iter()
-            .position(|f| f.has_glyph(ch));
-        self.char_font.insert((group, ch), idx);
-        idx
+        self.fonts.borrow_mut().index_for(group, ch)
     }
 
     /// 光栅化（None → 组首字体画 U+25A1 占位方块，与 CPU 一致）。
@@ -302,12 +270,9 @@ impl GpuRenderer {
         idx: Option<usize>,
         ch: char,
         px: f32,
-    ) -> (fontdue::Metrics, Vec<u8>) {
-        let chain = &self.groups[group as usize];
-        match idx {
-            Some(i) => chain[i].rasterize(ch, px),
-            None => chain[0].rasterize('\u{25A1}', px),
-        }
+    ) -> Option<(crate::GlyphMetrics, Vec<u8>)> {
+        let i = idx?;
+        self.fonts.borrow_mut().rasterize(group, i, ch, px)
     }
 
     /// 构建一帧的实例数据（调用方负责最终提交）。
@@ -373,7 +338,9 @@ impl GpuRenderer {
                     .ok_or_else(|| Error::Backend("空字符单元意外进入字形构建".to_string()))?;
                 let group = group_for(cell);
                 let font_idx = self.font_index_for(group, ch);
-                let (m, bitmap) = self.rasterize(group, font_idx, ch, px);
+                let Some((m, bitmap)) = self.rasterize(group, font_idx, ch, px) else {
+                    continue;
+                };
                 // 宽字符按 2 格内缩放居中（与 CPU 的 scale_bitmap 规则一致）。
                 let (gx, gy, gw, gh, data) = if d.span == 2 {
                     let area_w = cell_w * 2;
@@ -473,7 +440,8 @@ impl GpuRenderer {
                             .ok_or_else(|| Error::Backend("光标格字符为空".to_string()))?;
                         let group = group_for(cell);
                         let font_idx = self.font_index_for(group, ch);
-                        let (m, bitmap) = self.rasterize(group, font_idx, ch, px);
+                        let (m, bitmap) =
+                            self.rasterize(group, font_idx, ch, px).unwrap_or_default();
                         let gw = m.width as u32;
                         let gh = m.height as u32;
                         if gw > 0 && gh > 0 {
@@ -592,7 +560,9 @@ impl GpuRenderer {
                     // 字形：与终端宽字符相同的缩放规则。
                     let group = 0u8;
                     let font_idx = self.font_index_for(group, pc.ch);
-                    let (m, bitmap) = self.rasterize(group, font_idx, pc.ch, px);
+                    let (m, bitmap) = self
+                        .rasterize(group, font_idx, pc.ch, px)
+                        .unwrap_or_default();
                     let bw = m.width.max(1) as f32;
                     let bh = m.height.max(1) as f32;
                     let sc = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -680,7 +650,7 @@ impl GpuRenderer {
         surface: SurfaceInit,
         allow_software: bool,
     ) -> Result<Self, Error> {
-        Self::new_surface_with_groups(settings, options, palette, None, surface, allow_software)
+        Self::new_surface_with_fonts(settings, options, palette, None, surface, allow_software)
     }
 
     /// 同 `new_surface`，但可复用**已构建的**字体组（`Arc` 共享，零拷贝）。
@@ -688,11 +658,11 @@ impl GpuRenderer {
     /// stage 4E t3：auto/gpu 模式下窗口前已为估算格子尺寸建过 CPU 渲染器，
     /// 其字体链与 GPU 渲染器完全相同；复用可省掉一次 fontdb 扫描 + 四组字体解析
     /// （实测约 155ms）。
-    pub fn new_surface_with_groups(
+    pub fn new_surface_with_fonts(
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
-        reuse_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<Font>>>>>,
+        reuse_fonts: Option<std::rc::Rc<std::cell::RefCell<FontSet>>>,
         surface: SurfaceInit,
         allow_software: bool,
     ) -> Result<Self, Error> {
@@ -704,14 +674,14 @@ impl GpuRenderer {
         } = surface;
         // 阶段 4H t2：GPU 侧入口点（内部实例/适配器/设备三段已有打点，不重复）。
         eperf!(
-            "[perf] gpu_begin_ms=0.0 since_start={:.1} reuse_groups={}",
+            "[perf] gpu_begin_ms=0.0 since_start={:.1} reuse_fonts={}",
             crate::since_start_ms(),
-            reuse_groups.is_some()
+            reuse_fonts.is_some()
         );
         let gpu = Gpu::new(allow_software)?;
-        let groups = match reuse_groups {
-            Some(g) => g,
-            None => std::sync::Arc::new(crate::build_font_groups(settings)?),
+        let fonts = match reuse_fonts {
+            Some(f) => f,
+            None => FontSet::load(settings)?,
         };
         let t_atlas = std::time::Instant::now();
         let atlas = GlyphAtlas::new(
@@ -776,10 +746,11 @@ impl GpuRenderer {
         );
         let t_state = std::time::Instant::now();
         let me = Ok(Self {
+            baseline_cache: std::cell::Cell::new(None),
             gpu,
             pipelines,
             atlas,
-            groups,
+            fonts,
             font_size: settings.size,
             scale: 1.0,
             options,
@@ -797,7 +768,6 @@ impl GpuRenderer {
                 needs_configure: false,
             }),
             rgba: Vec::new(),
-            char_font: HashMap::new(),
             pixel: (width.max(1), height.max(1)),
         });
         eperf!(
@@ -1028,37 +998,14 @@ fn push_style_lines(
     h: u32,
     color: u32,
 ) {
+    // 与 CPU 共用同一份装饰线几何（`crate::style_line_rects`），保证两端逐像素一致。
     let c = unpack3(color);
-    let hline = |quads: &mut Vec<BgInstance>, y: i32, gap: u32| {
-        if y < 0 || y >= h as i32 {
-            return;
-        }
-        let mut i = 0u32;
-        while i < w {
-            quads.push(BgInstance {
-                rect: [(px0 + i) as f32, (py0 + y as u32) as f32, 1.0, 1.0],
-                color: c,
-                _pad: 0.0,
-            });
-            i += gap;
-        }
-    };
-    match cell.underline {
-        Underline::None => {}
-        Underline::Single => hline(quads, h as i32 - 2, 1),
-        Underline::Double => {
-            hline(quads, h as i32 - 2, 1);
-            hline(quads, h as i32 - 4, 1);
-        }
-        Underline::Dotted => hline(quads, h as i32 - 2, 2),
-        Underline::Dashed => hline(quads, h as i32 - 2, 4),
-        Underline::Curly => hline(quads, h as i32 - 2, 1),
-    }
-    if cell.strikethrough {
-        hline(quads, h as i32 / 2, 1);
-    }
-    if cell.overline {
-        hline(quads, 1, 1);
+    for (x, y, rw, rh) in crate::style_line_rects(cell, w, h) {
+        quads.push(BgInstance {
+            rect: [(px0 + x) as f32, (py0 + y) as f32, rw as f32, rh as f32],
+            color: c,
+            _pad: 0.0,
+        });
     }
 }
 

@@ -49,7 +49,12 @@ fn render_with(style: Underline) -> Option<Vec<u32>> {
             underline: style,
             ..Default::default()
         }]],
-        cursor: Cursor { x: 0, y: 0, visible: false, style: CursorStyle::Block },
+        cursor: Cursor {
+            x: 0,
+            y: 0,
+            visible: false,
+            style: CursorStyle::Block,
+        },
         scrollback_rows: 0,
         alternate_screen: false,
         wrapped: vec![false],
@@ -68,7 +73,9 @@ fn ink_per_row(fb: &[u32], w: u32, h: u32) -> Vec<usize> {
 
 #[test]
 fn styles_differ_from_each_other() {
-    let Some(single) = render_with(Underline::Single) else { return };
+    let Some(single) = render_with(Underline::Single) else {
+        return;
+    };
     let (w, h) = (40u32, 32u32);
     let rows_single = ink_per_row(&single, w, h);
     let single_rows: Vec<usize> = rows_single
@@ -100,7 +107,7 @@ fn styles_differ_from_each_other() {
                 assert_eq!(rows.len(), thick * 2, "双线应占 {} 行", thick * 2)
             }
             Underline::Curly => assert!(
-                rows.len() >= thick + 1,
+                rows.len() > thick,
                 "波浪线应至少跨 {} 行，实测 {rows:?}",
                 thick + 1
             ),

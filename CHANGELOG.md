@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.8
+
+### Changed
+- The font layer is now **crossfont**, the same library alacritty uses: FreeType + fontconfig on
+  Linux, **DirectWrite on Windows** (previously fontdue, which parses whole font files).
+  Opening a face is lazy/memory-mapped, so all fonts — including CJK fallbacks — are ready before
+  the first frame. The startup flash of "missing glyph" boxes is gone and the background font
+  thread (plus its merge/repaint machinery) has been removed.
+- Windows now gets colour emoji from DirectWrite instead of monochrome GDI masks.
+- Underline, strikethrough and overline geometry is generated once and shared by the CPU and GPU
+  renderers, so the two backends stay pixel-identical.
+
 ## 0.2.7
 
 ### Fixed

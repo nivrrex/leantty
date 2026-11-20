@@ -90,40 +90,6 @@ impl GlyphAtlas {
         }
     }
 
-    /// 清空图集（字形来源变化时调用：字体并入后旧槽位对应的是别的字体的 notdef，
-    /// 键里不含字体索引，必须整体失效）。
-    /// 清空图集但**保留同一张纹理**（字体并入后调用）。
-    ///
-    /// 不能用 `reset()`：它会新建 texture/view，而渲染管线/绑定组里缓存的是旧 view，
-    /// 结果所有字形都采样到空纹理（实测表现为全部变成方块）。这里只清映射与像素，
-    /// 再把整张纹理重新上传一次。
-    pub fn clear(&mut self, queue: &wgpu::Queue) {
-        self.map.clear();
-        self.pixels.fill(0);
-        self.shelf_x = 0;
-        self.shelf_y = 0;
-        self.row_h = 0;
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &self.pixels,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(self.size),
-                rows_per_image: Some(self.size),
-            },
-            wgpu::Extent3d {
-                width: self.size,
-                height: self.size,
-                depth_or_array_layers: 1,
-            },
-        );
-    }
-
     pub fn stats(&self) -> AtlasStats {
         AtlasStats {
             size: self.size,
