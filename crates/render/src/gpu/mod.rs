@@ -13,7 +13,7 @@
 
 use crate::eperf;
 
-use vt::{Cell, FrameSnapshot, Underline};
+use vt::{Cell, FrameSnapshot};
 
 use crate::{Error, FontSet, FontSettings, Palette, PreeditOverlay, RenderOptions, Renderer};
 
@@ -429,10 +429,7 @@ impl GpuRenderer {
                             .ok_or_else(|| Error::Backend("光标格字符为空".to_string()))?;
                         let group = group_for(cell);
                         let font_idx = self.font_index_for(group, ch);
-                        let (m, bitmap) = match self.rasterize(group, font_idx, ch, px) {
-                            Some(v) => v,
-                            None => (crate::GlyphMetrics::default(), Vec::new()),
-                        };
+                        let (m, bitmap) = self.rasterize(group, font_idx, ch, px).unwrap_or_default();
                         let gw = m.width as u32;
                         let gh = m.height as u32;
                         if gw > 0 && gh > 0 {
@@ -551,10 +548,7 @@ impl GpuRenderer {
                     // 字形：与终端宽字符相同的缩放规则。
                     let group = 0u8;
                     let font_idx = self.font_index_for(group, pc.ch);
-                    let (m, bitmap) = match self.rasterize(group, font_idx, pc.ch, px) {
-                        Some(v) => v,
-                        None => (crate::GlyphMetrics::default(), Vec::new()),
-                    };
+                    let (m, bitmap) = self.rasterize(group, font_idx, pc.ch, px).unwrap_or_default();
                     let bw = m.width.max(1) as f32;
                     let bh = m.height.max(1) as f32;
                     let sc = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -989,37 +983,14 @@ fn push_style_lines(
     h: u32,
     color: u32,
 ) {
+    // 与 CPU 共用同一份装饰线几何（`crate::style_line_rects`），保证两端逐像素一致。
     let c = unpack3(color);
-    let hline = |quads: &mut Vec<BgInstance>, y: i32, gap: u32| {
-        if y < 0 || y >= h as i32 {
-            return;
-        }
-        let mut i = 0u32;
-        while i < w {
-            quads.push(BgInstance {
-                rect: [(px0 + i) as f32, (py0 + y as u32) as f32, 1.0, 1.0],
-                color: c,
-                _pad: 0.0,
-            });
-            i += gap;
-        }
-    };
-    match cell.underline {
-        Underline::None => {}
-        Underline::Single => hline(quads, h as i32 - 2, 1),
-        Underline::Double => {
-            hline(quads, h as i32 - 2, 1);
-            hline(quads, h as i32 - 4, 1);
-        }
-        Underline::Dotted => hline(quads, h as i32 - 2, 2),
-        Underline::Dashed => hline(quads, h as i32 - 2, 4),
-        Underline::Curly => hline(quads, h as i32 - 2, 1),
-    }
-    if cell.strikethrough {
-        hline(quads, h as i32 / 2, 1);
-    }
-    if cell.overline {
-        hline(quads, 1, 1);
+    for (x, y, rw, rh) in crate::style_line_rects(cell, w, h) {
+        quads.push(BgInstance {
+            rect: [(px0 + x) as f32, (py0 + y) as f32, rw as f32, rh as f32],
+            color: c,
+            _pad: 0.0,
+        });
     }
 }
 

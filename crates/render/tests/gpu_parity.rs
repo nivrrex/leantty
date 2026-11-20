@@ -130,6 +130,9 @@ fn compare(cpu: &[u32], gpu_rgba: &[u8], w: u32, h: u32) -> Diff {
             .max((cg - gg).unsigned_abs())
             .max((cb - gb).unsigned_abs());
         d.all_max = d.all_max.max(maxd);
+        if maxd > 1 && std::env::var_os("PARITY_DEBUG").is_some() && d.glyph_diff < 8 {
+            eprintln!("  diff px=({},{}) cpu=({cr},{cg},{cb}) gpu=({gr},{gg},{gb}) d={maxd}", i as u32 % w, i as u32 / w);
+        }
         let is_bg = (c & 0x00FF_FFFF) == bg_u32;
         if is_bg {
             d.bg_total += 1;

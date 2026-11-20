@@ -1049,10 +1049,7 @@ impl CpuRenderer {
                     let ch = cell.chars.chars().next().expect("非空 chars");
                     let group = group_for(cell);
                     let font_idx = self.font_index_for(group, ch);
-                    let (m, bitmap) = match self.rasterize_glyph(group, font_idx, ch, px) {
-                        Some(v) => v,
-                        None => (GlyphMetrics::default(), Vec::new()),
-                    };
+                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px).unwrap_or_default();
                     blit(
                         &mut self.framebuffer,
                         width,
@@ -1186,10 +1183,7 @@ impl CpuRenderer {
             // 字形：宽字符按 2 格内缩放绘制（与终端宽字符规则一致）。
             let group = GROUP_NORMAL as u8;
             let font_idx = self.font_index_for(group, pc.ch);
-            let (m, bitmap) = match self.rasterize_glyph(group, font_idx, pc.ch, px) {
-                Some(v) => v,
-                None => (GlyphMetrics::default(), Vec::new()),
-            };
+            let (m, bitmap) = self.rasterize_glyph(group, font_idx, pc.ch, px).unwrap_or_default();
             let bw = m.width.max(1) as f32;
             let bh = m.height.max(1) as f32;
             let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -1251,6 +1245,77 @@ impl CpuRenderer {
     }
 }
 
+/// 装饰线矩形（格子局部坐标）：下划线（含双线/波浪/点/虚线）、删除线、上划线。
+///
+/// CPU 光栅与 GPU 四边形都从这里取几何，避免两端公式漂移（0.2.7 只改了 CPU 的
+/// 线宽/基线，GPU 仍是旧公式，`gpu_parity` 因此变红）。
+pub fn style_line_rects(cell: &Cell, w: u32, h: u32) -> Vec<(u32, u32, u32, u32)> {
+    let thick = (h / 16).max(1);
+    let base = h.saturating_sub(thick + (h / 12).max(1));
+    let mut out = Vec::new();
+    for (top, on, period) in underline_segments(cell.underline, base as i32, thick) {
+        push_line(&mut out, top, on, period, w, h, thick);
+    }
+    if cell.strikethrough {
+        push_line(&mut out, (h / 2) as i32, 0, 0, w, h, thick);
+    }
+    if cell.overline {
+        push_line(&mut out, 1, 0, 0, w, h, thick);
+    }
+    out
+}
+
+/// 下划线样式的（起始行, 亮段长, 周期）列表；周期 0 = 实线。
+fn underline_segments(u: Underline, base: i32, thick: u32) -> Vec<(i32, u32, u32)> {
+    match u {
+        Underline::None => Vec::new(),
+        Underline::Single => vec![(base, 0, 0)],
+        Underline::Double => vec![(base, 0, 0), (base - thick as i32 - 1, 0, 0)],
+        Underline::Dotted => vec![(base, 1, 2)],
+        Underline::Dashed => vec![(base, 2, 4)],
+        // 波浪：由 `push_line` 按"每 2 px 交替"处理（见下）。
+        Underline::Curly => vec![(base, u32::MAX, u32::MAX)],
+    }
+}
+
+fn push_line(
+    out: &mut Vec<(u32, u32, u32, u32)>,
+    top: i32,
+    on: u32,
+    period: u32,
+    w: u32,
+    h: u32,
+    thick: u32,
+) {
+    let curly = on == u32::MAX;
+    for t in 0..thick {
+        let y = top + t as i32;
+        if y < 0 || y as u32 >= h {
+            continue;
+        }
+        if curly {
+            for x in 0..w {
+                let dy = if (x / 2) % 2 == 0 { 0 } else { thick as i32 };
+                let yy = y - dy;
+                if yy >= 0 && (yy as u32) < h {
+                    out.push((x, yy as u32, 1, 1));
+                }
+            }
+            continue;
+        }
+        if period == 0 {
+            out.push((0, y as u32, w, 1));
+            continue;
+        }
+        let mut x = 0u32;
+        while x < w {
+            let run = on.min(w - x);
+            out.push((x, y as u32, run, 1));
+            x += period;
+        }
+    }
+}
+
 /// 样式线：下划线/删除线/上划线。
 fn draw_style_lines(
     fb: &mut [u32],
@@ -1260,77 +1325,12 @@ fn draw_style_lines(
     color: u32,
 ) {
     let (x0, y0, w, h) = rect;
-    // 装饰线几何与 alacritty / leantty-zig 同口径：线宽 max(h/16,1)，
-    // 基线 y = h - (线宽 + max(h/12,1))，使下划线不贴住格子底边。
-    let thick = (h as i32 / 16).max(1);
-    let base = h as i32 - (thick + (h as i32 / 12).max(1));
-    let hh = h as i32;
-    let ww = w as i32;
-    // 画一条厚度 thick 的线；`on/period` 控制打点（period<=0 为实线）。
-    // 用具名函数而不是闭包，避免与下面的逐列绘制争用 `fb` 的可变借用。
-    struct LineCtx {
-        x0: u32,
-        y0: u32,
-        ww: i32,
-        hh: i32,
-        thick: i32,
-        color: u32,
-    }
-    fn line(fb: &mut [u32], width: u32, c: &LineCtx, line_top: i32, on: i32, period: i32) {
-        let (x0, y0, ww, hh, thick, color) = (c.x0, c.y0, c.ww, c.hh, c.thick, c.color);
-        for t in 0..thick {
-            let row = line_top + t;
-            if row < 0 || row >= hh {
-                continue;
-            }
-            for i in 0..ww {
-                if period <= 0 || (i % period) < on {
-                    plot_fb(fb, width, x0 + i as u32, y0 + row as u32, color);
-                }
-            }
-        }
-    }
-    let lc = LineCtx { x0, y0, ww, hh, thick, color };
-    match cell.underline {
-        Underline::None => {}
-        Underline::Single => line(fb, width, &lc, base, 0, 0),
-        Underline::Double => {
-            line(fb, width, &lc, base, 0, 0);
-            line(fb, width, &lc, base - thick - 1, 0, 0);
-        }
-        // 点线 1 亮 1 灭；虚线 2 亮 2 灭（alacritty 口径）。
-        Underline::Dotted => line(fb, width, &lc, base, 1, 2),
-        Underline::Dashed => line(fb, width, &lc, base, 2, 4),
-        // 波浪线：每 2 px 在基线与基线-线宽之间交替（此前退化成直线）。
-        Underline::Curly => {
-            for i in 0..ww {
-                let dy = if (i / 2) % 2 == 0 { 0 } else { -thick };
-                for t in 0..thick {
-                    let row = base + dy + t;
-                    if row < 0 || row >= hh {
-                        continue;
-                    }
-                    plot_fb(fb, width, x0 + i as u32, y0 + row as u32, color);
-                }
-            }
-        }
-    }
-    if cell.strikethrough {
-        line(fb, width, &lc, hh / 2, 0, 0);
-    }
-    if cell.overline {
-        line(fb, width, &lc, 1, 0, 0);
+    // 与 GPU 共用同一份几何（`style_line_rects`），保证两端逐像素一致。
+    for (rx, ry, rw, rh) in style_line_rects(cell, w, h) {
+        fill_rect(fb, width, x0 + rx, y0 + ry, rw, rh, color);
     }
 }
 
-fn plot_fb(fb: &mut [u32], width: u32, x: u32, y: u32, color: u32) {
-    if x < width {
-        let idx = (y * width + x) as usize;
-        if idx < fb.len() {
-            fb[idx] = color;
-        }
-    }
-}
 
 fn rgb_to_u32(c: Rgb) -> u32 {
     0xFF00_0000 | (u32::from(c.r) << 16) | (u32::from(c.g) << 8) | u32::from(c.b)

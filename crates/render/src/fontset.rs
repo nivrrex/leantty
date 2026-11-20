@@ -193,13 +193,13 @@ impl FontSet {
         let mut bitmap = Vec::with_capacity(w * h);
         match &glyph.buffer {
             BitmapBuffer::Rgb(buf) => {
-                for px in buf.chunks_exact(3) {
+                for px in buf.as_chunks::<3>().0 {
                     bitmap.push(px[0]);
                 }
             }
             BitmapBuffer::Rgba(buf) => {
                 // 彩色字形暂按 alpha 通道画（单色近似；彩色渲染未实现）。
-                for px in buf.chunks_exact(4) {
+                for px in buf.as_chunks::<4>().0 {
                     bitmap.push(px[3]);
                 }
             }
