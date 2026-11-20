@@ -269,7 +269,7 @@ const GROUP_BOLD_ITALIC: usize = 3;
 
 pub struct CpuRenderer {
     /// 字体集合（crossfont 后端；CPU/GPU 渲染器共享同一份，见 `FontSet`）。
-    fonts: std::sync::Arc<std::sync::Mutex<FontSet>>,
+    fonts: std::rc::Rc<std::cell::RefCell<FontSet>>,
     font_size: f32,
     options: RenderOptions,
     palette: Palette,
@@ -387,9 +387,8 @@ impl CpuRenderer {
         }
         let v = self
             .fonts
-            .lock()
-            .map(|mut f| f.baseline(self.font_size, self.scale, cell_h))
-            .unwrap_or(0);
+            .borrow_mut()
+            .baseline(self.font_size, self.scale, cell_h);
         self.baseline_cache.set(Some((key, v)));
         v
     }
@@ -429,12 +428,7 @@ impl CpuRenderer {
             for cell in row {
                 let ch = cell.chars.chars().next().unwrap_or(' ');
                 let group = group_for(cell);
-                let idx = self
-                    .fonts
-                    .lock()
-                    .ok()
-                    .and_then(|mut f| f.index_for(group, ch))
-                    .unwrap_or(0);
+                let idx = self.fonts.borrow_mut().index_for(group, ch).unwrap_or(0);
                 line.push(idx);
             }
             out.push(line);
@@ -443,7 +437,7 @@ impl CpuRenderer {
     }
 
     /// 字体集合的共享句柄（GPU 渲染器复用它，避免重复加载字体）。
-    pub fn font_set(&self) -> std::sync::Arc<std::sync::Mutex<FontSet>> {
+    pub fn font_set(&self) -> std::rc::Rc<std::cell::RefCell<FontSet>> {
         self.fonts.clone()
     }
 
@@ -464,16 +458,13 @@ impl CpuRenderer {
 
     /// 当前字体在 scale 下的格子尺寸（物理像素）；字体未加载时回落阶段1 常量 8x16。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        self.fonts
-            .lock()
-            .map(|mut f| f.cell_metrics(self.font_size, scale))
-            .unwrap_or((8, 16))
+        { let mut f = self.fonts.borrow_mut(); f.cell_metrics(self.font_size, scale) }
     }
 
     /// 码点在组内回退链中的字体索引（主字体 → fallback → 系统 Monospace/Sans）；
     /// None=链中暂无字体含该码点（后台字体未到位或全链缺失）。
     fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
-        self.fonts.lock().ok().and_then(|mut f| f.index_for(group, ch))
+        self.fonts.borrow_mut().index_for(group, ch)
     }
 
     /// 按索引光栅；链中无字形时返回 None（调用方不画字形，也就没有占位方块）。
@@ -507,7 +498,7 @@ impl CpuRenderer {
         if let Some(c) = self.glyph_cache.get(&key) {
             return Some((c.metrics, c.bitmap.clone()));
         }
-        let (m, b) = self.fonts.lock().ok()?.rasterize(group, font_idx, ch, px)?;
+        let (m, b) = self.fonts.borrow_mut().rasterize(group, font_idx, ch, px)?;
         self.glyph_cache.insert(
             key,
             CachedGlyph {

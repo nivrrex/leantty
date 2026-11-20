@@ -44,7 +44,7 @@ fn fontset_cell_metrics_matches_chain() {
         fallback: Vec::new(),
     };
     let Ok(set) = render::FontSet::load(&settings) else { return };
-    let mut set = set.lock().unwrap();
+    let mut set = set.borrow_mut();
     for scale in [1.0f64, 1.5] {
         println!("FontSet scale={scale} cell={:?}", set.cell_metrics(16.0, scale));
     }

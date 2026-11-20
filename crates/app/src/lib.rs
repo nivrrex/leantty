@@ -916,7 +916,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_fonts: Option<std::sync::Arc<std::sync::Mutex<render::FontSet>>>,
+    existing_fonts: Option<std::rc::Rc<std::cell::RefCell<render::FontSet>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window

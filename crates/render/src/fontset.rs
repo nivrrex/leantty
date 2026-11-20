@@ -12,7 +12,8 @@
 //! - 字形位图：8 位覆盖率 + 与 fontdue `Metrics` 兼容的度量（xmin/ymin/width/height/advance）。
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crossfont::{BitmapBuffer, FontDesc, FontKey, GlyphKey, Rasterize, Rasterizer, Size, Style};
 
@@ -69,7 +70,7 @@ fn style_from_name(name: &str) -> Style {
 
 impl FontSet {
     /// 同步加载主字体与全部回退字体（crossfont 打开 face 是毫秒级，无需后台线程）。
-    pub fn load(settings: &FontSettings) -> Result<Arc<Mutex<FontSet>>, Error> {
+    pub fn load(settings: &FontSettings) -> Result<Rc<RefCell<FontSet>>, Error> {
         let t = std::time::Instant::now();
         let mut rasterizer = Rasterizer::new()
             .map_err(|e| Error::Font(format!("crossfont Rasterizer::new: {e}")))?;
@@ -127,7 +128,7 @@ impl FontSet {
             settings.fallback.len() + 4,
             set.groups.len()
         );
-        Ok(Arc::new(Mutex::new(set)))
+        Ok(Rc::new(RefCell::new(set)))
     }
 
     fn read_line_metrics(&self, key: FontKey, size: Size) -> LineMetrics {

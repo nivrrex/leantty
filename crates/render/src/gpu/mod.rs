@@ -70,7 +70,7 @@ pub struct GpuRenderer {
     pipelines: Pipelines,
     atlas: GlyphAtlas,
     /// 四组字体链（与 CPU 后端同源，`Arc` 共享以避免重复加载）。
-    fonts: std::sync::Arc<std::sync::Mutex<FontSet>>,
+    fonts: std::rc::Rc<std::cell::RefCell<FontSet>>,
     font_size: f32,
     scale: f64,
     options: RenderOptions,
@@ -195,10 +195,7 @@ impl GpuRenderer {
 
     /// 当前字体的格子尺寸（物理像素）。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        self.fonts
-            .lock()
-            .map(|mut f| f.cell_metrics(self.font_size, scale))
-            .unwrap_or((8, 16))
+        { let mut f = self.fonts.borrow_mut(); f.cell_metrics(self.font_size, scale) }
     }
 
     /// 更新缩放因子（字形缓存键含缩放，无需清空）。
@@ -250,16 +247,15 @@ impl GpuRenderer {
         }
         let v = self
             .fonts
-            .lock()
-            .map(|mut f| f.baseline(self.font_size, self.scale, cell_h))
-            .unwrap_or(0);
+            .borrow_mut()
+            .baseline(self.font_size, self.scale, cell_h);
         self.baseline_cache.set(Some((key, v)));
         v
     }
 
     /// 组内字体索引（第一个含该码点的字体；全无则 None → 用组首字体画 U+25A1）。
     fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
-        self.fonts.lock().ok().and_then(|mut f| f.index_for(group, ch))
+        self.fonts.borrow_mut().index_for(group, ch)
     }
 
     /// 光栅化（None → 组首字体画 U+25A1 占位方块，与 CPU 一致）。
@@ -271,7 +267,7 @@ impl GpuRenderer {
         px: f32,
     ) -> Option<(crate::GlyphMetrics, Vec<u8>)> {
         let i = idx?;
-        self.fonts.lock().ok()?.rasterize(group, i, ch, px)
+        self.fonts.borrow_mut().rasterize(group, i, ch, px)
     }
 
     /// 构建一帧的实例数据（调用方负责最终提交）。
@@ -658,7 +654,7 @@ impl GpuRenderer {
         settings: &FontSettings,
         options: RenderOptions,
         palette: Palette,
-        reuse_fonts: Option<std::sync::Arc<std::sync::Mutex<FontSet>>>,
+        reuse_fonts: Option<std::rc::Rc<std::cell::RefCell<FontSet>>>,
         surface: SurfaceInit,
         allow_software: bool,
     ) -> Result<Self, Error> {

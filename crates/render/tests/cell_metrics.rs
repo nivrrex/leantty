@@ -21,7 +21,7 @@ fn cell_metrics_scales_with_size_and_scale_factor() {
         eprintln!("SKIP: 系统无 DejaVu Sans Mono");
         return;
     };
-    let mut set = set.lock().unwrap();
+    let mut set = set.borrow_mut();
     let (w1, h1) = set.cell_metrics(13.0, 1.0);
     let (w2, h2) = set.cell_metrics(26.0, 1.0);
     assert!(w2 > w1, "字号翻倍宽应增大: {w1} -> {w2}");

@@ -176,7 +176,7 @@ fn manual_wide_cell_spans_two_cells() {
     // 阶段 0.2.8：回退字体在构造时已加载，直接问 FontSet 要 '回' 的位图作参照。
     let set = render::FontSet::load(&settings()).expect("fontset");
     let (m, bm) = {
-        let mut set = set.lock().unwrap();
+        let mut set = set.borrow_mut();
         let idx = set.index_for(0, '回').expect("回 应有回退字形");
         let (m, bm) = set.rasterize(0, idx, '回', 16.0).expect("rasterize");
         (m, bm)
