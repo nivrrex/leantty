@@ -129,3 +129,12 @@
   deb `leantty_0.2.4_amd64.deb` 3,519,172 B / `d78d5723…`；zip 5,800,176 B / `c60b00e9…`（10 条目）；
   release id `452247024`，tag `v0.2.4` = `47b46d0`。
 - 两个 release 的 3 个资产均回下载 `sha256sum -c` 通过；release 列表：v0.2.4 / v0.2.3 / v0.2.2 / v0.2.0 / v0.1.0，各 3 资产。
+
+## 0.2.4 重打包（9E-3：焦点补投 Tab 修复）
+
+- 取证：用户机器 `LEANTTY_KEY_TRACE` 记录显示 openbox 抓走 `Alt+Tab` 后，客户端只收到 `Tab Released`，
+  随后 `Focused(true)` 之后 **0–13 ms 内补投一次裸 `Tab Pressed`**（mods 全空）——残留 Tab 的真实来源。
+- 修复 `6ee542c`：`tab_is_focus_replay` 丢弃"焦点恢复后 ≤100 ms 的裸 Tab"（与 `tab_is_alt_tab_tail` 并用）。
+- 新资产：deb **3,523,868 B** / `cc5373b3…`；zip **5,803,695 B** / `9c32993f…`；release id `452326017`，
+  tag `v0.2.4` = `c85b67d`；回下载 `sha256sum -c` 通过。
+- 再次踩到同一个坑：删除/重指 tag 会连带删除该 tag 的 release（这次是 v0.2.4），需重建 release 并重传资产。
