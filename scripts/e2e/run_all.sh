@@ -1983,7 +1983,10 @@ for c43 in cpu gpu; do
         # 左右交替（+1 / -1）保持指针原地抖动：单向漂移会在窗口缩放后把指针带出
         # 窗口，随后没有 Motion 事件 → 事件循环空转，loop_gap 记录的是"没事件"
         # 而不是"被阻塞"（实测单向漂移时 CPU 侧有 242ms 假停顿）。
-        CHAIN="mousemove $CX $CY"
+        # 起点固定在窗口左上角内侧 20px：本用例随后会把窗口缩到 760x460，
+        # 若用"旧几何的中心"作为点击点，缩放后指针落到窗口外（root 窗口），
+        # 右键粘贴根本不会送达（实测：先点后缩 0 字节、先缩后点 397312 字节）。
+        CHAIN="mousemove $((GX + 20)) $((GY + 20))"
         n=0
         while [ $n -lt 55 ]; do
             if [ $((n % 2)) -eq 0 ]; then CHAIN="$CHAIN mousemove_relative 1 0"; else CHAIN="$CHAIN mousemove_relative -- -1 0"; fi
