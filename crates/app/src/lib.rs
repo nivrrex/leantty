@@ -551,6 +551,7 @@ impl App {
                     .open(p)
                     .ok()
             }),
+            focused_at: None,
             alt_released_at: None,
             focused: true,
             is_x11: false,
@@ -976,6 +977,10 @@ struct AppHandler {
     scale_factor: f64,
     /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
     key_trace: Option<std::fs::File>,
+    /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
+    /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
+    /// 那一击才是残留 Tab 的真正来源。
+    focused_at: Option<Instant>,
     /// 最近一次"Alt 被释放"的时刻。用于识别 WM 组合键尾巴：`Alt+Tab` 在某些 WM/时序下
     /// Tab 的 press 会晚于 Alt 的 release 到达，此时 mods 里已没有 ALT。
     alt_released_at: Option<Instant>,
@@ -1633,6 +1638,9 @@ impl ApplicationHandler for AppHandler {
             WindowEvent::Focused(focused) => {
                 self.trace_key(format!("focus {focused}"));
                 self.focused = focused;
+                if focused {
+                    self.focused_at = Some(Instant::now());
+                }
                 if !focused {
                     self.mods_state = ModifiersState::default();
                 }
@@ -1664,6 +1672,12 @@ impl ApplicationHandler for AppHandler {
                             mapped_key,
                             self.mods_state.alt_key(),
                             self.alt_released_at.map(|t| t.elapsed()),
+                        )
+                        || tab_is_focus_replay(
+                            mapped_key,
+                            self.mods_state.alt_key(),
+                            self.mods_state.control_key(),
+                            self.focused_at.map(|t| t.elapsed()),
                         )
                     {
                         return;
@@ -3556,6 +3570,23 @@ pub fn ime_cursor_cell(
 ///
 /// 只吞"Alt 刚松开 ≤200 ms 内的裸 Tab"，其余裸 Tab 照常转发——人不会松开 Alt 后
 /// 200 ms 内什么都不按直接敲 Tab，而 WM 切换窗口的按键尾巴正好落在这个窗口里。
+/// `Alt+Tab` 之后 WM 在拿到焦点时**补投的裸 Tab**（trace 实测：`focus true` 之后
+/// 0–13 ms 出现 `key Pressed Named(Tab)`，mods 全空，前面没有对应的 Tab press）。
+///
+/// 只认"裸 Tab、且距拿到焦点 ≤100 ms"：人手不可能在窗口刚获得焦点的 100 ms 内就敲 Tab，
+/// 而无修饰 Tab 本身仍照常转发（粘贴后按 Tab、切换窗口后从容按 Tab 都不受影响）。
+pub fn tab_is_focus_replay(
+    key: Option<vt::Key>,
+    alt_down: bool,
+    ctrl_down: bool,
+    since_focus: Option<std::time::Duration>,
+) -> bool {
+    if alt_down || ctrl_down || key != Some(vt::Key::Tab) {
+        return false;
+    }
+    since_focus.is_some_and(|d| d <= std::time::Duration::from_millis(100))
+}
+
 pub fn tab_is_alt_tab_tail(
     key: Option<vt::Key>,
     alt_currently_down: bool,
@@ -4304,6 +4335,72 @@ mod alt_tab_tail_tests {
             None,
             false,
             Some(Duration::from_millis(10))
+        ));
+    }
+}
+
+#[cfg(test)]
+mod focus_replay_tests {
+    use super::tab_is_focus_replay;
+    use std::time::Duration;
+    use vt::Key;
+
+    #[test]
+    fn bare_tab_right_after_focus_is_swallowed() {
+        // 实测三种间隔：+0 ms、+1 ms、+7 ms。
+        for ms in [0u64, 1, 7, 13, 100] {
+            assert!(
+                tab_is_focus_replay(
+                    Some(Key::Tab),
+                    false,
+                    false,
+                    Some(Duration::from_millis(ms))
+                ),
+                "焦点后 {ms} ms 的裸 Tab 应被拦"
+            );
+        }
+    }
+
+    #[test]
+    fn bare_tab_after_the_window_is_forwarded() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            false,
+            false,
+            Some(Duration::from_millis(150))
+        ));
+        assert!(!tab_is_focus_replay(Some(Key::Tab), false, false, None));
+    }
+
+    #[test]
+    fn modified_tab_is_not_affected() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            true,
+            false,
+            Some(Duration::from_millis(5))
+        ));
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            false,
+            true,
+            Some(Duration::from_millis(5))
+        ));
+    }
+
+    #[test]
+    fn other_keys_right_after_focus_are_forwarded() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::A),
+            false,
+            false,
+            Some(Duration::from_millis(5))
+        ));
+        assert!(!tab_is_focus_replay(
+            None,
+            false,
+            false,
+            Some(Duration::from_millis(5))
         ));
     }
 }

@@ -566,4 +566,6 @@
 - 阶段 9E（决策，否决 R4 事件循环重构）：winit 0.30 确实支持 `AsFd` + `pump_app_events` 自建 poll（把 winit 的 fd 注册进 calloop/mio），但收益仅为去掉 `Wake`/`ProxyWaker`/`EventLoopClosed` 三处特例与 <1% 的延迟（被 8 ms 帧节流吞掉）；代价是把 `ControlFlow::WaitUntil` 承载的存活唤醒、帧节流、debug 钩子定时改写成自己的 poll 超时——即 4S/4V 专门修稳的那套调度（case51/case52、空闲零 CPU），且 Windows 侧 PTY 是管道需另写等待机制，本机无法验证；不允许新增依赖，poll 只能手写。综合判定收益不成立，保持现状（R4 作为可选项留档）。
 - 阶段 9E-2（已验证事实，本地无窗口管理器场景）：`Alt+Tab` 到达客户端时 `mods.alt=true` → 被 `wm_reserved_key` 拦下（字节流只有 `61`，无 `1b 09`）；裸 Tab 仍正常转发 `09`；"先放 Alt 再按 Tab（间隔 68 ms）"也被 `tab_is_alt_tab_tail` 吞掉。说明两条规则在本机可复现的形态下有效。
 - 阶段 9E-2（未复现）：用户报告 0.2.4 仍残留 Tab。本机 openbox 无论是否配置 `A-Tab` 都会抓走该键（客户端收不到），所以无法复现其环境的事件序列；已加 `LEANTTY_KEY_TRACE=<path>` 诊断输出（记录 focus / mods / 每个按键的 state+key+mods+text，行内带毫秒），待用户提供一次复现记录后再定位，避免继续猜测式改代码。
+- 阶段 9E-2（已验证事实，用户机器 `LEANTTY_KEY_TRACE` 实测序列）：`Alt+Tab` 被 openbox 抓走 → 客户端只收到 `Tab Released`（无 press）、随后 `Focused(false)`；焦点回来时 `Focused(true)` 之后 **0–13 ms 内补投一次裸 `Tab Pressed`（mods 全空、Ctrl 也空）**，那次补投才是残留 Tab 的来源（三例间隔分别 +7 ms / +0 ms / +1 ms / +5 ms）。
+- 阶段 9E-2（处置）：新增 `tab_is_focus_replay`——裸 Tab 且距 `Focused(true)` ≤100 ms 时丢弃；保留 `tab_is_alt_tab_tail`（Alt 释放后 ≤200 ms 的 Tab）。两条规则都把"无修饰 Tab"的其他情形（粘贴后 Tab、从容按 Tab）留给正常转发。
 

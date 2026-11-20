@@ -3,7 +3,11 @@
 ## 0.2.4
 
 ### Changed
-- No functional changes compared with the republished 0.2.3: this version exists so that the release
+- `Alt+Tab` no longer leaves a Tab. On X11 window managers that grab the chord, the Tab press is
+  taken by the WM while its *release* still reaches us, and the WM re-delivers a bare Tab press
+  within a few milliseconds after the window regains focus; that replay is now dropped (a bare Tab
+  within 100 ms of focus-in), and a Tab arriving just after an Alt release is dropped as well.
+- No other functional changes compared with the republished 0.2.3: this version exists so that the release
   tag, the source snapshot and the packages line up (the 0.2.3 tag pointed at the pre-repack source).
   Contents: the IME candidate-window fix and the window-manager shortcut fix described under 0.2.3.
 
