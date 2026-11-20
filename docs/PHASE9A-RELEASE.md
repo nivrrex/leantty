@@ -152,3 +152,15 @@
   （改前 leantty 1600×912）。
 - 资产：deb **3,519,740 B** / `411b7512…`；zip **5,804,355 B** / `5e2f2604…`；release id `452344379`、
   tag `v0.2.5` = `e2d37d4`；回下载 `sha256sum -c` 通过。0.2.4 的 release 说明已重写（不再是"与 0.2.3 功能相同"）。
+
+## v0.2.6（9H：桌面启动首行空行 + 格高对齐）
+
+- 通过 SSH 在用户 office 机（Devuan 5、`:0`、Xft.dpi=144）实机定位：
+  - **首行空行**：桌面会话无 `TERM` → 子进程被 bash 当 dumb 终端；窗口建成后的一次尺寸变化让它用空格重画提示符，
+    把第 0 行擦空、提示符落到第 1 行（`first_frame cursor=(18,1) row0=""`）。PTY 字节追踪显示首块是
+    `ESC[?2004h` + 提示符（无换行），随后两块是 `\r` + 大段空格 → 确认是 shell 的 dumb 重画，不是我们多写换行。
+    修复：`TERM` 缺失或 `dumb` 时给子进程兜底 `xterm-256color`（`crates/pty/src/unix.rs`）；修复后 `cursor=(18,0)`、`row0` 即提示符。
+  - **格高多 1 px**：`cell_metrics` 行高由 `ceil` 改 `round`（与 alacritty 同口径）。实机对照：0.2.5 窗口 1680×930（格 14×31），
+    alacritty 1680×900（格 14×30）；修复后 leantty 也是 1680×900。
+- 资产：deb **3,529,976 B** / `aba26e58…`；zip **5,811,470 B** / `1d3f8923…`；tag `v0.2.6` = `91f1aec`；
+  回下载 `sha256sum -c` 通过。远端临时诊断二进制与 `/tmp/off*` 已清理，用户机器上的 desktop 文件已改回 `Exec=leantty`。
