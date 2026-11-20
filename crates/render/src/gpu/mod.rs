@@ -321,7 +321,7 @@ impl GpuRenderer {
         let rows = u32::from(frame.rows).max(1);
         let cell_w = (pixel_w / cols).max(1);
         let cell_h = (pixel_h / rows).max(1);
-        let px = (self.font_size * self.scale as f32).max(0.1);
+        let px = crate::px_from_pt(self.font_size, self.scale).max(0.1);
         let bg_default = rgb_to_u32(self.palette.primary_bg);
         let fg_default = rgb_to_u32(self.palette.primary_fg);
         let baseline = self.baseline_px(px, cell_h);

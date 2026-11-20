@@ -1,15 +1,37 @@
 # leantty 0.2.4
 
-与重新发布的 0.2.3 **功能相同**。这个版本号的存在意义是让 tag、源码快照与安装包严格对应：
-0.2.3 的 tag 指向的是重打包前的源码提交，而资产是重打包后的构建。
+本版包含三项修复：输入法候选窗定位、窗口管理器快捷键不再写进程序、`Alt+Tab` 残留 Tab。
 
-## 内容
+## 修复
 
-- 输入法候选窗跟随光标：锚点改用物理像素、X11 下锚在光标格底边（下移一行）、区域宽两格。
-- 窗口管理器快捷键不再写进程序：`Alt+Tab` 与 `Super` 组合不转发；窗口失焦时清空修饰键，
-  无焦点时丢弃按键。X11 窗口管理器抓走 `Alt+Tab` 后，会在焦点恢复时补投一次裸 `Tab`，
-  该补投（焦点恢复后 100 ms 内的裸 Tab）现在被丢弃。X11 窗口管理器抓走 `Alt+Tab` 后会在焦点恢复时补投一次裸 `Tab`，
-  该补投（焦点恢复后 ≤100 ms 的裸 Tab）现在被丢弃。
+### 输入法候选窗（IME）
+
+候选窗锚点此前有三处与参照实现（alacritty）不一致，导致候选窗盖住正在输入的行、位置不跟随：
+
+- 传给窗口系统的是逻辑坐标，值却是已经乘过缩放因子的物理像素 → HiDPI 下被再乘一次，锚点整体偏移；
+- 锚点取光标格**顶边**。X11 的 XIM 只接受一个点、不接受矩形，候选窗正好压住当前行；
+- 区域只有一格宽，输入法面板在可用宽度过窄时会把候选窗甩到窗口右下角。
+
+现在：传物理像素；X11 上锚在光标格**底边**（下移一行）；区域宽**两格**；Wayland/Windows 保持
+"光标格本身"的矩形语义（其协议支持真实矩形）。是否为 X11 由窗口的 raw handle 判定。
+实测（X11 + ibus）：候选窗随光标移动、贴近底部时自动翻到上方，不再遮挡输入行。
+
+### 窗口管理器快捷键
+
+- `Alt+Tab`、`Super` 组合不再被编码后写进程序。此前 `Alt+Tab` 会变成 `ESC` + `Tab`，
+  `Super+Space` 因为修饰位被丢弃会退化成裸空格。
+- 窗口失焦时清空修饰键状态，无焦点时丢弃按键（切窗口过渡期的按键属于窗口管理器）。
+
+### `Alt+Tab` 残留 Tab
+
+X11 窗口管理器会抓走 `Alt+Tab`：客户端只收到 `Tab` 的 *release*，随后在窗口重新获得焦点后的
+**0–13 ms** 内收到一次补投的裸 `Tab`。那一次补投才是残留 Tab 的来源。现在：
+
+- 焦点恢复后 100 ms 内的裸 `Tab` 丢弃；
+- `Alt` 刚释放（≤200 ms）后到达的 `Tab` 丢弃。
+
+裸 `Tab`、`Ctrl+Tab` 不受影响。取证方式：`LEANTTY_KEY_TRACE=<path>` 会把 focus / mods / 每个按键
+（state、key、mods、text）带毫秒写进文件。
 
 ## 安装
 
@@ -21,9 +43,9 @@ Windows：解压 zip，运行 `leantty.exe` 或 `leantty-portable.cmd`（内含�
 
 ## 验证
 
-- 单元测试：`cargo test -p leantty-app --lib`（101 例，含 WM 组合键 4 例）、
-  `cargo test -p leantty-vt --test alt_tab_bytes`（2 例）。
-- `cargo build --release`、`cargo clippy -D warnings`：0 告警。
+- 单元测试：`cargo test -p leantty-app --lib`（109 例）、`cargo test -p leantty-vt --test alt_tab_bytes`（2 例）。
+- 逐键字节探针（Xvfb，`-e` 读字节）：`Alt+Tab` 无字节、裸 `Tab` 仍为 `09`、
+  "Alt 释放后 68 ms 的 Tab"被吞。
 - Windows 二进制为 Linux 上交叉编译（`x86_64-pc-windows-gnu` + `windres` 图标资源），
   只验证 PE 结构、`.rsrc` 段与版本串，**未在 Windows 实机运行**。
 

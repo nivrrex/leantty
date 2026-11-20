@@ -243,10 +243,21 @@ pub struct FontSettings {
 /// 由字体度量算格子尺寸（纯函数）：宽取 '0' 的 advance，高取
 /// ascent+descent+line_gap（fontdue LineMetrics::new_line_size = ascent - descent + line_gap），
 /// 均向上取整到整像素。scale 为 winit scale_factor（HiDPI 缩放）。
+/// 字号（点）→ 像素。
+///
+/// 配置里的 `font.size` 与 alacritty 一样按**点**（pt）解释：像素 = pt × scale × 96/72。
+/// 此前直接当像素用（px = pt × scale），所以同一个数字下 leantty 的字比 alacritty 小约 25%
+/// （用户实测「leantty 设 18 才和 alacritty 设 16 差不多」）。
+pub fn px_from_pt(size_pt: f32, scale: f64) -> f32 {
+    size_pt * scale as f32 * (96.0 / 72.0)
+}
+
 pub fn cell_metrics(font: &Font, size: f32, scale: f64) -> (u32, u32) {
-    let px = size * scale as f32;
+    let px = px_from_pt(size, scale);
+    // 格宽按**四舍五入**（alacritty 同口径）：此前用 ceil，同一字号下每格比 alacritty
+    // 宽 1 px（实测 80 列宽窗口 1600 vs 1520），逐列累积后肉眼可见列数偏移。
     let advance_w = font.metrics('0', px).advance_width;
-    let w = advance_w.ceil() as u32;
+    let w = advance_w.round() as u32;
     let h = match font.horizontal_line_metrics(px) {
         Some(lm) => lm.new_line_size.ceil() as u32,
         None => {
@@ -1260,7 +1271,7 @@ impl Renderer for CpuRenderer {
         pixel_width: u32,
         pixel_height: u32,
     ) -> Result<(), Error> {
-        let px = (self.font_size * self.scale as f32).max(0.1);
+        let px = px_from_pt(self.font_size, self.scale).max(0.1);
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
         let cell_h = (pixel_height / rows).max(1);
