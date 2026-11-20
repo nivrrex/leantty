@@ -574,4 +574,6 @@
   待其提供截图或复现命令。
 - 阶段 9G（已验证事实，`Xft.dpi=144` 即分数缩放）：leantty 窗口 2160×1140（每格 18×38）、
   alacritty 2040×1110（每格 17×37），每格差 1 px；未定位是 scale 取值还是取整口径导致，暂不改。
+- 阶段 9G（已验证事实，用户 office 机器截图实测）：同配置（120×30、13pt）下 alacritty 首行文字起于内容区 +5 px、leantty 起于 +31 px（正好一个格高）→ leantty 首行上方多一个空格行；两者**字宽几乎一致**（17 字符宽度 15.06 vs 15.24 px/字符），所以"leantty 看起来更大"主要是行高/格高差异（leantty 窗口 962 vs alacritty 930，每格高 1 px）而非字号。
+- 阶段 9G（处置）：新增 `LEANTTY_GEOM=1` 诊断（启动与每次 Resized 打印 window/scale/cell/cfg/vt/offset/pad 一行）；本机同类配置输出 `window=1680x930 scale=1.500 cell=14x31 cfg=120x30 vt=120x30 offset=0`，无首行空行 → 需用户机器上的同一行数据才能定位其 +1 格偏移。
 

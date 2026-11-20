@@ -2457,6 +2457,7 @@ impl ApplicationHandler for AppHandler {
                         }
                         if !self.first_frame_logged {
                             self.first_frame_logged = true;
+                            self.trace_geom("first_frame");
                             if let Some(t0) = crate::start_time() {
                                 eperf!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                             }
@@ -2853,6 +2854,29 @@ impl AppHandler {
             }
         }
         self.update_ime_cursor_area();
+    }
+
+    /// 几何诊断（`LEANTTY_GEOM=1`）：打印窗口像素、scale、格子尺寸、vt 行列与视口偏移。
+    /// 用于定位"首行空一行 / 同配置比 alacritty 大"这类只在特定机器上出现的差异。
+    fn trace_geom(&self, why: &str) {
+        if std::env::var_os("LEANTTY_GEOM").is_none() {
+            return;
+        }
+        let (vw, vh) = self.last_size.unwrap_or((0, 0));
+        let (vcols, vrows) = self.vt.as_ref().and_then(|v| v.snapshot().ok()).map(|s| (s.cols, s.rows)).unwrap_or((0, 0));
+        eprintln!(
+            "[geom] {why} window={vw}x{vh} scale={:.3} cell={}x{} cfg_cols={} cfg_rows={} vt={}x{} offset={} pad={}x{}",
+            self.scale_factor,
+            self.cell_w,
+            self.cell_h,
+            self.cols,
+            self.rows,
+            vcols,
+            vrows,
+            self.offset_from_top,
+            self.pad_x,
+            self.pad_y
+        );
     }
 
     /// 键盘诊断：`LEANTTY_KEY_TRACE` 设置时把事件追加到文件（每行立即 flush）。
