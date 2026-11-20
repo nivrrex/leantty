@@ -568,13 +568,11 @@ impl App {
                     .open(p)
                     .ok()
             }),
-            bg_first_merge_logged: false,
             focused_at: None,
             alt_released_at: None,
             focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
-            bg_rx: None,
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
@@ -708,25 +706,7 @@ impl RendererBackend {
         }
     }
 
-    /// 加载后台字体（CJK 回退）。
-    /// 阶段 9A：后台线程交出已共享的字形句柄，省掉 `Vec<Font>` 的那次深拷贝。
-    fn add_background_fonts_shared(&mut self, fonts: Vec<std::sync::Arc<render::Font>>) {
-        match self {
-            Self::Cpu(r) => r.add_background_fonts_shared(fonts),
-            Self::Gpu(r) => r.add_background_fonts_shared(fonts),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
-        match self {
-            Self::Cpu(r) => r.add_background_fonts(fonts),
-            #[cfg(any(target_os = "linux", target_os = "windows"))]
-            Self::Gpu(r) => r.add_background_fonts(fonts),
-        }
-    }
-
-    /// 选区块（内容绝对坐标，含端点）。
+    /// 选区高亮（网格坐标，含端点）。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         match self {
             Self::Cpu(r) => r.set_selection(region),
@@ -735,7 +715,7 @@ impl RendererBackend {
         }
     }
 
-    /// 滚动条拇指几何 (thumb_y, thumb_h)。
+    /// 滚动条拇指几何。
     pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
         match self {
             Self::Cpu(r) => r.set_scrollbar(geom),
@@ -753,7 +733,6 @@ impl RendererBackend {
         }
     }
 
-    /// 渲染一帧（CPU：写入内部帧缓冲，随后由 softbuffer 提交）。
     pub fn render(
         &mut self,
         frame: &vt::FrameSnapshot,
@@ -863,7 +842,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(false)); // auto 永远忽略软件开关
@@ -894,7 +873,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(true)); // 显式 gpu 才可能允许
@@ -936,7 +915,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>,
+    existing_fonts: Option<std::sync::Arc<std::sync::Mutex<render::FontSet>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
@@ -949,8 +928,8 @@ fn build_gpu(
         .as_raw();
     let size = window.inner_size();
     // 复用窗口前 CPU 渲染器已构建的字体链（stage 4E t3：省掉一次 fontdb + 字体解析）
-    let reuse = existing_cpu_groups;
-    let mut gpu = render::gpu::GpuRenderer::new_surface_with_groups(
+    let reuse = existing_fonts;
+    let mut gpu = render::gpu::GpuRenderer::new_surface_with_fonts(
         font_settings,
         options,
         palette,
@@ -996,7 +975,6 @@ struct AppHandler {
     /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
     key_trace: Option<std::fs::File>,
     /// 后台字体是否已记录过"首次并入"时刻（逐个并入后用）。
-    bg_first_merge_logged: bool,
     /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
     /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
     /// 那一击才是残留 Tab 的真正来源。
@@ -1067,7 +1045,6 @@ struct AppHandler {
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
-    bg_rx: Option<mpsc::Receiver<Vec<std::sync::Arc<render::Font>>>>,
     mods_state: ModifiersState,
     /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
     selection: Option<Selection>,
@@ -1146,34 +1123,6 @@ impl ApplicationHandler for AppHandler {
         let config = self.config.take().expect("resumed 只能调用一次");
         // 阶段 9A：回退字体在**建窗前**就开始加载，与渲染器初始化/建窗/建 surface
         // 完全重叠（此前在窗口建好后才起线程，白等约 0.3s）；首帧仍不等字体。
-        let (bg_tx, bg_rx) = mpsc::channel::<Vec<std::sync::Arc<render::Font>>>();
-        {
-            let bg_specs = config.font_settings.fallback.clone();
-            let bg_proxy = self.event_proxy.clone();
-            std::thread::spawn(move || {
-                let t_bg = std::time::Instant::now();
-                let mut count = 0usize;
-                // 阶段 9J：**逐个**送出，解析好一个就并入一个。此前整条链解析完才送，
-                // CJK+符号字体合计 0.8 s，方块要留到那一刻。
-                render::for_each_fallback_font(&bg_specs, &mut |font| {
-                    count += 1;
-                    if bg_tx.send(vec![font]).is_ok()
-                        && let Some(proxy) = bg_proxy.as_ref()
-                    {
-                        let _ = proxy.send_event(());
-                    }
-                });
-                eperf!(
-                    "[perf] bg_font_list_us={} count={}",
-                    t_bg.elapsed().as_micros(),
-                    count
-                );
-                if let Some(proxy) = bg_proxy {
-                    let _ = proxy.send_event(());
-                }
-            });
-        }
-        self.bg_rx = Some(bg_rx);
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
         // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
         // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
@@ -2071,51 +2020,6 @@ impl ApplicationHandler for AppHandler {
                 // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
                 // 同时置 urgent：排空期间内容在变，下一帧应尽快到来（4B-fix3）。
                 self.urgent_render = true;
-                w.request_redraw();
-            }
-        }
-        // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
-        // debug-only：人为延迟回退字体就绪，用于 e2e 复现"先画方块后恢复"（release 不含）。
-        #[cfg(debug_assertions)]
-        let bg_ready = {
-            static DELAY_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
-            let d = *DELAY_MS.get_or_init(|| {
-                std::env::var("LEANTTY_TEST_DELAY_BG_FONTS_MS")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(0)
-            });
-            d == 0
-                || crate::start_time()
-                    .map(|t| t.elapsed().as_millis() >= d as u128)
-                    .unwrap_or(true)
-        };
-        #[cfg(not(debug_assertions))]
-        let bg_ready = true;
-        let mut merged_any = false;
-        if bg_ready {
-            while let (Some(rx), Some(r)) = (self.bg_rx.as_ref(), self.renderer.as_mut())
-                && let Ok(fonts) = rx.try_recv()
-            {
-                r.add_background_fonts_shared(fonts);
-                merged_any = true;
-            }
-        }
-        if merged_any {
-            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）首次到位时刻，
-            // 与首帧耗时同口径（相对进程启动）。逐个并入后只关心第一份。
-            if !self.bg_first_merge_logged {
-                self.bg_first_merge_logged = true;
-                if let Some(t0) = crate::start_time() {
-                    eperf!("[perf] bg_fonts_ms={}", t0.elapsed().as_millis());
-                }
-            }
-            // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
-            // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
-            // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经
-            // 既有出口（request_redraw + finish_wake）请求重绘，不新增控制流出口。
-            self.urgent_render = true;
-            if let Some(w) = self.window.as_ref() {
                 w.request_redraw();
             }
         }
