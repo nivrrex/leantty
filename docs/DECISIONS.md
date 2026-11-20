@@ -562,4 +562,6 @@
 - 阶段 9E（已验证事实）：`vt_mods_from` 只映射 Shift/Ctrl/Alt，**丢弃 Super** → `Super+Space` 等桌面快捷键会退化成本身那一键写进 PTY（打出空格）。处置：`wm_reserved_key` 在绑定查表前挡掉 Super 组合与 `Alt(+Shift)+Tab`。
 - 阶段 9E（已验证事实）：`window_event` 原先不处理 `WindowEvent::Focused`，且 `ModifiersChanged` 只更新不移除——`Alt+Tab` 切走后 Alt 的 release 落在别的窗口，`mods_state` 卡在 ALT，之后每个字符都被编码成 `ESC` 前缀。处置：失焦清空修饰键状态 + 无焦点时丢弃按键。
 - 阶段 9E（未复现，工程判断）：本机 openbox（lxde-rc 有 `A-Tab` 绑定）会抢走 `Alt+Tab`，pre-fix 二进制在同一探针下也未见多余字节，故用户环境的具体触发路径（WM 未抓键 / 抓键前先投递 / 焦点切换次序）未能本地复现；上述三处修改按"任何路径下都不该把 WM 组合写成 PTY 字节"收敛。
+- 阶段 9E（已验证事实）：`yes | head -c 20 MB` 压测下 `chan_depth_max=1`、`feed_ms_max=2.9`、`loop_gap_max_ms=8`、`~47 fps`、`feed_bytes_per_s≈6.1–6.6 MB/s`——读线程→channel 从未积压，事件循环间隔等于帧节流下限 8 ms，说明"线程跳一次"的延迟不在关键路径上。
+- 阶段 9E（决策，否决 R4 事件循环重构）：winit 0.30 确实支持 `AsFd` + `pump_app_events` 自建 poll（把 winit 的 fd 注册进 calloop/mio），但收益仅为去掉 `Wake`/`ProxyWaker`/`EventLoopClosed` 三处特例与 <1% 的延迟（被 8 ms 帧节流吞掉）；代价是把 `ControlFlow::WaitUntil` 承载的存活唤醒、帧节流、debug 钩子定时改写成自己的 poll 超时——即 4S/4V 专门修稳的那套调度（case51/case52、空闲零 CPU），且 Windows 侧 PTY 是管道需另写等待机制，本机无法验证；不允许新增依赖，poll 只能手写。综合判定收益不成立，保持现状（R4 作为可选项留档）。
 
