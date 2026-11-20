@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4
+
+### Changed
+- No functional changes compared with the republished 0.2.3: this version exists so that the release
+  tag, the source snapshot and the packages line up (the 0.2.3 tag pointed at the pre-repack source).
+  Contents: the IME candidate-window fix and the window-manager shortcut fix described under 0.2.3.
+
 ## 0.2.3
 
 ### Fixed
