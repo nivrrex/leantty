@@ -1,11 +1,12 @@
-use crossfont::{FontDesc, Rasterize, Rasterizer, Size, Style, GlyphKey};
-
 //! 诊断：crossfont 的 "点 → 像素" 链条（Size=点、as_px=×96/72、metrics 需先 get_glyph）。
 //!
 //! 实测结论（本文件即是探针）：`Size::new(pt*scale)`、`Size::from_px(px)`、
 //! `Size::new(px*0.75)` 三种写法在 as_px 相同时结果完全一致；px=32 时
 //! advance=19、line_height=38、descent=-8。若应用侧量出别的格子尺寸，
 //! 问题在"传进来的 scale/字号"，不在这条换算链上。
+
+use crossfont::{FontDesc, Rasterize, Rasterizer, Size, Style, GlyphKey};
+
 
 #[test]
 fn probe_chain() {
@@ -28,5 +29,23 @@ fn probe_chain() {
                 m.as_ref().map(|m| m.line_height).ok(),
                 m.as_ref().map(|m| m.descent).ok());
         }
+    }
+}
+
+#[test]
+fn fontset_cell_metrics_matches_chain() {
+    let s = |f: &str| render::FontSpec { family: f.into(), style: "Regular".into() };
+    let settings = render::FontSettings {
+        size: 16.0,
+        normal: s("DejaVu Sans Mono"),
+        bold: s("DejaVu Sans Mono"),
+        italic: s("DejaVu Sans Mono"),
+        bold_italic: s("DejaVu Sans Mono"),
+        fallback: Vec::new(),
+    };
+    let Ok(set) = render::FontSet::load(&settings) else { return };
+    let mut set = set.lock().unwrap();
+    for scale in [1.0f64, 1.5] {
+        println!("FontSet scale={scale} cell={:?}", set.cell_metrics(16.0, scale));
     }
 }
