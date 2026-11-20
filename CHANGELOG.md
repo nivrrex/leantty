@@ -8,6 +8,11 @@
   (where the input method only accepts a single point instead of a rectangle) it is placed just
   below the cursor cell, with a two-cell-wide area so panels do not push the popup to the window
   corner.
+- `Alt+Tab` no longer leaves a Tab (or a shell completion) behind: window-manager shortcuts
+  (`Super` combinations and `Alt+Tab`) are no longer forwarded to the program.
+- Keys pressed while the window is not focused are ignored, and modifier state is reset when the
+  window loses focus, so switching windows while holding Alt no longer makes the next characters
+  arrive with an `ESC` prefix.
 
 ## 0.2.2
 
