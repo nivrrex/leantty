@@ -33,5 +33,5 @@
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.6_amd64.deb` | 见 SHA256SUMS | 见 SHA256SUMS |
-| `leantty-0.2.6-windows-x86_64.zip` | 见 SHA256SUMS | 见 SHA256SUMS |
+| `leantty_0.2.6_amd64.deb` | 3,529,976 B | `aba26e5866e901e8dd491c839b70d83ae95a11de7c031352283fb91294a08dcd` |
+| `leantty-0.2.6-windows-x86_64.zip` | 5,811,470 B | `1d3f8923f93899291efcacd28d0e2a910ac65ac0a2cd1402d46554afaa6e52b1` |
