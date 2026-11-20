@@ -29,5 +29,5 @@ Windows：解压 zip，运行 `leantty.exe` 或 `leantty-portable.cmd`（内含�
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.4_amd64.deb` | 见 SHA256SUMS | 见 SHA256SUMS |
-| `leantty-0.2.4-windows-x86_64.zip` | 见 SHA256SUMS | 见 SHA256SUMS |
+| `leantty_0.2.4_amd64.deb` | 3,519,172 B | `d78d5723d26cde4f9325e9222b1ce69e1fffc5e99781c1e5c6d2bcf2ea6ccd7a` |
+| `leantty-0.2.4-windows-x86_64.zip` | 5,800,176 B | `c60b00e9d09f36ad732ea7cddf03d9e7b5e01fe842ad4273bbc58f7e762a6425` |
