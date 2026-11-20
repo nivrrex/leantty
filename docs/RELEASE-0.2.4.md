@@ -7,7 +7,9 @@
 
 - 输入法候选窗跟随光标：锚点改用物理像素、X11 下锚在光标格底边（下移一行）、区域宽两格。
 - 窗口管理器快捷键不再写进程序：`Alt+Tab` 与 `Super` 组合不转发；窗口失焦时清空修饰键，
-  无焦点时丢弃按键。
+  无焦点时丢弃按键。X11 窗口管理器抓走 `Alt+Tab` 后，会在焦点恢复时补投一次裸 `Tab`，
+  该补投（焦点恢复后 100 ms 内的裸 Tab）现在被丢弃。X11 窗口管理器抓走 `Alt+Tab` 后会在焦点恢复时补投一次裸 `Tab`，
+  该补投（焦点恢复后 ≤100 ms 的裸 Tab）现在被丢弃。
 
 ## 安装
 
@@ -29,5 +31,5 @@ Windows：解压 zip，运行 `leantty.exe` 或 `leantty-portable.cmd`（内含�
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.4_amd64.deb` | 3,519,172 B | `d78d5723d26cde4f9325e9222b1ce69e1fffc5e99781c1e5c6d2bcf2ea6ccd7a` |
-| `leantty-0.2.4-windows-x86_64.zip` | 5,800,176 B | `c60b00e9d09f36ad732ea7cddf03d9e7b5e01fe842ad4273bbc58f7e762a6425` |
+| `leantty_0.2.4_amd64.deb` | 3,523,868 B | `cc5373b3ab4ae1b211e3267c4af6d07ac5d937df1f0f9be18bd3d7937e83223a` |
+| `leantty-0.2.4-windows-x86_64.zip` | 5,803,695 B | `9c32993f5e0307b706fffe81ff4717c2a8caccbe92e47d9a00b646ae99cc33ee` |
