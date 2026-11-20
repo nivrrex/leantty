@@ -558,4 +558,8 @@
 - 启动早期约 0.31 s 的缺字形方块**作为遗留问题保留**（已验证事实：首帧 230 ms、回退字体并入 545 ms、HYQiHei 单面解析 305 ms）；否决"首帧等字体"（窗口出现推迟 315 ms）与"共享主线程 Database"（后台线程本就并行扫描，净收益约 −17 ms，且需改 `CpuRenderer::new` 等 56 处调用点）。
 - 阶段 9D（已验证事实，依据 alacritty 源码 `alacritty/src/display/window.rs::update_ime_position`）：IME 锚点须用**物理像素**（传 `PhysicalPosition/PhysicalSize`，否则 winit 在 HiDPI 下再乘一次 scale）、X11 上 y 需**下移一行**（XIM 只收 spot 点、不收矩形，否则候选窗盖住当前行）、宽度取**两格**（面板在可用宽度过窄时会把候选窗甩到窗口右下角）。本仓库原实现三点均不符：`Advanced` 逻辑坐标 + 同行 y + 一格宽。
 - 阶段 9D（待验证假设）：上述三点修正后 ibus 候选窗在真实桌面上的跟随/上下翻转行为；本机 headless 环境里 ibus-rime 引擎启动正常但输入无回显（`XMODIFIERS=@im=ibus` 已设），无法本地复现，需用户在真实会话中确认。
+- 阶段 9E（已验证事实）：`Alt+Tab` 若到达客户端，`(Key::Tab, Mods::ALT)` 经上游编码器产出 `ESC` + `0x09`（`crates/vt/tests/alt_tab_bytes.rs` 锁定），shell/readline 会当作一次补全 → 表现为"遗留 Tab"；无修饰 Tab 仍是单字节 `0x09`。
+- 阶段 9E（已验证事实）：`vt_mods_from` 只映射 Shift/Ctrl/Alt，**丢弃 Super** → `Super+Space` 等桌面快捷键会退化成本身那一键写进 PTY（打出空格）。处置：`wm_reserved_key` 在绑定查表前挡掉 Super 组合与 `Alt(+Shift)+Tab`。
+- 阶段 9E（已验证事实）：`window_event` 原先不处理 `WindowEvent::Focused`，且 `ModifiersChanged` 只更新不移除——`Alt+Tab` 切走后 Alt 的 release 落在别的窗口，`mods_state` 卡在 ALT，之后每个字符都被编码成 `ESC` 前缀。处置：失焦清空修饰键状态 + 无焦点时丢弃按键。
+- 阶段 9E（未复现，工程判断）：本机 openbox（lxde-rc 有 `A-Tab` 绑定）会抢走 `Alt+Tab`，pre-fix 二进制在同一探针下也未见多余字节，故用户环境的具体触发路径（WM 未抓键 / 抓键前先投递 / 焦点切换次序）未能本地复现；上述三处修改按"任何路径下都不该把 WM 组合写成 PTY 字节"收敛。
 
