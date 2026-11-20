@@ -330,7 +330,7 @@ impl CpuRenderer {
             since_start_ms()
         );
         if options.hinting {
-            eprintln!("hinting: 当前光栅化后端忽略该选项（crossfont），已解析未生效");
+            eprintln!("hinting: 当前光栅化后端不支持 hinting，已解析未生效");
         }
         // 阶段 4E t2：字体加载完成 → 字形缓存/帧缓冲等结构就绪的打点
         eperf!(

@@ -3019,7 +3019,7 @@ else
         "$LEANTTY_REL" --config-file "$W75/$NAME.toml" >/dev/null 2>"$W75/$NAME.err" & P75=$!
         sleep 2.5
         kill -TERM "$P75" 2>/dev/null; wait "$P75" 2>/dev/null || true
-        N=$(grep -c "fontdue 不支持 hinting" "$W75/$NAME.err" || true)
+        N=$(grep -c "不支持 hinting" "$W75/$NAME.err" || true)
         echo "  [c75 $NAME] hinting 提示行数=$N（期望 $WANT）"
         [ "${N:-0}" -eq "$WANT" ] && OK75=$((OK75+1))
     done
@@ -3091,16 +3091,22 @@ else
         TOT81=$((TOT81+1))
         CFG81="$OUT/case81-$b81.toml"; L81="$OUT/case81-$b81.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "printf \x27中文目录 临时\\n\x27; sleep 30"]\n[font]\nfallback = [ { family = "Noto Sans CJK SC", style = "Regular" } ]\n' "$b81" > "$CFG81"
-        LEANTTY_TEST_DELAY_BG_FONTS_MS=2000 LEANTTY_CONFIG="$CFG81" "$LEANTTY_BIN" >/dev/null 2>"$L81" &
+        # 0.2.8 起字体在构造时同步加载（crossfont 惰性打开），不存在"先方块后补"的阶段：
+        # 断言窗口出现后**首张截图就已经是中文**，且 CPU/GPU 两侧一致。
+        LEANTTY_CONFIG="$CFG81" "$LEANTTY_BIN" >/dev/null 2>"$L81" &
         LEANTTY_PID=$!
         if ! wait_window; then
             echo "  [c81 $b81] 窗口未出现"; stop_app; continue
         fi
-        sleep 2; x11 import -window "$WID" "$OUT/case81-$b81-before.png" 2>/dev/null
-        sleep 6; x11 import -window "$WID" "$OUT/case81-$b81-after.png" 2>/dev/null
+        sleep 1; x11 import -window "$WID" "$OUT/case81-$b81-before.png" 2>/dev/null
+        sleep 2; x11 import -window "$WID" "$OUT/case81-$b81-after.png" 2>/dev/null
         D81=$(compare -metric AE "$OUT/case81-$b81-before.png" "$OUT/case81-$b81-after.png" null: 2>&1 | head -1 | tr -dc '0-9')
-        echo "  [c81 $b81] 就绪前后像素差=${D81:-NA}（应 >0）"
-        [ "${D81:-0}" -gt 0 ] && OK81=$((OK81+1))
+        echo "  [c81 $b81] 1s 与 3s 截图差=${D81:-NA}（应 0：字体早已就绪）"
+        [ "${D81:-1}" -eq 0 ] && OK81=$((OK81+1))
+        # 首帧必须已有真实字形：截图与"全背景"不同。
+        INK81=$(convert "$OUT/case81-$b81-before.png" -colorspace gray -negate -threshold 40% -format "%[fx:mean*w*h]" info: 2>/dev/null | cut -d. -f1)
+        echo "  [c81 $b81] 首帧墨迹像素=${INK81:-0}（应 >0）"
+        [ "${INK81:-0}" -gt 0 ] && OK81=$((OK81+1))
         stop_app
     done
     # CPU 与 GPU 在字体就绪后必须逐像素一致（证明 GPU 画的是真实字形而不是更大号的 notdef）
@@ -3109,10 +3115,10 @@ else
         echo "  [c81] CPU vs GPU 就绪后像素差=${DCPU:-NA}（应 0）"
         [ "${DCPU:-1}" -eq 0 ] && OK81=$((OK81+1))
     fi
-    if [ "$OK81" -eq 3 ]; then
-        echo "PASS case81-fallback-font-repaint (3/3)"; PASS=$((PASS+1))
+    if [ "$OK81" -eq 6 ]; then
+        echo "PASS case81-fallback-font-repaint (6/6)"; PASS=$((PASS+1))
     else
-        echo "FAIL case81-fallback-font-repaint ($OK81/3)"; FAIL=$((FAIL+1))
+        echo "FAIL case81-fallback-font-repaint ($OK81/6)"; FAIL=$((FAIL+1))
     fi
 fi
 

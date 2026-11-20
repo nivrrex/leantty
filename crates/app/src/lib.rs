@@ -1699,13 +1699,23 @@ impl ApplicationHandler for AppHandler {
                                             // `ctrlSeq`（unset_mods 不是 ctrl_only）→ 此前一个字节都不写
                                             // （实测 `Ctrl+Space`/`Ctrl+Shift+A`/`Ctrl+Shift+[` 全丢）。
                                             let text = event.text.as_deref();
-                                            match enc.encode_key_full(
+                                            // 先按"不带 utf8"编码：保持 modifyOtherKeys 等既有模式的行为
+                                            // （带 utf8 会让 mok2 从 `0x01` 变成 `ESC[27;5;97~`）。
+                                            // 只有当这种编码**一个字节都不产出**时，才带 utf8 重试，
+                                            // 用于修 `Ctrl+Shift+字母/符号`（上游只认 utf8 的那条路径）。
+                                            let mut enc_result = enc.encode_key_full(
                                                 key,
                                                 mods,
                                                 Action::Press,
                                                 unshifted,
-                                                text,
-                                            ) {
+                                                None,
+                                            );
+                                            if matches!(&enc_result, Ok(b) if b.is_empty()) {
+                                                enc_result = enc.encode_key_full(
+                                                    key, mods, Action::Press, unshifted, text,
+                                                );
+                                            }
+                                            match enc_result {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
                                                     // 写线程只能丢弃"已在队列里"的块（并补发括号
