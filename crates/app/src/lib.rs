@@ -4154,8 +4154,38 @@ fn render_font_settings(config: &config::Config) -> render::FontSettings {
         bold: spec(&config.font.bold),
         italic: spec(&config.font.italic),
         bold_italic: spec(&config.font.bold_italic),
-        fallback: config.font.fallback.iter().map(spec).collect(),
+        fallback: fallback_chain(config),
     }
+}
+
+/// 内置符号/emoji 兜底字体（阶段 9I）。
+///
+/// 用户配置的 `font.fallback` 之后依次尝试这些系统字体；不存在时由加载器跳过并打印一行提示。
+/// 动机（leantty-zig 的对照清单 T2）：emoji 与符号码点此前只能命中用户配置的回退链，
+/// 本机只配了 CJK 字体 → `😀 🚀 🦄` 全是豆腐块。alacritty 通过 fontconfig 自动找字，
+/// 这里用一份固定清单达到同样效果，避免每次缺字都去扫系统字体。
+const DEFAULT_SYMBOL_FALLBACKS: &[&str] = &["Symbola", "DejaVu Sans", "Noto Sans Symbols2"];
+
+fn fallback_chain(config: &config::Config) -> Vec<render::FontSpec> {
+    let mut chain: Vec<render::FontSpec> = config
+        .font
+        .fallback
+        .iter()
+        .map(|f| render::FontSpec {
+            family: f.family.clone(),
+            style: f.style.clone(),
+        })
+        .collect();
+    for family in DEFAULT_SYMBOL_FALLBACKS {
+        if chain.iter().any(|f| f.family.eq_ignore_ascii_case(family)) {
+            continue;
+        }
+        chain.push(render::FontSpec {
+            family: (*family).to_string(),
+            style: "Regular".to_string(),
+        });
+    }
+    chain
 }
 
 /// config font 渲染选项 → render::RenderOptions。

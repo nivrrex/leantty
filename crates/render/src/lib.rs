@@ -1532,33 +1532,68 @@ fn draw_style_lines(
     color: u32,
 ) {
     let (x0, y0, w, h) = rect;
-    let mut hline = |y: i32, gap: u32| {
-        if y < 0 || y >= h as i32 {
-            return;
-        }
-        for i in 0..w {
-            if i % gap == 0 {
-                plot_fb(fb, width, x0 + i, y0 + y as u32, color);
+    // 装饰线几何与 alacritty / leantty-zig 同口径：线宽 max(h/16,1)，
+    // 基线 y = h - (线宽 + max(h/12,1))，使下划线不贴住格子底边。
+    let thick = (h as i32 / 16).max(1);
+    let base = h as i32 - (thick + (h as i32 / 12).max(1));
+    let hh = h as i32;
+    let ww = w as i32;
+    // 画一条厚度 thick 的线；`on/period` 控制打点（period<=0 为实线）。
+    // 用具名函数而不是闭包，避免与下面的逐列绘制争用 `fb` 的可变借用。
+    fn line(
+        fb: &mut [u32],
+        width: u32,
+        origin: (u32, u32),
+        ww: i32,
+        hh: i32,
+        thick: i32,
+        line_top: i32,
+        on: i32,
+        period: i32,
+        color: u32,
+    ) {
+        let (x0, y0) = origin;
+        for t in 0..thick {
+            let row = line_top + t;
+            if row < 0 || row >= hh {
+                continue;
+            }
+            for i in 0..ww {
+                if period <= 0 || (i % period) < on {
+                    plot_fb(fb, width, x0 + i as u32, y0 + row as u32, color);
+                }
             }
         }
-    };
+    }
     match cell.underline {
         Underline::None => {}
-        Underline::Single => hline(h as i32 - 2, 1),
+        Underline::Single => line(fb, width, (x0, y0), ww, hh, thick, base, 0, 0, color),
         Underline::Double => {
-            hline(h as i32 - 2, 1);
-            hline(h as i32 - 4, 1);
+            line(fb, width, (x0, y0), ww, hh, thick, base, 0, 0, color);
+            line(fb, width, (x0, y0), ww, hh, thick, base - thick - 1, 0, 0, color);
         }
-        Underline::Dotted => hline(h as i32 - 2, 2),
-        Underline::Dashed => hline(h as i32 - 2, 4),
-        // Curly 无波状近似实现，按 Single 处理（DECISIONS 登记）。
-        Underline::Curly => hline(h as i32 - 2, 1),
+        // 点线 1 亮 1 灭；虚线 2 亮 2 灭（alacritty 口径）。
+        Underline::Dotted => line(fb, width, (x0, y0), ww, hh, thick, base, 1, 2, color),
+        Underline::Dashed => line(fb, width, (x0, y0), ww, hh, thick, base, 2, 4, color),
+        // 波浪线：每 2 px 在基线与基线-线宽之间交替（此前退化成直线）。
+        Underline::Curly => {
+            for i in 0..ww {
+                let dy = if (i / 2) % 2 == 0 { 0 } else { -thick };
+                for t in 0..thick {
+                    let row = base + dy + t;
+                    if row < 0 || row >= hh {
+                        continue;
+                    }
+                    plot_fb(fb, width, x0 + i as u32, y0 + row as u32, color);
+                }
+            }
+        }
     }
     if cell.strikethrough {
-        hline(h as i32 / 2, 1);
+        line(fb, width, (x0, y0), ww, hh, thick, hh / 2, 0, 0, color);
     }
     if cell.overline {
-        hline(1, 1);
+        line(fb, width, (x0, y0), ww, hh, thick, 1, 0, 0, color);
     }
 }
 

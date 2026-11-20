@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.7
+
+### Fixed
+- Underline styles are now distinct: `SGR 4:3` (curly) was drawn as a straight line, and dotted/dashed
+  used one-pixel spacing. Curly is a real wave, dotted is 1-on/1-off, dashed is 2-on/2-off, double uses
+  two separate lines; line thickness and position follow `max(cell_height/16, 1)` like alacritty.
+- Emoji and symbol codepoints no longer fall back to "tofu" boxes when the configured fallback chain
+  only contains CJK fonts: `Symbola`, `DejaVu Sans` and `Noto Sans Symbols2` are appended to the
+  fallback list (missing families are skipped with a notice). Colour emoji fonts are still not used.
+
 ## 0.2.6
 
 ### Fixed
