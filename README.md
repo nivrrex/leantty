@@ -8,6 +8,9 @@
 
 - 由 libghostty 提供正确的网格语义：宽字符、组合字符、重排、回滚、备用屏、OSC 0/2 标题、
   OSC 4/104 调色板、括号粘贴。
+- 字体用 [crossfont](https://github.com/alacritty/crossfont)（与 alacritty 同一个库）：
+  Linux 走 FreeType + fontconfig、Windows 走 DirectWrite。字体在窗口出现前就已加载完成，
+  启动时不会出现"字形还没到位、先画方块"的阶段。
 - 两套渲染后端输出一致：CPU（软件）与 GPU（wgpu），逐像素对拍差异在 1 LSB 内。
 - 选区与复制粘贴（X11 PRIMARY/CLIPBOARD、Windows 剪贴板）、滚轮回滚并显示滚动条、
   拖选到窗口边缘时持续自动滚动且不落后于输出。
@@ -111,7 +114,7 @@ leantty -e sh -c 'echo done'                     # 程序退出后窗口随之�
 - `leantty-portable.cmd` 会用同目录下的配置文件启动便携版。
 - 高 DPI 缩放、输入法与剪贴板的行为与 Linux 一致，但请留意下面的已知限制。
 
-- `font.hinting` 仅为兼容保留、当前不生效（光栅器未实现 hinting）；显式开启会在启动时打印一行提示。
+- `font.hinting` 仅为兼容保留、当前不生效（crossfont/FreeType 自己决定是否 hinting）；显式开启会在启动时打印一行提示。
 
 - 鼠标选区按流式（阅读顺序）取内容：跨行拖动会取中间整行；单击只清除选区、不留高亮。
   双击选词、三击选行。
@@ -126,17 +129,22 @@ leantty -e sh -c 'echo done'                     # 程序退出后窗口随之�
 - **超过 12 MiB 的粘贴会被整条拒绝**（一个字节都不写），以保证输入路径非阻塞。
 - **Windows 的 DX12** 已编译但只在 WARP 软件适配器上验证过。
 - Windows 上 CPU 与 GPU 的截图约 1% 像素不同，差异在字形光栅化而非布局；Linux 上未观察到。
-- **启动早期约 0.3 秒的"缺字形方块"（遗留问题）**：主字体同步加载、`font.fallback` 后台加载，
-  首帧（约 230 ms）会先画方块，回退字体约 545 ms 并入后才变成正确字形。
-  已把后台加载提前到建窗前并发起、并去掉一次 CJK 字体深拷贝（0.65 s → 0.31 s）；
-  剩余时间受单面 CJK 字体解析（实测 ~0.3 s）限制，无法在"首帧不等字体"的前提下继续压缩。
+- **通用族名的观感随系统变化**：`font.normal = "monospace"` 这类通用名由 fontconfig 解析，
+  不同机器可能匹配到完全不同的字体（例如本机匹配到 Noto Sans CJK Mono，行高约为字号的 1.8 倍）。
+  想要确定的观感，请写具体族名（`DejaVu Sans Mono`、`Consolas` 等）。
+- **Linux 侧不渲染彩色 emoji**：彩色字形（CBDT/COLR）当前只取 alpha 通道，按单色绘制；
+  Windows 侧由 DirectWrite 直接提供彩色 emoji。
+- 字形度量来自 FreeType/DirectWrite，与 0.2.7 及更早（fontdue）版本相比，同一个 `font.size`
+  下的格子高度可能略有不同（0.2.5 起 `font.size` 已按点解释，格高/格宽按四舍五入取值）。
 
 ## 故障排查
 
 1. **窗口全黑 / 不渲染**：试 `renderer.backend = "cpu"`；Linux 上确认 `DISPLAY` 或
    `WAYLAND_DISPLAY` 已设置。
-2. **中文显示成方块**：在 `font.fallback` 里加一个 CJK 字体（Linux 如 `Noto Sans CJK SC`，
-   Windows 如 `Microsoft YaHei`）。
+2. **中文显示成方块**：启动阶段方块已不存在（字体在首帧前加载完）；若仍看到方块，说明字体链里
+   没有任何一个字体含该字符。在 `font.fallback` 里加一个 CJK 字体（Linux 如 `Noto Sans CJK SC`，
+   Windows 如 `Microsoft YaHei`）。排查字体是否可用：Linux 用 `fc-list :lang=zh` 看已装的中文字体，
+   `fc-match "Noto Sans CJK SC"` 看实际匹配到哪个文件。
 3. **`--config-file` 以退出码 1 结束**：路径不存在或不可读，错误信息里带路径。
 4. **GPU 后端启动失败**（`backend = "gpu"` 非零退出）：没有可用的 Vulkan/DX12 适配器，
    改用 `"auto"` 或 `"cpu"`。
