@@ -177,3 +177,18 @@
     0.2.7 与 alacritty 窗口均为 **1680×900**，Zig 清单里的"小 20%"不再成立。
 - 交付：deb **3,525,412 B** / `cefe8e2c…`；zip **5,812,483 B** / `304855d0…`；tag `v0.2.7` = `dcccc14`；
   release id `452472552`；回下载 `sha256sum -c` 通过。
+
+## v0.2.9（9K：字形覆盖改真实 cmap）
+
+- 根因（已验证事实）：crossfont 的 `get_glyph` 在缺字时**不报错**，会通过 fontconfig 换 face 渲染并返回 Ok
+  （`crossfont/src/ft/mod.rs::face_for_glyph`）；因此 0.2.8 用 `is_ok()` 判"face 是否含该字"无效 →
+  `index_for` 恒为 0、配置的 `font.fallback` 被绕过、逐字符字形由 fontconfig 自选（字重/字号不一致，
+  即用户看到的"部分文字渲染问题"）。已用测试固化该事实（`font_metric_chain.rs`）。
+- 修复：`FontSet` 记录每字体的 family/style，覆盖率按 fontdb（家族→文件）+ ttf-parser（cmap）查询，
+  **懒加载**（仅主字体缺字时才扫系统字体，纯 ASCII 启动零开销）；家族名要求精确匹配，避免落到替代字体。
+- 验证：新增 `cjk_resolves_to_configured_fallback`（A→主字体、中→fallback、链外字符→None）；
+  `wide_glyph` 用例改为显式给出含汉字的回退链；gates 10 步全过、e2e 131/131、GPU 轮 10/10。
+- 交付：deb 3,519,892 B / `e09b3d0e…`；zip 5,757,716 B / `16a400f1…`；tag `v0.2.9` = `58ba899`；
+  release id `453826479`；回下载 `sha256sum -c` 通过；phase tag `phase9j-done` = `ee7c7dc`。
+- 未解决：Windows **最大化偶发崩溃**——代码审查未找到确定崩溃点（0 尺寸、NonZero、surface.resize 失败、
+  fill_rect 边界、atlas 上限均有处理），需用户提供崩溃时的 stderr（Rust panic 会打印）或 WER 记录。
