@@ -89,3 +89,39 @@ fn emoji_falls_back_to_symbol_font_immediately() {
         "emoji 应由兜底符号字体立即渲染，而不是留空或方块"
     );
 }
+
+/// 阶段 0.2.9 回归：CJK 必须落到**配置的 fallback**，ASCII 留在主字体。
+///
+/// 背景：crossfont 的 `get_glyph` 在缺字时会自动换 face，所以之前用"get_glyph 是否成功"
+/// 判断覆盖是无效的——`index_for` 永远返回 0，配置里的 fallback 被绕过。
+#[test]
+fn cjk_resolves_to_configured_fallback() {
+    let s = |f: &str| FontSpec {
+        family: f.to_string(),
+        style: "Regular".to_string(),
+    };
+    let settings = FontSettings {
+        size: 14.0,
+        normal: s("DejaVu Sans Mono"),
+        bold: s("DejaVu Sans Mono"),
+        italic: s("DejaVu Sans Mono"),
+        bold_italic: s("DejaVu Sans Mono"),
+        fallback: vec![s("Noto Sans CJK SC")],
+    };
+    let Ok(set) = render::FontSet::load(&settings) else {
+        eprintln!("SKIP: 缺少 DejaVu Sans Mono");
+        return;
+    };
+    let mut set = set.borrow_mut();
+    assert_eq!(set.index_for(0, 'A'), Some(0), "ASCII 应由主字体渲染");
+    assert_eq!(
+        set.index_for(0, '中'),
+        Some(1),
+        "汉字必须落到 fallback（此前恒为 Some(0)：crossfont 自动换 face 导致判定失效）"
+    );
+    assert_eq!(
+        set.index_for(0, '\u{1F984}'),
+        None,
+        "链上没有的字符不应被硬塞给主字体"
+    );
+}

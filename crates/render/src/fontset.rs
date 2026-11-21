@@ -53,6 +53,16 @@ pub struct FontSet {
     char_font: HashMap<(u8, char), Option<usize>>,
     /// face 度量缓存（与字号无关的只缓存一次；字号变换用 px 现算）。
     line_metrics: HashMap<FontKey, LineMetrics>,
+    /// 按加载顺序记录的字体规格：[normal, bold, italic, bold_italic, fallback...]。
+    specs: Vec<FontSpec>,
+    /// 组内索引 → `specs` 下标（组 0 是 [normal, fallback...]，组 1..3 是 [对应样式, fallback...]）。
+    spec_map: Vec<Vec<usize>>,
+    /// 覆盖判断用的 fontdb（懒加载：只有出现主字体缺字时才会扫系统字体）。
+    db: Option<fontdb::Database>,
+    /// 规格下标 → fontdb face id（懒加载，查不到为 None）。
+    face_ids: Vec<Option<fontdb::ID>>,
+    /// face_ids 是否已解析。
+    ids_ready: bool,
 }
 
 /// 组序号（与 FontSettings 字段顺序一致）。
@@ -114,11 +124,37 @@ impl FontSet {
             }
         }
 
+        let mut specs: Vec<FontSpec> = Vec::new();
+        for spec in [
+            &settings.normal,
+            &settings.bold,
+            &settings.italic,
+            &settings.bold_italic,
+        ] {
+            specs.push(spec.clone());
+        }
+        for spec in &settings.fallback {
+            specs.push(spec.clone());
+        }
+        // 组内索引 → specs 下标（groups 里每组都是 [该样式主字体, fallback...]）。
+        let fallback_spec_base = 4usize;
+        let spec_map: Vec<Vec<usize>> = (0..groups.len())
+            .map(|g| {
+                let mut m = vec![g];
+                m.extend((0..settings.fallback.len()).map(|i| fallback_spec_base + i));
+                m
+            })
+            .collect();
         let mut set = FontSet {
             rasterizer,
             groups,
+            spec_map,
             char_font: HashMap::new(),
             line_metrics: HashMap::new(),
+            specs,
+            db: None,
+            face_ids: Vec::new(),
+            ids_ready: false,
         };
         set.line_metrics.insert(
             set.groups[GROUP_NORMAL][0],
@@ -150,9 +186,9 @@ impl FontSet {
             return *v;
         }
         let mut found = None;
-        let keys = self.groups[group as usize].clone();
-        for (i, key) in keys.iter().enumerate() {
-            if self.face_has(*key, ch) {
+        let count = self.groups[group as usize].len();
+        for i in 0..count {
+            if self.face_has(group, i, ch) {
                 found = Some(i);
                 break;
             }
@@ -161,17 +197,63 @@ impl FontSet {
         found
     }
 
-    /// face 是否含该码点。crossfont 没有直接查询接口，用 `get_glyph` 试探并丢弃结果
-    /// （结果只用于判定，命中后紧接的 `rasterize` 会命中后端缓存）。
-    fn face_has(&mut self, key: FontKey, ch: char) -> bool {
-        let size = Self::size_for_px(16.0);
-        self.rasterizer
-            .get_glyph(GlyphKey {
-                font_key: key,
-                character: ch,
-                size,
+    /// face 是否真的含该码点（阶段 0.2.9）。
+    ///
+    /// **不能用 crossfont 的 `get_glyph` 判断**：它在字形缺失时会通过 fontconfig 换一个
+    /// 含该字的 face 渲染并返回 `Ok`（`crossfont/src/ft/mod.rs::face_for_glyph`），
+    /// 于是"第一个字体永远含所有字"，配置里的 `font.fallback` 会被完全绕过，
+    /// 逐字符字形改由 fontconfig 决定（不同字符来自不同字重/字号，表现为字形粗细不一）。
+    ///
+    /// 这里改为查 face 的真实 cmap：fontdb 负责"家族名 → 字体文件"，ttf-parser 负责
+    /// 解析 cmap 查 `glyph_index`。fontdb 扫描只在该函数首次真正需要时执行（懒加载）。
+    fn face_has(&mut self, group: u8, index: usize, ch: char) -> bool {
+        let Some(&spec_index) = self.spec_map.get(group as usize).and_then(|m| m.get(index)) else {
+            return false;
+        };
+        if !self.ids_ready {
+            let db = self.db.get_or_insert_with(|| {
+                let mut db = fontdb::Database::new();
+                db.load_system_fonts();
+                db
+            });
+            self.face_ids = self
+                .specs
+                .iter()
+                .map(|spec| resolve_face(db, spec))
+                .collect();
+            self.ids_ready = true;
+            if std::env::var_os("LEANTTY_FONT_COV_DEBUG").is_some() {
+                for (i, (spec, id)) in self.specs.iter().zip(self.face_ids.iter()).enumerate() {
+                    eprintln!(
+                        "[cov] {i} family={:?} style={:?} id={:?}",
+                        spec.family, spec.style, id
+                    );
+                }
+            }
+            crate::eperf!(
+                "[perf] font_coverage_db_ready faces={}",
+                self.face_ids.len()
+            );
+        }
+        let Some(id) = self.face_ids.get(spec_index).copied().flatten() else {
+            return false;
+        };
+        let db = self.db.as_ref().expect("db 已在上面初始化");
+        let has = db
+            .with_face_data(id, |data, face_index| {
+                ttf_parser::Face::parse(data, face_index)
+                    .ok()
+                    .is_some_and(|face| face.glyph_index(ch).is_some())
             })
-            .is_ok()
+            .unwrap_or(false);
+        if std::env::var_os("LEANTTY_FONT_COV_DEBUG").is_some() {
+            let spec = &self.specs[spec_index];
+            eprintln!(
+                "[cov] ch={ch:?} spec={} family={:?} has={has}",
+                spec_index, spec.family
+            );
+        }
+        has
     }
 
     /// 光栅化一个码点；链中无该字形时返回 `None`（由调用方决定画不画占位）。
@@ -273,4 +355,41 @@ impl FontSet {
 fn load_one(rasterizer: &mut Rasterizer, spec: &FontSpec, size: Size) -> Option<FontKey> {
     let desc = FontDesc::new(spec.family.as_str(), style_from_name(&spec.style));
     rasterizer.load_font(&desc, size).ok()
+}
+
+/// 家族名 + 样式名 → fontdb face id。
+///
+/// 只在**家族名精确匹配**时返回：fontdb 的 `query` 可能模糊匹配到别的家族
+/// （例如缺 `Consolas` 时给一个替代品），那样"覆盖判断"就会落到错误的字体上。
+fn resolve_face(db: &fontdb::Database, spec: &FontSpec) -> Option<fontdb::ID> {
+    let style = spec.style.to_ascii_lowercase();
+    let (weight, slant) = if style.contains("bold") {
+        (
+            fontdb::Weight::BOLD,
+            style.contains("italic") || style.contains("oblique"),
+        )
+    } else {
+        (
+            fontdb::Weight::NORMAL,
+            style.contains("italic") || style.contains("oblique"),
+        )
+    };
+    let query = fontdb::Query {
+        families: &[fontdb::Family::Name(spec.family.as_str())],
+        weight,
+        style: if slant {
+            fontdb::Style::Italic
+        } else {
+            fontdb::Style::Normal
+        },
+        ..Default::default()
+    };
+    let id = db.query(&query)?;
+    // 精确家族名校验：避免记录到 fontdb 的替代字体。
+    let face = db.face(id)?;
+    let exact = face
+        .families
+        .iter()
+        .any(|(name, _)| name.eq_ignore_ascii_case(&spec.family));
+    if exact { Some(id) } else { None }
 }
