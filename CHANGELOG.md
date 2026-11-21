@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.9
+
+### Fixed
+- Character fallback ignored `font.fallback`: the glyph-coverage check asked crossfont whether a face
+  could render a character, but crossfont silently substitutes another face for missing glyphs and
+  reports success. Every character therefore looked "available" in the primary font, the configured
+  fallback chain was never used, and the actual face was chosen by fontconfig per character — which is
+  why some runs mixed glyphs of different weight/size. Coverage is now queried from each face's real
+  cmap (fontdb + ttf-parser), lazily, so an ASCII-only startup pays nothing.
+
 ## 0.2.8
 
 ### Changed
