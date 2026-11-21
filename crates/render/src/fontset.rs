@@ -207,11 +207,7 @@ impl FontSet {
     /// 这里改为查 face 的真实 cmap：fontdb 负责"家族名 → 字体文件"，ttf-parser 负责
     /// 解析 cmap 查 `glyph_index`。fontdb 扫描只在该函数首次真正需要时执行（懒加载）。
     fn face_has(&mut self, group: u8, index: usize, ch: char) -> bool {
-        let Some(&spec_index) = self
-            .spec_map
-            .get(group as usize)
-            .and_then(|m| m.get(index))
-        else {
+        let Some(&spec_index) = self.spec_map.get(group as usize).and_then(|m| m.get(index)) else {
             return false;
         };
         if !self.ids_ready {
@@ -228,10 +224,16 @@ impl FontSet {
             self.ids_ready = true;
             if std::env::var_os("LEANTTY_FONT_COV_DEBUG").is_some() {
                 for (i, (spec, id)) in self.specs.iter().zip(self.face_ids.iter()).enumerate() {
-                    eprintln!("[cov] {i} family={:?} style={:?} id={:?}", spec.family, spec.style, id);
+                    eprintln!(
+                        "[cov] {i} family={:?} style={:?} id={:?}",
+                        spec.family, spec.style, id
+                    );
                 }
             }
-            crate::eperf!("[perf] font_coverage_db_ready faces={}", self.face_ids.len());
+            crate::eperf!(
+                "[perf] font_coverage_db_ready faces={}",
+                self.face_ids.len()
+            );
         }
         let Some(id) = self.face_ids.get(spec_index).copied().flatten() else {
             return false;
@@ -246,7 +248,10 @@ impl FontSet {
             .unwrap_or(false);
         if std::env::var_os("LEANTTY_FONT_COV_DEBUG").is_some() {
             let spec = &self.specs[spec_index];
-            eprintln!("[cov] ch={ch:?} spec={} family={:?} has={has}", spec_index, spec.family);
+            eprintln!(
+                "[cov] ch={ch:?} spec={} family={:?} has={has}",
+                spec_index, spec.family
+            );
         }
         has
     }
@@ -359,9 +364,15 @@ fn load_one(rasterizer: &mut Rasterizer, spec: &FontSpec, size: Size) -> Option<
 fn resolve_face(db: &fontdb::Database, spec: &FontSpec) -> Option<fontdb::ID> {
     let style = spec.style.to_ascii_lowercase();
     let (weight, slant) = if style.contains("bold") {
-        (fontdb::Weight::BOLD, style.contains("italic") || style.contains("oblique"))
+        (
+            fontdb::Weight::BOLD,
+            style.contains("italic") || style.contains("oblique"),
+        )
     } else {
-        (fontdb::Weight::NORMAL, style.contains("italic") || style.contains("oblique"))
+        (
+            fontdb::Weight::NORMAL,
+            style.contains("italic") || style.contains("oblique"),
+        )
     };
     let query = fontdb::Query {
         families: &[fontdb::Family::Name(spec.family.as_str())],

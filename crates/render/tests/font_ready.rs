@@ -119,5 +119,9 @@ fn cjk_resolves_to_configured_fallback() {
         Some(1),
         "汉字必须落到 fallback（此前恒为 Some(0)：crossfont 自动换 face 导致判定失效）"
     );
-    assert_eq!(set.index_for(0, '\u{1F984}'), None, "链上没有的字符不应被硬塞给主字体");
+    assert_eq!(
+        set.index_for(0, '\u{1F984}'),
+        None,
+        "链上没有的字符不应被硬塞给主字体"
+    );
 }
