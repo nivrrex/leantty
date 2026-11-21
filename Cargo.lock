@@ -959,6 +959,7 @@ dependencies = [
  "raw-window-handle",
  "softbuffer",
  "thiserror 2.0.21",
+ "ttf-parser 0.24.1",
  "wgpu",
 ]
 

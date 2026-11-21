@@ -122,7 +122,9 @@ fn manual_wide_cell_spans_two_cells() {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: Vec::new(),
+        // 0.2.9 起字形覆盖按真实 cmap 判断（不再借 fontconfig 自动替换），
+        // 所以这里必须显式给出含汉字的回退字体；本用例只验证"跨两格绘制"。
+        fallback: vec![spec("Noto Sans CJK SC", "Regular")],
     };
     let mut r = CpuRenderer::new(&st, RenderOptions::default(), Palette::default()).expect("new");
     let (cw, ch) = r.cell_metrics(1.0);
