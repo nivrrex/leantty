@@ -64,3 +64,22 @@ fn fontset_cell_metrics_matches_chain() {
         );
     }
 }
+
+/// 关键事实（0.2.8）：crossfont 的 `get_glyph` **不会因为字形缺失而报错**——它在内部
+/// 通过 fontconfig 换一个含该字的 face 来渲染（`ft/mod.rs::face_for_glyph`）。
+/// 因此 `FontSet::face_has()` 用 `get_glyph().is_ok()` 判定"该 face 是否含此字"是无效的，
+/// 配置里的 `font.fallback` 在 Linux 上实际不生效，逐字符字形改由 fontconfig 决定。
+#[test]
+fn crossfont_substitutes_missing_glyph_instead_of_erroring() {
+    use crossfont::{FontDesc, Rasterize, Rasterizer, Size, Style, GlyphKey};
+    let mut r = Rasterizer::new().unwrap();
+    let desc = FontDesc::new("DejaVu Sans Mono", Style::Specific("Regular".into()));
+    let size = Size::new(13.0);
+    let key = r.load_font(&desc, size).unwrap();
+    let cjk = r.get_glyph(GlyphKey { character: '中', font_key: key, size });
+    println!("DejaVu Sans Mono 取 '中' -> {:?}", cjk.as_ref().map(|g| (g.width, g.height)));
+    assert!(
+        cjk.is_ok(),
+        "若这里变成 Err，说明 crossfont 改了行为：face_has 的判定失效问题自动消失"
+    );
+}
