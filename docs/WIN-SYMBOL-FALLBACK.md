@@ -125,5 +125,6 @@
   - `f3d949c` fix(win): 播种 Windows 默认字体回退链（符号/CJK 不再空白）
   - `47ea9c1` verify(win): 符号回退链语料截图与 [cov] 前后证据
   - `aa7f3c7` chore(win): 移除探索期的临时文件
-- 推送：`git push cloud win` → `2c3ff22..aa7f3c7  win -> win`
-- `git ls-remote cloud refs/heads/win` = `aa7f3c724dd0fd51cb709129fa7d9c9a0609b973`（与本机 `git rev-parse win` 一致）
+- 推送：`git push cloud win`（`2c3ff22..` 非强制推送，只推 `win`）
+- 每次推送后 `git ls-remote cloud refs/heads/win` 与本机 `git rev-parse win` 逐字核对一致；
+  本文件所在的提交序列：`f3d949c` → `47ea9c1` → `aa7f3c7` → 本提交。
