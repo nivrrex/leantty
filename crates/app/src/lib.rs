@@ -367,6 +367,8 @@ struct PerfFrames {
     interval_ms: u64,
     /// 本统计窗口内喂入 vt 的字节数（阶段 4C t3）。
     feed_bytes: u128,
+    /// 单帧 acquire+present 的最大值（微秒）；GPU 路径用它暴露"present 阻塞"。
+    present_max_us: u64,
     /// 本窗口起点（用于算窗口时长 → feed 速率）。
     window_start: Option<std::time::Instant>,
     /// 本窗口内有界 channel 的积压峰值（阶段 4C t3）。
@@ -405,12 +407,13 @@ impl PerfFrames {
             .filter(|s| *s > 0.0);
         let feed_rate = elapsed_s.map(|s| self.feed_bytes as f64 / s).unwrap_or(0.0);
         eperf!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) present_ms_max={} coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
             Self::N,
             r_med,
             r_p95,
             p_med,
             p_p95,
+            self.present_max_us / 1000,
             self.coalesced,
             self.interval_ms,
             fps,
@@ -422,6 +425,7 @@ impl PerfFrames {
             self.writer_queued_max,
             mem
         );
+        self.present_max_us = 0;
         self.coalesced = 0;
         self.loop_gap_max_us = 0;
         self.feed_ms_max = 0.0;
@@ -577,6 +581,7 @@ impl App {
             }),
             focused_at: None,
             alt_released_at: None,
+            occluded: false,
             focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
@@ -710,6 +715,15 @@ impl RendererBackend {
             Self::Cpu(r) => r.set_scale_factor(scale),
             #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_scale_factor(scale),
+        }
+    }
+
+    /// 最近一帧 GPU 的 (acquire_us, present_us)；CPU 后端返回 (0,0)。
+    pub fn last_gpu_timings(&self) -> (u128, u128) {
+        match self {
+            Self::Cpu(_) => (0, 0),
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            Self::Gpu(r) => r.last_timings(),
         }
     }
 
@@ -991,6 +1005,11 @@ struct AppHandler {
     /// 最近一次"Alt 被释放"的时刻。用于识别 WM 组合键尾巴：`Alt+Tab` 在某些 WM/时序下
     /// Tab 的 press 会晚于 Alt 的 release 到达，此时 mods 里已没有 ALT。
     alt_released_at: Option<Instant>,
+    /// 窗口是否被完全遮挡（阶段 0.2.10）：遮挡期间不渲染、不 present。
+    ///
+    /// 动机：Fifo 交换链下 `get_current_texture` 可能在窗口被遮挡时长时间阻塞（合成器不再
+    /// 消费帧），表现为整段输出卡住十几秒。alacritty 同样在 `occluded` 时直接跳过 draw。
+    occluded: bool,
     /// 窗口当前是否持有焦点（阶段 9E）。`Alt+Tab` 切走的过程中会收到本窗口的
     /// `Focused(false)`，若随后仍把按键写进 PTY（切窗口时 Tab 的 release/press
     /// 次序在不同 WM 下不一致），终端里就会残留一个 Tab。
@@ -1622,6 +1641,16 @@ impl ApplicationHandler for AppHandler {
             // 阶段 9E：失焦时清空修饰键状态。`Alt+Tab` 切走后 Alt 的 release 事件会送到
             // 新获得焦点的窗口，我们这边永远收不到 → `mods_state` 卡在 ALT，之后每敲一个
             // 字符都会被编码成 `ESC` 前缀（表现为"切换回来打字出现怪字符"）。
+            WindowEvent::Occluded(occluded) => {
+                self.occluded = occluded;
+                if !occluded {
+                    // 重新可见：立刻补一帧（遮挡期间可能积压了大量输出）。
+                    self.urgent_render = true;
+                    if let Some(w) = self.window.as_ref() {
+                        w.request_redraw();
+                    }
+                }
+            }
             WindowEvent::Focused(focused) => {
                 self.trace_key(format!("focus {focused}"));
                 self.focused = focused;
@@ -2220,6 +2249,12 @@ impl ApplicationHandler for AppHandler {
         let mem = self.mem_summary();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
+        if self.occluded {
+            // 被遮挡：不渲染、不 present（避免交换链阻塞主线程）；PTY 已在上面喂完，
+            // 可见性恢复时由 `WindowEvent::Occluded(false)` 触发一次补帧。
+            self.finish_wake(event_loop, None);
+            return;
+        }
         if let (Some(vt), Some(renderer)) = (self.vt.as_ref(), self.renderer.as_mut()) {
             // GPU 后端直接渲染到窗口 surface（无 softbuffer），CPU 后端必须已有 surface。
             let is_gpu = renderer.is_gpu();
@@ -2365,9 +2400,12 @@ impl ApplicationHandler for AppHandler {
                     // GPU 后端：render() 已把这一帧直接 present 到窗口 surface，
                     // 没有脏区拷贝步骤（surface 纹理内容不保留，每帧整帧重绘）。
                     if is_gpu {
+                        let (acq_us, pres_us) = renderer.last_gpu_timings();
                         if let Some(pf) = self.perf_frames.as_mut() {
-                            // GPU present 已在 render_ms 内，这里只维护帧计数与间隔。
-                            pf.present_us.push(0);
+                            // GPU 的 acquire+present 单独计时（render_ms 里也包含它们），
+                            // 这样"窗口被遮挡导致 present 阻塞"能被 perf 行直接看到。
+                            pf.present_us.push(acq_us + pres_us);
+                            pf.present_max_us = pf.present_max_us.max((acq_us + pres_us) as u64);
                             pf.interval_ms = prev_render
                                 .map(|t| now.duration_since(t).as_millis() as u64)
                                 .unwrap_or(0);

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.10
+
+### Fixed
+- The GPU `present_ms`/`present_ms_max` counters were always zero: the GPU path pushed a constant 0
+  instead of measuring anything, so "present blocked for seconds" was invisible in the perf output
+  (it only showed up as a large `render_ms`). Acquiring the swapchain image and presenting are now
+  timed separately and reported.
+- The window kept rendering (and presenting) while it was occluded. Under a FIFO swapchain the
+  compositor stops consuming frames when a window is fully covered, so `get_current_texture` can block
+  for a long time and the whole session appears to stall. Occlusion is now tracked and rendering is
+  skipped while occluded, with a repaint requested as soon as the window becomes visible again
+  (same behaviour as alacritty).
+
 ## 0.2.9
 
 ### Fixed

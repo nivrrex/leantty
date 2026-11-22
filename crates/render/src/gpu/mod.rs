@@ -77,6 +77,9 @@ pub struct GpuRenderer {
     palette: Palette,
     selection: Option<(u16, u16, u16, u16)>,
     scrollbar: Option<(u32, u32)>,
+    /// 最近一帧的 acquire / present 耗时（微秒），供 app 的 perf 统计使用。
+    last_acquire_us: u128,
+    last_present_us: u128,
     preedit: Option<PreeditOverlay>,
     /// 渲染目标：离屏（对拍/测试）或窗口 surface（正式路径）。
     target: Target,
@@ -140,6 +143,14 @@ pub struct SurfaceInit {
 }
 
 impl GpuRenderer {
+    /// 最近一帧的 (acquire_us, present_us)：`get_current_texture` 与 `queue.present` 分别计时。
+    ///
+    /// 动机（0.2.10）：窗口被遮挡时 `get_current_texture` 可能长时间阻塞（等交换链归还图像），
+    /// 之前的 `present_ms` 在 GPU 路径上恒为 0（未采集），无法定位这类停顿。
+    pub fn last_timings(&self) -> (u128, u128) {
+        (self.last_acquire_us, self.last_present_us)
+    }
+
     /// 创建离屏 GPU 渲染器；无可用真实适配器时返回 `Error::Backend`（不 panic）。
     pub fn new_offscreen(
         settings: &FontSettings,
@@ -171,6 +182,8 @@ impl GpuRenderer {
             palette,
             selection: None,
             scrollbar: None,
+            last_acquire_us: 0,
+            last_present_us: 0,
             preedit: None,
             target,
             rgba: Vec::new(),
@@ -746,6 +759,8 @@ impl GpuRenderer {
         );
         let t_state = std::time::Instant::now();
         let me = Ok(Self {
+            last_acquire_us: 0,
+            last_present_us: 0,
             baseline_cache: std::cell::Cell::new(None),
             gpu,
             pipelines,
@@ -819,7 +834,9 @@ impl GpuRenderer {
             inst,
             clear,
         )?;
+        let t_present = std::time::Instant::now();
         self.gpu.queue.present(tex);
+        self.last_present_us = t_present.elapsed().as_micros();
         Ok(())
     }
 
@@ -850,7 +867,9 @@ impl GpuRenderer {
             t.needs_configure = false;
         }
         for attempt in 0..2u8 {
+            let t_acq = std::time::Instant::now();
             let acquired = t.surface.get_current_texture();
+            self.last_acquire_us = t_acq.elapsed().as_micros();
             match acquired {
                 // 阶段 4Q t3：Suboptimal 与 Success 走同一条渲染路径，但单独计数——
                 // 若空闲时 suboptimal 持续增长，说明交换链一直在"次优"状态被反复渲染。
