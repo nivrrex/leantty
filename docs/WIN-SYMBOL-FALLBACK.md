@@ -111,13 +111,17 @@
 
 ## 8. 未完成/限制（如实记录）
 
-- **Zig 终端对照截图未取得**：本机 `leantty-zig` 的 `-e` 在本轮重建后对 `cmd.exe /c <批处理>` 不生效
-  （批处理里的 marker 文件未生成、窗口显示的是默认 `cmd /K` 提示符；`-e ping` 正常），
-  `-e py.exe` 会直接崩溃。因此对照只做到"同语料的 Rust 修复前/后截图 + 两套链的覆盖集合实测"，
-  Zig 侧逐像素对照属**待验证**。Zig 链的覆盖集合已用同一份 fontdb/ttf-parser 探针实测：
-  Zig 链（可用 face = Consolas / Microsoft YaHei / SimSun / Noto Sans CJK SC / Segoe UI Emoji /
-  Segoe UI Symbol，`Noto Color Emoji` 与 `Symbola` 未安装）与本轮 Rust 新链**同为 1443/1693**，
-  缺失码位集合完全相同（PUA 248 + `U+2418C` + `U+2A6CA`）。
+**Zig 终端对照截图未取得**，三条路径都试过（均实测）：
+
+1. `-e 'cmd.exe' /c <批处理>`：批处理未执行（批处理里的 marker 文件未生成），窗口停在默认 `cmd /K` 提示符；
+2. `-e 'py.exe' …` 与 `-e 'powershell.exe' -File …`：进程直接 segmentation fault；
+3. 用 `PostMessage(WM_CHAR)` 注入（`vt-verify-win/glyph-run/post_zwm.py`）：命令能进入 cmd，
+   但执行 `type corpus.txt` 后 Zig 窗口/进程随即消失（3 次中 2 次），未能取得稳定截图。
+
+因此 Zig 侧逐像素对照属**待验证**。作为替代证据，用同一份 fontdb/ttf-parser 探针实测两套链的覆盖集合：
+Zig 链可用 face = Consolas / Microsoft YaHei / SimSun / Noto Sans CJK SC / Segoe UI Emoji / Segoe UI Symbol
+（`Noto Color Emoji`、`Symbola` 未安装），与本轮 Rust 新链**同为 1443/1693**，缺失码位集合完全相同
+（PUA 248 + `U+2418C` + `U+2A6CA`）。
 
 ## 9. 交付
 
