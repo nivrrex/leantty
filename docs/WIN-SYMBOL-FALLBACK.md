@@ -118,3 +118,12 @@
   Zig 链（可用 face = Consolas / Microsoft YaHei / SimSun / Noto Sans CJK SC / Segoe UI Emoji /
   Segoe UI Symbol，`Noto Color Emoji` 与 `Symbola` 未安装）与本轮 Rust 新链**同为 1443/1693**，
   缺失码位集合完全相同（PUA 248 + `U+2418C` + `U+2A6CA`）。
+
+## 9. 交付
+
+- 提交（分支 `win`，未动 `main`、未 force push）：
+  - `f3d949c` fix(win): 播种 Windows 默认字体回退链（符号/CJK 不再空白）
+  - `47ea9c1` verify(win): 符号回退链语料截图与 [cov] 前后证据
+  - `aa7f3c7` chore(win): 移除探索期的临时文件
+- 推送：`git push cloud win` → `2c3ff22..aa7f3c7  win -> win`
+- `git ls-remote cloud refs/heads/win` = `aa7f3c724dd0fd51cb709129fa7d9c9a0609b973`（与本机 `git rev-parse win` 一致）
