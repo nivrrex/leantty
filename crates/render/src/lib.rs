@@ -901,16 +901,82 @@ impl CpuRenderer {
             let ch = cell.chars.chars().next().expect("非空 chars");
             let group = group_for(cell);
             let font_idx = self.font_index_for(group, ch);
-
-            if span == 2 && sub == Subpixel::None {
-                // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
-                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
-                    continue;
-                };
-                let bw = m.width.max(1) as f32;
-                let bh = m.height.max(1) as f32;
-                let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
-                if (s - 1.0).abs() < f32::EPSILON {
+            // 字形光栅失败（例如空白字符在 DirectWrite 下取不到位图）时不能跳过着色：
+            // 下划线/删除线/上划线仍要画（Windows 上 ' ' + underline 曾整格无墨迹）。
+            'glyph: {
+                if span == 2 && sub == Subpixel::None {
+                    // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
+                    let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
+                        break 'glyph;
+                    };
+                    let bw = m.width.max(1) as f32;
+                    let bh = m.height.max(1) as f32;
+                    let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+                    if (s - 1.0).abs() < f32::EPSILON {
+                        blit(
+                            &mut self.framebuffer,
+                            pixel_width,
+                            (px0, py0, area_w, cell_h, baseline),
+                            &m,
+                            &bitmap,
+                            (fg, d.blend_bg),
+                            (self.options.antialiasing, gamma),
+                        );
+                    } else {
+                        let sw = (bw * s).ceil() as usize;
+                        let sh = (bh * s).ceil() as usize;
+                        let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
+                        let ox = (area_w as i32 - sw as i32) / 2;
+                        let sm = GlyphMetrics {
+                            xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
+                            ymin: (m.ymin as f32 * s).ceil() as i32,
+                            width: sw,
+                            height: sh,
+                            advance_width: m.advance_width * s,
+                        };
+                        blit(
+                            &mut self.framebuffer,
+                            pixel_width,
+                            (px0, py0, area_w, cell_h, baseline),
+                            &sm,
+                            &scaled,
+                            (fg, d.blend_bg),
+                            (self.options.antialiasing, gamma),
+                        );
+                    }
+                } else if span == 2 {
+                    // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
+                    let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px * 3.0)
+                    else {
+                        break 'glyph;
+                    };
+                    let bw = m.width.max(1) as f32 / 3.0;
+                    let bh = m.height.max(1) as f32 / 3.0;
+                    let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
+                    let sw = (bw * s).ceil() as usize;
+                    let sh = (bh * s).ceil() as usize;
+                    let scaled = scale_bitmap(&bitmap, m.width, m.height, sw * 3, sh * 3);
+                    let ox = (area_w as i32 - sw as i32) / 2;
+                    let sm = GlyphMetrics {
+                        xmin: (m.xmin as f32 / 3.0 * s).ceil() as i32 + ox * 3,
+                        ymin: (m.ymin as f32 / 3.0 * s).ceil() as i32 * 3,
+                        width: sw * 3,
+                        height: sh * 3,
+                        advance_width: m.advance_width * s,
+                    };
+                    blit_subpixel(
+                        &mut self.framebuffer,
+                        pixel_width,
+                        (px0, py0, area_w, cell_h, baseline),
+                        &sm,
+                        &scaled,
+                        fg,
+                        (sub, gamma),
+                    );
+                } else {
+                    let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
+                        break 'glyph;
+                    };
                     blit(
                         &mut self.framebuffer,
                         pixel_width,
@@ -920,69 +986,7 @@ impl CpuRenderer {
                         (fg, d.blend_bg),
                         (self.options.antialiasing, gamma),
                     );
-                } else {
-                    let sw = (bw * s).ceil() as usize;
-                    let sh = (bh * s).ceil() as usize;
-                    let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
-                    let ox = (area_w as i32 - sw as i32) / 2;
-                    let sm = GlyphMetrics {
-                        xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
-                        ymin: (m.ymin as f32 * s).ceil() as i32,
-                        width: sw,
-                        height: sh,
-                        advance_width: m.advance_width * s,
-                    };
-                    blit(
-                        &mut self.framebuffer,
-                        pixel_width,
-                        (px0, py0, area_w, cell_h, baseline),
-                        &sm,
-                        &scaled,
-                        (fg, d.blend_bg),
-                        (self.options.antialiasing, gamma),
-                    );
                 }
-            } else if span == 2 {
-                // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
-                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px * 3.0) else {
-                    continue;
-                };
-                let bw = m.width.max(1) as f32 / 3.0;
-                let bh = m.height.max(1) as f32 / 3.0;
-                let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
-                let sw = (bw * s).ceil() as usize;
-                let sh = (bh * s).ceil() as usize;
-                let scaled = scale_bitmap(&bitmap, m.width, m.height, sw * 3, sh * 3);
-                let ox = (area_w as i32 - sw as i32) / 2;
-                let sm = GlyphMetrics {
-                    xmin: (m.xmin as f32 / 3.0 * s).ceil() as i32 + ox * 3,
-                    ymin: (m.ymin as f32 / 3.0 * s).ceil() as i32 * 3,
-                    width: sw * 3,
-                    height: sh * 3,
-                    advance_width: m.advance_width * s,
-                };
-                blit_subpixel(
-                    &mut self.framebuffer,
-                    pixel_width,
-                    (px0, py0, area_w, cell_h, baseline),
-                    &sm,
-                    &scaled,
-                    fg,
-                    (sub, gamma),
-                );
-            } else {
-                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
-                    continue;
-                };
-                blit(
-                    &mut self.framebuffer,
-                    pixel_width,
-                    (px0, py0, area_w, cell_h, baseline),
-                    &m,
-                    &bitmap,
-                    (fg, d.blend_bg),
-                    (self.options.antialiasing, gamma),
-                );
             }
 
             // 样式线：下划线（Single/Double/Dotted/Dashed；Curly 近似 Single）、删除线、上划线。

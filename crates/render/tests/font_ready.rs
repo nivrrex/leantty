@@ -24,7 +24,14 @@ fn settings() -> FontSettings {
         bold: spec("DejaVu Sans Mono"),
         italic: spec("DejaVu Sans Mono"),
         bold_italic: spec("DejaVu Sans Mono"),
-        fallback: vec![spec("Symbola"), spec("DejaVu Sans")],
+        // 兜底字体按平台列：Symbola（Linux 常见）+ Windows 的 Segoe UI Symbol / Microsoft YaHei；
+        // 缺失的条目由 FontSet::load 跳过，因此两种平台都能命中各自可用的那一个。
+        fallback: vec![
+            spec("Symbola"),
+            spec("Segoe UI Symbol"),
+            spec("Microsoft YaHei"),
+            spec("DejaVu Sans"),
+        ],
     }
 }
 
