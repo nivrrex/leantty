@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.12
+
+### Fixed
+- Windows: a multi-line paste into an application that enabled bracketed paste (`?2004`) was
+  submitted line by line instead of arriving as one block. Inbox conhost's input parser drops
+  `ESC[200~`/`ESC[201~` and turns every CR into two, so each line looked like an extra Enter.
+  Windows now uses LF for the body of a bracketed paste (markers are still sent; when they do
+  arrive, LF is just a newline inside the paste), while non-bracketed pastes keep CR so `cmd` and
+  `powershell` still execute one line at a time. A lone CR is normalised too.
+- Pasted text could smuggle a fake `ESC[200~` into the stream: only the end marker was filtered.
+  Both markers are now stripped from the body.
+- Regression test for chunked pastes: a >64 KiB paste must still carry exactly one marker pair
+  (wrapping happens before chunking), previously only implied.
+
 ## 0.2.11
 
 ### Fixed

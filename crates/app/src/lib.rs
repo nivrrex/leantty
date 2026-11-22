@@ -3882,8 +3882,9 @@ fn default_key_bindings() -> Vec<config::Binding> {
 /// 写字节到 PTY：有写线程时入队（主线程不阻塞），否则同步写并 flush。
 ///
 /// 阶段 4H t3：前台程序不读 stdin 时同步写会阻塞主线程（实测 12.9s），
-/// 因此 Unix 上写端已交给 `writer::PtyWriter`；Windows（`take_writer` 默认
-/// 返回 None）保持原同步路径，行为不变。
+/// 因此两个平台的写端都交给 `writer::PtyWriter`（Unix 从 master 取出、
+/// Windows 从 ConPTY 输入管道取出，`take_writer` 两边都返回 Some）。
+/// 这里的同步分支只是兜底：写端不可得（如 spawn 失败后的残留状态）时才走。
 fn write_pty(pty: &mut NativePty, writer: Option<&writer::PtyWriter>, bytes: &[u8]) {
     if let Some(w) = writer {
         w.enqueue_typed(bytes);
