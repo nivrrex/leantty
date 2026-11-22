@@ -5,12 +5,20 @@
 //! advance=19、line_height=38、descent=-8。若应用侧量出别的格子尺寸，
 //! 问题在"传进来的 scale/字号"，不在这条换算链上。
 
-use crossfont::{FontDesc, GlyphKey, Rasterize, Rasterizer, Size, Style};
+use crossfont::{FontDesc, GlyphKey, Rasterize, Rasterizer, Size, Slant, Style, Weight};
 
 #[test]
 fn probe_chain() {
     let mut r = Rasterizer::new().unwrap();
-    let desc = FontDesc::new("DejaVu Sans Mono", Style::Specific("Regular".into()));
+    // 用描述式请求而不是 Specific("Regular")：DejaVu 系常规面的样式名是 "Book"，
+    // Windows/DirectWrite 按精确样式名匹配会 FontNotFound（本机实测），与点→像素链无关。
+    let desc = FontDesc::new(
+        "DejaVu Sans Mono",
+        Style::Description {
+            slant: Slant::Normal,
+            weight: Weight::Normal,
+        },
+    );
     for (pt, scale) in [(16.0f32, 1.0f32), (16.0, 1.5)] {
         // 目标像素 = pt*scale*96/72
         let px = pt * scale * 96.0 / 72.0;
@@ -71,9 +79,15 @@ fn fontset_cell_metrics_matches_chain() {
 /// 配置里的 `font.fallback` 在 Linux 上实际不生效，逐字符字形改由 fontconfig 决定。
 #[test]
 fn crossfont_substitutes_missing_glyph_instead_of_erroring() {
-    use crossfont::{FontDesc, GlyphKey, Rasterize, Rasterizer, Size, Style};
+    use crossfont::{FontDesc, GlyphKey, Rasterize, Rasterizer, Size, Slant, Style, Weight};
     let mut r = Rasterizer::new().unwrap();
-    let desc = FontDesc::new("DejaVu Sans Mono", Style::Specific("Regular".into()));
+    let desc = FontDesc::new(
+        "DejaVu Sans Mono",
+        Style::Description {
+            slant: Slant::Normal,
+            weight: Weight::Normal,
+        },
+    );
     let size = Size::new(13.0);
     let key = r.load_font(&desc, size).unwrap();
     let cjk = r.get_glyph(GlyphKey {

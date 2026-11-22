@@ -4162,10 +4162,9 @@ fn render_font_settings(config: &config::Config) -> render::FontSettings {
 /// 动机（leantty-zig 的对照清单 T2）：emoji 与符号码点此前只能命中用户配置的回退链，
 /// 本机只配了 CJK 字体 → `😀 🚀 🦄` 全是豆腐块。alacritty 通过 fontconfig 自动找字，
 /// 这里用一份固定清单达到同样效果，避免每次缺字都去扫系统字体。
-const DEFAULT_SYMBOL_FALLBACKS: &[&str] = &["Symbola", "DejaVu Sans", "Noto Sans Symbols2"];
-
+/// 回退链装配：Windows 播种内置链（用户配置即最终链），其他平台沿用"配置 + 内置符号兜底"。
 fn fallback_chain(config: &config::Config) -> Vec<render::FontSpec> {
-    let mut chain: Vec<render::FontSpec> = config
+    let configured: Vec<render::FontSpec> = config
         .font
         .fallback
         .iter()
@@ -4174,16 +4173,24 @@ fn fallback_chain(config: &config::Config) -> Vec<render::FontSpec> {
             style: f.style.clone(),
         })
         .collect();
-    for family in DEFAULT_SYMBOL_FALLBACKS {
-        if chain.iter().any(|f| f.family.eq_ignore_ascii_case(family)) {
-            continue;
-        }
-        chain.push(render::FontSpec {
-            family: (*family).to_string(),
-            style: "Regular".to_string(),
-        });
+    #[cfg(windows)]
+    {
+        render::fontset::effective_fallback(&configured)
     }
-    chain
+    #[cfg(not(windows))]
+    {
+        let mut chain = configured;
+        for family in render::fontset::default_fallback_families() {
+            if chain.iter().any(|f| f.family.eq_ignore_ascii_case(family)) {
+                continue;
+            }
+            chain.push(render::FontSpec {
+                family: (*family).to_string(),
+                style: "Regular".to_string(),
+            });
+        }
+        chain
+    }
 }
 
 /// config font 渲染选项 → render::RenderOptions。

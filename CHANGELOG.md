@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.11
+
+### Fixed
+- Windows: characters the primary font lacks (box drawing, arrows, geometric shapes, decorations,
+  braille, math operators, CJK) had no fallback at all — the built-in list was the Linux one
+  (`Symbola`, `DejaVu Sans`, `Noto Sans Symbols2`), and on Windows usually only the middle one is
+  installed. With no `font.fallback` configured the renderer now seeds a Windows chain —
+  `Segoe UI Symbol` → `Segoe UI Emoji` → `Microsoft YaHei` → `MS Gothic` — mirroring the chain the
+  Zig implementation has in `src/win32.c`. An explicit `font.fallback` is used verbatim (nothing is
+  appended to it).
+- A face whose regular style is not named "Regular" (for example DejaVu's "Book") failed to load on
+  Windows/DirectWrite; loading now retries with a style description and uses the family's default
+  face (the same thing alacritty does).
+- Underlines, strikethrough and overline were skipped on blank cells when the rasterizer returned no
+  bitmap for the character (DirectWrite returns none for a space), so underlined spaces drew nothing.
+- Packaged with the `win` branch merge on top of 0.2.10: the Windows fallback chain above is
+  Windows-only; Linux/macOS keep the previous list (`Symbola` → `DejaVu Sans` → `Noto Sans Symbols2`)
+  appended after the configured chain, so their behaviour is unchanged.
+
 ## 0.2.10
 
 ### Fixed
