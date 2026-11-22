@@ -15,7 +15,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crossfont::{BitmapBuffer, FontDesc, FontKey, GlyphKey, Rasterize, Rasterizer, Size, Style};
+use crossfont::{
+    BitmapBuffer, FontDesc, FontKey, GlyphKey, Rasterize, Rasterizer, Size, Slant, Style, Weight,
+};
 
 use crate::{Error, FontSettings, FontSpec, px_from_pt};
 
@@ -71,11 +73,74 @@ pub const GROUP_BOLD: usize = 1;
 pub const GROUP_ITALIC: usize = 2;
 pub const GROUP_BOLD_ITALIC: usize = 3;
 
+/// Windows 内置回退链（仅当配置未提供 `font.fallback` 时播种）。
+///
+/// 顺序依据（Windows 10 LTSC 实测各 face 的真实 cmap，覆盖 glyph-corpus 的 1693 码位）：
+/// - Segoe UI Symbol 覆盖制表/方块/箭头/几何/杂项/装饰/盲文/数学运算符/Powerline 全部码位，
+///   且为单色字形（终端观感与 alacritty 一致）；
+/// - Segoe UI Emoji 补彩色 emoji；放在符号字体之后，避免箭头/几何被彩色字形截走；
+/// - Microsoft YaHei 补全角与常用 CJK；
+/// - MS Gothic 补 YaHei 缺的箭头/数学符号与 CJK 扩展 B。
+///
+/// 与 Zig 版 `src/win32.c` 的内置链（YaHei → SimSun → Noto Sans CJK SC → Segoe UI Emoji
+/// → Noto Color Emoji → Segoe UI Symbol → Symbola）等价，只把符号字体前置以获得单色符号。
+#[cfg(windows)]
+pub const DEFAULT_FALLBACK_FAMILIES: &[&str] = &[
+    "Segoe UI Symbol",
+    "Segoe UI Emoji",
+    "Microsoft YaHei",
+    "MS Gothic",
+];
+
+/// Linux/macOS 的内置符号兜底（历史行为：配置的 fallback 之后追加这三项）。
+#[cfg(not(windows))]
+pub const DEFAULT_FALLBACK_FAMILIES: &[&str] = &["Symbola", "DejaVu Sans", "Noto Sans Symbols2"];
+
+/// 平台内置回退链（族名，顺序即回退顺序）。
+pub fn default_fallback_families() -> &'static [&'static str] {
+    DEFAULT_FALLBACK_FAMILIES
+}
+
+/// 配置里的 fallback → 实际生效链。
+///
+/// 用户显式配置时**完全以用户为准、不追加**默认项；配置为空时播种平台默认链
+/// （Windows：Segoe UI Symbol / Segoe UI Emoji / Microsoft YaHei / MS Gothic）。
+pub fn effective_fallback(configured: &[FontSpec]) -> Vec<FontSpec> {
+    if !configured.is_empty() {
+        return configured.to_vec();
+    }
+    default_fallback_families()
+        .iter()
+        .map(|family| FontSpec {
+            family: (*family).to_string(),
+            style: "Regular".to_string(),
+        })
+        .collect()
+}
+
 fn style_from_name(name: &str) -> Style {
     // crossfont 的 Style 只接受"具体样式名"或 slant/weight 描述；配置里的
     // "Regular"/"Bold"/"Italic"/"Bold Italic" 正好是族内常见样式名，直接透传即可
     // （fontconfig/DirectWrite 会按名字匹配）。
     Style::Specific(name.to_string())
+}
+
+/// 样式名 → 描述式请求（取家族默认面）。与 alacritty 一致：粗/斜各一档。
+fn style_description(name: &str) -> Style {
+    let lower = name.to_ascii_lowercase();
+    let weight = if lower.contains("bold") {
+        Weight::Bold
+    } else {
+        Weight::Normal
+    };
+    let slant = if lower.contains("italic") {
+        Slant::Italic
+    } else if lower.contains("oblique") {
+        Slant::Oblique
+    } else {
+        Slant::Normal
+    };
+    Style::Description { slant, weight }
 }
 
 impl FontSet {
@@ -108,8 +173,9 @@ impl FontSet {
             };
             groups.push(vec![key]);
         }
-        // 回退链：用户配置在前，内置符号兜底在后（去重；缺失的 face 跳过并记一行提示）。
-        for spec in &settings.fallback {
+        // 回退链：配置优先（配置为空时 Windows 播种内置链），缺失的 face 跳过并记一行提示。
+        let fallback = effective_fallback(&settings.fallback);
+        for spec in &fallback {
             let key = load_one(&mut rasterizer, spec, size);
             match key {
                 Some(k) => {
@@ -133,7 +199,7 @@ impl FontSet {
         ] {
             specs.push(spec.clone());
         }
-        for spec in &settings.fallback {
+        for spec in &fallback {
             specs.push(spec.clone());
         }
         // 组内索引 → specs 下标（groups 里每组都是 [该样式主字体, fallback...]）。
@@ -141,7 +207,7 @@ impl FontSet {
         let spec_map: Vec<Vec<usize>> = (0..groups.len())
             .map(|g| {
                 let mut m = vec![g];
-                m.extend((0..settings.fallback.len()).map(|i| fallback_spec_base + i));
+                m.extend((0..fallback.len()).map(|i| fallback_spec_base + i));
                 m
             })
             .collect();
@@ -163,7 +229,7 @@ impl FontSet {
         crate::eperf!(
             "[perf] fontset_load_ms={:.2} families={} groups={}",
             t.elapsed().as_secs_f64() * 1000.0,
-            settings.fallback.len() + 4,
+            fallback.len() + 4,
             set.groups.len()
         );
         Ok(Rc::new(RefCell::new(set)))
@@ -354,6 +420,13 @@ impl FontSet {
 
 fn load_one(rasterizer: &mut Rasterizer, spec: &FontSpec, size: Size) -> Option<FontKey> {
     let desc = FontDesc::new(spec.family.as_str(), style_from_name(&spec.style));
+    if let Ok(key) = rasterizer.load_font(&desc, size) {
+        return Some(key);
+    }
+    // 精确样式名失败时退化为描述式请求（取该家族默认面）：例如 DejaVu 系常规面的样式名
+    // 是 "Book"，DirectWrite 按 "Regular" 精确匹配会 FontNotFound（fontconfig 则模糊匹配）。
+    // 与 alacritty 用 `Style::Description` 的行为对齐。
+    let desc = FontDesc::new(spec.family.as_str(), style_description(&spec.style));
     rasterizer.load_font(&desc, size).ok()
 }
 

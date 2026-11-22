@@ -7,7 +7,17 @@
 use render::{CpuRenderer, FontSettings, FontSpec, Palette, RenderOptions, Renderer};
 use vt::{Cursor, CursorStyle, FrameSnapshot};
 
-/// 与 app 一致：主字体 monospace + 系统 CJK 兜底。
+/// 主字体：Linux 用 fontconfig 的通用族名 "monospace"；Windows 的 DirectWrite 不认这个别名
+/// （FontNotFound），退回系统等宽字体 Consolas。用例只验证跨两格绘制，与具体字形无关。
+fn main_family() -> &'static str {
+    if cfg!(windows) {
+        "Consolas"
+    } else {
+        "monospace"
+    }
+}
+
+/// 与 app 一致：主字体等宽族 + 系统 CJK 兜底。
 fn settings() -> FontSettings {
     let spec = |family: &str, style: &str| FontSpec {
         family: family.to_string(),
@@ -15,10 +25,10 @@ fn settings() -> FontSettings {
     };
     FontSettings {
         size: 16.0,
-        normal: spec("monospace", "Regular"),
-        bold: spec("monospace", "Bold"),
-        italic: spec("monospace", "Italic"),
-        bold_italic: spec("monospace", "Bold Italic"),
+        normal: spec(main_family(), "Regular"),
+        bold: spec(main_family(), "Bold"),
+        italic: spec(main_family(), "Italic"),
+        bold_italic: spec(main_family(), "Bold Italic"),
         fallback: vec![
             spec("Noto Sans CJK SC", "Regular"),
             spec("Noto Sans CJK JP", "Regular"),
@@ -118,10 +128,10 @@ fn manual_wide_cell_spans_two_cells() {
     };
     let st = FontSettings {
         size: 16.0,
-        normal: spec("monospace", "Regular"),
-        bold: spec("monospace", "Bold"),
-        italic: spec("monospace", "Italic"),
-        bold_italic: spec("monospace", "Bold Italic"),
+        normal: spec(main_family(), "Regular"),
+        bold: spec(main_family(), "Bold"),
+        italic: spec(main_family(), "Italic"),
+        bold_italic: spec(main_family(), "Bold Italic"),
         // 0.2.9 起字形覆盖按真实 cmap 判断（不再借 fontconfig 自动替换），
         // 所以这里必须显式给出含汉字的回退字体；本用例只验证"跨两格绘制"。
         fallback: vec![spec("Noto Sans CJK SC", "Regular")],
