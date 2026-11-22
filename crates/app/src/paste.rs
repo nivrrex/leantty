@@ -6,17 +6,73 @@
 /// 而回归确定，故回退。阻塞写问题另见 DECISIONS 的未解决项。
 pub const PASTE_CHUNK: usize = 64 * 1024;
 
-/// 换行规范化：\r\n 与 \n 统一为 \r（终端换行语义）。
-/// 括号粘贴模式（?2004）开启时包裹 ESC[200~ … ESC[201~，
-/// 并过滤内容中的 ESC[201~ 防注入。
-pub fn normalize_paste(text: &str, bracketed: bool) -> String {
-    let norm = text.replace("\r\n", "\r").replace('\n', "\r");
+/// 粘贴正文使用的换行字节。
+///
+/// - `Cr`（默认，Unix 与 Windows 的非括号粘贴）：终端换行语义，回车即提交；
+/// - `Lf`（Windows + 括号粘贴）：见 [`paste_newline`] 的理由。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasteNewline {
+    Cr,
+    Lf,
+}
+
+impl PasteNewline {
+    /// 该换行对应的字节序列。
+    pub fn as_str(self) -> &'static str {
+        match self {
+            PasteNewline::Cr => "\r",
+            PasteNewline::Lf => "\n",
+        }
+    }
+}
+
+/// 选择粘贴正文的换行字节（纯函数，Windows 行为由 `windows` 参数注入以便在 Linux 上测）。
+///
+/// Windows + 括号粘贴用 `Lf` 的原因（Windows 侧实测取证，见 docs/WIN-PASTE-BRACKETED.md）：
+/// 收件箱 conhost（如 10.0.19041）的**输入解析器不认** `ESC[200~`/`ESC[201~`，
+/// 两个标记被当散键丢弃；同时它把每个 CR 翻成两个 CR。于是多行粘贴里每个 `\r`
+/// 都会变成一次额外的回车 → 前端逐行提交（"只进第一行"）。改用 LF 时：
+/// 标记即便被丢弃，LF 也不会被 conhost 加倍，前端把整段当作文本插入而不是逐行提交。
+/// 对端若真收到了标记（随包 OpenConsole），LF 在括号粘贴内同样只是换行文本。
+///
+/// 非括号粘贴（`cmd`/`powershell` 等未开 ?2004 的前端）必须保持 `Cr`，
+/// 否则多行命令不再逐行执行。
+pub fn paste_newline(bracketed: bool, windows: bool) -> PasteNewline {
+    if bracketed && windows {
+        PasteNewline::Lf
+    } else {
+        PasteNewline::Cr
+    }
+}
+
+/// 换行规范化（平台无关实现，`windows` 用于测试注入）。
+///
+/// 步骤：`\r\n` 与 `\n` 统一 → 目标换行；括号粘贴时再包裹 `ESC[200~ … ESC[201~`
+/// 并过滤正文里**两个**标记（只滤结束标记的话，正文中伪造的起始标记会让前端
+/// 误判为嵌套粘贴开始）。
+pub fn normalize_paste_platform(text: &str, bracketed: bool, windows: bool) -> String {
+    let nl = paste_newline(bracketed, windows).as_str();
+    let mut norm = text.replace("\r\n", nl).replace('\n', nl);
+    if nl == "\n" {
+        // LF 模式下残留的孤立 CR（老文本/部分剪贴板源）也必须归一：conhost 会把每个
+        // CR 翻成两个，留下一个就是一次多余的回车。
+        norm = norm.replace('\r', "\n");
+    }
     if bracketed {
-        let filtered = norm.replace("\u{1b}[201~", "");
+        let filtered = norm
+            .replace("\u{1b}[200~", "")
+            .replace("\u{1b}[201~", "");
         format!("\u{1b}[200~{filtered}\u{1b}[201~")
     } else {
         norm
     }
+}
+
+/// 换行规范化：`\r\n` 与 `\n` 统一为 `\r`（Unix / 非括号粘贴语义）。
+/// 括号粘贴模式（?2004）开启时包裹 `ESC[200~ … ESC[201~`，并过滤正文中的两个标记防注入。
+/// Windows 见 [`normalize_paste_platform`]：括号粘贴时改用 `\n`。
+pub fn normalize_paste(text: &str, bracketed: bool) -> String {
+    normalize_paste_platform(text, bracketed, cfg!(windows))
 }
 
 /// 大段粘贴按 PASTE_CHUNK 字符分块（UTF-8 边界安全，字符级切分）。
@@ -56,6 +112,75 @@ mod tests {
             !injected[..injected.len() - 6].contains("\u{1b}[201~"),
             "内容内 ESC[201~ 应被过滤"
         );
+    }
+
+    #[test]
+    fn windows_bracketed_paste_uses_lf() {
+        // Windows + ?2004：LF（conhost 只加倍 CR，标记丢失时 LF 不会被当提交）
+        assert_eq!(
+            normalize_paste_platform("a\r\nb\nc", true, true),
+            "\u{1b}[200~a\nb\nc\u{1b}[201~"
+        );
+        assert_eq!(
+            paste_newline(true, true),
+            PasteNewline::Lf,
+            "Windows 括号粘贴必须用 LF"
+        );
+        // Windows 非括号粘贴（cmd/powershell 未开 ?2004）：仍用 CR，逐行执行
+        assert_eq!(
+            normalize_paste_platform("a\r\nb", false, true),
+            "a\rb",
+            "未开括号粘贴时必须保持 CR"
+        );
+        assert_eq!(paste_newline(false, true), PasteNewline::Cr);
+    }
+
+    #[test]
+    fn unix_bracketed_paste_keeps_cr() {
+        // Unix 上括号粘贴仍用 CR（readline 以 CR 作行分隔，LF 会被当字面换行）
+        assert_eq!(
+            normalize_paste_platform("a\r\nb\nc", true, false),
+            "\u{1b}[200~a\rb\rc\u{1b}[201~"
+        );
+        assert_eq!(paste_newline(true, false), PasteNewline::Cr);
+    }
+
+    #[test]
+    fn windows_bracketed_paste_normalizes_lone_cr() {
+        // 孤立的 CR（非 CRLF）在 LF 模式下同样要归一，否则 conhost 会把它翻成两个 CR
+        assert_eq!(
+            normalize_paste_platform("a\rb", true, true),
+            "\u{1b}[200~a\nb\u{1b}[201~"
+        );
+        // Unix 路径保持 CR：单测锁定"不要顺手把 Unix 也换成 LF"
+        assert_eq!(normalize_paste_platform("a\rb", true, false), "\u{1b}[200~a\rb\u{1b}[201~");
+    }
+
+    #[test]
+    fn pasted_markers_are_filtered_from_content() {
+        // 伪造的起始标记也会让前端误以为嵌套粘贴，两个标记都必须过滤
+        let out = normalize_paste_platform("a\u{1b}[200~b\u{1b}[201~c", true, false);
+        assert_eq!(out, "\u{1b}[200~abc\u{1b}[201~");
+    }
+
+    #[test]
+    fn chunked_bracketed_paste_has_exactly_one_marker_pair() {
+        // >1MB 粘贴走分块路径：分块发生在**包裹之后**，因此整段仍只有一对标记。
+        // 这是 Pi 侧"整块粘贴"的前提；一旦未来把包裹移进分块循环，此断言会变红。
+        let body: String = "x".repeat(2 * 1024 * 1024);
+        let norm = normalize_paste_platform(&body, true, true);
+        let chunks = paste_chunks(&norm);
+        assert!(chunks.len() > 1, "2MiB 应被分块");
+        let joined = chunks.concat();
+        assert_eq!(joined, norm, "分块拼接必须与原文逐字节一致");
+        assert_eq!(
+            joined.matches("\u{1b}[200~").count(),
+            1,
+            "整段只能有一个起始标记（否则前端会当多次粘贴并逐个提交）"
+        );
+        assert_eq!(joined.matches("\u{1b}[201~").count(), 1, "整段只能有一个结束标记");
+        assert!(chunks[0].starts_with("\u{1b}[200~"));
+        assert!(chunks[chunks.len() - 1].ends_with("\u{1b}[201~"));
     }
 
     #[test]
