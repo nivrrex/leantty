@@ -1,6 +1,6 @@
 # Changelog
 
-## 未发布
+## 0.2.11
 
 ### Fixed
 - Windows: characters the primary font lacks (box drawing, arrows, geometric shapes, decorations,
@@ -15,6 +15,9 @@
   face (the same thing alacritty does).
 - Underlines, strikethrough and overline were skipped on blank cells when the rasterizer returned no
   bitmap for the character (DirectWrite returns none for a space), so underlined spaces drew nothing.
+- Packaged with the `win` branch merge on top of 0.2.10: the Windows fallback chain above is
+  Windows-only; Linux/macOS keep the previous list (`Symbola` → `DejaVu Sans` → `Noto Sans Symbols2`)
+  appended after the configured chain, so their behaviour is unchanged.
 
 ## 0.2.10
 
