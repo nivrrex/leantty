@@ -192,3 +192,23 @@
   release id `453826479`；回下载 `sha256sum -c` 通过；phase tag `phase9j-done` = `ee7c7dc`。
 - 未解决：Windows **最大化偶发崩溃**——代码审查未找到确定崩溃点（0 尺寸、NonZero、surface.resize 失败、
   fill_rect 边界、atlas 上限均有处理），需用户提供崩溃时的 stderr（Rust panic 会打印）或 WER 记录。
+
+## v0.2.10（9L：GPU present 可观测性 + 遮挡跳过）
+
+- 核实 Zig 侧三条结论：
+  - **auto 过滤软适配器：成立（无需改）**。`Gpu::new` 跳过 `DeviceType::Cpu`（打印 `[perf] gpu_skip_software`），
+    且 `auto` 永远忽略 `LEANTTY_GPU_ALLOW_SOFTWARE`。Xvfb 上 `auto` 选到真实 `NVIDIA GeForce GT 710`——
+    Vulkan 在 Xvfb 下仍枚举真实设备，不是过滤失效。
+  - **GPU 的 `present_ms` 恒为 0：成立（已修）**。GPU 路径此前固定 `pf.present_us.push(0)`，perf 行看不到
+    present 阻塞，只会让 `render_ms` 变大。现在 `get_current_texture`（acquire）与 `queue.present` 分别计时，
+    perf 行新增 `present_ms_max`。实测：修复前 `present_ms(med=0 p95=0)`，修复后 `med=19 p95=21 present_ms_max=21`。
+  - **遮挡时仍在 present：成立（已修）**。此前完全没处理 `WindowEvent::Occluded`；FIFO 下窗口被完全遮挡时
+    合成器不消费帧，`get_current_texture` 可长时间阻塞。现在遮挡期间跳过渲染/present（PTY 照常喂入），
+    恢复可见时补一帧，与 alacritty `draw()` 的 `occluded` 早退一致。
+- 未改：present 模式仍为 `Fifo`（alacritty 默认），是否换 `AutoNoVsync` 需先拿真机 `present_ms_max` 数据。
+- 验证：`cargo test --workspace` 42 个测试二进制全绿、clippy（含 Windows 目标）0 告警、gates 10 步全过、
+  e2e 131/131、GPU 轮 10/10；Xvfb + 真机 GPU 上 30 MB 输出遮挡/非遮挡两组帧率与 coalesced 正常。
+- 交付：deb 3,520,224 B / `6d7908b8…`；zip 5,758,100 B / `b2c34713…`；tag `v0.2.10` = `0b2e2f3`；
+  release id `454092295`；phase tag `phase9k-done` = `d7bea3d`；回下载 `sha256sum -c` 通过。
+- 限制：X11 下 winit 不投递 `Occluded`（实测遮挡窗口后仍出帧），该修复主要面向 Windows/Wayland；
+  真实桌面 `:0` 与 Windows 实机均未验证。
