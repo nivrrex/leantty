@@ -59,9 +59,7 @@ pub fn normalize_paste_platform(text: &str, bracketed: bool, windows: bool) -> S
         norm = norm.replace('\r', "\n");
     }
     if bracketed {
-        let filtered = norm
-            .replace("\u{1b}[200~", "")
-            .replace("\u{1b}[201~", "");
+        let filtered = norm.replace("\u{1b}[200~", "").replace("\u{1b}[201~", "");
         format!("\u{1b}[200~{filtered}\u{1b}[201~")
     } else {
         norm
@@ -153,7 +151,10 @@ mod tests {
             "\u{1b}[200~a\nb\u{1b}[201~"
         );
         // Unix 路径保持 CR：单测锁定"不要顺手把 Unix 也换成 LF"
-        assert_eq!(normalize_paste_platform("a\rb", true, false), "\u{1b}[200~a\rb\u{1b}[201~");
+        assert_eq!(
+            normalize_paste_platform("a\rb", true, false),
+            "\u{1b}[200~a\rb\u{1b}[201~"
+        );
     }
 
     #[test]
@@ -178,7 +179,11 @@ mod tests {
             1,
             "整段只能有一个起始标记（否则前端会当多次粘贴并逐个提交）"
         );
-        assert_eq!(joined.matches("\u{1b}[201~").count(), 1, "整段只能有一个结束标记");
+        assert_eq!(
+            joined.matches("\u{1b}[201~").count(),
+            1,
+            "整段只能有一个结束标记"
+        );
         assert!(chunks[0].starts_with("\u{1b}[200~"));
         assert!(chunks[chunks.len() - 1].ends_with("\u{1b}[201~"));
     }
