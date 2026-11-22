@@ -33,4 +33,7 @@
 
 ## 资产
 
-见 `SHA256SUMS`。
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `leantty_0.2.11_amd64.deb` | 3,518,632 B | `e5a12be6f2ba31133278bc2e70bdf3535ad0ce68bd210df1fcf6a07dc19f84d0` |
+| `leantty-0.2.11-windows-x86_64.zip` | 5,540,424 B | `867addd1ee146127620ed1e8fd0a97e5ad5b9455f3ef1a3ade0d48323e02cdde` |
