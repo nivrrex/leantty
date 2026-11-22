@@ -212,3 +212,20 @@
   release id `454092295`；phase tag `phase9k-done` = `d7bea3d`；回下载 `sha256sum -c` 通过。
 - 限制：X11 下 winit 不投递 `Occluded`（实测遮挡窗口后仍出帧），该修复主要面向 Windows/Wayland；
   真实桌面 `:0` 与 Windows 实机均未验证。
+
+## v0.2.11（9L+：合并 Windows 字形回退链）
+
+- 合并 `win` 分支（`f3d949c` 起 6 个提交）：Windows 未配置 `font.fallback` 时播种
+  `Segoe UI Symbol → Segoe UI Emoji → Microsoft YaHei → MS Gothic`；风格名非 "Regular" 的 face
+  （如 DejaVu 的 `Book`）在 DirectWrite 下退化为按描述加载；空格等无位图字符仍画下划线/删除线。
+- Linux 侧行为不变（仍为配置链 + `Symbola`/`DejaVu Sans`/`Noto Sans Symbols2`），由
+  `crates/render/tests/font_fallback_default.rs` 的 5 项单测按平台断言。
+- 验证：Linux `cargo test --workspace` 43 个测试二进制全绿、clippy 0 告警、gates 10 步 PASS
+  （e2e 131/131、GPU 轮 10/10）；Windows 侧 `cargo test` 264 passed、`[cov]` 前后对比见
+  `docs/WIN-SYMBOL-FALLBACK.md`。
+- **门禁 flake 记录**：0.2.11 期间 e2e 三次跑出现两次零散 FAIL（`case26/27` 增量=全量像素差、
+  `case22` 的 `ctrl+d` 被当字面 `d` 输入导致 app 不退出），均为 Xvfb 下输入时序抖动（dump 里能看到
+  `dddd…` 被写进 shell），同一提交随后连跑 `run_all.sh` 两次 131/131、gates PASS。**不是代码回归**；
+  若再现，先看失败 dump 里是否有字面修饰键字符。
+- 交付：deb 3,518,632 B / `e5a12be6…`；zip 5,540,424 B / `867addd1…`；tag `v0.2.11` = `b06277b`
+  （release `454407478`）；`phase9l-done` = `c5feebb`（门禁 hash）；回下载 `sha256sum -c` 通过。
