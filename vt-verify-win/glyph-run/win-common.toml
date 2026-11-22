@@ -1,0 +1,10 @@
+[window]
+dimensions = { columns = 130, lines = 45 }
+dynamic_title = false
+
+[font]
+size = 13.0
+normal = { family = "Consolas", style = "Regular" }
+bold = { family = "Consolas", style = "Bold" }
+italic = { family = "Consolas", style = "Italic" }
+bold_italic = { family = "Consolas", style = "Bold Italic" }

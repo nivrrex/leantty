@@ -1,0 +1,11 @@
+=== new build Sun Nov 22 15:31:50     2026
+   Compiling leantty-render v0.2.10 (E:\dev\tty\crates\render)
+   Compiling leantty-app v0.2.10 (E:\dev\tty\crates\app)
+    Finished `release` profile [optimized] target(s) in 7m 29s
+new rc=0
+=== base build Sun Nov 22 15:39:21     2026
+   Compiling leantty-render v0.2.10 (C:\dev\tty-base\crates\render)
+   Compiling leantty-app v0.2.10 (C:\dev\tty-base\crates\app)
+    Finished `release` profile [optimized] target(s) in 7m 28s
+base rc=0
+=== done Sun Nov 22 15:46:50     2026
