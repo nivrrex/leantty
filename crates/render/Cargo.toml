@@ -28,3 +28,5 @@ softbuffer.workspace = true
 fontdb.workspace = true
 fontdue.workspace = true
 thiserror.workspace = true
+crossfont = "0.9.0"
+ttf-parser = "0.24"

@@ -264,6 +264,17 @@ impl VtTerminal {
     }
 
     /// 当前是否在备用屏（阶段 4K t1b：输入回底决策用，避免为一次按键构造整帧快照）。
+    /// 应用是否启用了 Kitty 键盘协议（阶段 9F）。
+    ///
+    /// 需要它来区分"应用期待 CSI u"与"传统应用只认控制字节"：上游编码器在
+    /// `Ctrl+Shift+<字母/符号>` 上一律产出 `CSI u`，传统应用会把那串字符当输入回显。
+    pub fn kitty_keyboard_enabled(&self) -> bool {
+        self.inner
+            .kitty_keyboard_flags()
+            .map(|f| !f.is_empty())
+            .unwrap_or(false)
+    }
+
     pub fn is_alternate_screen(&self) -> Result<bool, Error> {
         Ok(self.inner.active_screen()? == Screen::Alternate)
     }

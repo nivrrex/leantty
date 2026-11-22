@@ -19,38 +19,13 @@ fn settings() -> FontSettings {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: Vec::new(),
+        fallback: vec![
+            spec("Noto Sans CJK SC", "Regular"),
+            spec("Noto Sans CJK JP", "Regular"),
+            spec("WenQuanYi Zen Hei", "Regular"),
+            spec("DejaVu Sans", "Regular"),
+        ],
     }
-}
-
-/// 系统里第一个含 '中' 的字体（与 app 的后台 fallback 加载同源）。
-fn cjk_fonts() -> Vec<render::Font> {
-    use fontdb::{Database, Source};
-    let mut db = Database::new();
-    db.load_system_fonts();
-    for face in db.faces() {
-        if !face
-            .families
-            .iter()
-            .any(|(n, _)| n.to_lowercase().contains("cjk"))
-        {
-            continue;
-        }
-        let bytes: Vec<u8> = match &face.source {
-            Source::File(p) => match std::fs::read(p) {
-                Ok(b) => b,
-                Err(_) => continue,
-            },
-            Source::Binary(d) => d.as_ref().as_ref().to_vec(),
-            Source::SharedFile(_, d) => d.as_ref().as_ref().to_vec(),
-        };
-        if let Ok(f) = render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
-            && f.has_glyph('中')
-        {
-            return vec![f];
-        }
-    }
-    Vec::new()
 }
 
 fn snap_with(text: &str) -> FrameSnapshot {
@@ -68,14 +43,8 @@ fn snap_with(text: &str) -> FrameSnapshot {
 
 #[test]
 fn cjk_wide_glyph_spans_two_cells() {
-    let fonts = cjk_fonts();
-    if fonts.is_empty() {
-        eprintln!("SKIP: 系统中未找到含中文的 CJK 字体");
-        return;
-    }
     let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), Palette::default())
         .expect("CpuRenderer::new");
-    r.add_background_fonts(fonts);
     let (cw, ch) = r.cell_metrics(1.0);
     assert!(cw > 0 && ch > 0);
 
@@ -153,15 +122,11 @@ fn manual_wide_cell_spans_two_cells() {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: Vec::new(),
+        // 0.2.9 起字形覆盖按真实 cmap 判断（不再借 fontconfig 自动替换），
+        // 所以这里必须显式给出含汉字的回退字体；本用例只验证"跨两格绘制"。
+        fallback: vec![spec("Noto Sans CJK SC", "Regular")],
     };
-    let fonts = cjk_fonts();
-    if fonts.is_empty() {
-        eprintln!("SKIP: 无 CJK 字体");
-        return;
-    }
     let mut r = CpuRenderer::new(&st, RenderOptions::default(), Palette::default()).expect("new");
-    r.add_background_fonts(fonts);
     let (cw, ch) = r.cell_metrics(1.0);
     let blank = |ch_str: &str, wide: vt::CellWide| vt::Cell {
         chars: ch_str.to_string(),
@@ -215,9 +180,14 @@ fn manual_wide_cell_spans_two_cells() {
     let first: u32 = per_col[..cw as usize].iter().sum();
     let second: u32 = per_col[cw as usize..(2 * cw) as usize].iter().sum();
     // 参照：同一字体对 '回' 直接光栅化后的非零 alpha 列范围（含 xmin 偏移）。
-    let f = cjk_fonts();
-    let f = f.first().expect("cjk font");
-    let (m, bm) = f.rasterize('回', 16.0);
+    // 阶段 0.2.8：回退字体在构造时已加载，直接问 FontSet 要 '回' 的位图作参照。
+    let set = render::FontSet::load(&settings()).expect("fontset");
+    let (m, bm) = {
+        let mut set = set.borrow_mut();
+        let idx = set.index_for(0, '回').expect("回 应有回退字形");
+        let (m, bm) = set.rasterize(0, idx, '回', 16.0).expect("rasterize");
+        (m, bm)
+    };
     let mut ink_cols = Vec::new();
     for gx in 0..m.width {
         if (0..m.height).any(|gy| bm[gy * m.width + gx] != 0) {
@@ -301,14 +271,8 @@ fn cjk_as_primary_font_spans_two_cells() {
 
 #[test]
 fn cjk_wide_glyph_200x60_scale2() {
-    let fonts = cjk_fonts();
-    if fonts.is_empty() {
-        eprintln!("SKIP: 系统中未找到含中文的 CJK 字体");
-        return;
-    }
     let mut r = CpuRenderer::new(&settings(), RenderOptions::default(), Palette::default())
         .expect("CpuRenderer::new");
-    r.add_background_fonts(fonts);
     r.set_scale_factor(2.0);
     let (cw, ch) = r.cell_metrics(2.0);
     let mut term = vt::VtTerminal::new(200, 60).expect("VtTerminal");

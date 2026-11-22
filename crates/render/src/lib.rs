@@ -2,8 +2,8 @@
 //!
 //! `Renderer` 只接收自有快照与像素尺寸，不暴露任何后端类型。
 //!
-//! 实现说明（阶段 2A 任务 3）：`CpuRenderer` 基于 fontdb（字体查找/回退链）+ fontdue
-//! （位图光栅化），帧缓冲为自有 `Vec<u32>`；softbuffer 作为窗口 surface
+//! 实现说明（阶段 0.2.8）：字体查找与光栅化改用 crossfont（Linux=fontconfig+FreeType、
+//! Windows=DirectWrite），帧缓冲为自有 `Vec<u32>`；softbuffer 作为窗口 surface
 //! 后端在 app 接线阶段接入。字体回退链、逐字符回退缓存、字形缓存、渲染选项
 //! （抗锯齿/亚像素/hinting/text_gamma/粗体亮色）、样式属性与光标样式均在此实现。
 //!
@@ -18,6 +18,7 @@
 //!   glyph，不 panic）。
 
 pub mod decide;
+pub mod fontset;
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 pub mod gpu;
 pub mod preedit;
@@ -39,6 +40,7 @@ fn since_start_ms() -> f64 {
 }
 
 pub use decide::{CellDecision, DecideCtx, decide};
+pub use fontset::{FontSet, GlyphMetrics, LineMetrics};
 pub use preedit::{PreeditLayout, PreeditOverlay, layout_end_position, layout_preedit};
 
 /// 启动期/运行期性能与诊断日志的统一开关（阶段 4O t3）。
@@ -62,10 +64,7 @@ macro_rules! eperf {
 pub(crate) use eperf;
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use fontdb::{Database, Family, Query, Source, Style as DbStyle, Weight};
-pub use fontdue::Font;
 use vt::{Cell, CellWide, CursorStyle, FrameSnapshot, Rgb, Underline};
 
 /// 渲染错误。
@@ -240,23 +239,11 @@ pub struct FontSettings {
     pub fallback: Vec<FontSpec>,
 }
 
-/// 由字体度量算格子尺寸（纯函数）：宽取 '0' 的 advance，高取
-/// ascent+descent+line_gap（fontdue LineMetrics::new_line_size = ascent - descent + line_gap），
-/// 均向上取整到整像素。scale 为 winit scale_factor（HiDPI 缩放）。
-pub fn cell_metrics(font: &Font, size: f32, scale: f64) -> (u32, u32) {
-    let px = size * scale as f32;
-    let advance_w = font.metrics('0', px).advance_width;
-    let w = advance_w.ceil() as u32;
-    let h = match font.horizontal_line_metrics(px) {
-        Some(lm) => lm.new_line_size.ceil() as u32,
-        None => {
-            // 字体缺行度量表：用 'M' 的轮廓高兜底，再兜底 px 向上取整。
-            let m = font.metrics('M', px);
-            let bounds_h = m.bounds.height.ceil() as u32;
-            bounds_h.max(px.ceil() as u32)
-        }
-    };
-    (w.max(1), h.max(1))
+/// 字号（点）→ 像素。
+///
+/// 配置里的 `font.size` 与 alacritty 一样按**点**（pt）解释：像素 = pt × scale × 96/72。
+pub fn px_from_pt(size_pt: f32, scale: f64) -> f32 {
+    size_pt * scale as f32 * (96.0 / 72.0)
 }
 
 /// 字形缓存键：(组索引, 码点, px, 选项指纹, gamma 位)。
@@ -270,7 +257,7 @@ struct GlyphKey {
 }
 
 struct CachedGlyph {
-    metrics: fontdue::Metrics,
+    metrics: GlyphMetrics,
     bitmap: Vec<u8>,
 }
 
@@ -280,220 +267,13 @@ const GROUP_BOLD: usize = 1;
 const GROUP_ITALIC: usize = 2;
 const GROUP_BOLD_ITALIC: usize = 3;
 
-/// 基于 fontdb/fontdue 的 CPU 光栅化渲染器，多字体回退链 + 选项。
-/// 后台加载 fallback 与系统兜底字体（fallback specs + Monospace/SansSerif generic），
-/// 返回按序字体列表。线程安全：仅 owned 数据（FontSpec/Font）经 channel 传递；
-/// Database 在调用线程内自建（fontdb Database 非共享设计）。
-pub fn load_font_list(fallbacks: &[FontSpec]) -> Vec<Font> {
-    load_font_list_shared(fallbacks)
-        .into_iter()
-        .map(|f| (*f).clone())
-        .collect()
-}
-
-/// 同 `load_font_list`，但返回共享句柄（避免每个 CJK 面一次深拷贝，实测 ≈137ms/面）。
-pub fn load_font_list_shared(fallbacks: &[FontSpec]) -> Vec<Arc<Font>> {
-    // 打点自身的开销（把 eperf 的耗时累加进来，使"各步之和"能与总时长对齐）
-    let mut prints_us: u128 = 0;
-    let t_new = std::time::Instant::now();
-    let mut db = Database::new();
-    {
-        let tp = std::time::Instant::now();
-        eperf!("[perf] bg_db_new_us={}", t_new.elapsed().as_micros());
-        prints_us += tp.elapsed().as_micros();
-    }
-    // 阶段 4O t4：fontdb 扫描单独成点（这是后台加载里的固定大头，约 300ms 量级）
-    let t_db = std::time::Instant::now();
-    db.load_system_fonts();
-    {
-        let tp = std::time::Instant::now();
-        eperf!("[perf] bg_fontdb_us={}", t_db.elapsed().as_micros());
-        prints_us += tp.elapsed().as_micros();
-    }
-    let mut fonts = Vec::new();
-    // 阶段 4O t4：后台（回退）字体走与主字体**同一条**加载+打点函数（label=background），
-    // 因而每个回退面都会打印一行 `font_steps_us ... kind=background`。
-    let mut cache: std::collections::HashMap<fontdb::ID, Arc<Font>> =
-        std::collections::HashMap::new();
-    let t_specs = std::time::Instant::now();
-    for fs in fallbacks {
-        let t_face = std::time::Instant::now();
-        match load_font_with_fallback_cached(&db, &fs.family, &fs.style, &mut cache, "background") {
-            Ok((f, cached, used_style)) => {
-                let tp = std::time::Instant::now();
-                eperf!(
-                    "[perf] bg_font_face_us family='{}' style='{}' used_style='{}' cached={} fallback={} total_us={}",
-                    fs.family,
-                    fs.style,
-                    used_style,
-                    cached,
-                    used_style != fs.style,
-                    t_face.elapsed().as_micros()
-                );
-                prints_us += tp.elapsed().as_micros();
-                // 阶段 9A：不再深拷贝——直接把缓存里的 `Arc<Font>` 交出去。
-                fonts.push(f);
-            }
-            Err(e) => eprintln!(
-                "font fallback '{}' '{}' load failed: {}; skipped",
-                fs.family, fs.style, e
-            ),
-        }
-    }
-    {
-        let tp = std::time::Instant::now();
-        eperf!("[perf] bg_specs_loop_us={}", t_specs.elapsed().as_micros());
-        prints_us += tp.elapsed().as_micros();
-    }
-    let t_gen_loop = std::time::Instant::now();
-    for fam in [Family::Monospace, Family::SansSerif] {
-        let t_gen = std::time::Instant::now();
-        match load_font_generic(&db, fam) {
-            Ok(f) => {
-                let tp = std::time::Instant::now();
-                eperf!(
-                    "[perf] bg_font_face_us family='{:?}' generic=true total_us={}",
-                    fam,
-                    t_gen.elapsed().as_micros()
-                );
-                prints_us += tp.elapsed().as_micros();
-                fonts.push(std::sync::Arc::new(f));
-            }
-            Err(e) => eprintln!("system fallback {fam:?} unavailable: {e}"),
-        }
-    }
-    {
-        let tp = std::time::Instant::now();
-        eperf!(
-            "[perf] bg_generic_loop_us={}",
-            t_gen_loop.elapsed().as_micros()
-        );
-        prints_us += tp.elapsed().as_micros();
-    }
-    // 阶段 9A：不再深拷贝，`cache` 只是释放多余句柄（实例由返回值持有），单独成点用于
-    // 把"各步之和"与 `bg_font_list_us` 对齐。
-    let t_free = std::time::Instant::now();
-    drop(cache);
-    drop(db);
-    eperf!("[perf] bg_font_free_us={}", t_free.elapsed().as_micros());
-    eperf!("[perf] bg_print_us={}", prints_us);
-    fonts
-}
-
-/// 构建四组字体链（CPU 与 GPU 后端共用）：每组 = [主字体, 后台 fallback..., 系统兜底]。
-///
-/// 主字体同步加载（首帧需渲染 ASCII）；fallback 与系统兜底由 app 层后台加载后
-/// 经 `add_background_fonts` 并入。返回顺序固定为 [normal, bold, italic, bold_italic]。
-pub(crate) fn build_font_groups(settings: &FontSettings) -> Result<Vec<Vec<Arc<Font>>>, Error> {
-    let mut db = Database::new();
-    let t_db = std::time::Instant::now();
-    db.load_system_fonts();
-    eperf!(
-        "[perf] fontdb_ms={:.1} since_start={:.1}",
-        t_db.elapsed().as_secs_f64() * 1000.0,
-        since_start_ms()
-    );
-    let specs = [
-        &settings.normal,
-        &settings.bold,
-        &settings.italic,
-        &settings.bold_italic,
-    ];
-    let mut groups: Vec<Vec<Arc<Font>>> = Vec::with_capacity(4);
-    // 同一 face 只解析一次（四组可能指向同一文件，例如 style 回落）。
-    // 阶段 4N t3：缓存与样式组共享同一份解析结果（Arc），同一 face 在进程内只保留一份。
-    let mut face_cache: std::collections::HashMap<fontdb::ID, Arc<Font>> =
-        std::collections::HashMap::new();
-    for (gi, spec) in specs.iter().enumerate() {
-        let t_font = std::time::Instant::now();
-        // 阶段 4J t4：每组起止点（Windows 上 4 组合计约 400ms，是首帧最大单项）。
-        eperf!(
-            "[perf] font_group_begin_ms group={} family='{}' style='{}' since_start={:.1}",
-            gi,
-            spec.family,
-            spec.style,
-            since_start_ms()
-        );
-        // 阶段 4M t3：组内三段（begin→load 调用、load 调用本身、load 返回→组尾），
-        // 微秒精度，用于定位 Windows 上 group_begin→seg / seg→cache / cache→end 的未归属耗时。
-        let t_before_load = std::time::Instant::now();
-        let pre_load_us = t_before_load.duration_since(t_font).as_micros();
-        let load_result = load_font_with_fallback_cached(
-            &db,
-            &spec.family,
-            &spec.style,
-            &mut face_cache,
-            "group",
-        );
-        let load_us = t_before_load.elapsed().as_micros();
-        let main = match load_result {
-            Ok((f, cached, used_style)) => {
-                // 回退面（style 回落时 used_style != 请求 style）单独标注，便于区分
-                // "主字体面" 与 "回退字体面" 的成本。
-                let tail_us = t_before_load.elapsed().as_micros().saturating_sub(load_us);
-                eperf!(
-                    "[perf] font_group_us group={} family='{}' style='{}' pre_load_us={} load_us={} tail_us={} total_us={} fallback={} cache_hit={}",
-                    gi,
-                    spec.family,
-                    spec.style,
-                    pre_load_us,
-                    load_us,
-                    tail_us,
-                    t_font.elapsed().as_micros(),
-                    used_style != spec.style,
-                    cached
-                );
-                eperf!(
-                    "[perf] font_group_ms group={} family='{}' style='{}' used_style='{}' fallback={} total_ms={:.2} since_start={:.1}",
-                    gi,
-                    spec.family,
-                    spec.style,
-                    used_style,
-                    used_style != spec.style,
-                    t_font.elapsed().as_secs_f64() * 1000.0,
-                    since_start_ms()
-                );
-                eperf!(
-                    "[perf] font_ms={} family='{}' style='{}' used_style='{}' cached={} ms={:.1} since_start={:.1}",
-                    gi,
-                    spec.family,
-                    spec.style,
-                    used_style,
-                    cached,
-                    t_font.elapsed().as_secs_f64() * 1000.0,
-                    since_start_ms()
-                );
-                f
-            }
-            Err(e) => {
-                if gi == GROUP_NORMAL {
-                    return Err(e);
-                }
-                eprintln!(
-                    "font group {} ('{}' '{}') load failed: {}; using normal font",
-                    gi, spec.family, spec.style, e
-                );
-                Arc::clone(&groups[GROUP_NORMAL][0])
-            }
-        };
-        groups.push(vec![main]);
-    }
-    Ok(groups)
-}
 pub struct CpuRenderer {
-    /// 四组字体 [normal, bold, italic, bold_italic]，每组 = [主字体, fallback..., 系统兜底]。
-    ///
-    /// 用 `Arc` 共享：auto/gpu 模式下窗口前先建 CPU 渲染器、窗口后再建 GPU 渲染器，
-    /// 两者复用同一份字体链，避免重复 fontdb 扫描 + 字体解析（阶段 4E t3 实测
-    /// 该重复约占 GPU 首帧的 155ms）。
-    groups: std::sync::Arc<Vec<Vec<Arc<Font>>>>,
+    /// 字体集合（crossfont 后端；CPU/GPU 渲染器共享同一份，见 `FontSet`）。
+    fonts: std::rc::Rc<std::cell::RefCell<FontSet>>,
     font_size: f32,
     options: RenderOptions,
     palette: Palette,
     scale: f64,
-    /// 码点 → 组内字体索引（逐字符回退缓存，规则见模块文档；None=链中暂无字体
-    /// 含该码点——后台字体未到位或全链缺失，渲染层统一画 U+25A1 占位）。
-    char_font: HashMap<(u8, char), Option<usize>>,
     glyph_cache: HashMap<GlyphKey, CachedGlyph>,
     framebuffer: Vec<u32>,
     fb_width: u32,
@@ -522,6 +302,8 @@ pub struct CpuRenderer {
     band_backup: Option<Vec<u32>>,
     /// 本帧需要提交给窗口系统的矩形区域 (x, y, w, h)，非空。
     damage: Vec<(u32, u32, u32, u32)>,
+    /// 基线缓存 ((格高, scale 位), 基线)；每帧每行都会用到，避免重复量测。
+    baseline_cache: std::cell::Cell<Option<((u32, u64), i32)>>,
 }
 
 impl CpuRenderer {
@@ -541,14 +323,14 @@ impl CpuRenderer {
             since_start_ms()
         );
         let t_groups = std::time::Instant::now();
-        let groups = std::sync::Arc::new(build_font_groups(settings)?);
+        let fonts = fontset::FontSet::load(settings)?;
         eperf!(
             "[perf] cpu_groups_ms={:.1} since_start={:.1}",
             t_groups.elapsed().as_secs_f64() * 1000.0,
             since_start_ms()
         );
         if options.hinting {
-            eprintln!("hinting: fontdue 不支持 hinting，已解析未生效（unsupported）");
+            eprintln!("hinting: 当前光栅化后端不支持 hinting，已解析未生效");
         }
         // 阶段 4E t2：字体加载完成 → 字形缓存/帧缓冲等结构就绪的打点
         eperf!(
@@ -558,12 +340,11 @@ impl CpuRenderer {
         );
         let t_state = std::time::Instant::now();
         let me = Ok(Self {
-            groups,
+            fonts,
             font_size: settings.size,
             options,
             palette,
             scale: 1.0,
-            char_font: HashMap::new(),
             glyph_cache: HashMap::new(),
             framebuffer: Vec::new(),
             fb_width: 0,
@@ -579,6 +360,7 @@ impl CpuRenderer {
             last_preedit: None,
             band_backup: None,
             damage: Vec::new(),
+            baseline_cache: std::cell::Cell::new(None),
         });
         eperf!(
             "[perf] cpu_state_ms={:.2} since_start={:.1}",
@@ -594,13 +376,23 @@ impl CpuRenderer {
     /// 格内不被裁剪，又保证字形上缘不越界。等价于"ascent 向上取整后再为 descent
     /// 与 line_gap 让出空间"，与 `cell_metrics` 的
     /// `cell_h = ceil(ascent - descent + line_gap)` 配套。
-    fn baseline_px(&self, px: f32, cell_h: u32) -> i32 {
-        self.groups
-            .first()
-            .and_then(|g| g.first())
-            .and_then(|f| f.horizontal_line_metrics(px))
-            .map(|lm| baseline_from_metrics(cell_h, &lm))
-            .unwrap_or(0)
+    /// 基线（带缓存）：同一 (字号, 缩放, 格高) 下结果固定。
+    ///
+    /// 每帧每行都会问一次；若每次都进 `FontSet` 锁并触发 FreeType 量测，
+    /// 吞吐会明显下降（实测 loop_gap 8ms → 45ms）。
+    fn baseline_px(&self, _px: f32, cell_h: u32) -> i32 {
+        let key = (cell_h, self.scale.to_bits());
+        if let Some((k, v)) = self.baseline_cache.get()
+            && k == key
+        {
+            return v;
+        }
+        let v = self
+            .fonts
+            .borrow_mut()
+            .baseline(self.font_size, self.scale, cell_h);
+        self.baseline_cache.set(Some((key, v)));
+        v
     }
 
     /// 缩放因子变化：更新 scale 并整体清空字形位图缓存（位图尺寸随 scale 变；
@@ -638,15 +430,17 @@ impl CpuRenderer {
             for cell in row {
                 let ch = cell.chars.chars().next().unwrap_or(' ');
                 let group = group_for(cell);
-                let idx = self.groups[group as usize]
-                    .iter()
-                    .position(|f| f.has_glyph(ch))
-                    .unwrap_or(0);
+                let idx = self.fonts.borrow_mut().index_for(group, ch).unwrap_or(0);
                 line.push(idx);
             }
             out.push(line);
         }
         out
+    }
+
+    /// 字体集合的共享句柄（GPU 渲染器复用它，避免重复加载字体）。
+    pub fn font_set(&self) -> std::rc::Rc<std::cell::RefCell<FontSet>> {
+        self.fonts.clone()
     }
 
     /// 当前帧缓冲（ARGB 打包为 u32，低 24 位为 RGB）。
@@ -666,86 +460,39 @@ impl CpuRenderer {
 
     /// 当前字体在 scale 下的格子尺寸（物理像素）；字体未加载时回落阶段1 常量 8x16。
     pub fn cell_metrics(&self, scale: f64) -> (u32, u32) {
-        match self.groups.first().and_then(|g| g.first()) {
-            Some(f) => cell_metrics(f, self.font_size, scale),
-            None => (8, 16),
+        {
+            let mut f = self.fonts.borrow_mut();
+            f.cell_metrics(self.font_size, scale)
         }
     }
 
     /// 码点在组内回退链中的字体索引（主字体 → fallback → 系统 Monospace/Sans）；
     /// None=链中暂无字体含该码点（后台字体未到位或全链缺失）。
     fn font_index_for(&mut self, group: u8, ch: char) -> Option<usize> {
-        if let Some(&i) = self.char_font.get(&(group, ch)) {
-            return i;
-        }
-        let idx = self.groups[group as usize]
-            .iter()
-            .position(|f| f.has_glyph(ch));
-        self.char_font.insert((group, ch), idx);
-        idx
+        self.fonts.borrow_mut().index_for(group, ch)
     }
 
-    /// 按索引光栅；None（链中无码点）时用组首字体光栅 U+25A1 占位方块（不 panic）。
+    /// 按索引光栅；链中无字形时返回 None（调用方不画字形，也就没有占位方块）。
     fn rasterize_glyph(
         &mut self,
         group: u8,
         idx: Option<usize>,
         ch: char,
         px: f32,
-    ) -> (fontdue::Metrics, Vec<u8>) {
-        match idx {
-            Some(i) => self.rasterize_at(group, i, ch, px),
-            None => self.rasterize_at(group, 0, '\u{25A1}', px),
-        }
+    ) -> Option<(GlyphMetrics, Vec<u8>)> {
+        let i = idx?;
+        self.rasterize_at(group, i, ch, px)
     }
 
     /// 后台字体到位：并入各组并清空码点归属与字形缓存（归属与位图可能变化）。
-    /// 四组字体链的共享句柄（供 GPU 渲染器复用，避免重复加载；阶段 4E t3）。
-    pub fn font_groups(&self) -> Arc<Vec<Vec<Arc<Font>>>> {
-        self.groups.clone()
-    }
-
-    pub fn add_background_fonts(&mut self, fonts: Vec<Font>) {
-        // 阶段 4N t3：每个回退字体只包一次 Arc，四个样式组共享同一份实例
-        // （此前 `cloned()` 会把每个回退字体深拷贝 4 份，每个 CJK 面 ≈300MB）。
-        let shared: Vec<Arc<Font>> = fonts.into_iter().map(Arc::new).collect();
-        self.add_background_fonts_shared(shared);
-    }
-
-    /// 同 `add_background_fonts`，但直接接收已共享的句柄。
-    ///
-    /// 阶段 9A：后台加载线程本来就是按 `Arc<Font>` 缓存字体的，
-    /// `load_font_list` 返回 `Vec<Font>` 时不得不再深拷贝一次（实测 CJK 面 ≈137ms）。
-    /// 这里跳过那次拷贝。
-    pub fn add_background_fonts_shared(&mut self, shared: Vec<Arc<Font>>) {
-        let t_merge = std::time::Instant::now();
-        for g in Arc::make_mut(&mut self.groups) {
-            g.extend(shared.iter().cloned());
-        }
-        // 阶段 4O t4：并入四组的观测——`instances` 是本次新增的字体面数，
-        // `strong_refs` 是每个实例的强引用计数（1 份本地 + 4 个样式组 = 5；
-        // 4N 之前这里是 4 份独立实例，强引用计数各为 1）。
-        eperf!(
-            "[perf] bg_fonts_merge_us families={} groups={} strong_refs={:?} merge_us={}",
-            shared.len(),
-            self.groups.len(),
-            shared.iter().map(Arc::strong_count).collect::<Vec<_>>(),
-            t_merge.elapsed().as_micros()
-        );
-        self.char_font.clear();
-        self.glyph_cache.clear();
-        // 字形集变化：整屏重绘。
-        self.force_full = true;
-    }
-
-    /// 光栅化（带缓存）：px = 字号 * 缩放因子。
+    /// 光栅化（带缓存）：px = 字号 * 缩放因子（物理像素）。
     fn rasterize_at(
         &mut self,
         group: u8,
         font_idx: usize,
         ch: char,
         px: f32,
-    ) -> (fontdue::Metrics, Vec<u8>) {
+    ) -> Option<(GlyphMetrics, Vec<u8>)> {
         let key = GlyphKey {
             group,
             ch,
@@ -754,10 +501,9 @@ impl CpuRenderer {
             gamma_bits: self.options.text_gamma.to_bits(),
         };
         if let Some(c) = self.glyph_cache.get(&key) {
-            return (c.metrics, c.bitmap.clone());
+            return Some((c.metrics, c.bitmap.clone()));
         }
-        let font = &self.groups[group as usize][font_idx];
-        let (m, b) = font.rasterize(ch, px);
+        let (m, b) = self.fonts.borrow_mut().rasterize(group, font_idx, ch, px)?;
         self.glyph_cache.insert(
             key,
             CachedGlyph {
@@ -765,7 +511,7 @@ impl CpuRenderer {
                 bitmap: b.clone(),
             },
         );
-        (m, b)
+        Some((m, b))
     }
 }
 
@@ -812,16 +558,13 @@ fn cursor_key(frame: &FrameSnapshot) -> (u16, u16, bool, u8) {
 /// 顶边落到格顶之上被裁）。若这样会让下行放不下（`cell_h - baseline < ceil(-descent)`），
 /// 按"先保下行、再保上顶"的顺序把 baseline 压到 `cell_h - ceil(-descent)`；
 /// 顶部不足由 `glyph_shift()` 做逐字形平移兜底。
-pub fn baseline_from_metrics(cell_h: u32, lm: &fontdue::LineMetrics) -> i32 {
-    let ascent_px = lm.ascent.ceil().max(0.0);
-    let gap_half = (lm.line_gap / 2.0).floor().max(0.0);
+pub fn baseline_from_metrics(cell_h: u32, lm: &LineMetrics) -> i32 {
+    // crossfont 只给 line_height 与 descent（descent 通常为负）；ascent 由两者相减得到。
+    let ascent_px = (lm.line_height + lm.descent).round().max(0.0);
     let descent_px = (-lm.descent).ceil().max(0.0);
-    let mut baseline = ascent_px + gap_half;
+    let mut baseline = ascent_px;
     if cell_h as f32 - baseline < descent_px {
-        baseline = cell_h as f32 - descent_px;
-        if baseline < 0.0 {
-            baseline = 0.0;
-        }
+        baseline = (cell_h as f32 - descent_px).max(0.0);
     }
     baseline.clamp(0.0, cell_h as f32) as i32
 }
@@ -1161,7 +904,9 @@ impl CpuRenderer {
 
             if span == 2 && sub == Subpixel::None {
                 // 宽字符：缩放到 2 格宽高内（不放大），水平居中，基线随位图 ymin 对齐。
-                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
+                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
+                    continue;
+                };
                 let bw = m.width.max(1) as f32;
                 let bh = m.height.max(1) as f32;
                 let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -1180,14 +925,12 @@ impl CpuRenderer {
                     let sh = (bh * s).ceil() as usize;
                     let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
                     let ox = (area_w as i32 - sw as i32) / 2;
-                    let sm = fontdue::Metrics {
+                    let sm = GlyphMetrics {
                         xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
                         ymin: (m.ymin as f32 * s).ceil() as i32,
                         width: sw,
                         height: sh,
                         advance_width: m.advance_width * s,
-                        advance_height: m.advance_height * s,
-                        bounds: m.bounds,
                     };
                     blit(
                         &mut self.framebuffer,
@@ -1201,7 +944,9 @@ impl CpuRenderer {
                 }
             } else if span == 2 {
                 // 宽字符 + 亚像素：3x 水平采样光栅（px*3），缩放到 2 格内。
-                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px * 3.0);
+                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px * 3.0) else {
+                    continue;
+                };
                 let bw = m.width.max(1) as f32 / 3.0;
                 let bh = m.height.max(1) as f32 / 3.0;
                 let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -1209,14 +954,12 @@ impl CpuRenderer {
                 let sh = (bh * s).ceil() as usize;
                 let scaled = scale_bitmap(&bitmap, m.width, m.height, sw * 3, sh * 3);
                 let ox = (area_w as i32 - sw as i32) / 2;
-                let sm = fontdue::Metrics {
+                let sm = GlyphMetrics {
                     xmin: (m.xmin as f32 / 3.0 * s).ceil() as i32 + ox * 3,
                     ymin: (m.ymin as f32 / 3.0 * s).ceil() as i32 * 3,
                     width: sw * 3,
                     height: sh * 3,
                     advance_width: m.advance_width * s,
-                    advance_height: m.advance_height * s,
-                    bounds: m.bounds,
                 };
                 blit_subpixel(
                     &mut self.framebuffer,
@@ -1228,7 +971,9 @@ impl CpuRenderer {
                     (sub, gamma),
                 );
             } else {
-                let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
+                let Some((m, bitmap)) = self.rasterize_glyph(group, font_idx, ch, px) else {
+                    continue;
+                };
                 blit(
                     &mut self.framebuffer,
                     pixel_width,
@@ -1260,7 +1005,7 @@ impl Renderer for CpuRenderer {
         pixel_width: u32,
         pixel_height: u32,
     ) -> Result<(), Error> {
-        let px = (self.font_size * self.scale as f32).max(0.1);
+        let px = px_from_pt(self.font_size, self.scale).max(0.1);
         let cols = u32::from(frame.cols).max(1);
         let rows = u32::from(frame.rows).max(1);
         let cell_h = (pixel_height / rows).max(1);
@@ -1312,7 +1057,9 @@ impl CpuRenderer {
                     let ch = cell.chars.chars().next().expect("非空 chars");
                     let group = group_for(cell);
                     let font_idx = self.font_index_for(group, ch);
-                    let (m, bitmap) = self.rasterize_glyph(group, font_idx, ch, px);
+                    let (m, bitmap) = self
+                        .rasterize_glyph(group, font_idx, ch, px)
+                        .unwrap_or_default();
                     blit(
                         &mut self.framebuffer,
                         width,
@@ -1446,7 +1193,9 @@ impl CpuRenderer {
             // 字形：宽字符按 2 格内缩放绘制（与终端宽字符规则一致）。
             let group = GROUP_NORMAL as u8;
             let font_idx = self.font_index_for(group, pc.ch);
-            let (m, bitmap) = self.rasterize_glyph(group, font_idx, pc.ch, px);
+            let (m, bitmap) = self
+                .rasterize_glyph(group, font_idx, pc.ch, px)
+                .unwrap_or_default();
             let bw = m.width.max(1) as f32;
             let bh = m.height.max(1) as f32;
             let s = (area_w as f32 / bw).min(cell_h as f32 / bh).min(1.0);
@@ -1465,14 +1214,12 @@ impl CpuRenderer {
                 let sh = (bh * s).ceil() as usize;
                 let scaled = scale_bitmap(&bitmap, m.width, m.height, sw, sh);
                 let ox = (area_w as i32 - sw as i32) / 2;
-                let sm = fontdue::Metrics {
+                let sm = GlyphMetrics {
                     xmin: (m.xmin as f32 * s).ceil() as i32 + ox,
                     ymin: (m.ymin as f32 * s).ceil() as i32,
                     width: sw,
                     height: sh,
                     advance_width: m.advance_width * s,
-                    advance_height: m.advance_height * s,
-                    bounds: m.bounds,
                 };
                 blit(
                     &mut self.framebuffer,
@@ -1510,6 +1257,77 @@ impl CpuRenderer {
     }
 }
 
+/// 装饰线矩形（格子局部坐标）：下划线（含双线/波浪/点/虚线）、删除线、上划线。
+///
+/// CPU 光栅与 GPU 四边形都从这里取几何，避免两端公式漂移（0.2.7 只改了 CPU 的
+/// 线宽/基线，GPU 仍是旧公式，`gpu_parity` 因此变红）。
+pub fn style_line_rects(cell: &Cell, w: u32, h: u32) -> Vec<(u32, u32, u32, u32)> {
+    let thick = (h / 16).max(1);
+    let base = h.saturating_sub(thick + (h / 12).max(1));
+    let mut out = Vec::new();
+    for (top, on, period) in underline_segments(cell.underline, base as i32, thick) {
+        push_line(&mut out, top, on, period, w, h, thick);
+    }
+    if cell.strikethrough {
+        push_line(&mut out, (h / 2) as i32, 0, 0, w, h, thick);
+    }
+    if cell.overline {
+        push_line(&mut out, 1, 0, 0, w, h, thick);
+    }
+    out
+}
+
+/// 下划线样式的（起始行, 亮段长, 周期）列表；周期 0 = 实线。
+fn underline_segments(u: Underline, base: i32, thick: u32) -> Vec<(i32, u32, u32)> {
+    match u {
+        Underline::None => Vec::new(),
+        Underline::Single => vec![(base, 0, 0)],
+        Underline::Double => vec![(base, 0, 0), (base - thick as i32 - 1, 0, 0)],
+        Underline::Dotted => vec![(base, 1, 2)],
+        Underline::Dashed => vec![(base, 2, 4)],
+        // 波浪：由 `push_line` 按"每 2 px 交替"处理（见下）。
+        Underline::Curly => vec![(base, u32::MAX, u32::MAX)],
+    }
+}
+
+fn push_line(
+    out: &mut Vec<(u32, u32, u32, u32)>,
+    top: i32,
+    on: u32,
+    period: u32,
+    w: u32,
+    h: u32,
+    thick: u32,
+) {
+    let curly = on == u32::MAX;
+    for t in 0..thick {
+        let y = top + t as i32;
+        if y < 0 || y as u32 >= h {
+            continue;
+        }
+        if curly {
+            for x in 0..w {
+                let dy = if (x / 2) % 2 == 0 { 0 } else { thick as i32 };
+                let yy = y - dy;
+                if yy >= 0 && (yy as u32) < h {
+                    out.push((x, yy as u32, 1, 1));
+                }
+            }
+            continue;
+        }
+        if period == 0 {
+            out.push((0, y as u32, w, 1));
+            continue;
+        }
+        let mut x = 0u32;
+        while x < w {
+            let run = on.min(w - x);
+            out.push((x, y as u32, run, 1));
+            x += period;
+        }
+    }
+}
+
 /// 样式线：下划线/删除线/上划线。
 fn draw_style_lines(
     fb: &mut [u32],
@@ -1519,42 +1337,9 @@ fn draw_style_lines(
     color: u32,
 ) {
     let (x0, y0, w, h) = rect;
-    let mut hline = |y: i32, gap: u32| {
-        if y < 0 || y >= h as i32 {
-            return;
-        }
-        for i in 0..w {
-            if i % gap == 0 {
-                plot_fb(fb, width, x0 + i, y0 + y as u32, color);
-            }
-        }
-    };
-    match cell.underline {
-        Underline::None => {}
-        Underline::Single => hline(h as i32 - 2, 1),
-        Underline::Double => {
-            hline(h as i32 - 2, 1);
-            hline(h as i32 - 4, 1);
-        }
-        Underline::Dotted => hline(h as i32 - 2, 2),
-        Underline::Dashed => hline(h as i32 - 2, 4),
-        // Curly 无波状近似实现，按 Single 处理（DECISIONS 登记）。
-        Underline::Curly => hline(h as i32 - 2, 1),
-    }
-    if cell.strikethrough {
-        hline(h as i32 / 2, 1);
-    }
-    if cell.overline {
-        hline(1, 1);
-    }
-}
-
-fn plot_fb(fb: &mut [u32], width: u32, x: u32, y: u32, color: u32) {
-    if x < width {
-        let idx = (y * width + x) as usize;
-        if idx < fb.len() {
-            fb[idx] = color;
-        }
+    // 与 GPU 共用同一份几何（`style_line_rects`），保证两端逐像素一致。
+    for (rx, ry, rw, rh) in style_line_rects(cell, w, h) {
+        fill_rect(fb, width, x0 + rx, y0 + ry, rw, rh, color);
     }
 }
 
@@ -1577,7 +1362,7 @@ fn blit(
     fb: &mut [u32],
     width: u32,
     cell: (u32, u32, u32, u32, i32),
-    metrics: &fontdue::Metrics,
+    metrics: &GlyphMetrics,
     bitmap: &[u8],
     colors: (u32, u32),
     aa_gamma: (Antialiasing, f32),
@@ -1635,7 +1420,7 @@ fn blit_subpixel(
     fb: &mut [u32],
     width: u32,
     cell: (u32, u32, u32, u32, i32),
-    metrics: &fontdue::Metrics,
+    metrics: &GlyphMetrics,
     bitmap: &[u8],
     fg: u32,
     sp: (Subpixel, f32),
@@ -1726,205 +1511,22 @@ fn scale_bitmap(bitmap: &[u8], w: usize, h: usize, tw: usize, th: usize) -> Vec<
     out
 }
 
-/// style 字符串 → fontdb 查询用 (weight, style)。
-fn style_query(style: &str) -> (Weight, DbStyle) {
-    match style {
-        "Bold" => (Weight::BOLD, DbStyle::Normal),
-        "Italic" => (Weight::NORMAL, DbStyle::Italic),
-        "Bold Italic" => (Weight::BOLD, DbStyle::Italic),
-        _ => (Weight::NORMAL, DbStyle::Normal),
-    }
-}
-
-/// 带缓存的 face 加载（阶段 3A 任务 2）：同一 fontdb face（同一文件/同一 style
-/// 回落目标）只读取+解析一次，后续复用已解析 Font。
-///
-/// 缓存键为 fontdb::ID（同一文件在多组字体间共享，例如 bold 缺失回落到 Regular
-/// 时与 normal 指向同一 face）。返回 (Font, 是否命中缓存)。
-fn load_font_styled_cached(
-    db: &Database,
-    family: &str,
-    style: &str,
-    cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
-    label: &str,
-) -> Result<(Arc<Font>, bool), Error> {
-    let (w, s) = style_query(style);
-    let query = Query {
-        families: &[Family::Name(family), Family::Monospace],
-        weight: w,
-        style: s,
-        ..Default::default()
-    };
-    // 阶段 4H t2：查找入口（此前从上一段到这里约有 20ms 无标注，实测为 fontdb face 查询）。
-    eperf!(
-        "[perf] font_lookup_begin_ms family='{}' style='{}' since_start={:.1}",
-        family,
-        style,
-        since_start_ms()
-    );
-    let t_query = std::time::Instant::now();
-    let id = db
-        .query(&query)
-        .ok_or_else(|| Error::Font(format!("family '{}' style '{}' not found", family, style)))?;
-    let query_us = t_query.elapsed().as_micros();
-    if let Some(f) = cache.get(&id) {
-        // 命中：共享同一份解析结果（Arc clone 不是深拷贝）
-        return Ok((Arc::clone(f), true));
-    }
-    // ---- 阶段 4M t3：语句级微秒打点（只补观测，不改行为）----
-    // 把"face 构造 / 元数据 / 读取 / fontdue 参数 / fontdue 调用 / clone / 缓存写入"
-    // 逐段量到微秒，并记录来源类型、字节数与是否为 .ttc 集合。
-    // 只统计**缓存未命中**（真正解析）的路径；每个 face 只打印一行，避免打印本身
-    // 在慢控制台上制造可观测的间隙（Windows 上每行 eprintln 可达数十毫秒，见 3J 数据）。
-    let t_face = std::time::Instant::now();
-    let face = db
-        .face(id)
-        .ok_or_else(|| Error::Font("face not found".to_string()))?;
-    let face_us = t_face.elapsed().as_micros();
-
-    let (source_kind, path_opt) = match &face.source {
-        Source::File(path) => ("file", Some(path.clone())),
-        Source::Binary(_) => ("binary", None),
-        Source::SharedFile(path, _) => ("shared", Some(path.clone())),
-    };
-    // 元数据（stat）：区分"文件系统/安全软件扫描"与"解析"——stat 慢通常意味着
-    // 打开/属性查询被拦（AV 实时扫描的典型特征），而 read 慢更像顺序读盘/缓存未命中。
-    let t_meta = std::time::Instant::now();
-    let meta_len = path_opt
-        .as_ref()
-        .and_then(|p| std::fs::metadata(p).ok())
-        .map(|m| m.len() as usize);
-    let meta_us = t_meta.elapsed().as_micros();
-
-    let t_read = std::time::Instant::now();
-    let bytes: Vec<u8> = match &face.source {
-        Source::File(path) => {
-            std::fs::read(path).map_err(|e| Error::Font(format!("read font file: {}", e)))?
-        }
-        Source::Binary(data) => data.as_ref().as_ref().to_vec(),
-        Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
-    };
-    let read_us = t_read.elapsed().as_micros();
-
-    // .ttc / OpenType 集合：fontdue 需要遍历集合内的 face，Windows 上解析更慢。
-    let is_collection = path_opt
-        .as_ref()
-        .map(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("ttc")))
-        .unwrap_or(false)
-        || bytes.starts_with(b"ttcf");
-
-    let t_settings = std::time::Instant::now();
-    let fd_settings = fontdue::FontSettings::default();
-    let settings_us = t_settings.elapsed().as_micros();
-
-    let t_parse = std::time::Instant::now();
-    let font = Font::from_bytes(bytes.as_slice(), fd_settings)
-        .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))?;
-    let parse_us = t_parse.elapsed().as_micros();
-
-    // 阶段 4N t3：不再深拷贝字体实例，改为共享引用（Arc::new 只搬一次指针）。
-    let t_clone = std::time::Instant::now();
-    let shared = Arc::new(font);
-    let clone_us = t_clone.elapsed().as_micros();
-
-    let t_insert = std::time::Instant::now();
-    cache.insert(id, Arc::clone(&shared));
-    let insert_us = t_insert.elapsed().as_micros();
-
-    let steps_us =
-        query_us + face_us + meta_us + read_us + settings_us + parse_us + clone_us + insert_us;
-    eperf!(
-        "[perf] font_steps_us family='{}' style='{}' kind={} src={} bytes={} meta_len={} ttc={} query_us={} face_us={} meta_us={} read_us={} settings_us={} parse_us={} arc_us={} clone_us={} insert_us={} steps_us={} since_start={:.1}",
-        family,
-        style,
-        label,
-        source_kind,
-        bytes.len(),
-        meta_len.map(|v| v as i64).unwrap_or(-1),
-        is_collection,
-        query_us,
-        face_us,
-        meta_us,
-        read_us,
-        settings_us,
-        parse_us,
-        clone_us, // arc_us 的同值别名（4N 起该步即 Arc::new；保留旧字段名以免破坏既有解析脚本）
-        clone_us,
-        insert_us,
-        steps_us,
-        since_start_ms()
-    );
-    Ok((shared, false))
-}
-
-/// 带缓存的 family 加载（style 缺失回落顺序同 load_font_with_fallback）。
-fn load_font_with_fallback_cached(
-    db: &Database,
-    family: &str,
-    style: &str,
-    cache: &mut std::collections::HashMap<fontdb::ID, Arc<Font>>,
-    label: &str,
-) -> Result<(Arc<Font>, bool, String), Error> {
-    let mut candidates = vec![
-        style.to_string(),
-        "Bold".to_string(),
-        "Italic".to_string(),
-        "Regular".to_string(),
-    ];
-    candidates.dedup();
-    let mut last_err = None;
-    for s in &candidates {
-        match load_font_styled_cached(db, family, s, cache, label) {
-            Ok((f, cached)) => {
-                if s != style {
-                    eprintln!("font style fallback: '{}' '{}' → '{}'", family, style, s);
-                }
-                return Ok((f, cached, s.clone()));
-            }
-            Err(e) => last_err = Some(e),
-        }
-    }
-    Err(last_err.unwrap_or_else(|| Error::Font(format!("family '{}' not found", family))))
-}
-
-/// 系统 generic 字体加载（回退链末档）。
-fn load_font_generic(db: &Database, family: Family) -> Result<Font, Error> {
-    let query = Query {
-        families: &[family],
-        ..Default::default()
-    };
-    let id = db
-        .query(&query)
-        .ok_or_else(|| Error::Font(format!("generic '{family:?}' not found")))?;
-    let face = db
-        .face(id)
-        .ok_or_else(|| Error::Font("face not found".to_string()))?;
-    let bytes: Vec<u8> = match &face.source {
-        Source::File(path) => {
-            std::fs::read(path).map_err(|e| Error::Font(format!("read font file: {}", e)))?
-        }
-        Source::Binary(data) => data.as_ref().as_ref().to_vec(),
-        Source::SharedFile(_, data) => data.as_ref().as_ref().to_vec(),
-    };
-    Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
-        .map_err(|e| Error::Font(format!("fontdue parse: {}", e)))
-}
-
 #[cfg(test)]
 mod blit_tests {
     use super::Antialiasing;
+    use super::GlyphMetrics;
     use super::blit;
 
     const BG: u32 = 0xFF00_0000;
     const FG: u32 = 0xFF00_00FF;
 
-    fn metrics(xmin: i32, ymin: i32, width: usize, height: usize) -> fontdue::Metrics {
-        fontdue::Metrics {
+    fn metrics(xmin: i32, ymin: i32, width: usize, height: usize) -> GlyphMetrics {
+        GlyphMetrics {
             xmin,
             ymin,
             width,
             height,
-            ..Default::default()
+            advance_width: width as f32,
         }
     }
 

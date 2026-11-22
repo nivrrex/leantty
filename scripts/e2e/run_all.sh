@@ -463,6 +463,14 @@ fi
 # （默认绑定 Right=Paste）→粘贴文本作为命令执行→dump 断言回显。
 D="$OUT/case12-selection.dump"
 L="$OUT/case12-selection.log"
+# 由窗口实际像素高度与行数推导"第 N 行中线 y 坐标"（阶段 0.2.8：字体度量随系统字体变化，
+# 用例里写死像素坐标会在换字体后落到别的行上）。用法：row_y <窗口id> <行号> <总行数>
+row_y() {
+    _g=$(x11 xdotool getwindowgeometry --shell "$1" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+    _ch=$(( ${_g:-600} / $3 ))
+    echo $(( _ch * $2 + _ch / 2 ))
+}
+
 if start_app "$D" "$L"; then
     sleep 1
     x11 xdotool type --window "$WID" "echo PASTE_TARGET"
@@ -471,10 +479,11 @@ if start_app "$D" "$L"; then
     # 拖选第 1 行（echo 输出行；y=30 ≈ 行 1 中部，x 10→200 跨整行）。
     # 按钮事件必须走 XTest 根坐标注入（xdotool 老版本 --window click/mousedown
     # 走 XSendEvent，winit 过滤 send_event 标志；先 warp 再无 --window 发按钮）。
-    x11 xdotool mousemove --window "$WID" 10 30
+    Y12=$(row_y "$WID" 1 24)
+    x11 xdotool mousemove --window "$WID" 10 "$Y12"
     sleep 0.2
     x11 xdotool mousedown 1
-    x11 xdotool mousemove --window "$WID" 200 30
+    x11 xdotool mousemove --window "$WID" 200 "$Y12"
     sleep 0.2
     x11 xdotool mouseup 1
     sleep 0.5
@@ -486,7 +495,7 @@ if start_app "$D" "$L"; then
     fi
     # 右键 Paste（默认绑定 Right=Paste）→粘贴文本作命令执行→命令行回显唯一串
     # （源命令行为 "echo PASTE_TARGET"，粘贴回显行为 "PASTE_TARGET"，可区分）
-    x11 xdotool mousemove --window "$WID" 400 30
+    x11 xdotool mousemove --window "$WID" 400 "$(row_y "$WID" 1 24)"
     sleep 0.2
     x11 xdotool click 3
     sleep 1
@@ -770,7 +779,7 @@ if start_app "$D" "$L"; then
     i=0; while [ $i -lt 4 ]; do x11 xdotool click 4; sleep 0.05; i=$((i+1)); done
     sleep 0.5
     # 拖选视口内三行（y 40..90）
-    x11 xdotool mousemove --window "$WID" 10 40
+    x11 xdotool mousemove --window "$WID" 10 "$(row_y "$WID" 1 24)"
     sleep 0.2
     x11 xdotool mousedown 1
     x11 xdotool mousemove --window "$WID" 200 90
@@ -1974,7 +1983,10 @@ for c43 in cpu gpu; do
         # 左右交替（+1 / -1）保持指针原地抖动：单向漂移会在窗口缩放后把指针带出
         # 窗口，随后没有 Motion 事件 → 事件循环空转，loop_gap 记录的是"没事件"
         # 而不是"被阻塞"（实测单向漂移时 CPU 侧有 242ms 假停顿）。
-        CHAIN="mousemove $CX $CY"
+        # 起点固定在窗口左上角内侧 20px：本用例随后会把窗口缩到 760x460，
+        # 若用"旧几何的中心"作为点击点，缩放后指针落到窗口外（root 窗口），
+        # 右键粘贴根本不会送达（实测：先点后缩 0 字节、先缩后点 397312 字节）。
+        CHAIN="mousemove $((GX + 20)) $((GY + 20))"
         n=0
         while [ $n -lt 55 ]; do
             if [ $((n % 2)) -eq 0 ]; then CHAIN="$CHAIN mousemove_relative 1 0"; else CHAIN="$CHAIN mousemove_relative -- -1 0"; fi
@@ -3019,7 +3031,7 @@ else
         "$LEANTTY_REL" --config-file "$W75/$NAME.toml" >/dev/null 2>"$W75/$NAME.err" & P75=$!
         sleep 2.5
         kill -TERM "$P75" 2>/dev/null; wait "$P75" 2>/dev/null || true
-        N=$(grep -c "fontdue 不支持 hinting" "$W75/$NAME.err" || true)
+        N=$(grep -c "不支持 hinting" "$W75/$NAME.err" || true)
         echo "  [c75 $NAME] hinting 提示行数=$N（期望 $WANT）"
         [ "${N:-0}" -eq "$WANT" ] && OK75=$((OK75+1))
     done
@@ -3091,16 +3103,22 @@ else
         TOT81=$((TOT81+1))
         CFG81="$OUT/case81-$b81.toml"; L81="$OUT/case81-$b81.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "printf \x27中文目录 临时\\n\x27; sleep 30"]\n[font]\nfallback = [ { family = "Noto Sans CJK SC", style = "Regular" } ]\n' "$b81" > "$CFG81"
-        LEANTTY_TEST_DELAY_BG_FONTS_MS=2000 LEANTTY_CONFIG="$CFG81" "$LEANTTY_BIN" >/dev/null 2>"$L81" &
+        # 0.2.8 起字体在构造时同步加载（crossfont 惰性打开），不存在"先方块后补"的阶段：
+        # 断言窗口出现后**首张截图就已经是中文**，且 CPU/GPU 两侧一致。
+        LEANTTY_CONFIG="$CFG81" "$LEANTTY_BIN" >/dev/null 2>"$L81" &
         LEANTTY_PID=$!
         if ! wait_window; then
             echo "  [c81 $b81] 窗口未出现"; stop_app; continue
         fi
-        sleep 2; x11 import -window "$WID" "$OUT/case81-$b81-before.png" 2>/dev/null
-        sleep 6; x11 import -window "$WID" "$OUT/case81-$b81-after.png" 2>/dev/null
+        sleep 1; x11 import -window "$WID" "$OUT/case81-$b81-before.png" 2>/dev/null
+        sleep 2; x11 import -window "$WID" "$OUT/case81-$b81-after.png" 2>/dev/null
         D81=$(compare -metric AE "$OUT/case81-$b81-before.png" "$OUT/case81-$b81-after.png" null: 2>&1 | head -1 | tr -dc '0-9')
-        echo "  [c81 $b81] 就绪前后像素差=${D81:-NA}（应 >0）"
-        [ "${D81:-0}" -gt 0 ] && OK81=$((OK81+1))
+        echo "  [c81 $b81] 1s 与 3s 截图差=${D81:-NA}（应 0：字体早已就绪）"
+        [ "${D81:-1}" -eq 0 ] && OK81=$((OK81+1))
+        # 首帧必须已有真实字形：截图与"全背景"不同。
+        INK81=$(convert "$OUT/case81-$b81-before.png" -colorspace gray -negate -threshold 40% -format "%[fx:mean*w*h]" info: 2>/dev/null | cut -d. -f1)
+        echo "  [c81 $b81] 首帧墨迹像素=${INK81:-0}（应 >0）"
+        [ "${INK81:-0}" -gt 0 ] && OK81=$((OK81+1))
         stop_app
     done
     # CPU 与 GPU 在字体就绪后必须逐像素一致（证明 GPU 画的是真实字形而不是更大号的 notdef）
@@ -3109,10 +3127,10 @@ else
         echo "  [c81] CPU vs GPU 就绪后像素差=${DCPU:-NA}（应 0）"
         [ "${DCPU:-1}" -eq 0 ] && OK81=$((OK81+1))
     fi
-    if [ "$OK81" -eq 3 ]; then
-        echo "PASS case81-fallback-font-repaint (3/3)"; PASS=$((PASS+1))
+    if [ "$OK81" -eq 5 ]; then
+        echo "PASS case81-fallback-font-repaint (5/5)"; PASS=$((PASS+1))
     else
-        echo "FAIL case81-fallback-font-repaint ($OK81/3)"; FAIL=$((FAIL+1))
+        echo "FAIL case81-fallback-font-repaint ($OK81/5)"; FAIL=$((FAIL+1))
     fi
 fi
 

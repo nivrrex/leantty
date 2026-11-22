@@ -573,3 +573,26 @@
 - 阶段 9C W4（已验证事实，WARP）：CPU vs GPU 8 s 截图差异 516/460800（0.1120%，通道差 ≤32，仅中文行）；GPU 2 s 与 8 s 完全一致；`bg_fonts_ms` CPU 756 / GPU 1005、`first_frame_ms` CPU 412 / GPU 1044；窗口出现后首帧即中文（方块期未捕获）。
 - 阶段 9C W5（已验证事实 + 偏离）：按任务书重打 6 条目 zip（5 181 473 B / sha256 `29944c2a…`，exe `12f4b468…`）；与上一版 10 条目（含 ConPTY 对）不同，本版运行时回落系统 conhost。
 - 启动早期约 0.31 s 的缺字形方块**作为遗留问题保留**（已验证事实：首帧 230 ms、回退字体并入 545 ms、HYQiHei 单面解析 305 ms）；否决"首帧等字体"（窗口出现推迟 315 ms）与"共享主线程 Database"（后台线程本就并行扫描，净收益约 −17 ms，且需改 `CpuRenderer::new` 等 56 处调用点）。
+- 阶段 9D（已验证事实，依据 alacritty 源码 `alacritty/src/display/window.rs::update_ime_position`）：IME 锚点须用**物理像素**（传 `PhysicalPosition/PhysicalSize`，否则 winit 在 HiDPI 下再乘一次 scale）、X11 上 y 需**下移一行**（XIM 只收 spot 点、不收矩形，否则候选窗盖住当前行）、宽度取**两格**（面板在可用宽度过窄时会把候选窗甩到窗口右下角）。本仓库原实现三点均不符：`Advanced` 逻辑坐标 + 同行 y + 一格宽。
+- 阶段 9D（待验证假设）：上述三点修正后 ibus 候选窗在真实桌面上的跟随/上下翻转行为；本机 headless 环境里 ibus-rime 引擎启动正常但输入无回显（`XMODIFIERS=@im=ibus` 已设），无法本地复现，需用户在真实会话中确认。
+- 阶段 9E（已验证事实）：`Alt+Tab` 若到达客户端，`(Key::Tab, Mods::ALT)` 经上游编码器产出 `ESC` + `0x09`（`crates/vt/tests/alt_tab_bytes.rs` 锁定），shell/readline 会当作一次补全 → 表现为"遗留 Tab"；无修饰 Tab 仍是单字节 `0x09`。
+- 阶段 9E（已验证事实）：`vt_mods_from` 只映射 Shift/Ctrl/Alt，**丢弃 Super** → `Super+Space` 等桌面快捷键会退化成本身那一键写进 PTY（打出空格）。处置：`wm_reserved_key` 在绑定查表前挡掉 Super 组合与 `Alt(+Shift)+Tab`。
+- 阶段 9E（已验证事实）：`window_event` 原先不处理 `WindowEvent::Focused`，且 `ModifiersChanged` 只更新不移除——`Alt+Tab` 切走后 Alt 的 release 落在别的窗口，`mods_state` 卡在 ALT，之后每个字符都被编码成 `ESC` 前缀。处置：失焦清空修饰键状态 + 无焦点时丢弃按键。
+- 阶段 9E（未复现，工程判断）：本机 openbox（lxde-rc 有 `A-Tab` 绑定）会抢走 `Alt+Tab`，pre-fix 二进制在同一探针下也未见多余字节，故用户环境的具体触发路径（WM 未抓键 / 抓键前先投递 / 焦点切换次序）未能本地复现；上述三处修改按"任何路径下都不该把 WM 组合写成 PTY 字节"收敛。
+- 阶段 9E（已验证事实）：`yes | head -c 20 MB` 压测下 `chan_depth_max=1`、`feed_ms_max=2.9`、`loop_gap_max_ms=8`、`~47 fps`、`feed_bytes_per_s≈6.1–6.6 MB/s`——读线程→channel 从未积压，事件循环间隔等于帧节流下限 8 ms，说明"线程跳一次"的延迟不在关键路径上。
+- 阶段 9E（决策，否决 R4 事件循环重构）：winit 0.30 确实支持 `AsFd` + `pump_app_events` 自建 poll（把 winit 的 fd 注册进 calloop/mio），但收益仅为去掉 `Wake`/`ProxyWaker`/`EventLoopClosed` 三处特例与 <1% 的延迟（被 8 ms 帧节流吞掉）；代价是把 `ControlFlow::WaitUntil` 承载的存活唤醒、帧节流、debug 钩子定时改写成自己的 poll 超时——即 4S/4V 专门修稳的那套调度（case51/case52、空闲零 CPU），且 Windows 侧 PTY 是管道需另写等待机制，本机无法验证；不允许新增依赖，poll 只能手写。综合判定收益不成立，保持现状（R4 作为可选项留档）。
+- 阶段 9E-2（已验证事实，本地无窗口管理器场景）：`Alt+Tab` 到达客户端时 `mods.alt=true` → 被 `wm_reserved_key` 拦下（字节流只有 `61`，无 `1b 09`）；裸 Tab 仍正常转发 `09`；"先放 Alt 再按 Tab（间隔 68 ms）"也被 `tab_is_alt_tab_tail` 吞掉。说明两条规则在本机可复现的形态下有效。
+- 阶段 9E-2（未复现）：用户报告 0.2.4 仍残留 Tab。本机 openbox 无论是否配置 `A-Tab` 都会抓走该键（客户端收不到），所以无法复现其环境的事件序列；已加 `LEANTTY_KEY_TRACE=<path>` 诊断输出（记录 focus / mods / 每个按键的 state+key+mods+text，行内带毫秒），待用户提供一次复现记录后再定位，避免继续猜测式改代码。
+- 阶段 9E-2（已验证事实，用户机器 `LEANTTY_KEY_TRACE` 实测序列）：`Alt+Tab` 被 openbox 抓走 → 客户端只收到 `Tab Released`（无 press）、随后 `Focused(false)`；焦点回来时 `Focused(true)` 之后 **0–13 ms 内补投一次裸 `Tab Pressed`（mods 全空、Ctrl 也空）**，那次补投才是残留 Tab 的来源（三例间隔分别 +7 ms / +0 ms / +1 ms / +5 ms）。
+- 阶段 9E-2（处置）：新增 `tab_is_focus_replay`——裸 Tab 且距 `Focused(true)` ≤100 ms 时丢弃；保留 `tab_is_alt_tab_tail`（Alt 释放后 ≤200 ms 的 Tab）。两条规则都把"无修饰 Tab"的其他情形（粘贴后 Tab、从容按 Tab）留给正常转发。
+- 阶段 9G（已验证事实，Xvfb :99 + openbox，同一份配置 DejaVu Sans Mono 16pt / 40×10 / padding 0）：
+  leantty 与 alacritty 窗口均为 **760×380**，首行文字墨迹顶边均为 **+7 px** → 格宽格高与首行位置一致；
+  用 `-e /bin/sh -c 'printf "A\nB\nC\n"'` 也没有出现"首行空行"。用户的空行现象未能本地复现，
+  待其提供截图或复现命令。
+- 阶段 9G（已验证事实，`Xft.dpi=144` 即分数缩放）：leantty 窗口 2160×1140（每格 18×38）、
+  alacritty 2040×1110（每格 17×37），每格差 1 px；未定位是 scale 取值还是取整口径导致，暂不改。
+- 阶段 9G（已验证事实，用户 office 机器截图实测）：同配置（120×30、13pt）下 alacritty 首行文字起于内容区 +5 px、leantty 起于 +31 px（正好一个格高）→ leantty 首行上方多一个空格行；两者**字宽几乎一致**（17 字符宽度 15.06 vs 15.24 px/字符），所以"leantty 看起来更大"主要是行高/格高差异（leantty 窗口 962 vs alacritty 930，每格高 1 px）而非字号。
+- 阶段 9G（处置）：新增 `LEANTTY_GEOM=1` 诊断（启动与每次 Resized 打印 window/scale/cell/cfg/vt/offset/pad 一行）；本机同类配置输出 `window=1680x930 scale=1.500 cell=14x31 cfg=120x30 vt=120x30 offset=0`，无首行空行 → 需用户机器上的同一行数据才能定位其 +1 格偏移。
+
+
+- 阶段 0.2.8（已验证事实，未完成）：字体层改用 crossfont 后，"启动方块"问题从结构上消失（构造时即加载全部字体，`font_ready` 测试断言 CJK/emoji 首帧可渲染），CPU 路径的字形渲染与窗口一致性、装饰线（CPU/GPU 共用 `style_line_rects`）均已通过；但**格子度量与旧实现不匹配**：同一份配置（40×10、16pt、同一缩放）下 fontdue 得 19×32，crossfont 得 16×48（宽偏小 16%、高偏大 50%），导致 24 行窗口超出 720p 屏幕，`case21/37/43/44/47` 等滚动/回底用例失败（10 项）。根因是 crossfont `Size`（点）、`as_px()`（×96/72）与 `Rasterizer::metrics` 的尺寸生效时机三者组合下的换算尚未对齐，需要单独用探针把 "pt → px → FT set_char_size → metrics/advance" 的数值链对齐后再改。

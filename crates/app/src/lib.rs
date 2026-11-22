@@ -256,6 +256,17 @@ pub fn reader_body_with_depth<R: std::io::Read>(
     depth: Option<&std::sync::atomic::AtomicUsize>,
 ) {
     let mut buf = [0u8; 4096];
+    // 诊断（`LEANTTY_PTY_TRACE=<path>`）：把 PTY 读到的前 4 KiB 以十六进制落盘，
+    // 用于判断"首行多一个空行"是子进程写出来的还是我们渲染出来的。
+    let mut trace: Option<(std::fs::File, usize)> = std::env::var_os("LEANTTY_PTY_TRACE")
+        .and_then(|p| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(p)
+                .ok()
+        })
+        .map(|f| (f, 0usize));
     loop {
         match reader.read(&mut buf) {
             Ok(0) | Err(_) => {
@@ -266,6 +277,18 @@ pub fn reader_body_with_depth<R: std::io::Read>(
                 break;
             }
             Ok(n) => {
+                if let Some((f, written)) = trace.as_mut() {
+                    use std::io::Write as _;
+                    if *written < 4096 {
+                        let mut hex = String::with_capacity(n * 3);
+                        for b in &buf[..n] {
+                            hex.push_str(&format!("{b:02x}"));
+                        }
+                        let _ = writeln!(f, "{hex}");
+                        let _ = f.flush();
+                        *written += n;
+                    }
+                }
                 if let Some(d) = depth {
                     d.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
@@ -344,6 +367,8 @@ struct PerfFrames {
     interval_ms: u64,
     /// 本统计窗口内喂入 vt 的字节数（阶段 4C t3）。
     feed_bytes: u128,
+    /// 单帧 acquire+present 的最大值（微秒）；GPU 路径用它暴露"present 阻塞"。
+    present_max_us: u64,
     /// 本窗口起点（用于算窗口时长 → feed 速率）。
     window_start: Option<std::time::Instant>,
     /// 本窗口内有界 channel 的积压峰值（阶段 4C t3）。
@@ -382,12 +407,13 @@ impl PerfFrames {
             .filter(|s| *s > 0.0);
         let feed_rate = elapsed_s.map(|s| self.feed_bytes as f64 / s).unwrap_or(0.0);
         eperf!(
-            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
+            "[perf] frames n={} render_ms(med={} p95={}) present_ms(med={} p95={}) present_ms_max={} coalesced={} interval_ms={} ~{}fps feed_bytes_per_s={:.0} chan_depth_max={} loop_gap_max_ms={} feed_ms_max={:.1} feed_bytes_max={} writer_queued_max={} {}",
             Self::N,
             r_med,
             r_p95,
             p_med,
             p_p95,
+            self.present_max_us / 1000,
             self.coalesced,
             self.interval_ms,
             fps,
@@ -399,6 +425,7 @@ impl PerfFrames {
             self.writer_queued_max,
             mem
         );
+        self.present_max_us = 0;
         self.coalesced = 0;
         self.loop_gap_max_us = 0;
         self.feed_ms_max = 0.0;
@@ -483,6 +510,7 @@ impl App {
         }
         let exec_command = self.exec_command.clone();
         let mut handler = AppHandler {
+            last_resize_poll: None,
             perf_reset_at: std::env::var("LEANTTY_PERF_RESET_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
@@ -544,8 +572,19 @@ impl App {
             pad_x: 0,
             pad_y: 0,
             scale_factor: 1.0,
+            key_trace: std::env::var_os("LEANTTY_KEY_TRACE").and_then(|p| {
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(p)
+                    .ok()
+            }),
+            focused_at: None,
+            alt_released_at: None,
+            occluded: false,
+            focused: true,
+            is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
-            bg_rx: None,
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
@@ -679,25 +718,16 @@ impl RendererBackend {
         }
     }
 
-    /// 加载后台字体（CJK 回退）。
-    /// 阶段 9A：后台线程交出已共享的字形句柄，省掉 `Vec<Font>` 的那次深拷贝。
-    fn add_background_fonts_shared(&mut self, fonts: Vec<std::sync::Arc<render::Font>>) {
+    /// 最近一帧 GPU 的 (acquire_us, present_us)；CPU 后端返回 (0,0)。
+    pub fn last_gpu_timings(&self) -> (u128, u128) {
         match self {
-            Self::Cpu(r) => r.add_background_fonts_shared(fonts),
-            Self::Gpu(r) => r.add_background_fonts_shared(fonts),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn add_background_fonts(&mut self, fonts: Vec<render::Font>) {
-        match self {
-            Self::Cpu(r) => r.add_background_fonts(fonts),
+            Self::Cpu(_) => (0, 0),
             #[cfg(any(target_os = "linux", target_os = "windows"))]
-            Self::Gpu(r) => r.add_background_fonts(fonts),
+            Self::Gpu(r) => r.last_timings(),
         }
     }
 
-    /// 选区块（内容绝对坐标，含端点）。
+    /// 选区高亮（网格坐标，含端点）。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         match self {
             Self::Cpu(r) => r.set_selection(region),
@@ -706,7 +736,7 @@ impl RendererBackend {
         }
     }
 
-    /// 滚动条拇指几何 (thumb_y, thumb_h)。
+    /// 滚动条拇指几何。
     pub fn set_scrollbar(&mut self, geom: Option<(u32, u32)>) {
         match self {
             Self::Cpu(r) => r.set_scrollbar(geom),
@@ -724,7 +754,6 @@ impl RendererBackend {
         }
     }
 
-    /// 渲染一帧（CPU：写入内部帧缓冲，随后由 softbuffer 提交）。
     pub fn render(
         &mut self,
         frame: &vt::FrameSnapshot,
@@ -834,7 +863,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(false)); // auto 永远忽略软件开关
@@ -865,7 +894,7 @@ pub fn create_renderer(
             {
                 let t = std::time::Instant::now();
                 let reuse = existing.as_ref().and_then(|r| match r {
-                    RendererBackend::Cpu(c) => Some(c.font_groups()),
+                    RendererBackend::Cpu(c) => Some(c.font_set()),
                     _ => None,
                 });
                 ALLOW_SOFTWARE_REQUESTED.with(|c| c.set(true)); // 显式 gpu 才可能允许
@@ -907,7 +936,7 @@ fn build_gpu(
     palette: render::Palette,
     window: &winit::window::Window,
     scale: f64,
-    existing_cpu_groups: Option<std::sync::Arc<Vec<Vec<std::sync::Arc<render::Font>>>>>,
+    existing_fonts: Option<std::rc::Rc<std::cell::RefCell<render::FontSet>>>,
 ) -> Result<(RendererBackend, String), Error> {
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
     let wh = window
@@ -920,8 +949,8 @@ fn build_gpu(
         .as_raw();
     let size = window.inner_size();
     // 复用窗口前 CPU 渲染器已构建的字体链（stage 4E t3：省掉一次 fontdb + 字体解析）
-    let reuse = existing_cpu_groups;
-    let mut gpu = render::gpu::GpuRenderer::new_surface_with_groups(
+    let reuse = existing_fonts;
+    let mut gpu = render::gpu::GpuRenderer::new_surface_with_fonts(
         font_settings,
         options,
         palette,
@@ -964,6 +993,30 @@ struct AppHandler {
     pad_y: u16,
     /// 当前缩放因子（winit scale_factor）。
     scale_factor: f64,
+    /// 键盘诊断输出（`LEANTTY_KEY_TRACE=<path>` 时写入；用于定位 WM/输入法投递序列）。
+    key_trace: Option<std::fs::File>,
+    /// 上次轮询窗口尺寸并 apply_resize 的时刻（限速用）。
+    last_resize_poll: Option<Instant>,
+    /// 后台字体是否已记录过"首次并入"时刻（逐个并入后用）。
+    /// 最近一次拿到焦点的时刻。你的机器上 `Alt+Tab` 的 Tab press 会被 WM 抓走，
+    /// 随后在 `Focused(true)` 之后 0–13 ms 内补投一次**裸 Tab press**（trace 实测），
+    /// 那一击才是残留 Tab 的真正来源。
+    focused_at: Option<Instant>,
+    /// 最近一次"Alt 被释放"的时刻。用于识别 WM 组合键尾巴：`Alt+Tab` 在某些 WM/时序下
+    /// Tab 的 press 会晚于 Alt 的 release 到达，此时 mods 里已没有 ALT。
+    alt_released_at: Option<Instant>,
+    /// 窗口是否被完全遮挡（阶段 0.2.10）：遮挡期间不渲染、不 present。
+    ///
+    /// 动机：Fifo 交换链下 `get_current_texture` 可能在窗口被遮挡时长时间阻塞（合成器不再
+    /// 消费帧），表现为整段输出卡住十几秒。alacritty 同样在 `occluded` 时直接跳过 draw。
+    occluded: bool,
+    /// 窗口当前是否持有焦点（阶段 9E）。`Alt+Tab` 切走的过程中会收到本窗口的
+    /// `Focused(false)`，若随后仍把按键写进 PTY（切窗口时 Tab 的 release/press
+    /// 次序在不同 WM 下不一致），终端里就会残留一个 Tab。
+    focused: bool,
+    /// 窗口是否为 X11：XIM 只接受 spot 点而非矩形，需把 IME 锚点下移一行
+    /// （与 alacritty 的 `is_x11` 处理一致）。窗口创建后按 raw handle 判定。
+    is_x11: bool,
     /// 首帧 present 耗时日志标志（perf 钩子，仅打印一次）。
     first_frame_logged: bool,
     /// 首个 PTY 字节到达日志标志（perf 钩子，仅打印一次）。
@@ -1020,7 +1073,6 @@ struct AppHandler {
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
-    bg_rx: Option<mpsc::Receiver<Vec<std::sync::Arc<render::Font>>>>,
     mods_state: ModifiersState,
     /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
     selection: Option<Selection>,
@@ -1099,25 +1151,6 @@ impl ApplicationHandler for AppHandler {
         let config = self.config.take().expect("resumed 只能调用一次");
         // 阶段 9A：回退字体在**建窗前**就开始加载，与渲染器初始化/建窗/建 surface
         // 完全重叠（此前在窗口建好后才起线程，白等约 0.3s）；首帧仍不等字体。
-        let (bg_tx, bg_rx) = mpsc::channel::<Vec<std::sync::Arc<render::Font>>>();
-        {
-            let bg_specs = config.font_settings.fallback.clone();
-            let bg_proxy = self.event_proxy.clone();
-            std::thread::spawn(move || {
-                let t_bg = std::time::Instant::now();
-                let fonts = render::load_font_list_shared(&bg_specs);
-                eperf!(
-                    "[perf] bg_font_list_us={} count={}",
-                    t_bg.elapsed().as_micros(),
-                    fonts.len()
-                );
-                let _ = bg_tx.send(fonts);
-                if let Some(proxy) = bg_proxy {
-                    let _ = proxy.send_event(());
-                }
-            });
-        }
-        self.bg_rx = Some(bg_rx);
         // 字体渲染器先行创建：格子尺寸由字体度量算出（任务2，替代固定 8x16）。
         // 此时窗口尚未创建，只能先建 CPU 渲染器用于估算；窗口创建后再按
         // renderer.backend 决定是否替换为 GPU 渲染器（必须在首个 present 之前）。
@@ -1201,6 +1234,15 @@ impl ApplicationHandler for AppHandler {
                 return;
             }
         });
+        // 阶段 9D：判定窗口后端是否为 X11（决定 IME 锚点是否要下移一行）。
+        // 用 raw handle 而不是猜环境变量：Win32/Xlib/Wayland 在 handle 类型上一目了然。
+        {
+            use raw_window_handle::HasWindowHandle;
+            self.is_x11 = matches!(
+                window.window_handle().map(|h| h.as_raw()),
+                Ok(raw_window_handle::RawWindowHandle::Xlib(_))
+            );
+        }
         // window.position：winit 0.30 的 X11 后端在创建路径上不应用 attributes.position
         // （只在映射后经 set_outer_position 生效），因此创建后显式设置一次。
         // Wayland 下合成器可能忽略（已有提示日志）；越界交给窗口管理器。
@@ -1582,10 +1624,80 @@ impl ApplicationHandler for AppHandler {
                 self.urgent_render = true;
                 self.on_ime_event(ime);
             }
-            WindowEvent::ModifiersChanged(m) => self.mods_state = m.state(),
+            WindowEvent::ModifiersChanged(m) => {
+                let prev = self.mods_state;
+                self.mods_state = m.state();
+                if prev.alt_key() && !self.mods_state.alt_key() {
+                    self.alt_released_at = Some(Instant::now());
+                }
+                self.trace_key(format!(
+                    "mods shift={} ctrl={} alt={} super={}",
+                    self.mods_state.shift_key(),
+                    self.mods_state.control_key(),
+                    self.mods_state.alt_key(),
+                    self.mods_state.super_key()
+                ));
+            }
+            // 阶段 9E：失焦时清空修饰键状态。`Alt+Tab` 切走后 Alt 的 release 事件会送到
+            // 新获得焦点的窗口，我们这边永远收不到 → `mods_state` 卡在 ALT，之后每敲一个
+            // 字符都会被编码成 `ESC` 前缀（表现为"切换回来打字出现怪字符"）。
+            WindowEvent::Occluded(occluded) => {
+                self.occluded = occluded;
+                if !occluded {
+                    // 重新可见：立刻补一帧（遮挡期间可能积压了大量输出）。
+                    self.urgent_render = true;
+                    if let Some(w) = self.window.as_ref() {
+                        w.request_redraw();
+                    }
+                }
+            }
+            WindowEvent::Focused(focused) => {
+                self.trace_key(format!("focus {focused}"));
+                self.focused = focused;
+                if focused {
+                    self.focused_at = Some(Instant::now());
+                }
+                if !focused {
+                    self.mods_state = ModifiersState::default();
+                }
+                self.urgent_render = true;
+            }
             WindowEvent::KeyboardInput { event, .. } => {
+                self.trace_key(format!(
+                    "key {:?} {:?} mods(shift={} ctrl={} alt={} super={}) text={:?}",
+                    event.state,
+                    event.logical_key,
+                    self.mods_state.shift_key(),
+                    self.mods_state.control_key(),
+                    self.mods_state.alt_key(),
+                    self.mods_state.super_key(),
+                    event.text.as_deref().unwrap_or("")
+                ));
+                // 阶段 9E：切窗口过度期间的按键归属窗口管理器，不写进 PTY。
+                if !self.focused {
+                    return;
+                }
                 self.urgent_render = true;
                 if event.state == ElementState::Pressed {
+                    // 阶段 9E：窗口管理器保留的组合（Super 组合、Alt+Tab）不写进 PTY。
+                    // 绑定查表之前先挡掉：这类组合属于桌面快捷键，即使将来有人把它们
+                    // 写进 keyboard.bindings 也不该在我们这里生效。
+                    let mapped_key = map_logical_key(&event.logical_key);
+                    if wm_reserved_key(&self.mods_state, mapped_key)
+                        || tab_is_alt_tab_tail(
+                            mapped_key,
+                            self.mods_state.alt_key(),
+                            self.alt_released_at.map(|t| t.elapsed()),
+                        )
+                        || tab_is_focus_replay(
+                            mapped_key,
+                            self.mods_state.alt_key(),
+                            self.mods_state.control_key(),
+                            self.focused_at.map(|t| t.elapsed()),
+                        )
+                    {
+                        return;
+                    }
                     // 绑定执行优先（任务 2.5）：keyboard.bindings 查表（空则内置默认
                     // Ctrl+Shift+C/V）；命中即执行动作，不再走 route_key。
                     let kmods = config_mods(&self.mods_state);
@@ -1619,13 +1731,33 @@ impl ApplicationHandler for AppHandler {
                                             // 阶段 6A：kitty 模式下必须提供 unshifted codepoint，
                                             // 否则组合键被上游编码器静默丢弃（Ctrl+D/P/C 全丢）。
                                             let unshifted = unshifted_codepoint(&event);
-                                            match enc.encode_key_full(
+                                            // 阶段 9F：把按键文本一并交给编码器。ghostty 的
+                                            // legacy 分支在 `Ctrl+<char>` 上要么用 `event.utf8`、
+                                            // 要么用逻辑键自带码点；`Ctrl+Shift+字母/符号` 又进不了
+                                            // `ctrlSeq`（unset_mods 不是 ctrl_only）→ 此前一个字节都不写
+                                            // （实测 `Ctrl+Space`/`Ctrl+Shift+A`/`Ctrl+Shift+[` 全丢）。
+                                            let text = event.text.as_deref();
+                                            // 先按"不带 utf8"编码：保持 modifyOtherKeys 等既有模式的行为
+                                            // （带 utf8 会让 mok2 从 `0x01` 变成 `ESC[27;5;97~`）。
+                                            // 只有当这种编码**一个字节都不产出**时，才带 utf8 重试，
+                                            // 用于修 `Ctrl+Shift+字母/符号`（上游只认 utf8 的那条路径）。
+                                            let mut enc_result = enc.encode_key_full(
                                                 key,
                                                 mods,
                                                 Action::Press,
                                                 unshifted,
                                                 None,
-                                            ) {
+                                            );
+                                            if matches!(&enc_result, Ok(b) if b.is_empty()) {
+                                                enc_result = enc.encode_key_full(
+                                                    key,
+                                                    mods,
+                                                    Action::Press,
+                                                    unshifted,
+                                                    text,
+                                                );
+                                            }
+                                            match enc_result {
                                                 Ok(bytes) => {
                                                     // 阶段 4I t2：Ctrl-C 取消进行中的粘贴。
                                                     // 写线程只能丢弃"已在队列里"的块（并补发括号
@@ -1643,6 +1775,28 @@ impl ApplicationHandler for AppHandler {
                                                         && key == vt::Key::BracketLeft
                                                     {
                                                         vec![0x1b]
+                                                    } else {
+                                                        bytes
+                                                    };
+                                                    // 阶段 9F：应用没启用 Kitty 键盘协议时，上游编码器
+                                                    // 对 `Ctrl+Shift+<字符>` 仍会产出 `CSI u`（实测
+                                                    // `Ctrl+Shift+A` → `ESC[97;6u`），传统应用会把这一串当
+                                                    // 普通字符回显。此时按 xterm 口径回写控制字节
+                                                    // （`Ctrl+Shift+A`→0x01、`Ctrl+Shift+[`→0x1b），与 alacritty 一致。
+                                                    let bytes = if is_csi_u(&bytes)
+                                                        && !self.vt.as_ref().is_some_and(|v| {
+                                                            v.kitty_keyboard_enabled()
+                                                        }) {
+                                                        let ch = unshifted.or_else(|| {
+                                                            event
+                                                                .text
+                                                                .as_deref()
+                                                                .and_then(|t| t.chars().next())
+                                                        });
+                                                        match ch.and_then(ctrl_byte) {
+                                                            Some(b) => vec![b],
+                                                            None => bytes,
+                                                        }
                                                     } else {
                                                         bytes
                                                     };
@@ -1672,60 +1826,7 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::Resized(physical_size) => {
-                self.next_frame_origin = 2; // 缩放/尺寸事件触发
-                self.urgent_render = true;
-                let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
-                let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
-                // 零尺寸/小于一格（Windows 最小化会发 1×1 或 0×0）：保持原网格、
-                // 原渲染尺寸与 surface 配置不变，只请求一次重绘（恢复时的 Resized
-                // 会走正常路径）。若在此处 resize，内容会被裁成 1×1 且不可恢复。
-                let Some((cols, rows)) = resize_target(
-                    physical_size.width,
-                    physical_size.height,
-                    self.cell_w,
-                    self.cell_h,
-                    pad_x,
-                    pad_y,
-                ) else {
-                    #[cfg(debug_assertions)]
-                    eperf!(
-                        "[perf] resize_ignored {}x{}（小于一个字符格）",
-                        physical_size.width,
-                        physical_size.height
-                    );
-                    return;
-                };
-                // 幂等：网格未变时不重复 resize（恢复尺寸与最小化前相同时必须无副作用）。
-                let unchanged = (cols, rows) == (self.cols, self.rows);
-                if !unchanged {
-                    if let Some(vt) = self.vt.as_mut()
-                        && let Err(e) = vt.resize(cols, rows)
-                    {
-                        eprintln!("vt resize: {}", e);
-                    }
-                    if let Some(pty) = self.pty.as_mut()
-                        && let Err(e) = pty.resize(cols, rows)
-                    {
-                        eprintln!("pty resize: {}", e);
-                    }
-                    self.cols = cols;
-                    self.rows = rows;
-                }
-                self.last_size = Some((physical_size.width, physical_size.height));
-                if let Some(r) = self.renderer.as_mut()
-                    && r.is_gpu()
-                {
-                    r.resize_surface(physical_size.width, physical_size.height);
-                }
-                if let Some(surface) = self.surface.as_mut()
-                    && let (Some(w), Some(h)) = (
-                        std::num::NonZeroU32::new(physical_size.width),
-                        std::num::NonZeroU32::new(physical_size.height),
-                    )
-                    && let Err(e) = surface.resize(w, h)
-                {
-                    eprintln!("surface resize: {}", e);
-                }
+                self.apply_resize(physical_size.width, physical_size.height);
             }
             _ => {}
         }
@@ -1749,6 +1850,22 @@ impl ApplicationHandler for AppHandler {
         // 249 loops/s、wake_timer=100%、约 13% 单核）。下面各分支只在确有
         // 待办工作时再升级为 WaitUntil。
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+        // 轮询真实窗口像素尺寸：WM 可能在映射时裁窗且不投递 Resized（实测 720p 屏幕上
+        // 请求 1008px 被裁到 696px，导致渲染/滚动条按错误高度计算）。
+        if let Some(w) = self.window.as_ref() {
+            let sz = w.inner_size();
+            let changed =
+                sz.width > 0 && sz.height > 0 && self.last_size != Some((sz.width, sz.height));
+            // 限速：WM 抖动时每轮都 resize 会与输入处理抢主线程（实测粘贴/键入被饿死）。
+            let due = self
+                .last_resize_poll
+                .map(|t| t.elapsed() >= std::time::Duration::from_millis(200))
+                .unwrap_or(true);
+            if changed && due {
+                self.last_resize_poll = Some(Instant::now());
+                self.apply_resize(sz.width, sz.height);
+            }
+        }
         // 阶段 4I t3：观测窗口重置（LEANTTY_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -1916,48 +2033,6 @@ impl ApplicationHandler for AppHandler {
                 // 主动请求下一帧，避免事件循环空闲停摆（不忙等：每帧只写预算量）。
                 // 同时置 urgent：排空期间内容在变，下一帧应尽快到来（4B-fix3）。
                 self.urgent_render = true;
-                w.request_redraw();
-            }
-        }
-        // 后台字体到位检查：并入 renderer（清缓存）后本帧重绘即用新字体。
-        // debug-only：人为延迟回退字体就绪，用于 e2e 复现"先画方块后恢复"（release 不含）。
-        #[cfg(debug_assertions)]
-        let bg_ready = {
-            static DELAY_MS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
-            let d = *DELAY_MS.get_or_init(|| {
-                std::env::var("LEANTTY_TEST_DELAY_BG_FONTS_MS")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(0)
-            });
-            d == 0
-                || crate::start_time()
-                    .map(|t| t.elapsed().as_millis() >= d as u128)
-                    .unwrap_or(true)
-        };
-        #[cfg(not(debug_assertions))]
-        let bg_ready = true;
-        if bg_ready
-            && let Some(rx) = &self.bg_rx
-            && let Ok(fonts) = rx.try_recv()
-            && let Some(r) = self.renderer.as_mut()
-        {
-            // perf 钩子（任务 2C.5）：后台字体（CJK fallback）到位时刻，
-            // 与首帧耗时同口径（相对进程启动），仅打印一次。
-            if let Some(t0) = crate::start_time() {
-                eperf!(
-                    "[perf] bg_fonts_ms={} count={}",
-                    t0.elapsed().as_millis(),
-                    fonts.len()
-                );
-            }
-            r.add_background_fonts_shared(fonts);
-            // 阶段 9A：回退字体并入后必须立刻重画。渲染器只置了自己的 force_full，而 GPU
-            // 空闲跳过（判据 snap.is_clean()/几何/urgent）与 CPU 空 damage 跳过都不看它 →
-            // 这一帧被跳过，缺字形的方块留在屏幕上（GPU 后端实测永不恢复）。置 urgent 并经
-            // 既有出口（request_redraw + finish_wake）请求重绘，不新增控制流出口。
-            self.urgent_render = true;
-            if let Some(w) = self.window.as_ref() {
                 w.request_redraw();
             }
         }
@@ -2174,6 +2249,12 @@ impl ApplicationHandler for AppHandler {
         let mem = self.mem_summary();
         // 渲染一帧（尺寸取缓存，窗口销毁后不查询 X11 geometry）
         let sb_render = self.sb_rows();
+        if self.occluded {
+            // 被遮挡：不渲染、不 present（避免交换链阻塞主线程）；PTY 已在上面喂完，
+            // 可见性恢复时由 `WindowEvent::Occluded(false)` 触发一次补帧。
+            self.finish_wake(event_loop, None);
+            return;
+        }
         if let (Some(vt), Some(renderer)) = (self.vt.as_ref(), self.renderer.as_mut()) {
             // GPU 后端直接渲染到窗口 surface（无 softbuffer），CPU 后端必须已有 surface。
             let is_gpu = renderer.is_gpu();
@@ -2319,9 +2400,12 @@ impl ApplicationHandler for AppHandler {
                     // GPU 后端：render() 已把这一帧直接 present 到窗口 surface，
                     // 没有脏区拷贝步骤（surface 纹理内容不保留，每帧整帧重绘）。
                     if is_gpu {
+                        let (acq_us, pres_us) = renderer.last_gpu_timings();
                         if let Some(pf) = self.perf_frames.as_mut() {
-                            // GPU present 已在 render_ms 内，这里只维护帧计数与间隔。
-                            pf.present_us.push(0);
+                            // GPU 的 acquire+present 单独计时（render_ms 里也包含它们），
+                            // 这样"窗口被遮挡导致 present 阻塞"能被 perf 行直接看到。
+                            pf.present_us.push(acq_us + pres_us);
+                            pf.present_max_us = pf.present_max_us.max((acq_us + pres_us) as u64);
                             pf.interval_ms = prev_render
                                 .map(|t| now.duration_since(t).as_millis() as u64)
                                 .unwrap_or(0);
@@ -2331,6 +2415,7 @@ impl ApplicationHandler for AppHandler {
                         }
                         if !self.first_frame_logged {
                             self.first_frame_logged = true;
+                            self.trace_geom("first_frame");
                             if let Some(t0) = crate::start_time() {
                                 eperf!("[perf] first_frame_ms={}", t0.elapsed().as_millis());
                             }
@@ -2482,6 +2567,55 @@ impl ApplicationHandler for AppHandler {
 }
 
 impl AppHandler {
+    /// 应用窗口像素尺寸变化：重算网格、resize vt/pty、更新 surface 与缓存尺寸。
+    ///
+    /// 除 `WindowEvent::Resized` 外，`about_to_wait` 还会**轮询** `window.inner_size()`
+    /// （窗口管理器可能在映射时悄悄裁窗而不发事件——实测 1280x720 屏幕上 24 行请求
+    /// 1008px 被裁到 696px，若不轮询，渲染与滚动条仍按 1008px 计算，滚动条画到窗口外）。
+    fn apply_resize(&mut self, width: u32, height: u32) {
+        self.next_frame_origin = 2;
+        self.urgent_render = true;
+        let pad_x = u32::from(self.pad_x) * self.scale_factor as u32;
+        let pad_y = u32::from(self.pad_y) * self.scale_factor as u32;
+        let Some((cols, rows)) =
+            resize_target(width, height, self.cell_w, self.cell_h, pad_x, pad_y)
+        else {
+            #[cfg(debug_assertions)]
+            eperf!("[perf] resize_ignored {width}x{height}（小于一个字符格）");
+            return;
+        };
+        let unchanged = (cols, rows) == (self.cols, self.rows);
+        if !unchanged {
+            if let Some(vt) = self.vt.as_mut()
+                && let Err(e) = vt.resize(cols, rows)
+            {
+                eprintln!("vt resize: {}", e);
+            }
+            if let Some(pty) = self.pty.as_mut()
+                && let Err(e) = pty.resize(cols, rows)
+            {
+                eprintln!("pty resize: {}", e);
+            }
+            self.cols = cols;
+            self.rows = rows;
+        }
+        self.last_size = Some((width, height));
+        if let Some(r) = self.renderer.as_mut()
+            && r.is_gpu()
+        {
+            r.resize_surface(width, height);
+        }
+        if let Some(surface) = self.surface.as_mut()
+            && let (Some(w), Some(h)) = (
+                std::num::NonZeroU32::new(width),
+                std::num::NonZeroU32::new(height),
+            )
+            && let Err(e) = surface.resize(w, h)
+        {
+            eprintln!("surface resize: {}", e);
+        }
+    }
+
     /// 存活检查的下一次到期时刻（阶段 4V t2，无副作用）。
     ///
     /// Windows 恒启用（ConPTY 输出管道不会因 shell 退出而 EOF，只能轮询 `try_wait`）；
@@ -2729,7 +2863,85 @@ impl AppHandler {
         self.update_ime_cursor_area();
     }
 
+    /// 几何诊断（`LEANTTY_GEOM=1`）：打印窗口像素、scale、格子尺寸、vt 行列与视口偏移。
+    /// 用于定位"首行空一行 / 同配置比 alacritty 大"这类只在特定机器上出现的差异。
+    fn trace_geom(&self, why: &str) {
+        if std::env::var_os("LEANTTY_GEOM").is_none() {
+            return;
+        }
+        let (vw, vh) = self.last_size.unwrap_or((0, 0));
+        let snap = self.vt.as_ref().and_then(|v| v.snapshot().ok());
+        let (vcols, vrows) = snap.as_ref().map(|s| (s.cols, s.rows)).unwrap_or((0, 0));
+        let (cur_x, cur_y) = snap
+            .as_ref()
+            .map(|s| (s.cursor.x, s.cursor.y))
+            .unwrap_or((0, 0));
+        let row0: String = snap
+            .as_ref()
+            .and_then(|s| s.cells.first())
+            .map(|r| {
+                r.iter()
+                    .map(|c| c.chars.as_str())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .unwrap_or_default();
+        let ncells = snap.as_ref().map(|s| s.cells.len()).unwrap_or(0);
+        let sb = snap.as_ref().map(|s| s.scrollback_rows).unwrap_or(0);
+        eprintln!(
+            "[geom] {why} cursor=({cur_x},{cur_y}) cells_len={ncells} sb_rows={sb} rows_field={vrows} row0_len={} row0={:?}",
+            row0.chars().count(),
+            row0.chars().take(24).collect::<String>()
+        );
+        let env = |k: &str| std::env::var(k).unwrap_or_else(|_| "-".into());
+        eprintln!(
+            "[geom] {why} TERM={} SHELL={} COLUMNS={} LINES={} GDK_SCALE={} cwd={}",
+            env("TERM"),
+            env("SHELL"),
+            env("COLUMNS"),
+            env("LINES"),
+            env("GDK_SCALE"),
+            std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "-".into())
+        );
+        eprintln!(
+            "[geom] {why} window={vw}x{vh} scale={:.3} cell={}x{} cfg_cols={} cfg_rows={} vt={}x{} offset={} pad={}x{}",
+            self.scale_factor,
+            self.cell_w,
+            self.cell_h,
+            self.cols,
+            self.rows,
+            vcols,
+            vrows,
+            self.offset_from_top,
+            self.pad_x,
+            self.pad_y
+        );
+    }
+
+    /// 键盘诊断：`LEANTTY_KEY_TRACE` 设置时把事件追加到文件（每行立即 flush）。
+    fn trace_key(&mut self, line: String) {
+        use std::io::Write as _;
+        let Some(f) = self.key_trace.as_mut() else {
+            return;
+        };
+        let ms = crate::start_time()
+            .map(|t| t.elapsed().as_millis())
+            .unwrap_or(0);
+        let _ = writeln!(f, "{ms} {line}");
+        let _ = f.flush();
+    }
+
     /// 更新 IME 光标区（快照光标所在格像素矩形；窗口未建时跳过）。
+    ///
+    /// 与 alacritty 对齐的三处细节（阶段 9D）：
+    /// 1. 传**物理像素**（`PhysicalPosition/PhysicalSize`）；此前传的是"已乘过 scale 的值 +
+    ///    Logical" → 在 HiDPI 下会被 winit 再乘一次 scale，锚点整体偏移。
+    /// 2. X11 的 XIM 只接受一个 spot 点、不支持矩形，故把 y 下移**一行**（锚在光标格底边），
+    ///    否则候选窗直接盖住正在输入的那一行。
+    /// 3. 宽度取**两格**：部分合成器/IM 面板在可用宽度太窄时会把候选窗甩到窗口右下角。
     fn update_ime_cursor_area(&self) {
         let (Some(window), Some(vt)) = (self.window.as_ref(), self.vt.as_ref()) else {
             return;
@@ -2745,13 +2957,21 @@ impl AppHandler {
             snap.cols,
             snap.rows,
         );
-        let cx = u32::from(cx_cell);
-        let cy = u32::from(cy_cell);
-        let x = f64::from(self.pad_x) * self.scale_factor + f64::from(cx) * f64::from(self.cell_w);
-        let y = f64::from(self.pad_y) * self.scale_factor + f64::from(cy) * f64::from(self.cell_h);
+        let (x, y, w, h) = ime_area_rect(
+            ImeGeometry {
+                pad_x: self.pad_x,
+                pad_y: self.pad_y,
+                scale: self.scale_factor,
+                cell_w: self.cell_w,
+                cell_h: self.cell_h,
+                is_x11: self.is_x11,
+            },
+            cx_cell,
+            cy_cell,
+        );
         window.set_ime_cursor_area(
-            winit::dpi::LogicalPosition::new(x, y),
-            winit::dpi::LogicalSize::new(f64::from(self.cell_w), f64::from(self.cell_h)),
+            winit::dpi::PhysicalPosition::new(x, y),
+            winit::dpi::PhysicalSize::new(w, h),
         );
     }
 
@@ -3388,6 +3608,33 @@ pub fn ime_preedit_update(event: &winit::event::Ime) -> (bool, String, Option<(u
 
 /// IME 候选窗定位格：Preedit 非空时返回组合末尾格（layout_end_position），
 /// 否则返回终端光标格（任务 2C.3；纯函数便于单测）。
+/// IME 锚点所需的几何参数（物理像素与逻辑 padding 混用，集中在一处换算）。
+#[derive(Debug, Clone, Copy)]
+pub struct ImeGeometry {
+    pub pad_x: u16,
+    pub pad_y: u16,
+    pub scale: f64,
+    pub cell_w: u32,
+    pub cell_h: u32,
+    pub is_x11: bool,
+}
+
+/// 计算 IME 锚点矩形（物理像素，窗口内坐标）。返回 `(x, y, w, h)`。
+///
+/// - `pad_*` 是配置里的逻辑值，乘一次 `scale` 得到物理 padding（只乘一次）。
+/// - X11 的 XIM 只接受一个 spot 点、不支持矩形：`y` 下移一行（锚在光标格底边），
+///   否则候选窗会盖住正在输入的行。
+/// - 宽度取两格：给 IM 面板留出避开窗口右缘的余量（alacritty 同样做法）。
+pub fn ime_area_rect(g: ImeGeometry, cx: u16, cy: u16) -> (f64, f64, f64, f64) {
+    let x = f64::from(g.pad_x) * g.scale + f64::from(cx) * f64::from(g.cell_w);
+    let line_offset = u16::from(g.is_x11);
+    let y = f64::from(g.pad_y) * g.scale
+        + f64::from(cy.saturating_add(line_offset)) * f64::from(g.cell_h);
+    let w = f64::from(g.cell_w) * 2.0;
+    let h = f64::from(g.cell_h);
+    (x, y, w, h)
+}
+
 pub fn ime_cursor_cell(
     preedit: &str,
     cursor_x: u16,
@@ -3405,6 +3652,78 @@ pub fn ime_cursor_cell(
 }
 
 /// winit 修饰键状态 → vt::Mods（KeyEncoder/encode_button 共用）。
+/// 该按键组合是否属于**窗口管理器保留**、不应写进 PTY 的一类（纯函数，可单测）。
+///
+/// 现象（阶段 9E，用户反馈）：`Alt+Tab` 切换窗口后，终端里留下一个 Tab。原因是 WM
+/// 抓键失败（或抓键前先送到客户端）时我们照样把它当"Alt+Tab"编码成 `ESC` + `\t`
+/// 写进 PTY，shell 收到后就是一次补全/Tab。同理，`Super` 组合（Super+Space、
+/// Super+Tab 等桌面快捷键）在当前实现里被 `vt_mods_from` 直接丢弃修饰位 → 退化成
+/// **裸键**写进 PTY（按 Super+Space 会打出空格）。
+///
+/// 处置：`Super` 按下时不转发任何键；`Alt+Tab`（含 Shift）不转发。其余 Alt 组合
+/// 保持 xterm 行为（`Alt+a` = `ESC a`），不受影响。
+/// `Alt+Tab` 的"尾巴"判定：Tab 到达时 ALT 已经释放（某些 WM/时序下先发 Alt release）。
+///
+/// 只吞"Alt 刚松开 ≤200 ms 内的裸 Tab"，其余裸 Tab 照常转发——人不会松开 Alt 后
+/// 200 ms 内什么都不按直接敲 Tab，而 WM 切换窗口的按键尾巴正好落在这个窗口里。
+/// `Alt+Tab` 之后 WM 在拿到焦点时**补投的裸 Tab**（trace 实测：`focus true` 之后
+/// 0–13 ms 出现 `key Pressed Named(Tab)`，mods 全空，前面没有对应的 Tab press）。
+///
+/// 只认"裸 Tab、且距拿到焦点 ≤100 ms"：人手不可能在窗口刚获得焦点的 100 ms 内就敲 Tab，
+/// 而无修饰 Tab 本身仍照常转发（粘贴后按 Tab、切换窗口后从容按 Tab 都不受影响）。
+pub fn tab_is_focus_replay(
+    key: Option<vt::Key>,
+    alt_down: bool,
+    ctrl_down: bool,
+    since_focus: Option<std::time::Duration>,
+) -> bool {
+    if alt_down || ctrl_down || key != Some(vt::Key::Tab) {
+        return false;
+    }
+    since_focus.is_some_and(|d| d <= std::time::Duration::from_millis(100))
+}
+
+pub fn tab_is_alt_tab_tail(
+    key: Option<vt::Key>,
+    alt_currently_down: bool,
+    since_alt_release: Option<std::time::Duration>,
+) -> bool {
+    if alt_currently_down || key != Some(vt::Key::Tab) {
+        return false;
+    }
+    since_alt_release.is_some_and(|d| d <= std::time::Duration::from_millis(200))
+}
+
+/// 是否为 `CSI u`（Kitty 键盘协议）序列：`ESC [` … `u`。
+pub fn is_csi_u(bytes: &[u8]) -> bool {
+    bytes.len() >= 4 && bytes.starts_with(b"\x1b[") && bytes.ends_with(b"u")
+}
+
+/// `Ctrl+<字符>` 的 xterm 控制字节（`Ctrl+A`→0x01 … `Ctrl+Z`→0x1a，符号按 xterm 表）。
+///
+/// 仅用于"传统模式（应用未启用 Kitty 键盘协议）"下修正上游编码器的 `CSI u` 输出。
+pub fn ctrl_byte(ch: char) -> Option<u8> {
+    let c = ch.to_ascii_lowercase();
+    Some(match c {
+        'a'..='z' => (c as u8) - b'a' + 1,
+        '@' | ' ' | '`' => 0x00,
+        '[' | '{' => 0x1b,
+        '\\' | '|' => 0x1c,
+        ']' | '}' => 0x1d,
+        '^' => 0x1e,
+        '_' => 0x1f,
+        '?' => 0x7f,
+        _ => return None,
+    })
+}
+
+pub fn wm_reserved_key(m: &ModifiersState, key: Option<vt::Key>) -> bool {
+    if m.super_key() {
+        return true;
+    }
+    m.alt_key() && matches!(key, Some(vt::Key::Tab))
+}
+
 fn vt_mods_from(m: &ModifiersState) -> Mods {
     let mut mods = Mods::empty();
     if m.shift_key() {
@@ -3750,6 +4069,9 @@ pub fn unshifted_codepoint(event: &winit::event::KeyEvent) -> Option<char> {
 fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
     match key {
         WinitKey::Named(NamedKey::Enter) => Some(vt::Key::Enter),
+        // 阶段 9F：`Named(Space)` 此前没有映射 → `key` 为 None，编码分支直接跳过，
+        // 导致 `Ctrl+Space` 在无输入法环境里一个字节都不发（应为 0x00）。
+        WinitKey::Named(NamedKey::Space) => Some(vt::Key::Space),
         WinitKey::Named(NamedKey::Tab) => Some(vt::Key::Tab),
         WinitKey::Named(NamedKey::Backspace) => Some(vt::Key::Backspace),
         WinitKey::Named(NamedKey::Escape) => Some(vt::Key::Escape),
@@ -3801,9 +4123,9 @@ fn map_logical_key(key: &WinitKey) -> Option<vt::Key> {
                     ';' => Some(vt::Key::Semicolon),
                     '\'' => Some(vt::Key::Quote),
                     '`' => Some(vt::Key::Backquote),
-                    '\\' => Some(vt::Key::Backslash),
-                    '[' => Some(vt::Key::BracketLeft),
-                    ']' => Some(vt::Key::BracketRight),
+                    '[' | '{' => Some(vt::Key::BracketLeft),
+                    ']' | '}' => Some(vt::Key::BracketRight),
+                    '\\' | '|' => Some(vt::Key::Backslash),
                     '/' => Some(vt::Key::Slash),
                     ' ' => Some(vt::Key::Space),
                     _ => None,
@@ -3830,8 +4152,38 @@ fn render_font_settings(config: &config::Config) -> render::FontSettings {
         bold: spec(&config.font.bold),
         italic: spec(&config.font.italic),
         bold_italic: spec(&config.font.bold_italic),
-        fallback: config.font.fallback.iter().map(spec).collect(),
+        fallback: fallback_chain(config),
     }
+}
+
+/// 内置符号/emoji 兜底字体（阶段 9I）。
+///
+/// 用户配置的 `font.fallback` 之后依次尝试这些系统字体；不存在时由加载器跳过并打印一行提示。
+/// 动机（leantty-zig 的对照清单 T2）：emoji 与符号码点此前只能命中用户配置的回退链，
+/// 本机只配了 CJK 字体 → `😀 🚀 🦄` 全是豆腐块。alacritty 通过 fontconfig 自动找字，
+/// 这里用一份固定清单达到同样效果，避免每次缺字都去扫系统字体。
+const DEFAULT_SYMBOL_FALLBACKS: &[&str] = &["Symbola", "DejaVu Sans", "Noto Sans Symbols2"];
+
+fn fallback_chain(config: &config::Config) -> Vec<render::FontSpec> {
+    let mut chain: Vec<render::FontSpec> = config
+        .font
+        .fallback
+        .iter()
+        .map(|f| render::FontSpec {
+            family: f.family.clone(),
+            style: f.style.clone(),
+        })
+        .collect();
+    for family in DEFAULT_SYMBOL_FALLBACKS {
+        if chain.iter().any(|f| f.family.eq_ignore_ascii_case(family)) {
+            continue;
+        }
+        chain.push(render::FontSpec {
+            family: (*family).to_string(),
+            style: "Regular".to_string(),
+        });
+    }
+    chain
 }
 
 /// config font 渲染选项 → render::RenderOptions。
@@ -4081,6 +4433,267 @@ mod ime_cursor_tests {
 }
 
 /// IME 事件状态更新单测（任务 2C.3：Preedit/Commit/Disabled 清空语义）。
+#[cfg(test)]
+mod alt_tab_tail_tests {
+    use super::tab_is_alt_tab_tail;
+    use std::time::Duration;
+    use vt::Key;
+
+    #[test]
+    fn tab_shortly_after_alt_release_is_swallowed() {
+        assert!(tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(40))
+        ));
+        assert!(tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(200))
+        ));
+    }
+
+    #[test]
+    fn plain_tab_later_is_forwarded() {
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            false,
+            Some(Duration::from_millis(400))
+        ));
+        assert!(
+            !tab_is_alt_tab_tail(Some(Key::Tab), false, None),
+            "从未按过 Alt"
+        );
+    }
+
+    #[test]
+    fn alt_still_held_is_handled_elsewhere() {
+        // Alt 按住时由 wm_reserved_key 负责，这里返回 false 以免重复判定。
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::Tab),
+            true,
+            Some(Duration::from_millis(10))
+        ));
+    }
+
+    #[test]
+    fn non_tab_keys_are_untouched() {
+        assert!(!tab_is_alt_tab_tail(
+            Some(Key::A),
+            false,
+            Some(Duration::from_millis(10))
+        ));
+        assert!(!tab_is_alt_tab_tail(
+            None,
+            false,
+            Some(Duration::from_millis(10))
+        ));
+    }
+}
+
+#[cfg(test)]
+mod focus_replay_tests {
+    use super::tab_is_focus_replay;
+    use std::time::Duration;
+    use vt::Key;
+
+    #[test]
+    fn bare_tab_right_after_focus_is_swallowed() {
+        // 实测三种间隔：+0 ms、+1 ms、+7 ms。
+        for ms in [0u64, 1, 7, 13, 100] {
+            assert!(
+                tab_is_focus_replay(
+                    Some(Key::Tab),
+                    false,
+                    false,
+                    Some(Duration::from_millis(ms))
+                ),
+                "焦点后 {ms} ms 的裸 Tab 应被拦"
+            );
+        }
+    }
+
+    #[test]
+    fn bare_tab_after_the_window_is_forwarded() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            false,
+            false,
+            Some(Duration::from_millis(150))
+        ));
+        assert!(!tab_is_focus_replay(Some(Key::Tab), false, false, None));
+    }
+
+    #[test]
+    fn modified_tab_is_not_affected() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            true,
+            false,
+            Some(Duration::from_millis(5))
+        ));
+        assert!(!tab_is_focus_replay(
+            Some(Key::Tab),
+            false,
+            true,
+            Some(Duration::from_millis(5))
+        ));
+    }
+
+    #[test]
+    fn other_keys_right_after_focus_are_forwarded() {
+        assert!(!tab_is_focus_replay(
+            Some(Key::A),
+            false,
+            false,
+            Some(Duration::from_millis(5))
+        ));
+        assert!(!tab_is_focus_replay(
+            None,
+            false,
+            false,
+            Some(Duration::from_millis(5))
+        ));
+    }
+}
+
+#[cfg(test)]
+mod ctrl_byte_tests {
+    use super::{ctrl_byte, is_csi_u};
+
+    #[test]
+    fn letters_and_symbols_follow_xterm() {
+        assert_eq!(ctrl_byte('a'), Some(0x01));
+        assert_eq!(
+            ctrl_byte('A'),
+            Some(0x01),
+            "按 unshifted 字符换算，大小写等价"
+        );
+        assert_eq!(ctrl_byte('z'), Some(0x1a));
+        assert_eq!(ctrl_byte(' '), Some(0x00));
+        assert_eq!(ctrl_byte('['), Some(0x1b));
+        assert_eq!(ctrl_byte('\\'), Some(0x1c));
+        assert_eq!(ctrl_byte(']'), Some(0x1d));
+        assert_eq!(ctrl_byte('?'), Some(0x7f));
+        assert_eq!(ctrl_byte('1'), None, "数字没有对应的控制字节");
+    }
+
+    #[test]
+    fn csi_u_detection() {
+        assert!(is_csi_u(b"\x1b[97;6u"));
+        assert!(is_csi_u(b"\x1b[123;5u"));
+        assert!(!is_csi_u(b"\x1b[A"));
+        assert!(!is_csi_u(b"\x01"));
+        assert!(!is_csi_u(b""));
+    }
+}
+
+#[cfg(test)]
+mod wm_reserved_tests {
+    use super::wm_reserved_key;
+    use vt::Key;
+    use winit::keyboard::ModifiersState;
+
+    fn mods(shift: bool, ctrl: bool, alt: bool, sup: bool) -> ModifiersState {
+        let mut m = ModifiersState::empty();
+        m.set(ModifiersState::SHIFT, shift);
+        m.set(ModifiersState::CONTROL, ctrl);
+        m.set(ModifiersState::ALT, alt);
+        m.set(ModifiersState::SUPER, sup);
+        m
+    }
+
+    #[test]
+    fn alt_tab_is_not_forwarded() {
+        assert!(wm_reserved_key(
+            &mods(true, false, true, false),
+            Some(Key::Tab)
+        ));
+        assert!(wm_reserved_key(
+            &mods(false, false, true, false),
+            Some(Key::Tab)
+        ));
+    }
+
+    #[test]
+    fn plain_tab_is_forwarded() {
+        assert!(!wm_reserved_key(
+            &mods(false, false, false, false),
+            Some(Key::Tab)
+        ));
+    }
+
+    #[test]
+    fn alt_letter_still_reaches_the_shell() {
+        // Alt+a 走 xterm 规则（ESC a），不属于 WM 保留组合。
+        assert!(!wm_reserved_key(&mods(false, false, true, false), None));
+        assert!(!wm_reserved_key(
+            &mods(false, false, true, false),
+            Some(Key::A)
+        ));
+    }
+
+    #[test]
+    fn super_combinations_are_reserved() {
+        // Super 组合是桌面快捷键：任何键都不该写进 PTY（此前修饰位被丢弃 →
+        // Super+Space 会打出空格）。
+        assert!(wm_reserved_key(&mods(false, false, false, true), None));
+        assert!(wm_reserved_key(
+            &mods(false, false, false, true),
+            Some(Key::Space)
+        ));
+        assert!(wm_reserved_key(
+            &mods(true, false, false, true),
+            Some(Key::Tab)
+        ));
+    }
+}
+
+#[cfg(test)]
+mod ime_area_tests {
+    use super::{ImeGeometry, ime_area_rect};
+
+    fn geom(is_x11: bool, scale: f64) -> ImeGeometry {
+        ImeGeometry {
+            pad_x: 8,
+            pad_y: 4,
+            scale,
+            cell_w: 10,
+            cell_h: 20,
+            is_x11,
+        }
+    }
+
+    #[test]
+    fn x11_anchor_is_below_the_cursor_row() {
+        let (x, y, w, h) = ime_area_rect(geom(true, 1.0), 5, 3);
+        assert_eq!(x, 58.0, "x = pad_x*scale + col*cell_w");
+        assert_eq!(y, 84.0, "X11 把锚点下移一行：pad_y + (row+1)*cell_h");
+        assert_eq!((w, h), (20.0, 20.0), "宽两格、高一格");
+    }
+
+    #[test]
+    fn non_x11_anchor_is_the_cursor_row_top() {
+        let (_x, y, w, h) = ime_area_rect(geom(false, 1.0), 5, 3);
+        assert_eq!(y, 64.0, "非 X11（Wayland text-input）给的是光标格本身");
+        assert_eq!((w, h), (20.0, 20.0));
+    }
+
+    #[test]
+    fn padding_is_scaled_once() {
+        // 逻辑 padding 8/4 在 2 倍缩放下是物理 16/8，cell 已是物理像素（不再乘）。
+        let (x, y, _, _) = ime_area_rect(geom(true, 2.0), 2, 1);
+        assert_eq!(x, 36.0, "16 + 2*10");
+        assert_eq!(y, 48.0, "8 + (1+1)*20");
+    }
+
+    #[test]
+    fn bottom_row_does_not_overflow_the_cell_index() {
+        let (_x, y, _, _) = ime_area_rect(geom(true, 1.0), 0, u16::MAX);
+        assert!(y.is_finite() && y > 0.0, "饱和加法不应回绕");
+    }
+}
+
 #[cfg(test)]
 mod ime_event_tests {
     use super::*;

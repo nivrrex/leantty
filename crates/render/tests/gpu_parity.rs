@@ -34,47 +34,13 @@ fn settings(size: f32) -> FontSettings {
         bold: spec("monospace", "Bold"),
         italic: spec("monospace", "Italic"),
         bold_italic: spec("monospace", "Bold Italic"),
-        fallback: Vec::new(),
+        fallback: vec![
+            spec("Noto Sans CJK SC", "Regular"),
+            spec("Noto Sans CJK JP", "Regular"),
+            spec("WenQuanYi Zen Hei", "Regular"),
+            spec("DejaVu Sans", "Regular"),
+        ],
     }
-}
-
-/// 系统里第一个含 '中' 的 CJK 字体（与 app 的后台 fallback 同源）。
-fn cjk_fonts() -> Vec<render::Font> {
-    use fontdb::{Database, Source};
-    let mut db = Database::new();
-    db.load_system_fonts();
-    let mut faces: Vec<_> = db
-        .faces()
-        .filter(|f| {
-            f.families
-                .iter()
-                .any(|(n, _)| n.to_lowercase().contains("cjk"))
-        })
-        .collect();
-    faces.sort_by_key(|f| {
-        let name = match &f.source {
-            Source::File(p) => p.display().to_string(),
-            Source::SharedFile(p, _) => p.display().to_string(),
-            Source::Binary(_) => String::new(),
-        };
-        (name.contains("Serif") || !name.contains("Regular"), name)
-    });
-    for face in faces {
-        let bytes: Vec<u8> = match &face.source {
-            Source::File(p) => match std::fs::read(p) {
-                Ok(b) => b,
-                Err(_) => continue,
-            },
-            Source::Binary(d) => d.as_ref().as_ref().to_vec(),
-            Source::SharedFile(_, d) => d.as_ref().as_ref().to_vec(),
-        };
-        if let Ok(f) = render::Font::from_bytes(bytes.as_slice(), fontdue::FontSettings::default())
-            && f.has_glyph('中')
-        {
-            return vec![f];
-        }
-    }
-    Vec::new()
 }
 
 fn make_cpu(scale: f64) -> Option<CpuRenderer> {
@@ -85,12 +51,6 @@ fn make_cpu(scale: f64) -> Option<CpuRenderer> {
     )
     .ok()?;
     r.set_scale_factor(scale);
-    let fonts = cjk_fonts();
-    if fonts.is_empty() {
-        eprintln!("SKIP: 系统中未找到含中文的 CJK 字体");
-        return None;
-    }
-    r.add_background_fonts(fonts);
     Some(r)
 }
 
@@ -109,12 +69,6 @@ fn make_gpu(scale: f64) -> Option<GpuRenderer> {
         Err(e) => panic!("GpuRenderer 创建失败（非适配器原因）: {e}"),
     };
     r.set_scale_factor(scale);
-    let fonts = cjk_fonts();
-    if fonts.is_empty() {
-        eprintln!("SKIP: 系统中未找到含中文的 CJK 字体");
-        return None;
-    }
-    r.add_background_fonts(fonts);
     Some(r)
 }
 
@@ -180,6 +134,13 @@ fn compare(cpu: &[u32], gpu_rgba: &[u8], w: u32, h: u32) -> Diff {
             .max((cg - gg).unsigned_abs())
             .max((cb - gb).unsigned_abs());
         d.all_max = d.all_max.max(maxd);
+        if maxd > 1 && std::env::var_os("PARITY_DEBUG").is_some() && d.glyph_diff < 8 {
+            eprintln!(
+                "  diff px=({},{}) cpu=({cr},{cg},{cb}) gpu=({gr},{gg},{gb}) d={maxd}",
+                i as u32 % w,
+                i as u32 / w
+            );
+        }
         let is_bg = (c & 0x00FF_FFFF) == bg_u32;
         if is_bg {
             d.bg_total += 1;
