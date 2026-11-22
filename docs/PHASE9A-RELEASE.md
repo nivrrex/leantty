@@ -229,3 +229,19 @@
   若再现，先看失败 dump 里是否有字面修饰键字符。
 - 交付：deb 3,518,632 B / `e5a12be6…`；zip 5,540,424 B / `867addd1…`；tag `v0.2.11` = `b06277b`
   （release `454407478`）；`phase9l-done` = `c5feebb`（门禁 hash）；回下载 `sha256sum -c` 通过。
+
+## v0.2.12（9M：Windows 多行粘贴）
+
+- 症状：Windows 上向开了 `?2004` 的应用（pi）粘贴 7 行，只进第一行并逐行提交；Zig 版同样。
+  Windows 侧字节级取证：子进程收到 `ESC[200~`/`ESC[201~` 全丢，且每个 CR 变成 `0D 0D`。
+- 修法：`paste::paste_newline(bracketed, windows)`——Windows + 括号粘贴用 LF，其余 CR；
+  孤立 CR 在 LF 模式归一；两个标记都从正文过滤；包裹仍在分块之前（单测锁定只有一对标记）。
+- **Linux 不影响**：单测按参数覆盖两平台，另有端到端探针 `scripts/e2e/paste_bracket_probe.sh`
+  实测 7 行=103 B/CR7、370 KB=CR20000，均单对标记、无 CRCR、正文字节与源一致。
+- conpty.dll 旁加载**已具备**（portable-pty 0.8.1 先 kernel32 再 `LoadLibrary("conpty.dll")`，
+  程序目录优先），因此发布 zip 的 OpenConsole 会被使用；若实机仍丢标记，先查两文件是否同目录。
+- 验证：`cargo test --workspace` 43 个测试二进制全绿；gates 10 步 PASS（e2e 131/131、GPU 10/10）。
+  期间 e2e 再出现一次 `case22` 抖动（三跑两过），证据仍指向 Xvfb 输入时序，未改判据。
+- 交付：deb 3,522,748 B / `382829d6…`；zip 5,541,503 B / `75bd6456…`；tag `v0.2.12` = `26d43af`
+  （release `454717380`）；`phase9m-done` = `5c440b9`；回下载 `sha256sum -c` 通过。
+- 未验证（需 Windows 实机）：粘贴进 pi 是否整块、cmd 是否仍逐行、实机 conhost 是否真丢标记。
