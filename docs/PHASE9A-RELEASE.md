@@ -246,41 +246,22 @@
   （release `454717380`）；`phase9m-done` = `5c440b9`；回下载 `sha256sum -c` 通过。
 - 未验证（需 Windows 实机）：粘贴进 pi 是否整块、cmd 是否仍逐行、实机 conhost 是否真丢标记。
 
-## v0.2.13（9N：合成粗体）
+## v0.2.13（9N/9O 合并：合成粗体）
 
-- 缺陷（Linux 实测，非推断）：单字重字体（`汉仪旗黑 55S`，`fc-match` 的 Bold/Regular 同一文件）下
-  `SGR 1` 与 `SGR 0` 渲染**逐字节相同**（墨迹总量 95064 = 95064，+0.0%），而 DejaVu 真 Bold 为 +51.9%。
-  根因：族内无 Bold 面时 crossfont/FreeType 把两个请求解析到同一 face，不做加粗；alacritty 同样如此
-  （leantty-zig 0.1.15 已自行合成）。
-- 修法：`fontset.rs` 新增 `needs_synthetic_bold()`（按"常规组与粗体组同索引 face 是否渲染出同一张位图"
-  判断，覆盖"主字体有 Bold + 回退 CJK 无 Bold"）+ `embolden_bitmap()`（右向膨胀 `d=round(px/24)`，
-  至少 1px，位图 +d、步进不变）。修复后单字重字体 +39.6%，与真 Bold 的 +51.9% 同量级。
-- 配置：`[font] synthetic_bold`（默认 true；false = alacritty 行为）。示例配置两个平台都加了注释。
-- 测试：`crates/render/tests/synthetic_bold.rs` 4 项（单字重变重、关掉逐字节回常规、真 Bold 不被二次加粗、
-  回退 CJK 粗体变重）；`config.rs` 默认值/显式 false/类型错误回落。
-- 验证：`cargo test --workspace` 44 个测试二进制全绿；gates 10 步 PASS（e2e 131/131、GPU 10/10）；
-  视觉对照 `/root/boldshot/compare.png`（上=开、下=关）。
-- 交付：deb 3,520,544 B / `8ae8d739…`；zip 5,543,708 B / `97ca20e6…`；tag `v0.2.13` = `344d082`
-  （release `455099442`）；`phase9n-done` = `6839938`；回下载 `sha256sum -c` OK。
-- 未验证：Windows/DirectWrite 实机观感；彩色 emoji 加粗效果。
-- 流程缺陷（复发一次）：发布导出 `rsync --delete` 会删掉手推的 docs，本次已在发布脚本手动补回
-  `WIN-PASTE-BRACKETED.md`、`BENCH-0.2.10.md`；根治办法是把这两个文件加进 `scripts/release/scan-allow.txt`
-  或 export 白名单（未实施，待决定）。
-
-## v0.2.14（9O：合成粗体垂直分量 + 门禁改 nextest）
-
-- 0.2.13 的合成粗体只做水平膨胀，中文横笔不变粗：实测中文 +34.8%（真 Bold +52.8%），拉丁 +39.6%（真 Bold +51.9%）。
-  补上垂直分量（上一行 ×0.6，仍在 bbox 内不增高）后：中文 **+48.2%**、拉丁 **+48.3%**，贴近真 Bold。
-- 单测：`fontset::embolden_tests` 3 项（不增高、原位墨迹保留、强度 d=round(px/24) 钳制 1..=3 且空位图仍空）。
-- 工具链（项目硬性规定）：`scripts/gates.sh` 第 1 步改为 `cargo nextest run --all` + `cargo test --doc`
-  （nextest 不跑 doctest），nextest 缺失时回退 `cargo test` 并告警。250 个测试 5 分钟 → **56 秒**。
-- 门禁期间踩到的环境问题（均已排除，非代码）：
-  - 前几轮被工具超时打断后残留在 `:99` 的 Xvfb 会让下一轮 e2e 直接 FATAL/大面积"窗口未出现"；
-    跑门前必须确认 `pgrep -f "^Xvfb :99"` 为空并清 `/tmp/.X99-lock`。
-  - e2e 中途 X 掉线（`app-run.log` 里 `X connection to :99 broken`）出现过两次，重跑即过；
-    `case22` 的 `ctrl+d` 偶发被当成字面 `d`（dump 里可见），仍是 Xvfb 输入时序问题，判据未放宽。
-  - 用 `LEANTTY_KEY_TRACE=1` 当"文件名"会把它写成仓库根下一个名为 `1` 的追踪文件（该变量取路径），已删除。
-- 交付：deb 3,521,920 B / `c47f2ae2…`；zip 5,543,809 B / `93ab46f6…`；tag `v0.2.14` = `3689565`
-  （release `455334884`）；`phase9o-done` = `4bdf083`；回下载 `sha256sum -c` OK。
-- **覆盖发布**：按要求删除 `v0.2.13` 的 release（资产不可再下载，tag 保留未 force）；
-  当前 release 列表为 v0.2.14 / v0.2.12 / v0.2.11 …
+- 缺陷（Linux 实测）：单字重字体（`汉仪旗黑 55S`，`fc-match` 的 Bold/Regular 同一文件）下
+  `SGR 1` 与 `SGR 0` 渲染**逐字节相同**（墨迹 95064 = 95064，+0.0%），而 DejaVu 真 Bold 为 +51.9%。
+  根因：族内无 Bold 面时 crossfont/FreeType 把两个请求解析到同一 face，不做加粗；alacritty 同样如此。
+- 修法：`fontset.rs::needs_synthetic_bold()`（按"常规组与粗体组同索引 face 是否渲染出同一张位图"判断，
+  覆盖"主字体有 Bold + 回退 CJK 无 Bold"）+ `embolden_bitmap()`（水平右向膨胀 `d=round(px/24)` 至少 1px，
+  再叠加垂直分量：上一行 ×0.6，全部限制在 bbox 内不增高）。
+- 实测：只做水平时拉丁 +39.6%、中文 +34.8%（真 Bold +51.9%/+52.8%）；补垂直后 **拉丁 +48.3%、
+  中文 +48.2%**，贴近真 Bold。视觉对照 `/root/boldshot/compare.png`。
+- 配置：`[font] synthetic_bold`（默认 true；false = alacritty 行为），两平台示例配置均带注释。
+- 测试：`synthetic_bold.rs` 4 项 + `fontset::embolden_tests` 3 项 + config 3 条断言。
+- 工具链（项目硬性规定）：`scripts/gates.sh` 第 1 步改为 `cargo nextest run --all` + `cargo test --doc`，
+  nextest 缺失时回退并告警；250 个测试 5 分钟 → **56 秒**。
+- 门禁期环境问题（非代码，已排除）：残留 `:99` Xvfb 会让下一轮 e2e 大面积"窗口未出现"（跑门前清
+  `pgrep -f "^Xvfb :99"` 与 `/tmp/.X99-lock`）；e2e 中途 X 掉线两次重跑即过；`case22` 的 `ctrl+d` 偶发被当字面 `d`；
+  `LEANTTY_KEY_TRACE=1` 会生成名为 `1` 的追踪文件（该变量取路径）。
+- 交付：deb 3,521,920 B / `c47f2ae2…`；zip 5,543,809 B / `93ab46f6…`；tag `v0.2.13`；`phase9o-done` = `4bdf083`。
+- **版本合并**：0.2.13 与 0.2.14 合并为单独的 0.2.13 发布（0.2.14 未单独发布过，其 release 与 tag 一并撤掉）。

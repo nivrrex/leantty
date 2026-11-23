@@ -1,25 +1,18 @@
 # Changelog
 
-## 0.2.14
-
-### Fixed
-- Synthetic bold (0.2.13) only thickened glyphs horizontally, so CJK text — whose weight is
-  dominated by horizontal strokes — gained far less than a real Bold face (+34.8% ink versus
-  +52.8%). A vertical component (previous row at 0.6 weight, still inside the glyph's bounding box,
-  so the bottom edge and cell layout are unchanged) brings CJK to +48.2% and Latin to +48.3%,
-  close to the +52.8% / +51.9% of genuine Bold faces.
-
 ## 0.2.13
 
 ### Fixed
-- Bold text could be missing entirely: when the font family has no Bold face (many CJK fonts, some
+- Bold text could be missing entirely: when a font family has no Bold face (many CJK fonts, some
   monospace fonts), crossfont resolves both the regular and the bold request to the same face, so
-  `SGR 1` rendered byte-for-byte identical to `SGR 0`. Bold is now synthesized by thickening the
-  glyph bitmap horizontally (`font.synthetic_bold`, default `true`, same strength as leantty-zig:
-  `em/24`, at least 1px; measured +39.6% ink on a single-weight font versus +51.9% for a real Bold
-  face). The decision is made per selected face, so a primary font with a Bold face plus a fallback
-  CJK font without one still bolds the CJK glyphs. Set `synthetic_bold = false` to restore the
-  alacritty behaviour (no synthetic bold).
+  `SGR 1` rendered byte-for-byte identical to `SGR 0` (measured: 0% ink difference on a single-weight
+  font, versus +51.9% for a real Bold face). Bold is now synthesized when the selected face has no
+  bold sibling, thickening the bitmap both horizontally and vertically (previous row at 0.6 weight,
+  still inside the glyph's bounding box, so height, baseline and cell layout are unchanged).
+  Horizontal-only thickening left CJK — whose weight is dominated by horizontal strokes — at +34.8%
+  while a real Bold face gives +52.8%; with the vertical component CJK reaches +48.2% and Latin
+  +48.3%. Strength is `em/24`, at least 1px, same as leantty-zig. Configurable via
+  `[font] synthetic_bold` (default `true`); set it to `false` to restore the alacritty behaviour.
 
 ## 0.2.12
 
