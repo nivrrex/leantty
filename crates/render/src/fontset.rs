@@ -538,15 +538,31 @@ fn embolden_bitmap(bitmap: &mut Vec<u8>, metrics: &mut GlyphMetrics, px: f32) {
         return;
     }
     let d = (px / 24.0).round().clamp(1.0, 3.0) as usize;
+    // 垂直分量：把上一行的覆盖率按 0.6 权重"压"到本行，让**横笔**也变粗
+    // （纯水平膨胀只会让竖笔变粗，CJK 的横笔占比大，实测中文增幅比拉丁低约 5 个点）。
+    // 只在既有 bbox 内做，不增加高度 → 不改变字形下边界，不会压到下一行/下划线。
+    const V_WEIGHT: f32 = 0.6;
     let nw = w + d;
     let mut out = vec![0u8; nw * h];
     for y in 0..h {
         let src = &bitmap[y * w..y * w + w];
+        let above = if y > 0 {
+            Some(&bitmap[(y - 1) * w..y * w])
+        } else {
+            None
+        };
         let dst = &mut out[y * nw..y * nw + nw];
         for x in 0..nw {
             let cur = if x < w { src[x] } else { 0 };
             let left = if x >= d { src[x - d] } else { 0 };
-            dst[x] = cur.max(left);
+            let mut v = cur.max(left) as f32;
+            if let Some(up) = above {
+                // 垂直分量同样考虑右侧膨胀后的形状：取"上方本列"与"上方左移 d 列"的较大者。
+                let up_cur = if x < w { up[x] } else { 0 };
+                let up_left = if x >= d { up[x - d] } else { 0 };
+                v = v.max(up_cur.max(up_left) as f32 * V_WEIGHT);
+            }
+            dst[x] = v.min(255.0) as u8;
         }
     }
     *bitmap = out;
@@ -588,4 +604,65 @@ fn resolve_face(db: &fontdb::Database, spec: &FontSpec) -> Option<fontdb::ID> {
         .iter()
         .any(|(name, _)| name.eq_ignore_ascii_case(&spec.family));
     if exact { Some(id) } else { None }
+}
+
+#[cfg(test)]
+mod embolden_tests {
+    use super::{GlyphMetrics, embolden_bitmap};
+
+    fn metrics(w: usize, h: usize) -> GlyphMetrics {
+        GlyphMetrics {
+            advance_width: w as f32,
+            xmin: 0,
+            ymin: 0,
+            width: w,
+            height: h,
+        }
+    }
+
+    #[test]
+    fn embolden_adds_weight_without_growing_height() {
+        // 3x3、只有中间一列有墨：加粗后应向右多出 1 列、行数不变（不改变字形下边界）
+        let src = vec![
+            0u8, 255, 0, //
+            0, 255, 0, //
+            0, 255, 0,
+        ];
+        let mut bitmap = src.clone();
+        let mut m = metrics(3, 3);
+        embolden_bitmap(&mut bitmap, &mut m, 14.0);
+        assert_eq!(m.height, 3, "垂直分量不得增加位图高度（下边界不变）");
+        assert_eq!(m.width, 4, "水平膨胀使宽度 +d（14px → d=1）");
+        assert_eq!(bitmap.len(), m.width * m.height);
+        // 原位图的墨迹保留
+        for y in 0..3 {
+            assert_eq!(bitmap[y * m.width + 1], 255, "原竖笔必须保留");
+        }
+        // 右侧被填上（水平分量）
+        assert_eq!(bitmap[2], 255, "右侧应有墨（水平膨胀）");
+        // 中间行的上方是墨 → 垂直分量把本行相应列也压出墨（横笔加粗的来源）
+        assert!(
+            bitmap[m.width + 1] == 255 && bitmap[2 * m.width + 1] == 255,
+            "竖直墨迹不应被削弱"
+        );
+    }
+
+    #[test]
+    fn embolden_keeps_empty_bitmap_empty() {
+        let mut bitmap = vec![0u8; 4];
+        let mut m = metrics(2, 2);
+        embolden_bitmap(&mut bitmap, &mut m, 14.0);
+        assert!(bitmap.iter().all(|&b| b == 0), "全空位图加粗后仍应为空");
+    }
+
+    #[test]
+    fn embolden_strength_scales_with_px() {
+        // d = round(px/24)，钳制在 1..=3
+        for (px, expect) in [(14.0, 2usize), (48.0, 3), (96.0, 4), (200.0, 4)] {
+            let mut bitmap = vec![255u8; 1]; // 1x1 一个实心像素，宽度 = 1 + d
+            let mut m = metrics(1, 1);
+            embolden_bitmap(&mut bitmap, &mut m, px);
+            assert_eq!(m.width, expect, "px={px} 时宽度应为 {expect}");
+        }
+    }
 }
