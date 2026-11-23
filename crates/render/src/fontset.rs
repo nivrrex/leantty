@@ -639,10 +639,10 @@ mod embolden_tests {
             assert_eq!(bitmap[y * m.width + 1], 255, "原竖笔必须保留");
         }
         // 右侧被填上（水平分量）
-        assert_eq!(bitmap[0 * m.width + 2], 255, "右侧应有墨（水平膨胀）");
+        assert_eq!(bitmap[2], 255, "右侧应有墨（水平膨胀）");
         // 中间行的上方是墨 → 垂直分量把本行相应列也压出墨（横笔加粗的来源）
         assert!(
-            bitmap[1 * m.width + 1] == 255 && bitmap[2 * m.width + 1] == 255,
+            bitmap[m.width + 1] == 255 && bitmap[2 * m.width + 1] == 255,
             "竖直墨迹不应被削弱"
         );
     }
