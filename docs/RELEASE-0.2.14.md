@@ -29,4 +29,11 @@
 
 ## 资产
 
-见 `SHA256SUMS`。
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `leantty_0.2.14_amd64.deb` | 3,521,920 B | `c47f2ae2860dfbcdb3bdd4f457f11c0559c2d48a8734b18037eadbd243335a49` |
+| `leantty-0.2.14-windows-x86_64.zip` | 5,543,809 B | `93ab46f690cf901c16f362ec2a94319931e9520846b38f608671c578cec7a0be` |
+
+## 工具链
+
+门禁的测试步骤已改为 `cargo nextest run --all`（加 `cargo test --doc` 补 doctest），250 个测试从约 5 分钟降到 56 秒。
