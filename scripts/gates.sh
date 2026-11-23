@@ -36,9 +36,22 @@ if [ -n "$(git status --porcelain)" ]; then
     fail "工作区不干净（先提交或 stash）"
 fi
 
-step "1/10 cargo test --workspace"
-cargo test --workspace >/tmp/gates_test.log 2>&1 || { tail -30 /tmp/gates_test.log; fail "cargo test"; }
-grep -E "^test result:" /tmp/gates_test.log | tail -3
+step "1/10 cargo nextest run --all（+ doctest）"
+# 项目硬性规定：Rust 测试用 cargo nextest run（约为 cargo test 的 3 倍速度）。
+# nextest 不跑 doctest，故单独补 `cargo test --doc`（规则里的唯一例外场景）。
+if command -v cargo-nextest >/dev/null 2>&1; then
+    cargo nextest run --all >/tmp/gates_test.log 2>&1 \
+        || { tail -40 /tmp/gates_test.log; fail "cargo nextest"; }
+    cargo test --workspace --doc >/tmp/gates_doctest.log 2>&1 \
+        || { tail -30 /tmp/gates_doctest.log; fail "cargo test --doc"; }
+    grep -E "Summary|test result:" /tmp/gates_test.log | tail -2
+    grep -E "^test result:" /tmp/gates_doctest.log | tail -2
+else
+    # 兜底：nextest 不可用时回退 cargo test（需在交付说明里写明已回退）
+    echo "WARN: cargo-nextest 不可用，回退 cargo test --workspace" >&2
+    cargo test --workspace >/tmp/gates_test.log 2>&1 || { tail -30 /tmp/gates_test.log; fail "cargo test"; }
+    grep -E "^test result:" /tmp/gates_test.log | tail -3
+fi
 
 step "2/10 clippy (debug, -D warnings)"
 cargo clippy --workspace --all-targets -- -D warnings >/tmp/gates_clippy_dbg.log 2>&1 \
