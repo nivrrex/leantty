@@ -14,6 +14,7 @@ fn cell_metrics_scales_with_size_and_scale_factor() {
         italic: spec("DejaVu Sans Mono"),
         bold_italic: spec("DejaVu Sans Mono"),
         fallback: Vec::new(),
+        synthetic_bold: true,
     };
     let Ok(set) = render::FontSet::load(&settings) else {
         eprintln!("SKIP: 系统无 DejaVu Sans Mono");

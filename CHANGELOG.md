@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.13
+
+### Fixed
+- Bold text could be missing entirely: when the font family has no Bold face (many CJK fonts, some
+  monospace fonts), crossfont resolves both the regular and the bold request to the same face, so
+  `SGR 1` rendered byte-for-byte identical to `SGR 0`. Bold is now synthesized by thickening the
+  glyph bitmap horizontally (`font.synthetic_bold`, default `true`, same strength as leantty-zig:
+  `em/24`, at least 1px; measured +39.6% ink on a single-weight font versus +51.9% for a real Bold
+  face). The decision is made per selected face, so a primary font with a Bold face plus a fallback
+  CJK font without one still bolds the CJK glyphs. Set `synthetic_bold = false` to restore the
+  alacritty behaviour (no synthetic bold).
+
 ## 0.2.12
 
 ### Fixed

@@ -65,6 +65,12 @@ pub struct FontSet {
     face_ids: Vec<Option<fontdb::ID>>,
     /// face_ids 是否已解析。
     ids_ready: bool,
+    /// 缺粗体面时是否合成粗体（`font.synthetic_bold`）。
+    synthetic_bold: bool,
+    /// 探针用的字号（见 `needs_synthetic_bold`）。
+    probe_px: f32,
+    /// (组, 组内索引) → 该 face 是否需要合成粗体（懒算一次，之后只查表）。
+    synth_bold: HashMap<(u8, usize), bool>,
 }
 
 /// 组序号（与 FontSettings 字段顺序一致）。
@@ -221,6 +227,9 @@ impl FontSet {
             db: None,
             face_ids: Vec::new(),
             ids_ready: false,
+            synthetic_bold: settings.synthetic_bold,
+            probe_px: px_from_pt(settings.size, 1.0),
+            synth_bold: HashMap::new(),
         };
         set.line_metrics.insert(
             set.groups[GROUP_NORMAL][0],
@@ -356,16 +365,50 @@ impl FontSet {
             }
         }
         bitmap.truncate(w * h);
-        Some((
-            GlyphMetrics {
-                advance_width: glyph.advance.0 as f32,
-                xmin: glyph.left,
-                ymin: glyph.top - glyph.height,
-                width: w,
-                height: h,
-            },
-            bitmap,
-        ))
+        let mut metrics = GlyphMetrics {
+            advance_width: glyph.advance.0 as f32,
+            xmin: glyph.left,
+            ymin: glyph.top - glyph.height,
+            width: w,
+            height: h,
+        };
+        if self.needs_synthetic_bold(group, idx) {
+            embolden_bitmap(&mut bitmap, &mut metrics, px);
+        }
+        Some((metrics, bitmap))
+    }
+
+    /// 该组该索引的 face 是否需要**合成粗体**（缺 Bold 面时由几何加粗代替）。
+    ///
+    /// 判断口径与 leantty-zig 一致：拿同一个探测字符分别求"常规组该位置"与
+    /// "粗体组该位置"的位图 —— 完全相同说明后端把两个请求解析到了同一个面
+    /// （族内没有 Bold），也就没有真粗体可用。
+    ///
+    /// 落在**组内同索引**上而不是家族名上，是为了覆盖混搭场景：主字体有 Bold、
+    /// 回退的中文字体没有时，中文那部分同样会被合成加粗。
+    fn needs_synthetic_bold(&mut self, group: u8, idx: usize) -> bool {
+        if !self.synthetic_bold || (group != GROUP_BOLD as u8 && group != GROUP_BOLD_ITALIC as u8) {
+            return false;
+        }
+        if let Some(v) = self.synth_bold.get(&(group, idx)) {
+            return *v;
+        }
+        let plain = self
+            .groups
+            .get(GROUP_NORMAL)
+            .and_then(|g| g.get(idx))
+            .copied();
+        let bold = self
+            .groups
+            .get(group as usize)
+            .and_then(|g| g.get(idx))
+            .copied();
+        let v = match (plain, bold) {
+            (Some(p), Some(b)) => same_face_rendering(&mut self.rasterizer, p, b, self.probe_px),
+            _ => false,
+        };
+        self.synth_bold.insert((group, idx), v);
+        v
     }
 
     /// 像素 → crossfont 的 `Size`（其内部以点存储，`as_px()` 乘 96/72）。
@@ -428,6 +471,86 @@ fn load_one(rasterizer: &mut Rasterizer, spec: &FontSpec, size: Size) -> Option<
     // 与 alacritty 用 `Style::Description` 的行为对齐。
     let desc = FontDesc::new(spec.family.as_str(), style_description(&spec.style));
     rasterizer.load_font(&desc, size).ok()
+}
+
+/// 两个 `FontKey` 是否渲染出**同一个面**（用于判断该族有没有真粗体）。
+///
+/// 只比较探测字符：族内同时有 Regular/Bold 时，同一字符的位图尺寸或像素必然不同
+/// （字重不同不可能逐字节相同）；族内只有单字重时，后端对两个请求会返回同一 face，
+/// 位图逐字节相同。探测字符取常见英文、中文、数字，前一个在该 face 里缺字时自动换下一个
+/// （crossfont 对缺字会替换，替换后两侧仍相同，结论仍是"同一面"）。
+fn same_face_rendering(
+    rasterizer: &mut Rasterizer,
+    plain: FontKey,
+    bold: FontKey,
+    px: f32,
+) -> bool {
+    if plain == bold {
+        return true;
+    }
+    let size = FontSet::size_for_px(px);
+    for ch in ['M', '中', '0', 'a'] {
+        let (Ok(a), Ok(b)) = (
+            rasterizer.get_glyph(GlyphKey {
+                font_key: plain,
+                character: ch,
+                size,
+            }),
+            rasterizer.get_glyph(GlyphKey {
+                font_key: bold,
+                character: ch,
+                size,
+            }),
+        ) else {
+            continue;
+        };
+        if a.width <= 0 || a.height <= 0 {
+            continue;
+        }
+        if (a.width, a.height, a.advance, a.left, a.top)
+            != (b.width, b.height, b.advance, b.left, b.top)
+        {
+            return false;
+        }
+        let ga = match &a.buffer {
+            BitmapBuffer::Rgb(v) | BitmapBuffer::Rgba(v) => v.as_slice(),
+        };
+        let gb = match &b.buffer {
+            BitmapBuffer::Rgb(v) | BitmapBuffer::Rgba(v) => v.as_slice(),
+        };
+        return ga == gb;
+    }
+    // 探测字符全都光栅化失败：无法判断，按"没有真粗体"处理（宁可有粗体，不要静默丢失）。
+    true
+}
+
+/// 合成粗体：把字形沿水平方向加厚 `d` 像素（右向膨胀），并把位图宽度加 `d`。
+///
+/// 选择"位图膨胀"而不是 `FT_Outline_Embolden`：crossfont 不暴露 `FT_Face`，
+/// Windows 侧走 DirectWrite 更没有 FreeType，位图做法两平台同一套。
+///
+/// 强度 `d = round(px/24)`、至少 1px：与 leantty-zig 的 `em/24`（最小 1px）同口径。
+/// 实测单字重字体墨迹总量 +39.6%，与 DejaVu 真 Bold 面的 +51.9% 同量级（tests/synthetic_bold.rs）。
+/// 只向右加厚：不侵占前一格（等宽字体左侧是边距），也保住原字形右边界。
+fn embolden_bitmap(bitmap: &mut Vec<u8>, metrics: &mut GlyphMetrics, px: f32) {
+    let (w, h) = (metrics.width, metrics.height);
+    if w == 0 || h == 0 || bitmap.len() < w * h {
+        return;
+    }
+    let d = (px / 24.0).round().clamp(1.0, 3.0) as usize;
+    let nw = w + d;
+    let mut out = vec![0u8; nw * h];
+    for y in 0..h {
+        let src = &bitmap[y * w..y * w + w];
+        let dst = &mut out[y * nw..y * nw + nw];
+        for x in 0..nw {
+            let cur = if x < w { src[x] } else { 0 };
+            let left = if x >= d { src[x - d] } else { 0 };
+            dst[x] = cur.max(left);
+        }
+    }
+    *bitmap = out;
+    metrics.width = nw;
 }
 
 /// 家族名 + 样式名 → fontdb face id。

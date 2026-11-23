@@ -31,6 +31,7 @@ fn settings() -> FontSettings {
         italic: spec("Italic"),
         bold_italic: spec("Bold Italic"),
         fallback: Vec::new(),
+        synthetic_bold: true,
     }
 }
 

@@ -251,6 +251,12 @@ pub struct FontSettings {
     pub hinting: bool,
     /// 文字对比度（抗锯齿覆盖率→alpha 映射）。
     pub text_gamma: f32,
+    /// 缺少粗体面时是否合成粗体（`font.synthetic_bold`，默认 true）。
+    ///
+    /// 缺省 true 与 leantty-zig 的 `[font] synthetic_bold` 一致：单字重字体（很多 CJK 字体、
+    /// 部分等宽字体）没有 Bold 面，若不做合成，SGR 1 与 SGR 0 渲染完全相同，"粗体"等于丢失。
+    /// 设 false 可回到 alacritty 的行为（alacritty 不做合成粗体）。
+    pub synthetic_bold: bool,
 }
 
 /// 选择配置。
@@ -379,6 +385,7 @@ impl Default for Config {
                 subpixel: Subpixel::None,
                 hinting: false,
                 text_gamma: 1.0,
+                synthetic_bold: true,
             },
             selection: SelectionConfig {
                 save_to_clipboard: true,
@@ -566,6 +573,7 @@ const KNOWN: &[&str] = &[
     "font.bold_italic",
     "font.bold_italic.family",
     "font.bold_italic.style",
+    "font.synthetic_bold",
     "font.fallback",
     "font.fallback[].family",
     "font.fallback[].style",
@@ -901,6 +909,9 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
         }
         if let Some(f) = font_spec_field(t, "bold_italic", "font", w) {
             c.font.bold_italic = f;
+        }
+        if let Some(b) = bool_field(t, "synthetic_bold", "font", w) {
+            c.font.synthetic_bold = b;
         }
         if let Some(fb) = parse_fallback(t, w) {
             c.font.fallback = fb;

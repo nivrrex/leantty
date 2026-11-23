@@ -32,6 +32,7 @@ fn settings() -> FontSettings {
             spec("Microsoft YaHei"),
             spec("DejaVu Sans"),
         ],
+        synthetic_bold: true,
     }
 }
 
@@ -114,6 +115,7 @@ fn cjk_resolves_to_configured_fallback() {
         italic: s("DejaVu Sans Mono"),
         bold_italic: s("DejaVu Sans Mono"),
         fallback: vec![s("Noto Sans CJK SC")],
+        synthetic_bold: true,
     };
     let Ok(set) = render::FontSet::load(&settings) else {
         eprintln!("SKIP: 缺少 DejaVu Sans Mono");

@@ -237,6 +237,11 @@ pub struct FontSettings {
     pub bold_italic: FontSpec,
     /// 有序回退列表（config font.fallback）。
     pub fallback: Vec<FontSpec>,
+    /// 缺少粗体面时是否合成粗体（config `font.synthetic_bold`，默认 true）。
+    ///
+    /// 判断落在**最终选中的 face** 上：主字体有 Bold、回退字体没有时，回退字体的字形
+    /// 同样会加粗（只看家族会漏掉这种混搭场景）。
+    pub synthetic_bold: bool,
 }
 
 /// 字号（点）→ 像素。

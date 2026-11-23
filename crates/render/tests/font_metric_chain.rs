@@ -60,6 +60,7 @@ fn fontset_cell_metrics_matches_chain() {
         italic: s("DejaVu Sans Mono"),
         bold_italic: s("DejaVu Sans Mono"),
         fallback: Vec::new(),
+        synthetic_bold: true,
     };
     let Ok(set) = render::FontSet::load(&settings) else {
         return;
