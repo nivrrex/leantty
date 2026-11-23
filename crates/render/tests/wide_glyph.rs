@@ -35,6 +35,7 @@ fn settings() -> FontSettings {
             spec("WenQuanYi Zen Hei", "Regular"),
             spec("DejaVu Sans", "Regular"),
         ],
+        synthetic_bold: true,
     }
 }
 
@@ -135,6 +136,7 @@ fn manual_wide_cell_spans_two_cells() {
         // 0.2.9 起字形覆盖按真实 cmap 判断（不再借 fontconfig 自动替换），
         // 所以这里必须显式给出含汉字的回退字体；本用例只验证"跨两格绘制"。
         fallback: vec![spec("Noto Sans CJK SC", "Regular")],
+        synthetic_bold: true,
     };
     let mut r = CpuRenderer::new(&st, RenderOptions::default(), Palette::default()).expect("new");
     let (cw, ch) = r.cell_metrics(1.0);
@@ -246,6 +248,7 @@ fn cjk_as_primary_font_spans_two_cells() {
         italic: spec("Noto Sans CJK SC", "Regular"),
         bold_italic: spec("Noto Sans CJK SC", "Bold"),
         fallback: Vec::new(),
+        synthetic_bold: true,
     };
     let mut r = match CpuRenderer::new(&st, RenderOptions::default(), Palette::default()) {
         Ok(r) => r,

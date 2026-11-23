@@ -86,6 +86,7 @@ fn regular_style_loads_fonts_whose_face_is_named_book() {
         italic: spec("DejaVu Sans Mono"),
         bold_italic: spec("DejaVu Sans Mono"),
         fallback: Vec::new(),
+        synthetic_bold: true,
     };
     assert!(
         render::FontSet::load(&settings).is_ok(),

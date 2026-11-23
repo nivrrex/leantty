@@ -10,7 +10,8 @@
   OSC 4/104 调色板、括号粘贴。
 - 字体用 [crossfont](https://github.com/alacritty/crossfont)（与 alacritty 同一个库）：
   Linux 走 FreeType + fontconfig、Windows 走 DirectWrite。字体在窗口出现前就已加载完成，
-  启动时不会出现"字形还没到位、先画方块"的阶段。
+  启动时不会出现"字形还没到位、先画方块"的阶段。缺粗体面的字体（很多中文字体只有单字重）
+  默认做合成加粗（`font.synthetic_bold`，默认 `true`），否则 `SGR 1` 会与常规字重完全相同。
 - 两套渲染后端输出一致：CPU（软件）与 GPU（wgpu），逐像素对拍差异在 1 LSB 内。
 - 选区与复制粘贴（X11 PRIMARY/CLIPBOARD、Windows 剪贴板）、滚轮回滚并显示滚动条、
   拖选到窗口边缘时持续自动滚动且不落后于输出。

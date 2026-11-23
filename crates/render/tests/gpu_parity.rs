@@ -40,6 +40,7 @@ fn settings(size: f32) -> FontSettings {
             spec("WenQuanYi Zen Hei", "Regular"),
             spec("DejaVu Sans", "Regular"),
         ],
+        synthetic_bold: true,
     }
 }
 

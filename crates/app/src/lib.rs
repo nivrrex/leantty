@@ -4154,6 +4154,7 @@ fn render_font_settings(config: &config::Config) -> render::FontSettings {
         italic: spec(&config.font.italic),
         bold_italic: spec(&config.font.bold_italic),
         fallback: fallback_chain(config),
+        synthetic_bold: config.font.synthetic_bold,
     }
 }
 

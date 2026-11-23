@@ -102,6 +102,22 @@ fn out_of_range_and_type_errors_fall_back() {
 }
 
 #[test]
+fn synthetic_bold_default_on_and_configurable() {
+    // 默认开：缺 Bold 面的字体也要有粗体（SGR 1 不能等于 SGR 0）
+    let (c, _w) = config::parse("").unwrap();
+    assert!(c.font.synthetic_bold, "font.synthetic_bold 默认应为 true");
+    let (c, w) = config::parse("[font]\nsynthetic_bold = false\n").unwrap();
+    assert!(!c.font.synthetic_bold, "显式 false 必须生效");
+    assert!(w.is_empty(), "不应产生告警：{w:?}");
+    let (c, w) = config::parse("[font]\nsynthetic_bold = \"yes\"\n").unwrap();
+    assert!(c.font.synthetic_bold, "类型错误应回落默认 true");
+    assert!(
+        w.iter().any(|x| x.contains("synthetic_bold")),
+        "类型错误应有告警：{w:?}"
+    );
+}
+
+#[test]
 fn bindings_parsed_with_mods() {
     let (c, w) = config::parse(
         "[[keyboard.bindings]]\nkey = \"Insert\"\nmods = \"Control|Shift\"\naction = \"Copy\"\n",

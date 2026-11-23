@@ -48,6 +48,7 @@ fn settings() -> FontSettings {
             family: "Noto Sans CJK SC".to_string(),
             style: "Regular".to_string(),
         }],
+        synthetic_bold: true,
     }
 }
 

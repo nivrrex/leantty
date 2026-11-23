@@ -40,6 +40,10 @@ bold_italic = { family = "Consolas", style = "Bold Italic" }
 # Fallback fonts, tried in order for characters the primary font lacks (e.g. CJK).
 # They load in the background; missing glyphs show as boxes until they are ready.
 fallback = [ { family = "Microsoft YaHei", style = "Regular" } ]
+# Synthesize bold when the family has no Bold face (many CJK fonts ship one weight only).
+# Without this, SGR 1 renders exactly like SGR 0 and bold text disappears.
+# Set to false to match alacritty, which does no synthetic bold.
+synthetic_bold = true
 # Antialiasing mode: "grayscale" or "subpixel".
 antialiasing = "grayscale"
 # Subpixel layout when antialiasing = "subpixel": "rgb" or "bgr".
