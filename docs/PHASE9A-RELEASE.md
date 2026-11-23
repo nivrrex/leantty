@@ -266,3 +266,21 @@
 - 流程缺陷（复发一次）：发布导出 `rsync --delete` 会删掉手推的 docs，本次已在发布脚本手动补回
   `WIN-PASTE-BRACKETED.md`、`BENCH-0.2.10.md`；根治办法是把这两个文件加进 `scripts/release/scan-allow.txt`
   或 export 白名单（未实施，待决定）。
+
+## v0.2.14（9O：合成粗体垂直分量 + 门禁改 nextest）
+
+- 0.2.13 的合成粗体只做水平膨胀，中文横笔不变粗：实测中文 +34.8%（真 Bold +52.8%），拉丁 +39.6%（真 Bold +51.9%）。
+  补上垂直分量（上一行 ×0.6，仍在 bbox 内不增高）后：中文 **+48.2%**、拉丁 **+48.3%**，贴近真 Bold。
+- 单测：`fontset::embolden_tests` 3 项（不增高、原位墨迹保留、强度 d=round(px/24) 钳制 1..=3 且空位图仍空）。
+- 工具链（项目硬性规定）：`scripts/gates.sh` 第 1 步改为 `cargo nextest run --all` + `cargo test --doc`
+  （nextest 不跑 doctest），nextest 缺失时回退 `cargo test` 并告警。250 个测试 5 分钟 → **56 秒**。
+- 门禁期间踩到的环境问题（均已排除，非代码）：
+  - 前几轮被工具超时打断后残留在 `:99` 的 Xvfb 会让下一轮 e2e 直接 FATAL/大面积"窗口未出现"；
+    跑门前必须确认 `pgrep -f "^Xvfb :99"` 为空并清 `/tmp/.X99-lock`。
+  - e2e 中途 X 掉线（`app-run.log` 里 `X connection to :99 broken`）出现过两次，重跑即过；
+    `case22` 的 `ctrl+d` 偶发被当成字面 `d`（dump 里可见），仍是 Xvfb 输入时序问题，判据未放宽。
+  - 用 `LEANTTY_KEY_TRACE=1` 当"文件名"会把它写成仓库根下一个名为 `1` 的追踪文件（该变量取路径），已删除。
+- 交付：deb 3,521,920 B / `c47f2ae2…`；zip 5,543,809 B / `93ab46f6…`；tag `v0.2.14` = `3689565`
+  （release `455334884`）；`phase9o-done` = `4bdf083`；回下载 `sha256sum -c` OK。
+- **覆盖发布**：按要求删除 `v0.2.13` 的 release（资产不可再下载，tag 保留未 force）；
+  当前 release 列表为 v0.2.14 / v0.2.12 / v0.2.11 …
