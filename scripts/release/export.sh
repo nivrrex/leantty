@@ -4,9 +4,13 @@
 # 用法：sh scripts/release/export.sh [目标目录]
 #   默认目标：仓库根的上一级下的 leantty-release；目标已存在且非空则停止（不覆盖）。
 #
-# 白名单之外的一切都不导出（尤其是 AGENTS.md、docs/ 下除 BUILDING.md 之外的文件、
-# scripts/e2e、scripts/windows/{tonight,e2e}、vt-verify-win、PHASE*.md、DECISIONS.md、
-# WIN-NOTES.md、.git）。导出后对全目录做泄漏扫描（scripts/release/scan.sh）。
+# 白名单之外的一切都不导出（尤其是 AGENTS.md、过程文档（PHASE*.md、DECISIONS.md、
+# WIN-NOTES.md、RELEASE-*.md、HANDOFF-*）、scripts/e2e、scripts/windows/{tonight,e2e}、
+# vt-verify-win、.git）。导出后对全目录做泄漏扫描（scripts/release/scan.sh）。
+#
+# 面向用户的文档在 DOCS 里单列（BUILDING / 性能对照 / 排障）：它们要出现在公开仓库的
+# docs/ 下，而发布流程用 `rsync --delete` 把本目录整体覆盖到公开仓库——不在导出里的文档
+# 会在下次发布时被删掉（0.2.12 与 0.2.13 各踩过一次）。新增用户文档时**加到这里**。
 set -eu
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -22,7 +26,9 @@ mkdir -p "$DEST"
 FILES="Cargo.toml Cargo.lock .gitignore LICENSE THIRD-PARTY-NOTICES.md README.md README.zh-CN.md CHANGELOG.md"
 DIRS="crates vendor config assets packaging"
 # 注意：export.sh 与 scan.sh 属开发侧工具，不导出（s5）。
-EXTRA=".cargo/config.toml docs/BUILDING.md scripts/gen-icons.sh scripts/release/build-deb.sh scripts/release/gen-notices.sh"
+EXTRA=".cargo/config.toml scripts/gen-icons.sh scripts/release/build-deb.sh scripts/release/gen-notices.sh"
+# 面向用户的文档（缺失则跳过：老分支上可能没有这些文件，不影响导出其它内容）。
+DOCS="docs/BUILDING.md docs/BENCH-0.2.10.md docs/WIN-PASTE-BRACKETED.md"
 
 for f in $FILES; do
     [ -e "$ROOT/$f" ] || { echo "缺少 $f" >&2; exit 1; }
@@ -37,6 +43,12 @@ for f in $EXTRA; do
     mkdir -p "$DEST/$(dirname -- "$f")"
     cp -a "$ROOT/$f" "$DEST/$f"
 done
+for f in $DOCS; do
+    [ -e "$ROOT/$f" ] || continue
+    mkdir -p "$DEST/$(dirname -- "$f")"
+    cp -a "$ROOT/$f" "$DEST/$f"
+done
+
 # Windows 侧构建脚本（不含 tonight/ 与 e2e/）
 mkdir -p "$DEST/scripts/windows"
 for f in build.ps1 package.ps1 package-release.ps1; do
