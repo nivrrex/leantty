@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.14
+
+### Fixed
+- Synthetic bold (0.2.13) only thickened glyphs horizontally, so CJK text — whose weight is
+  dominated by horizontal strokes — gained far less than a real Bold face (+34.8% ink versus
+  +52.8%). A vertical component (previous row at 0.6 weight, still inside the glyph's bounding box,
+  so the bottom edge and cell layout are unchanged) brings CJK to +48.2% and Latin to +48.3%,
+  close to the +52.8% / +51.9% of genuine Bold faces.
+
 ## 0.2.13
 
 ### Fixed
