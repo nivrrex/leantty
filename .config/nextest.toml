@@ -1,0 +1,24 @@
+# nextest 配置（项目测试一律用 `cargo nextest run`）。
+#
+# ## 为什么需要这份文件
+#
+# Windows 侧实测（2026-11-22，win 分支）：nextest 默认并行时，`leantty-pty::pty_windows` 里发送
+# `\x03` / `\x1c` 到 ConPTY 的用例会把控制台控制事件打到**同进程组的兄弟测试进程**上，导致 6 个
+# 用例以 0xc000013a（STATUS_CONTROL_C_EXIT）中止——挂掉的甚至不一定是用例本身。
+# `cargo test` 是"单进程多线程"，不受这一机制影响，所以此前一直是全绿。
+#
+# ## 这里的做法
+#
+# **不**把全仓测试串行（Linux 上 250 个用例会从 56 s 变成数分钟，且 Linux 的 PTY 用例各自开 pty
+# 会话、没有这个串扰：实测并行 3 轮均 250/250 通过）。只把那一个 Windows 专属测试二进制的用例
+# 按"占满全部线程"调度：它运行期间不调度别的用例，兄弟进程不会同时存在，问题消失；
+# 其它二进制照旧并行。
+#
+# 不要改成 `[profile.default] test-threads = 1`：那会把整仓拖慢，只在"确实所有用例都互相干扰"
+# 时才成立（Windows 分支早期就是这么写的，见 win 分支 0a7b92f）。
+
+[[profile.default.overrides]]
+# 只匹配 Windows 专用的 PTY 测试二进制（该文件在 Linux 上不参与编译，此段自然不生效）。
+filter = "binary(pty_windows)"
+# 权重取"全部线程"：该用例运行期间不调度其它用例，等价于对这一组串行。
+threads-required = "num-cpus"
