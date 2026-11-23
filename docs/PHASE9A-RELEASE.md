@@ -245,3 +245,24 @@
 - 交付：deb 3,522,748 B / `382829d6…`；zip 5,541,503 B / `75bd6456…`；tag `v0.2.12` = `26d43af`
   （release `454717380`）；`phase9m-done` = `5c440b9`；回下载 `sha256sum -c` 通过。
 - 未验证（需 Windows 实机）：粘贴进 pi 是否整块、cmd 是否仍逐行、实机 conhost 是否真丢标记。
+
+## v0.2.13（9N：合成粗体）
+
+- 缺陷（Linux 实测，非推断）：单字重字体（`汉仪旗黑 55S`，`fc-match` 的 Bold/Regular 同一文件）下
+  `SGR 1` 与 `SGR 0` 渲染**逐字节相同**（墨迹总量 95064 = 95064，+0.0%），而 DejaVu 真 Bold 为 +51.9%。
+  根因：族内无 Bold 面时 crossfont/FreeType 把两个请求解析到同一 face，不做加粗；alacritty 同样如此
+  （leantty-zig 0.1.15 已自行合成）。
+- 修法：`fontset.rs` 新增 `needs_synthetic_bold()`（按"常规组与粗体组同索引 face 是否渲染出同一张位图"
+  判断，覆盖"主字体有 Bold + 回退 CJK 无 Bold"）+ `embolden_bitmap()`（右向膨胀 `d=round(px/24)`，
+  至少 1px，位图 +d、步进不变）。修复后单字重字体 +39.6%，与真 Bold 的 +51.9% 同量级。
+- 配置：`[font] synthetic_bold`（默认 true；false = alacritty 行为）。示例配置两个平台都加了注释。
+- 测试：`crates/render/tests/synthetic_bold.rs` 4 项（单字重变重、关掉逐字节回常规、真 Bold 不被二次加粗、
+  回退 CJK 粗体变重）；`config.rs` 默认值/显式 false/类型错误回落。
+- 验证：`cargo test --workspace` 44 个测试二进制全绿；gates 10 步 PASS（e2e 131/131、GPU 10/10）；
+  视觉对照 `/root/boldshot/compare.png`（上=开、下=关）。
+- 交付：deb 3,520,544 B / `8ae8d739…`；zip 5,543,708 B / `97ca20e6…`；tag `v0.2.13` = `344d082`
+  （release `455099442`）；`phase9n-done` = `6839938`；回下载 `sha256sum -c` OK。
+- 未验证：Windows/DirectWrite 实机观感；彩色 emoji 加粗效果。
+- 流程缺陷（复发一次）：发布导出 `rsync --delete` 会删掉手推的 docs，本次已在发布脚本手动补回
+  `WIN-PASTE-BRACKETED.md`、`BENCH-0.2.10.md`；根治办法是把这两个文件加进 `scripts/release/scan-allow.txt`
+  或 export 白名单（未实施，待决定）。
