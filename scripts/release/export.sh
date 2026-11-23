@@ -26,7 +26,7 @@ mkdir -p "$DEST"
 FILES="Cargo.toml Cargo.lock .gitignore LICENSE THIRD-PARTY-NOTICES.md README.md README.zh-CN.md CHANGELOG.md"
 DIRS="crates vendor config assets packaging"
 # 注意：export.sh 与 scan.sh 属开发侧工具，不导出（s5）。
-EXTRA=".cargo/config.toml scripts/gen-icons.sh scripts/release/build-deb.sh scripts/release/gen-notices.sh"
+EXTRA=".cargo/config.toml .config/nextest.toml scripts/gen-icons.sh scripts/release/build-deb.sh scripts/release/gen-notices.sh"
 # 面向用户的文档（缺失则跳过：老分支上可能没有这些文件，不影响导出其它内容）。
 DOCS="docs/BUILDING.md docs/BENCH-0.2.10.md docs/WIN-PASTE-BRACKETED.md"
 
