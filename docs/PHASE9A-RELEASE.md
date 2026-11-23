@@ -265,3 +265,22 @@
   `LEANTTY_KEY_TRACE=1` 会生成名为 `1` 的追踪文件（该变量取路径）。
 - 交付：deb 3,521,920 B / `c47f2ae2…`；zip 5,543,809 B / `93ab46f6…`；tag `v0.2.13`；`phase9o-done` = `4bdf083`。
 - **版本合并**：0.2.13 与 0.2.14 合并为单独的 0.2.13 发布（0.2.14 未单独发布过，其 release 与 tag 一并撤掉）。
+
+## 补充（2026-11-24）：nextest 并行与 ConPTY Ctrl+C
+
+- Windows 侧实测：`cargo nextest run --all` 并行时，`leantty-pty::pty_windows` 里向 ConPTY 写
+  `\x03`/`\x1c` 的用例会把控制台控制事件打到**同进程组的兄弟测试进程**，6 个用例以
+  `0xc000013a`（STATUS_CONTROL_C_EXIT）中止，连不相干的 `t6_probe_spawn_from_devtty_cwd` 也被误杀；
+  `--test-threads 1` 下该包 26/26 通过。`cargo test` 是单进程多线程模型，所以此前一直全绿。
+- win 分支当时用 `[profile.default] test-threads = 1`（全仓串行）兜住的；**本分支改成定向方案**：
+  `.config/nextest.toml` 里只有一条 override
+  `filter = "binary(pty_windows)"` + `threads-required = "num-cpus"`，只让这一个 Windows 专属二进制
+  串行，其它照旧并行。
+- 验证（Linux，本次实测）：把 filter 临时改成 `binary(synthetic_bold)` 时该二进制的 4 个用例从
+  1.34 s（并行）变成 3.97 s（等于串行求和）→ 证明 override 生效且只影响被 filter 命中的二进制；
+  改回 `binary(pty_windows)` 后全量 `cargo nextest run --all` 仍 250 passed / 1 skipped，53 s。
+- Linux 不需要串行：本地 PTY 用例各自开独立 pty 会话，不存在同进程组串扰（并行连跑 3 轮均 250/250）。
+- 合并 `win` 分支时注意：把他们那份 `test-threads = 1` 换成这条 override，否则 Linux 侧测试会从
+  53 s 变成数分钟。
+- `.config/nextest.toml` 已加入 `scripts/release/export.sh` 的 EXTRA，导出树与仓库行为一致（自检 173 文件、
+  A/B/C=0/3/0）。
