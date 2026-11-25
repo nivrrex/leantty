@@ -3177,13 +3177,25 @@ if start_app "$D" "$L"; then
     GW=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
     GH=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
     CW=$((GW / 80)); CH=$((GH / 24))
-    x11 xdotool mousemove --window "$WID" $((2 * CW + CW / 2)) $((CH + CH / 2))
-    sleep 0.2
-    x11 xdotool click 1; sleep 0.12; x11 xdotool click 1
-    sleep 0.6
-    x11 xdotool key --window "$WID" ctrl+shift+c
-    sleep 0.5
-    SEL=$(x11 xclip -selection clipboard -o 2>/dev/null | tr -d '\n')
+    # 激活 + 双击 + 复制；重试最多 3 次——同机其它会话的终端窗口可能盖在这里把点击吃掉
+    # （gates 里曾出现 sel=[]，而同一提交单独跑必然通过）。
+    SEL=""
+    for attempt in 1 2 3; do
+        x11 xdotool windowactivate --sync "$WID" 2>/dev/null || true
+        x11 xdotool windowfocus "$WID" 2>/dev/null || true
+        sleep 0.3
+        x11 xdotool mousemove --window "$WID" $((2 * CW + CW / 2)) $((CH + CH / 2))
+        sleep 0.2
+        # 先点一次确保窗口获得焦点（Xvfb 下首个点击可能只用于激活），并让双击计数窗口过期
+        x11 xdotool click 1
+        sleep 0.4
+        x11 xdotool click 1; sleep 0.15; x11 xdotool click 1
+        sleep 0.6
+        x11 xdotool key --window "$WID" ctrl+shift+c
+        sleep 0.5
+        SEL=$(x11 xclip -selection clipboard -o 2>/dev/null | tr -d '\n')
+        [ -n "$SEL" ] && break
+    done
     if [ "$SEL" = "中文测试" ]; then
         echo "PASS case83-word-select-wide (sel=$SEL)"
         PASS=$((PASS+1))
