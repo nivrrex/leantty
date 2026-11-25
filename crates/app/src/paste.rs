@@ -1,5 +1,36 @@
 //! 粘贴文本处理（任务 2.3，纯函数可单测）。
 
+/// 拖入文件的路径 → 插入到终端输入的字符串（末尾带一个空格）。
+///
+/// 规则与 alacritty 一致（`alacritty/src/config/ui_config.rs` 的 `escape`）：
+/// 只含"安全字符"的路径原样输出；否则用引号包住，避免空格/元字符把一条路径拆成多个参数。
+/// - Unix：单引号包裹，内部的 `'` 写成 `'\\''`（POSIX shell 唯一可靠的转义方式）；
+/// - Windows：`cmd`/PowerShell 都不认 POSIX 单引号转义，用双引号包裹并转义内部双引号。
+///
+/// `windows` 作为参数注入而非 `cfg!`，方便在任一平台上测两个分支。
+pub fn quote_dropped_path(path: &std::path::Path, windows: bool) -> String {
+    let text = path.to_string_lossy();
+    let safe =
+        |c: char| c.is_ascii_alphanumeric() || matches!(c, '/' | '.' | '-' | '_' | '~' | '+' | '@');
+    let needs_quote = if windows {
+        // Windows 还要把反斜杠视为"安全"（路径分隔符），但不能漏掉空格与 cmd 元字符。
+        text.chars().any(|c| {
+            !(c.is_ascii_alphanumeric()
+                || matches!(c, '\\' | '/' | '.' | '-' | '_' | '~' | '+' | '@' | ':'))
+        })
+    } else {
+        text.chars().any(|c| !safe(c))
+    };
+    if !needs_quote {
+        return format!("{text} ");
+    }
+    if windows {
+        format!("\"{}\" ", text.replace('"', "\\\""))
+    } else {
+        format!("'{}' ", text.replace('\'', "'\\''"))
+    }
+}
+
 /// 大段粘贴分块大小（≥1MB 时分块写入 PTY，块间事件循环恢复，不阻塞输入响应）。
 /// 单块字节数（64KB）。阶段 4B-fix3 曾试降到 4KB 以避免阻塞写，但排空吞吐
 /// 下降 16 倍（e2e case25 的 10MB 键入在超时内只送达 4.39MB），收益未证实
@@ -109,6 +140,41 @@ mod tests {
         assert!(
             !injected[..injected.len() - 6].contains("\u{1b}[201~"),
             "内容内 ESC[201~ 应被过滤"
+        );
+    }
+
+    #[test]
+    fn dropped_paths_are_quoted_per_platform() {
+        use std::path::Path;
+        // 安全字符：原样 + 末尾空格
+        assert_eq!(
+            quote_dropped_path(Path::new("/tmp/a-b_c.txt"), false),
+            "/tmp/a-b_c.txt "
+        );
+        // 空格 → Unix 单引号
+        assert_eq!(
+            quote_dropped_path(Path::new("/tmp/my file.txt"), false),
+            "'/tmp/my file.txt' "
+        );
+        // 含单引号 → POSIX 转义 '\\''（shell 里等价于一个字面单引号）
+        assert_eq!(
+            quote_dropped_path(Path::new("/tmp/it's.txt"), false),
+            "'/tmp/it'\\''s.txt' "
+        );
+        // shell 元字符也要引起来（否则 > & 会被当成重定向/后台）
+        assert_eq!(
+            quote_dropped_path(Path::new("/tmp/a>b&c"), false),
+            "'/tmp/a>b&c' "
+        );
+        // Windows：反斜杠是安全字符，不额外加引号
+        assert_eq!(
+            quote_dropped_path(Path::new("C:\\work\\a.txt"), true),
+            "C:\\work\\a.txt "
+        );
+        // Windows：含空格 → 双引号（cmd/PowerShell 都认）
+        assert_eq!(
+            quote_dropped_path(Path::new("C:\\my docs\\a.txt"), true),
+            "\"C:\\my docs\\a.txt\" "
         );
     }
 

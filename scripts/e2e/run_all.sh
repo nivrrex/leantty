@@ -3134,6 +3134,82 @@ else
     fi
 fi
 
+# 用例 82：拖入文件 → 路径（含空格）以 shell 引用形式插入终端输入。
+# 真实 XDND 拖放在 Xvfb 下无法可靠模拟，这里走 debug 钩子 `LEANTTY_TEST_DROP`，
+# 它调用与 `WindowEvent::DroppedFile` 完全相同的方法（`on_dropped_file`）。
+D="$OUT/case82-drop.dump"
+L="$OUT/case82-drop.log"
+DROP_FILE="$OUT/case82-my file.txt"
+printf 'x\n' > "$DROP_FILE"
+export LEANTTY_TEST_DROP="$DROP_FILE"
+if start_app "$D" "$L"; then
+    sleep 2.5
+    unset LEANTTY_TEST_DROP
+    LINE=$(sed -n '2p' "$D" 2>/dev/null)
+    case "$LINE" in
+        *"'$DROP_FILE'"*)
+            echo "PASS case82-drop-file-path ($LINE)"
+            PASS=$((PASS+1)) ;;
+        *)
+            echo "FAIL case82-drop-file-path (第 2 行=[$LINE]，期望以 '$DROP_FILE' 开头)"
+            FAIL=$((FAIL+1))
+            cp "$D" "$OUT/case82-drop-fail.dump" 2>/dev/null ;;
+    esac
+    stop_app
+else
+    unset LEANTTY_TEST_DROP
+    FAIL=$((FAIL+1))
+fi
+
+# 用例 83：宽字符双击选词——选中区域高亮与复制内容必须一致（回归 0.2.14 的列/字符下标错位：
+# 含宽字符的行里，双击会把选区算偏一个字，表现为"最后一个字没反色却被复制"）。
+D="$OUT/case83-wordwide.dump"
+L="$OUT/case83-wordwide.log"
+if start_app "$D" "$L"; then
+    # 用八进制转义让 shell 自己输出中文（xdotool type 不能直接键入非 ASCII）
+    x11 xdotool type --window "$WID" "printf '\\344\\270\\255\\346\\226\\207\\346\\265\\213\\350\\257\\225 word abc\\n'"
+    x11 xdotool key --window "$WID" Return
+    sleep 0.8
+    # 双击中文第 2 个字（行 1、列 2；行 0 是提示符）
+    GW=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
+    GH=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)
+    CW=$((GW / 80)); CH=$((GH / 24))
+    x11 xdotool mousemove --window "$WID" $((2 * CW + CW / 2)) $((CH + CH / 2))
+    sleep 0.2
+    x11 xdotool click 1; sleep 0.12; x11 xdotool click 1
+    sleep 0.6
+    x11 xdotool key --window "$WID" ctrl+shift+c
+    sleep 0.5
+    SEL=$(x11 xclip -selection clipboard -o 2>/dev/null | tr -d '\n')
+    if [ "$SEL" = "中文测试" ]; then
+        echo "PASS case83-word-select-wide (sel=$SEL)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case83-word-select-wide (sel=[$SEL]，期望 中文测试)"
+        FAIL=$((FAIL+1))
+    fi
+    # 右键粘贴：插入的字符必须与复制的完全一致（多一个字符就是 0.2.13 的 off-by-one）
+    x11 xdotool key --window "$WID" Return
+    sleep 0.5
+    x11 xdotool mousemove --window "$WID" $((40 * CW)) $((4 * CH))
+    sleep 0.3
+    x11 xdotool click 3
+    sleep 1
+    # 粘贴结果落在提示符行：必须存在"提示符 + 选中文本"结尾的行，且**没有**多一个字符的行。
+    # 直接 grep 全文，避免 dump 里其它行（上一命令的输出）干扰。
+    EXACT=$(grep -cE "# ${SEL}$" "$D" 2>/dev/null || true)
+    LONGER=$(grep -cE "# ${SEL}." "$D" 2>/dev/null || true)
+    if [ "${EXACT:-0}" -ge 1 ] && [ "${LONGER:-1}" -eq 0 ]; then
+        echo "PASS case83-paste-matches-selection (exact=${EXACT} longer=0)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case83-paste-matches-selection (exact=${EXACT:-0} longer=${LONGER:-0} sel=[$SEL])"
+        FAIL=$((FAIL+1))
+        cp "$D" "$OUT/case83-wordwide-fail.dump" 2>/dev/null
+    fi
+    stop_app
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

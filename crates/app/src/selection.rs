@@ -123,24 +123,67 @@ pub fn stream_row_range(
     Some((c0.min(last), c1.min(last)))
 }
 
-/// 双击选词边界：以 semantic_escape_chars 为分隔符，从 focus 列向两侧扩展
-/// 至边界；focus 字符本身是分隔符时仅选自身。
-pub fn word_region(line: &str, focus_col: usize, escape_chars: &str) -> (usize, usize) {
-    let chars: Vec<char> = line.chars().collect();
-    if focus_col >= chars.len() {
+/// 双击选词边界（**按格子列**计算，宽字符安全）。
+///
+/// 与 [`word_region`] 的区别（0.2.14 修复的缺陷）：`word_region` 把"格子列"当成"字符下标"
+/// 去查一行的字符串，一旦这行含宽字符（CJK/emoji），两者就不再相等 —— 双击中文会把选区
+/// 算到旁边的字上，双击宽字符右侧的英文会因为列偏移少选/多选一个字符。
+///
+/// 这里直接在格子上走：跳过 `SpacerTail`/`SpacerHead`（宽字符的续格），以"该格文本的首字符"
+/// 判定分隔符，返回**头格列**范围（含端点）。宽字符被选中时高亮会自动覆盖它的续格
+/// （`decide()` 里 `span=2`），文本提取则跳过续格，两者因此一致。
+///
+/// 点在宽字符的续格上时，先归位到它的头格再判定。
+pub fn word_region_cells(cells: &[Cell], focus_col: u16, escape_chars: &str) -> (u16, u16) {
+    let is_spacer = |c: &Cell| matches!(c.wide, CellWide::SpacerTail | CellWide::SpacerHead);
+    let len = cells.len() as u16;
+    if cells.is_empty() {
         return (focus_col, focus_col);
     }
-    let is_sep = |c: char| escape_chars.contains(c);
-    if is_sep(chars[focus_col]) {
-        return (focus_col, focus_col);
+    // 续格 → 归位到头格。
+    let mut col = focus_col.min(len - 1);
+    while col > 0 && is_spacer(&cells[col as usize]) {
+        col -= 1;
     }
-    let mut start = focus_col;
-    while start > 0 && !is_sep(chars[start - 1]) {
+    let first_char = |c: &Cell| c.chars.chars().next();
+    let is_sep = |c: &Cell| first_char(c).is_some_and(|ch| escape_chars.contains(ch));
+    // 点在分隔符或空格上：只选这一格（与 alacritty 的语义一致）。
+    if is_sep(&cells[col as usize]) {
+        return (col, col);
+    }
+    let mut start = col;
+    while start > 0 {
+        let prev = &cells[(start - 1) as usize];
+        // 宽字符的续格属于它左边的头格：跳过去继续看头格，不能当成边界。
+        if matches!(prev.wide, CellWide::SpacerTail) {
+            start -= 1;
+            continue;
+        }
+        if is_spacer(prev) || is_sep(prev) || prev.chars.is_empty() {
+            break;
+        }
         start -= 1;
     }
-    let mut end = focus_col;
-    while end + 1 < chars.len() && !is_sep(chars[end + 1]) {
+    // 起点落在续格上时归位到头格（否则高亮会从字符中间开始）。
+    while start > 0 && matches!(cells[start as usize].wide, CellWide::SpacerTail) {
+        start -= 1;
+    }
+    let mut end = col;
+    while end + 1 < len {
+        let next = &cells[(end + 1) as usize];
+        // 宽字符的续格属于当前字符，跳过继续找下一个头格。
+        if matches!(next.wide, CellWide::SpacerTail) {
+            end += 1;
+            continue;
+        }
+        if is_spacer(next) || is_sep(next) || next.chars.is_empty() {
+            break;
+        }
         end += 1;
+    }
+    // 结尾落在续格上时回退到头格：选区端点用头格列表达，高亮/提取才能对称。
+    while end > start && is_spacer(&cells[end as usize]) {
+        end -= 1;
     }
     (start, end)
 }
@@ -259,16 +302,67 @@ mod tests {
     }
 
     #[test]
-    fn word_region_respects_escape_chars() {
-        let line = "echo hello, world";
-        // escape 含空格与逗号
-        let (s, e) = word_region(line, 5, " ,");
-        assert_eq!((s, e), (5, 9), "'hello' 应为词边界");
-        let (s, e) = word_region(line, 0, " ,");
-        assert_eq!((s, e), (0, 3), "'echo'（4 字符）应为词边界");
-        // focus 是分隔符→仅自身
-        let (s, e) = word_region(line, 4, " ,");
-        assert_eq!((s, e), (4, 4));
+    fn word_region_cells_handles_wide_chars() {
+        use vt::CellWide;
+        let cell = |ch: &str, wide: CellWide| Cell {
+            chars: ch.to_string(),
+            wide,
+            ..Default::default()
+        };
+        // "中文 word"：0=中(head) 1=tail 2=文(head) 3=tail 4=空格 5..8=word
+        let mut cells = vec![cell("", CellWide::Narrow); 12];
+        cells[0] = cell("中", CellWide::Wide);
+        cells[1] = cell("", CellWide::SpacerTail);
+        cells[2] = cell("文", CellWide::Wide);
+        cells[3] = cell("", CellWide::SpacerTail);
+        cells[4] = cell(" ", CellWide::Narrow);
+        for (i, ch) in "word".chars().enumerate() {
+            cells[5 + i] = cell(&ch.to_string(), CellWide::Narrow);
+        }
+        let esc = ",│`|:\"' ()[]{}<>";
+        // 点在第 2 个汉字（列 2）：整段连写的中文都算一个词，端点用头格列
+        assert_eq!(
+            word_region_cells(&cells, 2, esc),
+            (0, 2),
+            "中文连写应整段选中"
+        );
+        // 点在宽字符的续格（列 3）→ 归位到头格（列 2），结果同上
+        assert_eq!(
+            word_region_cells(&cells, 3, esc),
+            (0, 2),
+            "续格应归位到头格"
+        );
+        // 点在 'r'（列 7）→ 只选 word，不能因为前面有宽字符就错位
+        assert_eq!(
+            word_region_cells(&cells, 7, esc),
+            (5, 8),
+            "宽字符之后的英文词应精确命中"
+        );
+        // 点在空格（列 4）→ 只选这一格
+        assert_eq!(word_region_cells(&cells, 4, esc), (4, 4), "分隔符只选自身");
+        // 空行/越界列不应 panic
+        assert_eq!(word_region_cells(&[], 5, esc), (5, 5));
+    }
+
+    #[test]
+    fn word_region_cells_matches_char_region_on_ascii() {
+        use vt::CellWide;
+        let cells: Vec<Cell> = "hello_world foo"
+            .chars()
+            .map(|c| Cell {
+                chars: c.to_string(),
+                wide: CellWide::Narrow,
+                ..Default::default()
+            })
+            .collect();
+        let esc = ",│`|:\"' ()[]{}<>";
+        assert_eq!(
+            word_region_cells(&cells, 3, esc),
+            (0, 10),
+            "下划线不是分隔符，整词命中"
+        );
+        assert_eq!(word_region_cells(&cells, 12, esc), (12, 14), "foo 命中");
+        assert_eq!(word_region_cells(&cells, 11, esc), (11, 11), "空格只选自身");
     }
 
     #[test]
