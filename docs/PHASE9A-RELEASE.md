@@ -307,3 +307,23 @@
 - 交付：deb 3,522,376 B / `ab061bcc…`；zip 5,546,790 B / `39be5247…`；tag `v0.2.14` = `245a8f7`
   （release `457678973`）；回下载 `sha256sum -c` OK。
 - 未验证：真实拖放事件在 winit/Windows 上的投递、多文件一次拖入。
+
+## v0.2.15（9R：配置热加载）
+
+- 新增 `[general] live_config_reload`（默认 true，alacritty 同名同义；与 leantty-zig 语义一致）。
+- 可热换：配色、字体（字号/族名/回退/合成粗体/抗锯齿与 gamma，字号变化会重建渲染器并**重排行列**）、
+  键鼠绑定、`selection.save_to_clipboard`/`semantic_escape_chars`、`scrolling.multiplier`、
+  光标样式与闪烁、`dynamic_title`。需重启：`window.dimensions`、`scrolling.history`、`terminal.shell`（打印提示）。
+- 实现：辅助线程每 400ms `stat`（mtime + 长度，单靠 mtime 会漏掉同秒等长改写），**只在文件真变时**
+  经 `EventLoopProxy` 唤醒主循环 → 空闲仍不排定时唤醒（`case50` 保持零 timer wake）。
+  主循环收到唤醒后重新解析；解析失败（编辑器"先截断再写"）保留旧配置，下轮再试。
+- 测试：`live_config_reload_default_on_and_configurable`；e2e `case84-live-reload-applies`
+  （bg `gray(16)→srgb(32,64,96)`、cols `40→29`）与 `case84-live-reload-disabled`（写入 false 后本次生效、
+  之后不再重载）。e2e 合计 136 项。
+- **本轮 e2e 抖动的真因（新发现）**：机器上另一个会话在**同一 `:99`** 跑 leantty-zig 的 e2e，双方的
+  guard 都会把对方的 Xvfb 当"残留进程"杀掉 → 我们的 e2e 出现整片"窗口未出现"、`case26/27` 像素差等
+  （load 6–9 时尤其明显）。同一提交在低载窗口重跑即 `PASS=136 FAIL=0`。附带把 `case83` 改成
+  "先 windowactivate + 先单击一次再双击 + 失败重试一次"，减少被残留窗口吃掉点击的概率。
+- 交付：deb 3,528,980 B / `aacaf06c…`；zip 5,555,905 B / `f26b5841…`；tag `v0.2.15` = `730bd3f`
+  （release `458218951`）；`phase9r-done` = `e6650ca`；回下载 `sha256sum -c` OK。
+- 未验证：Windows 实机的文件戳行为（同样走 stat）；编辑器"删了再建"（inode 变化）时的行为未实测。
