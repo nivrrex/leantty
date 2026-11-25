@@ -189,72 +189,91 @@ fn defaults_are_sane() {
 
 /// 配置路径选择优先级：与 leantty-zig 的 `configPath()` 逐条对齐。
 ///
-/// 用纯函数 `choose_config_path` 测，不碰进程级环境变量（并行测试会互相干扰）。
+/// 用纯函数 `choose_config_path` 测，不碰进程级环境变量（并行测试会互相干扰），
+/// 候选文件用临时目录里真实创建的文件（存在性判定走真实 `is_file`）。
 #[test]
 fn config_path_priority_matches_zig() {
-    use std::path::PathBuf;
-    let p = |s: &str| PathBuf::from(s);
+    let dir = std::env::temp_dir().join(format!("leantty-cfgpath-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = |name: &str| {
+        let p = dir.join(name);
+        std::fs::write(&p, "[font]\nsize = 12.0\n").unwrap();
+        p
+    };
+    let missing = |name: &str| dir.join(name);
+
+    let cli = missing("cli.toml");
+    let env = missing("env.toml");
+    let user = file("user.toml"); // 平台默认位置（存在）
+    let zig_default = missing("zig.toml");
+    let portable_zig = file("leantty.toml"); // exe 旁、Zig 同名
+    let portable_own = missing("leantty-rust.toml");
+
     // 1) 命令行最高
     assert_eq!(
         config::choose_config_path(
-            Some(p("/cli.toml")),
-            Some(p("/env.toml")),
-            Some(p("/default/leantty.toml")),
-            true,
-            Some(p("/exe/leantty.toml"))
+            Some(cli.clone()),
+            Some(env.clone()),
+            std::slice::from_ref(&user),
+            std::slice::from_ref(&portable_zig)
         )
         .unwrap(),
-        p("/cli.toml")
+        cli
     );
     // 2) 其次是 LEANTTY_CONFIG
     assert_eq!(
         config::choose_config_path(
             None,
-            Some(p("/env.toml")),
-            Some(p("/default/leantty.toml")),
-            true,
-            Some(p("/exe/leantty.toml"))
+            Some(env.clone()),
+            std::slice::from_ref(&user),
+            std::slice::from_ref(&portable_zig)
         )
         .unwrap(),
-        p("/env.toml")
+        env
     );
-    // 3) 默认路径存在就用它（不能被便携配置盖掉）
+    // 3) 用户默认位置存在就用它（不能被便携配置盖掉）
     assert_eq!(
         config::choose_config_path(
             None,
             None,
-            Some(p("/default/leantty.toml")),
-            true,
-            Some(p("/exe/leantty.toml"))
+            std::slice::from_ref(&user),
+            std::slice::from_ref(&portable_zig)
         )
         .unwrap(),
-        p("/default/leantty.toml")
+        user
     );
-    // 4) 默认路径不存在 → 退到可执行文件旁的便携配置
+    // 4) 默认候选都不存在 → 退到 exe 旁的 leantty.toml（改名成 leantty-rust.exe 也要认，
+    //    这正是用户报的 Windows 场景：E:\Compiler\Leantty\leantty.toml）
     assert_eq!(
         config::choose_config_path(
             None,
             None,
-            Some(p("/default/leantty.toml")),
-            false,
-            Some(p("/exe/leantty.toml"))
+            &[missing("nouser.toml"), zig_default.clone()],
+            &[portable_zig.clone(), portable_own.clone()]
         )
         .unwrap(),
-        p("/exe/leantty.toml")
+        portable_zig
     );
-    // 5) 都不存在：交回默认路径（启动日志据此提示"读不到该文件"）
+    // 5) 都不存在：交回第一个默认候选（启动日志据此提示"读不到该文件"）
     assert_eq!(
-        config::choose_config_path(None, None, Some(p("/default/leantty.toml")), false, None)
-            .unwrap(),
-        p("/default/leantty.toml")
+        config::choose_config_path(
+            None,
+            None,
+            std::slice::from_ref(&zig_default),
+            std::slice::from_ref(&portable_own)
+        )
+        .unwrap(),
+        zig_default
     );
-    // 6) 连默认基准目录都没有：只剩便携配置
+    // 6) 连默认基准目录都没有：只剩便携候选
     assert_eq!(
-        config::choose_config_path(None, None, None, false, Some(p("/exe/leantty.toml"))).unwrap(),
-        p("/exe/leantty.toml")
+        config::choose_config_path(None, None, &[], std::slice::from_ref(&portable_own)).unwrap(),
+        portable_own
     );
-    // 7) 彻底没有可用路径 → 报错（由调用方按默认配置启动）
-    assert!(config::choose_config_path(None, None, None, false, None).is_err());
+    // 7) 彻底没有可用路径 → 报错（调用方据此按默认配置启动）
+    assert!(config::choose_config_path(None, None, &[], &[]).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// 环境变量路径测试（合并为单测试，避免并行测试竞争进程级 env）。

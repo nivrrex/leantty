@@ -9,6 +9,7 @@
 | 便携包（配置文件放在 exe 同目录） | **永不读取** | 用户没有自己的配置时读取 `leantty.toml` |
 | Windows 上 `APPDATA` 缺失（某些 `cmd.exe`/服务环境） | 直接报"APPDATA 未设置"，整份配置不生效 | 依次退到 `%USERPROFILE%\.config\leantty\leantty.toml`、`HOME/.config/…` |
 | 默认路径文件不存在 | 仍返回该路径（行为正确） | 不变，但会先检查便携配置 |
+| 二进制被改名（如 `leantty-rust.exe`）后，旁边放着 `leantty.toml` | 只找 `leantty-rust.toml`，**读不到**（用户实机报的问题） | 先找 `leantty.toml`（与 Zig 同名），再找 `<argv0>.toml` |
 
 ## 现在的顺序
 
@@ -17,7 +18,8 @@
 3. 平台默认路径，**仅当该文件存在**：
    - Linux：`$XDG_CONFIG_HOME/leantty/leantty.toml` → `$HOME/.config/leantty/leantty.toml`
    - Windows：`%APPDATA%\leantty\leantty.toml` → `%USERPROFILE%\.config\leantty\leantty.toml`
-4. 用户没有配置时，用**可执行文件同目录的 `leantty.toml`**（便携包）；
+4. 用户没有配置时，用**可执行文件同目录的 `leantty.toml`**（便携包；与 Zig 同名，
+   改名后的二进制同样认它；再不行才退 `<argv0>.toml`）；
 5. 以上都不存在：交回默认路径，启动时打印"读不到该文件，使用默认配置"。
 
 用户自己的配置**永远**不会被便携配置盖掉——这条在 Zig 侧有明确注释（"否则改 ~/.config 会突然失效"），
@@ -41,6 +43,7 @@
   | 只有 exe 旁的 `leantty.toml`（#123456） | 用便携配置 | `srgb(18,52,86)` ✓ |
   | 同时有 `~/.config/leantty/leantty.toml`（#aa5500） | 用户配置优先 | `srgb(170,85,0)` ✓ |
   | 再加 `LEANTTY_CONFIG=env.toml`（#005500） | 环境变量最高 | `srgb(0,85,0)` ✓ |
+  | 二进制改名为 `leantty-rust`，旁边只放 `leantty.toml`（#123456） | 认便携配置 | `srgb(18,52,86)` ✓ |
 
 ## 验证
 
