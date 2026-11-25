@@ -42,6 +42,13 @@
 - e2e：`PASS=135 FAIL=0`（含新增 2 项），GPU 轮 10/10。首次跑时 `case27`（增量=全量像素对拍）抖了一次，
   属既有 Xvfb 时序问题，重跑即过、判据未改。
 
+## 资产
+
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `leantty_0.2.15_amd64.deb` | 3,528,980 B | `aacaf06c16cfdaef0351c43d59c6e98c922751df5129e10a83de3efe72fc9bd9` |
+| `leantty-0.2.15-windows-x86_64.zip` | 5,555,905 B | `f26b58410365352386736c642c44c21dd75fa717a869994a24daae6b66c834a3` |
+
 ## 未验证
 
 - Windows 实机的文件系统时间戳行为（`ReadDirectoryChangesW` 未使用，走的是同样的 `stat` 轮询）；
