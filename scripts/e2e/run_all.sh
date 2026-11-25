@@ -3166,6 +3166,9 @@ fi
 D="$OUT/case83-wordwide.dump"
 L="$OUT/case83-wordwide.log"
 if start_app "$D" "$L"; then
+    # 先 Ctrl-U 清空输入行：上一用例可能在提示符上留下未提交的字符（实测过残留 'n'），
+    # 会让这条命令变成 "nprintf ..."。
+    x11 xdotool key --window "$WID" ctrl+u
     # 用八进制转义让 shell 自己输出中文（xdotool type 不能直接键入非 ASCII）
     x11 xdotool type --window "$WID" "printf '\\344\\270\\255\\346\\226\\207\\346\\265\\213\\350\\257\\225 word abc\\n'"
     x11 xdotool key --window "$WID" Return
