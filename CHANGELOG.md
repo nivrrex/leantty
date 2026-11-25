@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.15
+
+### Added
+- Live config reload (`[general] live_config_reload`, default `true`, same name and semantics as
+  alacritty): when the file named on the command line (or via `LEANTTY_CONFIG`) changes on disk it is
+  re-parsed and the runtime-swappable parts are applied without restarting — colours, font (size,
+  family, fallback list, synthetic bold, antialiasing/gamma), key and mouse bindings, selection
+  settings, scroll multiplier, cursor style/blink and dynamic-title. A font change rebuilds the
+  renderer and reflows the grid to the current window size.
+- The watcher is a helper thread that only does `stat` every 400 ms and wakes the event loop **only
+  when the file actually changed**, so an idle terminal still schedules no timer wakes.
+- Items that cannot be swapped at runtime (`window.dimensions`, `scrolling.history`,
+  `terminal.shell`) print a "needs restart" notice instead of half-applying.
+
 ## 0.2.14
 
 ### Added

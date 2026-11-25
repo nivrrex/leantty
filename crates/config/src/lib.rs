@@ -236,6 +236,16 @@ pub struct RendererConfig {
     pub backend: Backend,
 }
 
+/// `[general]` 段（与 alacritty 0.13+ 同名）。
+#[derive(Debug, Clone, Copy)]
+pub struct GeneralConfig {
+    /// 配置文件改动后是否自动重新加载（`general.live_config_reload`，默认 true）。
+    ///
+    /// 语义与 alacritty / leantty-zig 一致：只热替换"运行期能换掉"的部分
+    /// （配色、字体、绑定、选区/滚动参数等）；行列数、scrollback 上限、启动命令需要重启。
+    pub live_config_reload: bool,
+}
+
 /// 字体配置。
 #[derive(Debug, Clone)]
 pub struct FontSettings {
@@ -327,6 +337,8 @@ pub struct KeyboardConfig {
 /// 顶层配置（强类型输出）。
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// `[general]` 段。
+    pub general: GeneralConfig,
     pub window: WindowConfig,
     pub scrolling: ScrollingConfig,
     pub terminal: TerminalConfig,
@@ -362,6 +374,9 @@ impl Default for Config {
                 alt_screen_scroll: true,
             },
             terminal: TerminalConfig { shell: None },
+            general: GeneralConfig {
+                live_config_reload: true,
+            },
             font: FontSettings {
                 size: 14.0,
                 normal: FontSpec {
@@ -560,6 +575,8 @@ const KNOWN: &[&str] = &[
     "terminal.shell.program",
     "terminal.shell.args",
     "font",
+    "general",
+    "general.live_config_reload",
     "font.size",
     "font.normal",
     "font.normal.family",
@@ -888,6 +905,12 @@ fn parse_config(v: &toml::Value, w: &mut Warnings) -> Config {
         if let Some(program) = program {
             c.terminal.shell = Some(ShellConfig { program, args });
         }
+    }
+
+    if let Some(g) = table(root, "general", "root", w)
+        && let Some(b) = bool_field(g, "live_config_reload", "general", w)
+    {
+        c.general.live_config_reload = b;
     }
 
     if let Some(t) = table(root, "font", "root", w) {
