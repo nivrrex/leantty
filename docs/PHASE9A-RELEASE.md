@@ -327,3 +327,20 @@
 - 交付：deb 3,528,980 B / `aacaf06c…`；zip 5,555,905 B / `f26b5841…`；tag `v0.2.15` = `730bd3f`
   （release `458218951`）；`phase9r-done` = `e6650ca`；回下载 `sha256sum -c` OK。
 - 未验证：Windows 实机的文件戳行为（同样走 stat）；编辑器"删了再建"（inode 变化）时的行为未实测。
+
+## v0.2.16（9S：配置读取顺序对齐 Zig）
+
+- 与 leantty-zig 的 `configPath()` 逐条对齐，顺序：`--config-file` > `LEANTTY_CONFIG` >
+  平台默认**且文件存在** > 可执行文件同目录的便携 `leantty.toml` > 交回默认路径（启动日志提示读不到）。
+- 修掉两个真实差异：①便携配置（exe 同目录）此前**从不读取**；②Windows 只认 `%APPDATA%`，
+  在没有 APPDATA 的 cmd/服务环境里整份配置不生效——现补 `%USERPROFILE%\.config` 回退，
+  与 Zig 一致。用户自己的配置永不被便携配置盖掉。
+- 实现：`config_base_dir()`、`portable_config_path()`、纯函数 `choose_config_path()`（7 组合单测）
+  + `resolve_config_path()`；README 与两份模板写明顺序。
+- 端到端实测（HOME/XDG 指向临时目录）：仅便携 → `srgb(18,52,86)`；再加用户配置 → `srgb(170,85,0)`；
+  再加 `LEANTTY_CONFIG` → `srgb(0,85,0)`，三条全对。
+- 验证：`cargo nextest run --all` 254 passed / 1 skipped；clippy 与 release 0 告警；
+  gates 10 步 PASS（e2e 136/136、GPU 10/10，HEAD fcbdd73，`phase9s-done`；当时 load 8–10 仍通过）。
+- 交付：deb 3,529,404 B / `09233692…`；zip 5,556,849 B / `e83e0789…`；tag `v0.2.16` = `efe4093`
+  （release `458270147`）；回下载 `sha256sum -c` OK。
+- 未验证：Windows 实机的 APPDATA/USERPROFILE 分支（仅单测 + 交叉编译）。
