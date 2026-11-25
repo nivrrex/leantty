@@ -353,7 +353,8 @@ pub use paste::{
 pub use scrollbar::{ScrollbarGeom, scrollbar_geometry, track_y_to_offset};
 pub use selection::{
     CellPos, Selection, abs_to_viewport, auto_scroll_step, extract_rows, extract_text,
-    extract_text_stream, selection_viewport_region, stream_row_range, viewport_to_abs, word_region,
+    extract_text_stream, selection_viewport_region, stream_row_range, viewport_to_abs,
+    word_region_cells,
 };
 
 /// 帧耗时诊断统计（LEANTTY_PERF_FRAMES=1；性能诊断日志，release 保留，默认关闭）。
@@ -608,6 +609,8 @@ impl App {
             test_paste_at: None,
             #[cfg(debug_assertions)]
             test_paste_text: None,
+            #[cfg(debug_assertions)]
+            test_drop: None,
             #[cfg(debug_assertions)]
             test_paste_fired: None,
             fatal: None,
@@ -1064,6 +1067,9 @@ struct AppHandler {
     test_paste_at: Option<std::time::Instant>,
     #[cfg(debug_assertions)]
     test_paste_text: Option<String>,
+    /// debug 钩子：延迟触发一次"拖入文件"（路径, 触发时刻）。
+    #[cfg(debug_assertions)]
+    test_drop: Option<(std::path::PathBuf, Instant)>,
     /// 已触发、等待第一帧渲染以打印延迟（debug 钩子）。
     #[cfg(debug_assertions)]
     test_paste_fired: Option<std::time::Instant>,
@@ -1519,6 +1525,14 @@ impl ApplicationHandler for AppHandler {
                 eperf!("[perf] test_preedit_clear_scheduled ms={ms}");
             }
         }
+        // 测试钩子（debug 专有）：延迟触发一次"拖入文件"（走与 WindowEvent::DroppedFile 相同的方法），
+        // 用于端到端验证路径引用与插入路径；真实 XDND 拖放无法在 Xvfb 里可靠模拟。
+        #[cfg(debug_assertions)]
+        if let Ok(p) = std::env::var("LEANTTY_TEST_DROP")
+            && !p.is_empty()
+        {
+            self.test_drop = Some((std::path::PathBuf::from(p), Instant::now()));
+        }
         // 测试钩子（debug 专有）：延迟触发一次同步粘贴，用于验证"粘贴后主动排帧"。
         #[cfg(debug_assertions)]
         if let Ok(t) = std::env::var("LEANTTY_TEST_PASTE")
@@ -1651,6 +1665,9 @@ impl ApplicationHandler for AppHandler {
                     }
                 }
             }
+            // 拖入文件：把路径插入到终端输入（alacritty 同款行为）。多选时 winit 逐个投递，
+            // 每个路径后跟一个空格，便于在 shell 里继续输入。
+            WindowEvent::DroppedFile(path) => self.on_dropped_file(&path),
             WindowEvent::Focused(focused) => {
                 self.trace_key(format!("focus {focused}"));
                 self.focused = focused;
@@ -1938,6 +1955,13 @@ impl ApplicationHandler for AppHandler {
         }
         // 测试钩子（debug 专有）：预编辑到期清除。必须放在渲染节流之前——静止画面
         // 时 will_render 可能为 false，若把清除逻辑放在渲染路径里就永远不会执行。
+        #[cfg(debug_assertions)]
+        if let Some((path, at)) = self.test_drop.clone()
+            && Instant::now() >= at
+        {
+            self.test_drop = None;
+            self.on_dropped_file(&path);
+        }
         #[cfg(debug_assertions)]
         if let Some(t) = self.test_paste_at {
             if std::time::Instant::now() >= t {
@@ -3152,35 +3176,16 @@ impl AppHandler {
     }
 
     /// 双击选词：以 semantic_escape_chars 为边界计算词区域（网格坐标）。
+    /// 双击选词：按**格子列**在行内扩展（宽字符安全，见 `word_region_cells`）。
     fn word_region_at(&self, viewport_row: u16, focus_col: u16) -> Option<(u16, u16)> {
         let snap = self.vt.as_ref()?.snapshot().ok()?;
-        // 绝对行=viewport_row+offset（调用方传视口行）；读视口内行文本。
-        let row = viewport_row;
-        let line = Self::row_text(&snap, row);
+        let cells = snap.cells.get(viewport_row as usize)?;
         let escape = self
             .config
             .as_ref()
             .map(|c| c.config.selection.semantic_escape_chars.clone())
             .unwrap_or_default();
-        let (sc, ec) = word_region(&line, focus_col as usize, &escape);
-        Some((sc as u16, ec as u16))
-    }
-
-    /// 快照行文本（Cell.chars 拼接；Spacer 尾格跳过——与 extract_text 同源）。
-    fn row_text(snap: &vt::FrameSnapshot, row: u16) -> String {
-        let mut line = String::new();
-        if let Some(cells) = snap.cells.get(row as usize) {
-            for cell in cells {
-                if matches!(
-                    cell.wide,
-                    vt::CellWide::SpacerTail | vt::CellWide::SpacerHead
-                ) {
-                    continue;
-                }
-                line.push_str(&cell.chars);
-            }
-        }
-        line
+        Some(word_region_cells(cells, focus_col, &escape))
     }
 
     /// 选区定型/复制：提取文本写 PRIMARY；save_to_clipboard 时兼写 CLIPBOARD。
@@ -3402,6 +3407,16 @@ impl AppHandler {
         if text.is_empty() {
             return;
         }
+        self.paste_from_text(&text);
+    }
+
+    /// 拖入文件：把 shell 引用后的路径插入终端输入（等价于用户敲入该路径 + 空格）。
+    ///
+    /// 走 `paste_from_text` 而不是裸写 PTY：分享同一条积压上限/回底/排帧路径，
+    /// 且对端开了 `?2004` 时会被当成一次粘贴块处理（不会被逐字符解释）。
+    fn on_dropped_file(&mut self, path: &std::path::Path) {
+        let text = crate::paste::quote_dropped_path(path, cfg!(windows));
+        eperf!("[perf] dropped_file quoted_len={}", text.len());
         self.paste_from_text(&text);
     }
 

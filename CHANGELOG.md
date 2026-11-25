@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.14
+
+### Added
+- Drag and drop: dropping a file onto the window inserts its path into the terminal input, quoted
+  for the platform (POSIX single quotes on Unix including the `'\''` escape, double quotes on
+  Windows) with a trailing space so several files can be dropped in a row. The insertion goes through
+  the same path as a clipboard paste, so bracketed-paste-aware applications receive it as one block.
+
+### Fixed
+- Double-click word selection was computed by treating **cell columns as character indices**. On lines
+  containing wide characters (CJK, emoji) the two diverge, so double-clicking picked the wrong word:
+  clicking `文` in `中文测试` selected `中文` instead of the whole run, and clicking `r` in `word`
+  right after CJK text yielded `ord`. Word boundaries are now walked over cells, skipping wide-char
+  continuation cells and snapping a click on the second half of a wide glyph back to its head cell.
+  This also removes the class of off-by-one where the last selected character was copied but not
+  highlighted.
+
 ## 0.2.13
 
 ### Fixed
