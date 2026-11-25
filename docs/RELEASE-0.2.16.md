@@ -54,8 +54,8 @@
 
 | 文件 | 大小 | sha256 |
 |---|---|---|
-| `leantty_0.2.16_amd64.deb` | 3,529,404 B | `09233692501d54ae52dea9108442dafddb1b581ee2b71b9c4f2f84bb1103b2b1` |
-| `leantty-0.2.16-windows-x86_64.zip` | 5,556,849 B | `e83e07892394e56653bdfcf8a814edbf4d867c7f535df6da4346f2ae563d999f` |
+| `leantty_0.2.16_amd64.deb` | 3,531,940 B | `0b1bc5939c63b1af2910f7c2f7ed6410b6a6d51f2a4bce32a30230968ad7ae56` |
+| `leantty-0.2.16-windows-x86_64.zip` | 5,557,532 B | `3b36c26d8e32d107996461abb017b18f0a2c0d5bd1738bc674f1fe41396aff77` |
 
 ## 未验证
 
