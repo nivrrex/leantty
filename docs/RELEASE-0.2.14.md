@@ -44,6 +44,13 @@
 - `cargo clippy --all-targets -D warnings`：0 告警；release 构建 0 告警。
 - `scripts/e2e/run_all.sh`：**PASS=134 FAIL=0**，GPU 轮 10/10。
 
+## 资产
+
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `leantty_0.2.14_amd64.deb` | 3,522,376 B | `ab061bccaf995bee2b6ca6b577cd6524d7e008be378a5292e4951a1322661c53` |
+| `leantty-0.2.14-windows-x86_64.zip` | 5,546,790 B | `39be5247a30db61e291c87a828011b63245ac8ab31a3e55aa660dc2665043b13` |
+
 ## 未验证
 
 - 真实 XDND 拖放（Xvfb 下无法可靠模拟一次真正的拖拽）：本次验证走的是 debug 钩子，它与
