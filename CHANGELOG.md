@@ -10,6 +10,11 @@
   a `cmd.exe` session without `APPDATA`/`HOME`/`XDG_CONFIG_HOME` could not find any config at all
   (`%USERPROFILE%\.config` is now the fallback, like the Zig build).
 - A user config always wins over the portable one; the portable file is only used when the user has none.
+- The portable file is looked up as `leantty.toml` next to the executable (like the Zig build) and then
+  as `<argv0>.toml`. Before this, a renamed binary (for example `leantty-rust.exe`) looked for
+  `leantty-rust.toml` only, so a `leantty.toml` sitting right beside it was ignored.
+- The platform default is tried at both `<base>/<argv0>/<argv0>.toml` and `<base>/leantty/leantty.toml`,
+  so a config written for the Zig build keeps working.
 
 ## 0.2.15
 
