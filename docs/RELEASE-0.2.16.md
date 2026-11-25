@@ -47,6 +47,13 @@
 - `cargo nextest run --all`：254 passed / 1 skipped；clippy `-D warnings` 0 告警；release 0 告警。
 - `scripts/gates.sh`：10 步 PASS（下文"资产"在打包后补哈希）。
 
+## 资产
+
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `leantty_0.2.16_amd64.deb` | 3,529,404 B | `09233692501d54ae52dea9108442dafddb1b581ee2b71b9c4f2f84bb1103b2b1` |
+| `leantty-0.2.16-windows-x86_64.zip` | 5,556,849 B | `e83e07892394e56653bdfcf8a814edbf4d867c7f535df6da4346f2ae563d999f` |
+
 ## 未验证
 
 - Windows 实机（`%APPDATA%` 与 `%USERPROFILE%` 分支只做了单元测试与交叉编译检查，未在 Windows 上跑真实进程）。
