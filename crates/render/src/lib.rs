@@ -411,6 +411,25 @@ impl CpuRenderer {
         }
     }
 
+    /// 热加载：替换调色板。配色变了必须整屏重绘（每格颜色都要重算）。
+    pub fn set_palette(&mut self, palette: Palette) {
+        if self.palette != palette {
+            self.palette = palette;
+            self.force_full = true;
+        }
+    }
+
+    /// 热加载：替换字体渲染选项（抗锯齿/子像素/gamma/粗体提亮）。
+    ///
+    /// 这些选项影响字形位图的生成，必须清字形缓存并整屏重绘。
+    pub fn set_options(&mut self, options: RenderOptions) {
+        if self.options != options {
+            self.options = options;
+            self.glyph_cache.clear();
+            self.force_full = true;
+        }
+    }
+
     /// 设置选区矩形（网格坐标，含端点）；None 清除高亮。
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         self.selection = region;

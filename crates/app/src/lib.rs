@@ -438,6 +438,32 @@ impl PerfFrames {
     }
 }
 
+/// 配置文件的 (mtime, 长度)：热加载用它判断"文件是否变了"。
+///
+/// 两者都要：只比 mtime 时，同一秒内的两次写入可能被漏掉；只比长度时，
+/// 等长改写（改一个数字）会被漏掉。
+fn file_stamp(path: &std::path::Path) -> Option<(std::time::SystemTime, u64)> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some((meta.modified().ok()?, meta.len()))
+}
+
+/// 字体设置是否有实质变化（`FontSettings` 没实现 PartialEq，逐字段比）。
+fn font_settings_differ(a: &render::FontSettings, b: &render::FontSettings) -> bool {
+    let spec =
+        |x: &render::FontSpec, y: &render::FontSpec| x.family != y.family || x.style != y.style;
+    a.size != b.size
+        || a.synthetic_bold != b.synthetic_bold
+        || spec(&a.normal, &b.normal)
+        || spec(&a.bold, &b.bold)
+        || spec(&a.italic, &b.italic)
+        || spec(&a.bold_italic, &b.bold_italic)
+        || a.fallback.len() != b.fallback.len()
+        || a.fallback
+            .iter()
+            .zip(b.fallback.iter())
+            .any(|(x, y)| spec(x, y))
+}
+
 /// 渲染最小间隔（阶段 3B 任务 2：帧合并）。高频 PTY 输出时最多约 125 帧/秒，
 /// 即约 8ms 一帧；交互事件（键盘/鼠标/IME/resize）走 urgent 低延迟路径不受此限。
 const RENDER_MIN_INTERVAL: Duration = Duration::from_millis(8);
@@ -465,6 +491,9 @@ pub struct App {
     pub pad_y: u16,
     /// 原始配置（绑定执行/选区参数/滚动/IME 等后续任务按需读取）。
     pub config: config::Config,
+    /// 配置文件路径（`--config-file` > `LEANTTY_CONFIG` > 默认路径）；热加载用。
+    /// `None` 表示没有可监视的文件（例如全部用环境变量/命令行覆盖）。
+    pub config_path: Option<std::path::PathBuf>,
 }
 
 impl App {
@@ -493,6 +522,7 @@ impl App {
             pad_x: config.window.padding.x,
             pad_y: config.window.padding.y,
             config,
+            config_path: None,
         }
     }
 
@@ -586,6 +616,7 @@ impl App {
             focused: true,
             is_x11: false,
             event_proxy: Some(event_loop.create_proxy()),
+            reload_proxy: Some(event_loop.create_proxy()),
             mods_state: ModifiersState::default(),
             first_frame_logged: false,
             first_pty_byte_logged: false,
@@ -607,6 +638,10 @@ impl App {
             os_redraw_count: 0,
             #[cfg(debug_assertions)]
             test_paste_at: None,
+            reload_path: None,
+            reload_stamp: None,
+            reload_checked: None,
+            reload_stop: None,
             #[cfg(debug_assertions)]
             test_paste_text: None,
             #[cfg(debug_assertions)]
@@ -618,6 +653,10 @@ impl App {
         event_loop
             .run_app(&mut handler)
             .map_err(|e| Error::App(format!("event loop: {}", e)))?;
+        // 先停配置监视线程（它每 400ms 醒一次，进程正在退出时没有意义）。
+        if let Some(stop) = handler.reload_stop.take() {
+            stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         // 退出前先丢弃接收端：大量输出（如 20 万行）时 channel 可能已积压，
         // 读线程会阻塞在 send；drop Receiver 使其 send 立即返回 Disconnected 并退出，
         // 否则 reader join 会等满 5s 超时（阶段 3C 任务 4 case28 实测）。
@@ -736,6 +775,24 @@ impl RendererBackend {
             Self::Cpu(r) => r.set_selection(region),
             #[cfg(any(target_os = "linux", target_os = "windows"))]
             Self::Gpu(r) => r.set_selection(region),
+        }
+    }
+
+    /// 热加载：替换调色板（下一帧整屏重绘）。
+    pub fn set_palette(&mut self, palette: render::Palette) {
+        match self {
+            Self::Cpu(r) => r.set_palette(palette),
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            Self::Gpu(r) => r.set_palette(palette),
+        }
+    }
+
+    /// 热加载：替换字体渲染选项（抗锯齿/gamma/粗体提亮）。
+    pub fn set_options(&mut self, options: render::RenderOptions) {
+        match self {
+            Self::Cpu(r) => r.set_options(options),
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            Self::Gpu(r) => r.set_options(options),
         }
     }
 
@@ -1067,6 +1124,14 @@ struct AppHandler {
     test_paste_at: Option<std::time::Instant>,
     #[cfg(debug_assertions)]
     test_paste_text: Option<String>,
+    /// 配置热加载：被监视的文件（`None` = 不监视）。
+    reload_path: Option<std::path::PathBuf>,
+    /// 上次看到的 (mtime, 文件字节数)；`None` 表示尚未取到基线。
+    reload_stamp: Option<(std::time::SystemTime, u64)>,
+    /// 上次检查时刻（节流用）。
+    reload_checked: Option<Instant>,
+    /// 配置监视线程的停止标志（退出时置 true）。
+    reload_stop: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     /// debug 钩子：延迟触发一次"拖入文件"（路径, 触发时刻）。
     #[cfg(debug_assertions)]
     test_drop: Option<(std::path::PathBuf, Instant)>,
@@ -1078,6 +1143,8 @@ struct AppHandler {
     fatal: Option<Error>,
     /// 事件循环代理（run_app 前创建，读线程经其唤醒事件循环）。
     event_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
+    /// 配置监视线程用的 proxy（与读线程的 waker 分开，避免被 `take()` 走）。
+    reload_proxy: Option<winit::event_loop::EventLoopProxy<()>>,
     /// 后台字体加载完成通知（render 侧 channel；about_to_wait 轮询并入）。
     mods_state: ModifiersState,
     /// 当前选区（网格坐标；滚动偏移联动在任务 4 完成）。
@@ -1506,6 +1573,39 @@ impl ApplicationHandler for AppHandler {
         self.rows = config.rows;
         // 运行时绑定查表/选区参数访问（resumed take 后回填；AppHandler.config
         // 字段语义从"待消费配置"扩展为"运行时配置"，阶段 2B 任务 2.5 起用）。
+        // 热加载：基线 + 监视线程。线程只做 stat，**文件真变了才**唤醒主循环，
+        // 因此空闲时主循环不会被定时唤醒（"空闲就是空闲"这条不变）。
+        self.reload_path = config.config_path.clone();
+        self.reload_stamp = self.reload_path.as_deref().and_then(file_stamp);
+        if let Some(path) = self.reload_path.clone()
+            && config.config.general.live_config_reload
+        {
+            let proxy = self.reload_proxy.as_ref().cloned();
+            let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            self.reload_stop = Some(stop.clone());
+            let baseline = self.reload_stamp;
+            std::thread::Builder::new()
+                .name("config-watch".to_string())
+                .spawn(move || {
+                    let mut last = baseline;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                        if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                            return;
+                        }
+                        let now = file_stamp(&path);
+                        if now != last {
+                            last = now;
+                            // 事件循环已销毁（进程退出中）时 send_event 返回 Err。
+                            let Some(p) = proxy.as_ref() else { return };
+                            if p.send_event(()).is_err() {
+                                return;
+                            }
+                        }
+                    }
+                })
+                .ok();
+        }
         self.config = Some(config);
         // 测试专用开关（仅 debug 构建；release 中不存在）：LEANTTY_TEST_PREEDIT
         // 注入一个预编辑串，供 e2e 断言叠加层渲染而不经过真实输入法。
@@ -1883,6 +1983,8 @@ impl ApplicationHandler for AppHandler {
                 self.apply_resize(sz.width, sz.height);
             }
         }
+        // 配置热加载（`[general] live_config_reload`，默认开；节流 400ms，只做一次 stat）。
+        self.maybe_reload_config();
         // 阶段 4I t3：观测窗口重置（LEANTTY_PERF_RESET_MS，默认关闭）。用于把启动期
         // 空闲/字体加载排除在"粘贴窗口"的停顿统计之外；release 同样可用。
         if let Some(t) = self.perf_reset_at
@@ -2596,6 +2698,134 @@ impl AppHandler {
     /// 除 `WindowEvent::Resized` 外，`about_to_wait` 还会**轮询** `window.inner_size()`
     /// （窗口管理器可能在映射时悄悄裁窗而不发事件——实测 1280x720 屏幕上 24 行请求
     /// 1008px 被裁到 696px，若不轮询，渲染与滚动条仍按 1008px 计算，滚动条画到窗口外）。
+    /// 配置热加载：节流 stat 配置文件，变化则重新解析并**只应用运行期能换掉的部分**。
+    ///
+    /// 语义与 alacritty / leantty-zig 一致：
+    /// - 可热换：配色、字体（字号/族名/回退/合成粗体/抗锯齿）、键鼠绑定、选区参数、
+    ///   滚动步长、光标样式与闪烁、动态标题开关；
+    /// - 需重启：行列数、scrollback 上限、启动命令（打印一行提示，不做半截生效）。
+    ///
+    /// 只做 `metadata()`（stat），不做文件监听线程，因此没有额外依赖、也不占 fd。
+    fn maybe_reload_config(&mut self) {
+        let Some(path) = self.reload_path.clone() else {
+            return;
+        };
+        let enabled = self
+            .config
+            .as_ref()
+            .map(|c| c.config.general.live_config_reload)
+            .unwrap_or(false);
+        if !enabled {
+            return;
+        }
+        const RELOAD_POLL: std::time::Duration = std::time::Duration::from_millis(400);
+        let due = self
+            .reload_checked
+            .map(|t| t.elapsed() >= RELOAD_POLL)
+            .unwrap_or(true);
+        if !due {
+            return;
+        }
+        self.reload_checked = Some(Instant::now());
+        let Some(stamp) = file_stamp(&path) else {
+            return;
+        };
+        if self.reload_stamp == Some(stamp) {
+            return;
+        }
+        self.reload_stamp = Some(stamp);
+        // 编辑器常写"先截断再写"，可能读到半截文件：解析失败就保留当前配置，下轮再试。
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("config reload: 读取 {} 失败：{e}", path.display());
+                return;
+            }
+        };
+        match config::parse(&text) {
+            Ok((next, warnings)) => {
+                for w in warnings {
+                    eprintln!("config reload: {w}");
+                }
+                eprintln!("[perf] config_reloaded path={}", path.display());
+                self.apply_reloaded_config(next);
+            }
+            Err(e) => eprintln!("config reload: 解析失败（保留当前配置）：{e}"),
+        }
+    }
+
+    /// 把重新解析出的配置里有意义的部分搬到运行中的实例上。
+    fn apply_reloaded_config(&mut self, next: config::Config) {
+        let Some(app) = self.config.as_mut() else {
+            return;
+        };
+        // ---- 需要重启的项：只提示，不半套生效 ----
+        let old = &app.config;
+        if next.window.dimensions != old.window.dimensions {
+            eprintln!("config reload: window.dimensions 需要重启 leantty 后生效");
+        }
+        if next.scrolling.history != old.scrolling.history {
+            eprintln!("config reload: scrolling.history 需要重启 leantty 后生效");
+        }
+        // ShellConfig 未实现 PartialEq：逐字段比（程序或参数任一变化都要重启）。
+        let shell_key = |s: &Option<config::ShellConfig>| {
+            s.as_ref().map(|s| (s.program.clone(), s.args.clone()))
+        };
+        if shell_key(&next.terminal.shell) != shell_key(&old.terminal.shell) {
+            eprintln!("config reload: terminal.shell 需要重启 leantty 后生效");
+        }
+
+        let new_font = render_font_settings(&next);
+        let new_options = render_options(&next);
+        let new_palette = render_palette(&next.colors);
+        let font_changed = font_settings_differ(&app.font_settings, &new_font);
+        let options_changed = app.options != new_options;
+        let palette_changed = app.palette != new_palette;
+
+        app.config = next;
+        app.font_settings = new_font;
+        app.options = new_options;
+        app.palette = new_palette;
+
+        // ---- 字体变了：重建渲染器并按新格子尺寸重排网格 ----
+        if font_changed {
+            let (cfg, font, opts, pal) =
+                (&app.config, &app.font_settings, app.options, app.palette);
+            let window = self.window.as_ref().map(|w| w.as_ref());
+            match create_renderer(cfg, font, opts, pal, window, None) {
+                Ok(r) => {
+                    let scale = self.scale_factor;
+                    let (cw, ch) = r.cell_metrics(scale);
+                    self.cell_w = cw;
+                    self.cell_h = ch;
+                    self.renderer = Some(r);
+                    // 重排：按当前窗口像素重新算行列（字号变大 → 列数变少）。
+                    if let Some((w, h)) = self.last_size {
+                        self.apply_resize(w, h);
+                    }
+                    self.urgent_render = true;
+                    if let Some(win) = self.window.as_ref() {
+                        win.request_redraw();
+                    }
+                }
+                Err(e) => eprintln!("config reload: 重建渲染器失败，保留原字体：{e}"),
+            }
+            return;
+        }
+        if let Some(r) = self.renderer.as_mut() {
+            if palette_changed {
+                r.set_palette(app.palette);
+            }
+            if options_changed {
+                r.set_options(app.options);
+            }
+        }
+        self.urgent_render = true;
+        if let Some(win) = self.window.as_ref() {
+            win.request_redraw();
+        }
+    }
+
     fn apply_resize(&mut self, width: u32, height: u32) {
         self.next_frame_origin = 2;
         self.urgent_render = true;

@@ -3210,6 +3210,67 @@ if start_app "$D" "$L"; then
     stop_app
 fi
 
+# 用例 84：配置热加载（`[general] live_config_reload`，默认开）。
+# 覆盖三件事：改配色即时生效、改字号触发重排（行列数变化）、设 false 后不再重载。
+D="$OUT/case84-reload.dump"
+L="$OUT/case84-reload.log"
+RC="$OUT/case84.toml"
+write_reload_cfg() { # $1=bg  $2=size  $3=live
+cat > "$RC" <<TOML
+[general]
+live_config_reload = $3
+[renderer]
+backend = "cpu"
+[font]
+size = $2
+[window]
+dimensions = { columns = 40, lines = 10 }
+[colors.primary]
+background = "$1"
+foreground = "ffffff"
+TOML
+}
+write_reload_cfg "#101010" 16.0 true
+export LEANTTY_CONFIG="$RC"
+if start_app "$D" "$L"; then
+    sleep 1.5
+    x11 import -window "$WID" "$OUT/case84-before.png" 2>/dev/null
+    BG0=$(convert "$OUT/case84-before.png" -format "%[pixel:p{5,5}]" info: 2>/dev/null)
+    COLS0=$(awk 'NR==1{for(i=1;i<=NF;i++) if($i ~ /^cols=/){split($i,a,"="); print a[2]}}' "$D")
+    # 1) 改配色 + 字号 → 画面背景与行列数都应变化
+    write_reload_cfg "#204060" 22.0 true
+    sleep 2.5
+    x11 import -window "$WID" "$OUT/case84-after.png" 2>/dev/null
+    BG1=$(convert "$OUT/case84-after.png" -format "%[pixel:p{5,5}]" info: 2>/dev/null)
+    COLS1=$(awk 'NR==1{for(i=1;i<=NF;i++) if($i ~ /^cols=/){split($i,a,"="); print a[2]}}' "$D")
+    if [ "$BG0" != "$BG1" ] && [ "${COLS0:-0}" != "${COLS1:-0}" ]; then
+        echo "PASS case84-live-reload-applies (bg $BG0→$BG1, cols ${COLS0:-?}→${COLS1:-?})"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case84-live-reload-applies (bg $BG0→$BG1, cols ${COLS0:-?}→${COLS1:-?})"
+        FAIL=$((FAIL+1))
+    fi
+    # 2) 关掉热加载后，再改配置不应生效
+    write_reload_cfg "#802020" 22.0 false
+    sleep 2
+    x11 import -window "$WID" "$OUT/case84-off.png" 2>/dev/null
+    BG2=$(convert "$OUT/case84-off.png" -format "%[pixel:p{5,5}]" info: 2>/dev/null)
+    write_reload_cfg "#00ff00" 22.0 false
+    sleep 2
+    x11 import -window "$WID" "$OUT/case84-off2.png" 2>/dev/null
+    BG3=$(convert "$OUT/case84-off2.png" -format "%[pixel:p{5,5}]" info: 2>/dev/null)
+    if [ "$BG2" = "$BG3" ] && [ "$BG3" != "$BG1" ]; then
+        echo "PASS case84-live-reload-disabled (bg 保持 $BG3)"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL case84-live-reload-disabled (off 后 $BG2 → $BG3，期望不变且不同于 $BG1)"
+        FAIL=$((FAIL+1))
+    fi
+    unset LEANTTY_CONFIG
+    export LEANTTY_CONFIG="$OUT/e2e-default.toml"
+    stop_app
+fi
+
 # GPU 后端轮（阶段 4B t5）：backend=gpu/auto 的窗口冒烟、GPU vs CPU 截图阈值对拍、
 # 无 ICD 回落与非零退出两条边界。dump 依赖用例在 GPU 轮不适用（见脚本头注释）。
 GPU_ROUND_LOG="$OUT/gpu-round.log"

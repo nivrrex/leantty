@@ -102,6 +102,22 @@ fn out_of_range_and_type_errors_fall_back() {
 }
 
 #[test]
+fn live_config_reload_default_on_and_configurable() {
+    // 默认开（与 alacritty `[general] live_config_reload` 同名同义）
+    let (c, _w) = config::parse("").unwrap();
+    assert!(c.general.live_config_reload);
+    let (c, w) = config::parse("[general]\nlive_config_reload = false\n").unwrap();
+    assert!(!c.general.live_config_reload, "显式 false 必须生效");
+    assert!(w.is_empty(), "不应产生告警：{w:?}");
+    let (c, w) = config::parse("[general]\nlive_config_reload = 1\n").unwrap();
+    assert!(c.general.live_config_reload, "类型错误应回落默认 true");
+    assert!(
+        w.iter().any(|x| x.contains("live_config_reload")),
+        "类型错误应有告警：{w:?}"
+    );
+}
+
+#[test]
 fn synthetic_bold_default_on_and_configurable() {
     // 默认开：缺 Bold 面的字体也要有粗体（SGR 1 不能等于 SGR 0）
     let (c, _w) = config::parse("").unwrap();

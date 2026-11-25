@@ -103,7 +103,7 @@ fn main() -> Result<(), app::Error> {
         eperf!("[perf] main_ms=unknown（无法读取进程启动时刻）");
     }
     let t_cfg = std::time::Instant::now();
-    let config = load_config(cli_config, cli_font, cli_font_size);
+    let (config, config_path) = load_config(cli_config, cli_font, cli_font_size);
     eperf!(
         "[perf] config_ms={:.1} since_start={:.1}",
         t_cfg.elapsed().as_secs_f64() * 1000.0,
@@ -112,7 +112,10 @@ fn main() -> Result<(), app::Error> {
             .unwrap_or(0.0)
     );
     let t_app = std::time::Instant::now();
-    let app = app::App::new_with_command(config, cli_command);
+    let mut app = app::App::new_with_command(config, cli_command);
+    // 配置热加载要监视"启动时真正读到的那份文件"；全部走默认值时它也可能存在
+    //（用户之后新建该文件同样能被热加载捕获，因为 stat 会变）。
+    app.config_path = config_path;
     // 阶段 4H t2：App::new（配置归一化 + 字体设置解析 + 事件循环句柄）到 run 之间的分段点。
     eperf!(
         "[perf] app_new_ms={:.1} since_start={:.1}",
@@ -130,7 +133,7 @@ fn load_config(
     cli_config: Option<PathBuf>,
     cli_font: Option<String>,
     cli_font_size: Option<f32>,
-) -> config::Config {
+) -> (config::Config, Option<PathBuf>) {
     // 阶段 5A t2：显式 `--config-file` 指向不可读文件 → 报错退出 1（不开窗口）；
     // 环境变量与默认路径沿用既有行为（stderr 警告后按默认配置启动）。
     let explicit = cli_config.clone();
@@ -138,6 +141,9 @@ fn load_config(
         Some(p) => Ok(p.clone()),
         None => config::resolve_config_path(None),
     };
+    // 热加载要监视的文件：只有"确实读到了内容"才记（不存在 / 读失败时为 None，
+    // 避免监视一个永不出现的路径；用户之后创建默认路径下的文件时，需要重启才会被读到）。
+    let mut watched: Option<PathBuf> = None;
     let mut config = match path {
         Ok(path) => match std::fs::read_to_string(&path) {
             Ok(text) => match config::parse(&text) {
@@ -145,6 +151,7 @@ fn load_config(
                     for w in warnings {
                         eprintln!("config: {w}");
                     }
+                    watched = Some(path.clone());
                     c
                 }
                 Err(e) => {
@@ -190,7 +197,7 @@ fn load_config(
     if let Some(size) = cli_font_size {
         config.font.size = size;
     }
-    config
+    (config, watched)
 }
 
 /// 读环境变量为 u16；未设置或非数值回落 None。

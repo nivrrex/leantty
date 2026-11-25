@@ -220,6 +220,16 @@ impl GpuRenderer {
     }
 
     /// 选区（内容绝对坐标，含端点）。
+    /// 热加载：替换调色板（GPU 每帧按 palette 生成顶点色，下一帧即生效）。
+    pub fn set_palette(&mut self, palette: Palette) {
+        self.palette = palette;
+    }
+
+    /// 热加载：替换字体渲染选项（会影响字形位图；GPU 每帧整帧重绘，下一帧即按新选项生成）。
+    pub fn set_options(&mut self, options: RenderOptions) {
+        self.options = options;
+    }
+
     pub fn set_selection(&mut self, region: Option<(u16, u16, u16, u16)>) {
         self.selection = region;
     }

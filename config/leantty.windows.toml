@@ -29,6 +29,11 @@ multiplier = 10
 # Let the wheel send arrow keys while an application uses the alternate screen.
 alt_screen_scroll = true
 
+[general]
+# Reload this file when it changes on disk (colours, font, bindings, ...).
+# Window dimensions, scrollback size and the shell command still need a restart.
+live_config_reload = true
+
 [font]
 # Font size in points.
 size = 13.0
