@@ -187,6 +187,76 @@ fn defaults_are_sane() {
     assert!(c.keyboard.bindings.is_empty());
 }
 
+/// 配置路径选择优先级：与 leantty-zig 的 `configPath()` 逐条对齐。
+///
+/// 用纯函数 `choose_config_path` 测，不碰进程级环境变量（并行测试会互相干扰）。
+#[test]
+fn config_path_priority_matches_zig() {
+    use std::path::PathBuf;
+    let p = |s: &str| PathBuf::from(s);
+    // 1) 命令行最高
+    assert_eq!(
+        config::choose_config_path(
+            Some(p("/cli.toml")),
+            Some(p("/env.toml")),
+            Some(p("/default/leantty.toml")),
+            true,
+            Some(p("/exe/leantty.toml"))
+        )
+        .unwrap(),
+        p("/cli.toml")
+    );
+    // 2) 其次是 LEANTTY_CONFIG
+    assert_eq!(
+        config::choose_config_path(
+            None,
+            Some(p("/env.toml")),
+            Some(p("/default/leantty.toml")),
+            true,
+            Some(p("/exe/leantty.toml"))
+        )
+        .unwrap(),
+        p("/env.toml")
+    );
+    // 3) 默认路径存在就用它（不能被便携配置盖掉）
+    assert_eq!(
+        config::choose_config_path(
+            None,
+            None,
+            Some(p("/default/leantty.toml")),
+            true,
+            Some(p("/exe/leantty.toml"))
+        )
+        .unwrap(),
+        p("/default/leantty.toml")
+    );
+    // 4) 默认路径不存在 → 退到可执行文件旁的便携配置
+    assert_eq!(
+        config::choose_config_path(
+            None,
+            None,
+            Some(p("/default/leantty.toml")),
+            false,
+            Some(p("/exe/leantty.toml"))
+        )
+        .unwrap(),
+        p("/exe/leantty.toml")
+    );
+    // 5) 都不存在：交回默认路径（启动日志据此提示"读不到该文件"）
+    assert_eq!(
+        config::choose_config_path(None, None, Some(p("/default/leantty.toml")), false, None)
+            .unwrap(),
+        p("/default/leantty.toml")
+    );
+    // 6) 连默认基准目录都没有：只剩便携配置
+    assert_eq!(
+        config::choose_config_path(None, None, None, false, Some(p("/exe/leantty.toml"))).unwrap(),
+        p("/exe/leantty.toml")
+    );
+    // 7) 彻底没有可用路径 → 报错（由调用方按默认配置启动）
+    assert!(config::choose_config_path(None, None, None, false, None).is_err());
+}
+
 /// 环境变量路径测试（合并为单测试，避免并行测试竞争进程级 env）。
 #[test]
 fn path_priority_cli_env_default() {

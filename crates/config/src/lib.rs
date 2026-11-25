@@ -527,27 +527,102 @@ pub fn app_name() -> String {
 /// Windows `%APPDATA%\<app>\<app>.toml`。
 pub fn default_config_path() -> Result<PathBuf, Error> {
     let name = app_name();
-    #[cfg(target_os = "windows")]
-    let base = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .ok_or_else(|| Error::Path("APPDATA 未设置".to_string()))?;
-    #[cfg(not(target_os = "windows"))]
-    let base = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-        .ok_or_else(|| Error::Path("XDG_CONFIG_HOME 与 HOME 均未设置".to_string()))?;
+    let base = config_base_dir().ok_or_else(|| {
+        Error::Path("XDG_CONFIG_HOME / APPDATA / USERPROFILE / HOME 均未设置".to_string())
+    })?;
     Ok(base.join(&name).join(format!("{}.toml", name)))
 }
 
-/// 配置文件路径优先级：命令行 > LEANTTY_CONFIG 环境变量 > 默认路径。
-pub fn resolve_config_path(cli: Option<PathBuf>) -> Result<PathBuf, Error> {
+/// 各平台的配置基准目录（不含 `<app>/<app>.toml`）。
+///
+/// 顺序与 leantty-zig 一致（`src/main.zig::configPath`）：
+/// `XDG_CONFIG_HOME` → （Windows）`APPDATA` → （Windows）`USERPROFILE\.config` → `HOME/.config`。
+/// Windows 没有 HOME 也没有 XDG_CONFIG_HOME（cmd.exe 下两者都为空），只认 APPDATA 会让
+/// 便携/最小环境读不到配置。
+fn config_base_dir() -> Option<PathBuf> {
+    if let Some(v) = std::env::var_os("XDG_CONFIG_HOME")
+        && !v.is_empty()
+    {
+        return Some(PathBuf::from(v));
+    }
+    #[cfg(windows)]
+    {
+        if let Some(v) = std::env::var_os("APPDATA")
+            && !v.is_empty()
+        {
+            return Some(PathBuf::from(v));
+        }
+        if let Some(v) = std::env::var_os("USERPROFILE")
+            && !v.is_empty()
+        {
+            return Some(PathBuf::from(v).join(".config"));
+        }
+    }
+    if let Some(v) = std::env::var_os("HOME")
+        && !v.is_empty()
+    {
+        return Some(PathBuf::from(v).join(".config"));
+    }
+    None
+}
+
+/// 便携配置：可执行文件同目录下的 `<app>.toml`（与 leantty-zig 的 `leantty.toml` 同义）。
+///
+/// 只在文件**存在**时返回；它永远不能盖掉用户自己的配置（见 [`resolve_config_path`]）。
+pub fn portable_config_path() -> Option<PathBuf> {
+    let dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let p = dir.join(format!("{}.toml", app_name()));
+    if p.is_file() { Some(p) } else { None }
+}
+
+/// 配置文件路径选择（纯函数，便于测试各种组合）。
+///
+/// 优先级与 leantty-zig 完全一致：
+/// 1. 命令行 `--config-file`（即使不存在也用：显式指定时读失败会直接报错退出）；
+/// 2. `LEANTTY_CONFIG`（空值视为未设置）；
+/// 3. 平台默认路径，**但仅当该文件存在**；
+/// 4. 可执行文件同目录的便携配置（仅当存在）；
+/// 5. 都没有：交回平台默认路径（让启动日志能说"读不到该文件"），环境变量全缺失时才报错。
+pub fn choose_config_path(
+    cli: Option<PathBuf>,
+    env_path: Option<PathBuf>,
+    default_path: Option<PathBuf>,
+    default_exists: bool,
+    portable: Option<PathBuf>,
+) -> Result<PathBuf, Error> {
     if let Some(p) = cli {
         return Ok(p);
     }
-    if let Ok(v) = std::env::var("LEANTTY_CONFIG") {
-        return Ok(PathBuf::from(v));
+    if let Some(p) = env_path {
+        return Ok(p);
     }
-    default_config_path()
+    if let Some(p) = default_path {
+        if default_exists {
+            return Ok(p);
+        }
+        return Ok(portable.unwrap_or(p));
+    }
+    portable.ok_or_else(|| {
+        Error::Path("XDG_CONFIG_HOME / APPDATA / USERPROFILE / HOME 均未设置".to_string())
+    })
+}
+
+/// 配置文件路径优先级：命令行 > `LEANTTY_CONFIG` > 平台默认（存在时）> 便携配置。
+///
+/// 与 leantty-zig 的 `configPath()` 逐条对齐（见 [`choose_config_path`] 的文档）。
+pub fn resolve_config_path(cli: Option<PathBuf>) -> Result<PathBuf, Error> {
+    let env_path = std::env::var_os("LEANTTY_CONFIG")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from);
+    let default_path = default_config_path().ok();
+    let default_exists = default_path.as_deref().is_some_and(|p| p.is_file());
+    choose_config_path(
+        cli,
+        env_path,
+        default_path,
+        default_exists,
+        portable_config_path(),
+    )
 }
 
 // —— 未知字段检查（带路径警告，不静默忽略）——

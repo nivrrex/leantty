@@ -5,6 +5,12 @@
 # or pass it explicitly:
 #   leantty --config-file /path/to/leantty.toml
 #
+# Search order (same as leantty-zig):
+#   1. --config-file <path>
+#   2. LEANTTY_CONFIG
+#   3. $XDG_CONFIG_HOME/leantty/leantty.toml  (fallback: $HOME/.config/...)
+#   4. leantty.toml next to the executable (portable package)
+#
 # Every line below is a supported key with its default value. Commented-out lines show
 # the default; uncomment and change to override. Unknown keys are reported on stderr and
 # ignored; invalid values fall back to the default with a warning.

@@ -8,6 +8,9 @@
 # Every line below is a supported key with its default value. Commented-out lines show
 # the default; uncomment and change to override. Unknown keys are reported on stderr and
 # ignored; invalid values fall back to the default with a warning.
+#
+# Search order (same as leantty-zig): --config-file > LEANTTY_CONFIG >
+# platform default (%APPDATA%\\leantty\\leantty.toml) > leantty.toml next to the executable (portable package).
 
 [window]
 # Initial window position in logical pixels (omit to let the window manager decide).
