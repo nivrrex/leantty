@@ -284,3 +284,26 @@
   53 s 变成数分钟。
 - `.config/nextest.toml` 已加入 `scripts/release/export.sh` 的 EXTRA，导出树与仓库行为一致（自检 173 文件、
   A/B/C=0/3/0）。
+
+## v0.2.14（9Q：拖入文件 + 双击选词宽字符修复）
+
+- **新增拖入文件**：`WindowEvent::DroppedFile` → `AppHandler::on_dropped_file` →
+  `paste::quote_dropped_path`（Unix 单引号含 `'\''` 转义 / Windows 双引号，末尾补空格），
+  走与剪贴板粘贴同一条路径（积压上限、回底、排帧、`?2004` 当作一次粘贴块）。
+  真实 XDND 拖拽在 Xvfb 下无法模拟，验证走 debug 钩子 `LEANTTY_TEST_DROP`（与事件同一方法）。
+- **修复双击选词错位**（用户报的"最后一个字没反色却被复制/右键粘贴多一个字"同源）：
+  `word_region` 曾把**格子列**当**字符下标**查行字符串，含宽字符时两者不等 ——
+  双击 `中文测试` 的 `文` 只选到 `中文`、双击 CJK 后的 `word` 得到 `ord`。
+  新增 `selection::word_region_cells`：按格子走，跳过 `SpacerTail`、点续格归位头格、返回头格列；
+  高亮（`decide()` 的 `span=2`）与提取（跳过续格）因此严格一致。
+- 测试：新增 3 组单测（宽字符选词、ASCII 不变、路径引用）+ e2e `case82-drop-file-path`、
+  `case83-word-select-wide`、`case83-paste-matches-selection`（合计 134 项）。
+- 验证：`cargo nextest run --all` 252 passed / 1 skipped；clippy 0 告警；release 0 告警；
+  e2e 134/134、GPU 10/10；gates 10 步 PASS（HEAD 18fa627，`phase9q-done`）。
+- **e2e 抖动记录（第二次成规模出现）**：gates 内跑 e2e 时有 3 个用例偶发失败
+  （`case22` 下划线/不退出、`case39` gap=734、`case41` dropped=0），同提交单独跑 e2e 立刻 134/134，
+  再次 gates 也全绿。失败项都在"固定 sleep 后取样"的路径上，怀疑与 gates 前序重编译造成的负载有关；
+  判据未改。
+- 交付：deb 3,522,376 B / `ab061bcc…`；zip 5,546,790 B / `39be5247…`；tag `v0.2.14` = `245a8f7`
+  （release `457678973`）；回下载 `sha256sum -c` OK。
+- 未验证：真实拖放事件在 winit/Windows 上的投递、多文件一次拖入。
