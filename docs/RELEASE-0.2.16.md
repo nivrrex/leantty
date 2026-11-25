@@ -27,8 +27,10 @@
 
 ## 实现
 
-- `crates/config/src/lib.rs`：新增 `config_base_dir()`（XDG → 按平台）、`portable_config_path()`、
-  纯函数 `choose_config_path()`（可测的组合逻辑）与对齐后的 `resolve_config_path()`。
+- `crates/config/src/lib.rs`：新增 `config_base_dir()`（XDG → 按平台）、
+  `portable_config_candidates()`（exe 旁先 `leantty.toml`、再 `<argv0>.toml`）、
+  `default_config_candidates()`（`<base>/<argv0>/<argv0>.toml` 再 `<base>/leantty/leantty.toml`）、
+  纯函数 `choose_config_path()`（候选列表版本，可测）与对齐后的 `resolve_config_path()`。
 - 文档：`README.md` 的"配置"段与两份模板（`config/leantty.linux.toml`、`leantty.windows.toml`）
   都写了这条顺序。
 

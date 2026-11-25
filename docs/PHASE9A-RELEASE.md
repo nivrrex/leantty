@@ -344,3 +344,19 @@
 - 交付：deb 3,529,404 B / `09233692…`；zip 5,556,849 B / `e83e0789…`；tag `v0.2.16` = `efe4093`
   （release `458270147`）；回下载 `sha256sum -c` OK。
 - 未验证：Windows 实机的 APPDATA/USERPROFILE 分支（仅单测 + 交叉编译）。
+
+## v0.2.16 修订（覆盖发布：便携配置按 `leantty.toml` 查找）
+
+- 用户实机报：`E:\Compiler\Leantty\leantty-rust.exe` 旁边就有 `leantty.toml`，但启动日志显示去读
+  `%APPDATA%\leantty-rust\leantty-rust.toml` 并失败。根因：便携候选用了 `<argv0>.toml`，二进制改名后
+  就找不到了（Zig 版固定用 `leantty.toml`）。
+- 修法：便携候选改为 `leantty.toml` 优先、`<argv0>.toml` 兜底；默认位置也增加 `<base>/leantty/leantty.toml`
+  候选（从 Zig 版迁移的用户可直接复用同一份配置）。`choose_config_path()` 改成接候选列表。
+- 复现/验证：把 `target/debug/leantty` 复制成 `leantty-rust`，旁边放 `leantty.toml`（bg `#123456`），
+  `HOME`/`XDG_CONFIG_HOME` 指向空目录 → 实测背景 `srgb(18,52,86)`，说明读到了 exe 旁的配置。
+- 单测 `config_path_priority_matches_zig` 扩到 7 种组合（含"改名二进制 + 旁边 leantty.toml"）。
+- 门禁：gates 10 步 PASS（e2e 136/136、GPU 10/10，HEAD 07abe05，`phase9t-done`）。
+  期间 case83 仍偶发（同机其它会话窗口抢点击），已加"激活 + 先单击 + 最多重试 3 次"，判据未放宽。
+- 交付（覆盖 v0.2.16 原发布）：deb 3,531,940 B / `0b1bc593…`；zip 5,557,532 B / `3b36c26d…`；
+  公开仓库 tag `v0.2.16` 重建于 `3bf3144`，release `458338021`；回下载 `sha256sum -c` OK
+  （deb 上传时遇到 GitHub 502 "Error creating policy"，重试一次成功）。
