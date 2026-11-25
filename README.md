@@ -53,9 +53,14 @@ leantty --help                       # 查看选项
 
 ## 配置
 
-- 默认位置：Linux 为 `$XDG_CONFIG_HOME/leantty/leantty.toml`（通常是
-  `~/.config/leantty/leantty.toml`），Windows 为 `%APPDATA%\leantty\leantty.toml`。
-- 环境变量 `LEANTTY_CONFIG` 可覆盖默认位置。
+- 读取顺序（与 leantty-zig 一致）：
+  1. `--config-file <路径>`（必须存在可读，否则报错退出）；
+  2. 环境变量 `LEANTTY_CONFIG`；
+  3. 平台默认位置——Linux 为 `$XDG_CONFIG_HOME/leantty/leantty.toml`
+     （通常是 `~/.config/leantty/leantty.toml`），Windows 依次尝试
+     `%APPDATA%\leantty\leantty.toml`、`%USERPROFILE%\.config\leantty\leantty.toml`；
+  4. 上面都不存在时用**可执行文件同目录的 `leantty.toml`**（便携包用；用户自己的配置永远不会被它盖掉）。
+- 配置文件改动会在运行中自动重新加载（`[general] live_config_reload`，默认开）。
 - `--config-file <路径>` 优先级最高。用这种方式指定的路径必须存在且可读，否则打印错误并以
   退出码 1 结束，不会打开窗口。
 - 含全部支持键与默认值的模板：[config/leantty.linux.toml](config/leantty.linux.toml)、

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.16
+
+### Fixed
+- Config path resolution now matches leantty-zig exactly: `--config-file` → `LEANTTY_CONFIG` →
+  platform default **if that file exists** → `leantty.toml` next to the executable (portable package)
+  → otherwise the default path again (so the startup message can report it as unreadable).
+  Previously the portable file was never consulted, and on Windows only `%APPDATA%` was tried —
+  a `cmd.exe` session without `APPDATA`/`HOME`/`XDG_CONFIG_HOME` could not find any config at all
+  (`%USERPROFILE%\.config` is now the fallback, like the Zig build).
+- A user config always wins over the portable one; the portable file is only used when the user has none.
+
 ## 0.2.15
 
 ### Added
