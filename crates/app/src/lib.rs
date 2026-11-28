@@ -140,6 +140,84 @@ pub fn default_shell() -> &'static str {
     if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }
 }
 
+#[cfg(unix)]
+fn is_posix_sh_path(path: &str) -> bool {
+    matches!(path, "sh" | "/bin/sh" | "/usr/bin/sh")
+}
+
+#[cfg(unix)]
+fn login_shell() -> Option<String> {
+    use std::ffi::CStr;
+    use std::mem::MaybeUninit;
+    use std::os::raw::c_char;
+
+    let uid = unsafe { libc::getuid() };
+    let mut entry = MaybeUninit::<libc::passwd>::uninit();
+    let mut result = std::ptr::null_mut::<libc::passwd>();
+    let mut buf = [0 as c_char; 4096];
+    // SAFETY: getpwuid_r writes into caller-owned storage; result is checked before use.
+    let rc = unsafe {
+        libc::getpwuid_r(
+            uid,
+            entry.as_mut_ptr(),
+            buf.as_mut_ptr(),
+            buf.len(),
+            &mut result,
+        )
+    };
+    if rc != 0 || result.is_null() {
+        return None;
+    }
+    let entry = unsafe { entry.assume_init() };
+    if entry.pw_shell.is_null() {
+        return None;
+    }
+    // SAFETY: pw_shell points into buf, which remains alive for this call.
+    unsafe { CStr::from_ptr(entry.pw_shell) }
+        .to_str()
+        .ok()
+        .map(str::to_owned)
+}
+
+fn choose_shell() -> String {
+    if let Ok(shell) = std::env::var("SHELL") {
+        let shell = shell.trim();
+        if !shell.is_empty() {
+            #[cfg(unix)]
+            if is_posix_sh_path(shell) {
+                return login_shell().unwrap_or_else(|| default_shell().to_string());
+            }
+            #[cfg(not(unix))]
+            return shell.to_string();
+            #[cfg(unix)]
+            return shell.to_string();
+        }
+    }
+    #[cfg(unix)]
+    {
+        login_shell().unwrap_or_else(|| default_shell().to_string())
+    }
+    #[cfg(not(unix))]
+    {
+        default_shell().to_string()
+    }
+}
+
+#[cfg(test)]
+mod shell_tests {
+    #[cfg(unix)]
+    use super::is_posix_sh_path;
+
+    #[test]
+    #[cfg(unix)]
+    fn posix_fallback_shell_is_recognized() {
+        assert!(is_posix_sh_path("sh"));
+        assert!(is_posix_sh_path("/bin/sh"));
+        assert!(is_posix_sh_path("/usr/bin/sh"));
+        assert!(!is_posix_sh_path("/bin/bash"));
+    }
+}
+
 /// 按键输入路由（纯函数输出）。
 pub enum KeyRoute {
     /// event.text 优先：直接写 PTY 的文本字节。
@@ -269,10 +347,15 @@ pub fn reader_body_with_depth<R: std::io::Read>(
         .map(|f| (f, 0usize));
     loop {
         match reader.read(&mut buf) {
-            Ok(0) | Err(_) => {
+            Ok(0) => {
                 // reader 退出前唤醒主线程：否则事件循环无新事件可等，
-                // about_to_wait 不触发→try_wait 不轮询→子进程退出检测丢失
-                // （case11 偶发 5s 未退出根因；DECISIONS 登记）。
+                // about_to_wait 不触发→try_wait 不轮询→子进程退出检测丢失。
+                let _ = waker.wake();
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => {
+                report(&format!("reader: {e}"));
                 let _ = waker.wake();
                 break;
             }
@@ -330,6 +413,27 @@ pub fn reader_body_with_depth<R: std::io::Read>(
                 }
             }
         }
+    }
+}
+
+/// Unix 上子进程退出不代表 PTY 已读尽；Windows ConPTY 不产生可靠 EOF，保持原轮询语义。
+fn reader_finished_for_exit(reader_done: Option<bool>) -> bool {
+    if cfg!(windows) {
+        true
+    } else {
+        reader_done == Some(true)
+    }
+}
+
+#[cfg(all(test, unix))]
+mod reader_exit_tests {
+    use super::reader_finished_for_exit;
+
+    #[test]
+    fn unix_exit_waits_for_reader_completion() {
+        assert!(!reader_finished_for_exit(None));
+        assert!(!reader_finished_for_exit(Some(false)));
+        assert!(reader_finished_for_exit(Some(true)));
     }
 }
 
@@ -497,7 +601,7 @@ pub struct App {
 }
 
 impl App {
-    /// 新建应用配置（由强类型 Config 驱动；shell 优先级 terminal.shell.program > SHELL > 平台默认）。
+    /// 新建应用配置（由强类型 Config 驱动；shell 优先级 terminal.shell.program > 可信 SHELL > 登录 shell > 平台默认）。
     pub fn new(config: config::Config) -> Self {
         Self::new_with_command(config, None)
     }
@@ -509,8 +613,7 @@ impl App {
             .shell
             .as_ref()
             .map(|s| s.program.clone())
-            .or_else(|| std::env::var("SHELL").ok())
-            .unwrap_or_else(|| default_shell().to_string());
+            .unwrap_or_else(choose_shell);
         Self {
             cols: config.window.dimensions.columns,
             rows: config.window.dimensions.lines,
@@ -597,6 +700,7 @@ impl App {
             rx: None,
             pty_write_rx: None,
             reader_thread: None,
+            reader_done_rx: None,
             last_size: None,
             cell_w: 8,
             cell_h: 16,
@@ -1043,6 +1147,8 @@ struct AppHandler {
 
     pty_write_rx: Option<mpsc::Receiver<Vec<u8>>>,
     reader_thread: Option<std::thread::JoinHandle<()>>,
+    /// Unix 读线程已退出；子进程退出后必须等它读完尾部字节再关闭事件循环。
+    reader_done_rx: Option<mpsc::Receiver<()>>,
     /// 渲染尺寸缓存（resumed/Resized 更新；窗口销毁后不再查询 X11 geometry）。
     last_size: Option<(u32, u32)>,
     /// 当前格子物理尺寸（render::cell_metrics 按 scale_factor 计算）。
@@ -1238,6 +1344,7 @@ impl ApplicationHandler for AppHandler {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("create_renderer: {e}");
+                event_loop.exit();
                 return;
             }
         };
@@ -1304,6 +1411,7 @@ impl ApplicationHandler for AppHandler {
             Ok(w) => w,
             Err(e) => {
                 eprintln!("create_window: {}", e);
+                event_loop.exit();
                 return;
             }
         });
@@ -1396,6 +1504,7 @@ impl ApplicationHandler for AppHandler {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("softbuffer context: {}", e);
+                    event_loop.exit();
                     return;
                 }
             };
@@ -1403,6 +1512,7 @@ impl ApplicationHandler for AppHandler {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("softbuffer surface: {}", e);
+                    event_loop.exit();
                     return;
                 }
             };
@@ -1415,6 +1525,7 @@ impl ApplicationHandler for AppHandler {
             ) && let Err(e) = s.resize(w, h)
             {
                 eprintln!("surface initial resize: {}", e);
+                event_loop.exit();
                 return;
             }
             surface = Some(s);
@@ -1438,6 +1549,7 @@ impl ApplicationHandler for AppHandler {
             Ok(t) => t,
             Err(e) => {
                 eprintln!("VtTerminal::new: {}", e);
+                event_loop.exit();
                 return;
             }
         };
@@ -1475,6 +1587,7 @@ impl ApplicationHandler for AppHandler {
             config.rows,
         ) {
             eprintln!("pty spawn: {}", e);
+            event_loop.exit();
             return;
         }
         if let Some(t0) = crate::start_time() {
@@ -1500,6 +1613,7 @@ impl ApplicationHandler for AppHandler {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("take_reader: {}", e);
+                event_loop.exit();
                 return;
             }
         };
@@ -1508,6 +1622,7 @@ impl ApplicationHandler for AppHandler {
             Some(proxy) => Box::new(ProxyWaker::new(proxy)),
             None => {
                 eprintln!("create_proxy: no proxy available");
+                event_loop.exit();
                 return;
             }
         };
@@ -1518,6 +1633,7 @@ impl ApplicationHandler for AppHandler {
         // 有界通道（背压）：主线程忙时读线程阻塞在 send，进而 PTY 缓冲满、
         // 子进程写阻塞，而不是无限积压内存（DECISIONS 登记）。
         let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(256);
+        let (reader_done_tx, reader_done_rx) = mpsc::channel();
         let depth_for_reader = self.chan_depth.clone();
         let reader_thread = std::thread::spawn(move || {
             reader_body_with_depth(
@@ -1527,14 +1643,19 @@ impl ApplicationHandler for AppHandler {
                 &mut |m| eprintln!("{}", m),
                 Some(depth_for_reader.as_ref()),
             );
+            let _ = reader_done_tx.send(());
+            // reader_body 已在 EOF/错误时唤醒；完成后再次唤醒，确保主线程看到 done。
+            let _ = waker.wake();
         });
         self.reader_thread = Some(reader_thread);
+        self.reader_done_rx = Some(reader_done_rx);
         // 5. on_pty_write → channel → 主线程写 PTY
         let (pty_write_tx, pty_write_rx) = mpsc::channel::<Vec<u8>>();
         if let Err(e) = vt.on_pty_write(move |_term, data| {
             let _ = pty_write_tx.send(data.to_vec());
         }) {
             eprintln!("on_pty_write: {}", e);
+            event_loop.exit();
             return;
         }
         // HiDPI：窗口创建后取真实 scale_factor，与预估不同则重算格子并修正窗口逻辑尺寸。
@@ -2266,7 +2387,16 @@ impl ApplicationHandler for AppHandler {
         if let Some(pty) = self.pty.as_mut() {
             self.last_liveness_check = Some(Instant::now());
             match pty.try_wait() {
-                Ok(Some(_status)) => event_loop.exit(),
+                Ok(Some(_status)) => {
+                    let reader_done = self
+                        .reader_done_rx
+                        .as_ref()
+                        .and_then(|rx| rx.try_recv().ok())
+                        .is_some();
+                    if reader_finished_for_exit(Some(reader_done)) {
+                        event_loop.exit();
+                    }
+                }
                 Ok(None) => {}
                 Err(e) => {
                     eprintln!("try_wait: {}", e);

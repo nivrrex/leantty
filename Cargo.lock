@@ -916,13 +916,14 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "leantty-app"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "arboard",
  "leantty-config",
  "leantty-pty",
  "leantty-render",
  "leantty-vt",
+ "libc",
  "raw-window-handle",
  "softbuffer",
  "thiserror 2.0.21",
@@ -931,7 +932,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-config"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "thiserror 2.0.21",
  "toml",
@@ -939,7 +940,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-pty"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "anyhow",
  "leantty-vt",
@@ -949,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-render"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "crossfont",
  "fontdb",
@@ -965,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "leantty-vt"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "libghostty-vt",
  "thiserror 2.0.21",

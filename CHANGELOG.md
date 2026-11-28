@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.17
+
+### Fixed
+- Startup failures now exit the event loop instead of leaving a window or reader thread running with no
+  usable terminal session.
+- PTY reads retry `Interrupted` errors and report other read failures before exiting. On Unix, the event
+  loop waits for the reader to finish before closing after the child process exits, preserving tail output.
+- Desktop sessions with `SHELL=/bin/sh` now fall back to the user's login shell instead of starting a
+  non-interactive POSIX shell.
+
 ## 0.2.16
 
 ### Fixed

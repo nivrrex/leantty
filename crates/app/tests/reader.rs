@@ -1,5 +1,5 @@
 //! reader_body 的 wake 错误分类测试：EventLoopClosed 静默退出，其他错误上报。
-use std::io::Read;
+use std::io::{ErrorKind, Read};
 use std::sync::mpsc;
 
 use app::{Error, Wake, reader_body};
@@ -101,6 +101,74 @@ fn eof_wakes_event_loop_before_exit() {
         waker.count.load(std::sync::atomic::Ordering::Relaxed),
         1,
         "EOF 退出前应 wake 一次"
+    );
+}
+
+#[test]
+fn interrupted_read_retries_without_losing_data() {
+    struct InterruptedOnce {
+        step: u8,
+    }
+
+    impl Read for InterruptedOnce {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.step += 1;
+            match self.step {
+                1 => Err(std::io::Error::new(ErrorKind::Interrupted, "try again")),
+                2 => {
+                    buf[0] = b'x';
+                    Ok(1)
+                }
+                _ => Ok(0),
+            }
+        }
+    }
+
+    let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
+    let waker = CountingWaker {
+        count: std::sync::atomic::AtomicUsize::new(0),
+    };
+    let mut reported = Vec::new();
+    reader_body(&mut InterruptedOnce { step: 0 }, &tx, &waker, &mut |m| {
+        reported.push(m.to_string())
+    });
+    drop(tx);
+    let got: Vec<u8> = rx.into_iter().flatten().collect();
+    assert_eq!(got, b"x", "Interrupted 后应继续读取并交付数据");
+    assert!(
+        reported.is_empty(),
+        "Interrupted 不应作为故障上报：{reported:?}"
+    );
+}
+
+#[test]
+fn read_error_is_reported_before_exit() {
+    struct BrokenReader;
+
+    impl Read for BrokenReader {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("broken pipe"))
+        }
+    }
+
+    let (tx, _rx) = mpsc::sync_channel::<Vec<u8>>(4);
+    let waker = CountingWaker {
+        count: std::sync::atomic::AtomicUsize::new(0),
+    };
+    let mut reported = Vec::new();
+    reader_body(&mut BrokenReader, &tx, &waker, &mut |m| {
+        reported.push(m.to_string())
+    });
+    assert_eq!(reported.len(), 1, "读错误应显式上报");
+    assert!(
+        reported[0].contains("broken pipe"),
+        "应保留底层错误：{:?}",
+        reported
+    );
+    assert_eq!(
+        waker.count.load(std::sync::atomic::Ordering::Relaxed),
+        1,
+        "读错误退出前也应唤醒主线程"
     );
 }
 
