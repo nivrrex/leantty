@@ -1182,7 +1182,14 @@ scroll_seq() { # $1=png
     sleep 0.4
     x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
     i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" shift+Page_Down; sleep 0.12; i=$((i+1)); done
-    sleep 0.6
+    # 等到两次 PageDown 后的确定视口（顶部 60）再截图，避免按键处理时序造成两次视口不同。
+    i=0
+    while [ $i -lt 30 ]; do
+        first=$(awk 'NR==2{print; exit}' "$D27" 2>/dev/null || true)
+        [ "$first" = "60" ] && break
+        sleep 0.1; i=$((i+1))
+    done
+    sleep 0.2
     x11 import -window "$WID" "$1" 2>/dev/null
 }
 export LEANTTY_CONFIG="$CFG27"
@@ -1701,6 +1708,7 @@ LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
     x11 xdotool windowfocus "$WID" >/dev/null 2>&1
+    wait_dump "$D38" '^#' || true
     # 前台：非规范模式 + 忙等 14s 不读 stdin（此时终端输入队列很快被占满）
     x11 xdotool type --window "$WID" "sh -c 'stty -icanon -echo; trap \"stty sane\" EXIT; sleep 14'"
     x11 xdotool key --window "$WID" Return
@@ -1728,7 +1736,12 @@ if wait_window; then
     MAX38=$(sed -n '/test_paste_fired/,$p' "$L38" | grep -oE 'loop_gap_ms=[0-9]+' | cut -d= -f2 | sort -n | tail -1)
     # Ctrl-C 中断前台（键盘路径 → 0x03 入队并丢弃未写粘贴数据）
     x11 xdotool key --window "$WID" ctrl+c
-    sleep 2.0
+    i=0
+    while [ $i -lt 30 ]; do
+        grep -q '^#$' "$D38" 2>/dev/null && break
+        sleep 0.1; i=$((i+1))
+    done
+    sleep 0.5
     x11 import -window "$WID" "$OUT/case38-cc-a.png" 2>/dev/null
     sleep 1.5
     x11 import -window "$WID" "$OUT/case38-cc-b.png" 2>/dev/null
@@ -3176,7 +3189,8 @@ if start_app "$D" "$L"; then
     # 用八进制转义让 shell 自己输出中文（xdotool type 不能直接键入非 ASCII）
     x11 xdotool type --window "$WID" "printf '\\344\\270\\255\\346\\226\\207\\346\\265\\213\\350\\257\\225 word abc\\n'"
     x11 xdotool key --window "$WID" Return
-    sleep 0.8
+    wait_dump "$D" '中文测试 word abc' || true
+    sleep 0.2
     # 双击中文第 2 个字（行 1、列 2；行 0 是提示符）
     GW=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
     GH=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^HEIGHT=' | cut -d= -f2)

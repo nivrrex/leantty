@@ -9,8 +9,9 @@
 //! - **顺序**：键入与粘贴共用一条队列，单消费者线程按入队顺序写出。
 //! - **有界**：`WRITER_QUEUE_CAP`（1MiB）只约束**粘贴**入队；键入量小且不得
 //!   丢失，因此键入始终入队（可短暂超过上限，随后被消费）。
-//! - **Ctrl-C（0x03）**：入队 0x03 前先丢弃队列中**尚未写出**的粘贴数据，
-//!   使用户中断立即生效（行为决策，见 DECISIONS）。
+//! - **Ctrl-C（0x03）**：入队 0x03 前先丢弃队列中**尚未写出**的粘贴数据；
+//!   Unix 写端非阻塞，若当前块已阻塞则丢弃在途粘贴、清空 PTY 输入队列，
+//!   并由 app 在必要时中断前台进程组，使用户中断不被大粘贴卡住。
 //! - **关闭**：`close()` 置 closing 并唤醒线程，线程写出队列剩余后退出并
 //!   drop 写端（= 释放 PTY 主端）；join 有超时，超时则分离线程并记录日志，
 //!   调用方随后才 `Pty::close()` 回收子进程。
@@ -26,6 +27,7 @@
 use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
 /// 写队列字节上限（仅约束粘贴入队）。
 ///
@@ -60,6 +62,8 @@ struct State {
     items: VecDeque<Item>,
     /// 队列中待写字节数（与 `items` 同步维护）。
     queued: usize,
+    /// 写线程当前是否因 WouldBlock 等待对端读取。
+    blocked: bool,
     /// 关闭中：写线程在**写空队列后**退出。
     closing: bool,
     /// 写端错误（EIO/EPIPE 等），非 None 后不再接受入队。
@@ -91,6 +95,14 @@ pub struct PtyWriter {
 impl PtyWriter {
     /// 以给定写端起写线程（写端由线程独占）。
     pub fn spawn(writer: Box<dyn Write + Send>) -> Self {
+        Self::spawn_with_fd(writer, None)
+    }
+
+    /// Unix 上传入主端 fd，写阻塞时可丢弃已排队输入，让 Ctrl-C 及时送达。
+    pub fn spawn_with_fd(
+        writer: Box<dyn Write + Send>,
+        control_fd: Option<std::os::raw::c_int>,
+    ) -> Self {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 items: VecDeque::new(),
@@ -99,13 +111,14 @@ impl PtyWriter {
                 failed: None,
                 open_paste: false,
                 in_flight_ends: false,
+                blocked: false,
             }),
             cv: Condvar::new(),
         });
         let worker_shared = Arc::clone(&shared);
         let handle = std::thread::Builder::new()
             .name("pty-writer".to_string())
-            .spawn(move || worker(writer, worker_shared))
+            .spawn(move || worker(writer, worker_shared, control_fd))
             .ok();
         Self { shared, handle }
     }
@@ -187,6 +200,11 @@ impl PtyWriter {
         n
     }
 
+    /// 写线程是否正等待 PTY 可写。
+    pub fn is_blocked(&self) -> bool {
+        self.shared.lock().blocked
+    }
+
     /// 写端是否已失败（EIO/EPIPE 等）。调用方可据此走既有退出路径。
     pub fn failed(&self) -> bool {
         self.shared.lock().failed.is_some()
@@ -245,7 +263,11 @@ impl Drop for PtyWriter {
 }
 
 /// 写线程主体：按序取出元素写出；队列空且 closing → 退出（drop writer 释放写端）。
-fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
+fn worker(
+    mut writer: Box<dyn Write + Send>,
+    shared: Arc<Shared>,
+    control_fd: Option<std::os::raw::c_int>,
+) {
     loop {
         let item = {
             let mut st = shared.lock();
@@ -266,13 +288,64 @@ fn worker(mut writer: Box<dyn Write + Send>, shared: Arc<Shared>) {
         };
         let Some(item) = item else { return };
         let ends = item.ends_bracketed;
-        if let Err(e) = writer.write_all(&item.bytes).and_then(|()| writer.flush()) {
-            let mut st = shared.lock();
-            st.failed = Some(e.kind());
-            st.items.clear();
-            st.queued = 0;
-            shared.cv.notify_all();
-            return;
+        let mut off = 0usize;
+        while off < item.bytes.len() {
+            let cancel = if item.paste {
+                let mut st = shared.lock();
+                let has_ctrl_c = st
+                    .items
+                    .iter()
+                    .any(|it| !it.paste && it.bytes.len() == 1 && it.bytes[0] == 0x03);
+                if has_ctrl_c {
+                    st.items.retain(|it| !it.paste);
+                    st.queued = st.items.iter().map(|it| it.bytes.len()).sum();
+                }
+                has_ctrl_c
+            } else {
+                false
+            };
+            if cancel {
+                if let Some(fd) = control_fd {
+                    let _ = pty::flush_input(fd);
+                }
+                break;
+            }
+            match writer.write(&item.bytes[off..]) {
+                Ok(0) => {
+                    let mut st = shared.lock();
+                    st.failed = Some(std::io::ErrorKind::WriteZero);
+                    st.items.clear();
+                    st.queued = 0;
+                    shared.cv.notify_all();
+                    return;
+                }
+                Ok(n) => {
+                    {
+                        let mut st = shared.lock();
+                        st.blocked = false;
+                    }
+                    off += n;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    {
+                        let mut st = shared.lock();
+                        st.blocked = true;
+                    }
+                    if let Some(fd) = control_fd {
+                        let _ = pty::wait_writable(fd, 10);
+                    } else {
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                }
+                Err(e) => {
+                    let mut st = shared.lock();
+                    st.failed = Some(e.kind());
+                    st.items.clear();
+                    st.queued = 0;
+                    shared.cv.notify_all();
+                    return;
+                }
+            }
         }
         if ends {
             let mut st = shared.lock();
@@ -397,6 +470,54 @@ mod tests {
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
+    }
+
+    #[derive(Clone)]
+    struct WouldBlockSink {
+        calls: Arc<std::sync::atomic::AtomicUsize>,
+        allow: Arc<std::sync::atomic::AtomicBool>,
+        got: Arc<StdMutex<Vec<u8>>>,
+    }
+
+    impl Write for WouldBlockSink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if !self.allow.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err(std::io::Error::new(ErrorKind::WouldBlock, "pty full"));
+            }
+            self.got.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn ctrl_c_cancels_a_blocked_in_flight_paste() {
+        let sink = WouldBlockSink {
+            calls: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            allow: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            got: Arc::new(StdMutex::new(Vec::new())),
+        };
+        let mut w = PtyWriter::spawn(Box::new(sink.clone()));
+        assert!(w.try_enqueue_paste(b"PASTE") > 0);
+        for _ in 0..200 {
+            if sink.calls.load(std::sync::atomic::Ordering::SeqCst) > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(sink.calls.load(std::sync::atomic::Ordering::SeqCst) > 0);
+        w.enqueue_typed(&[0x03]);
+        sink.allow.store(true, std::sync::atomic::Ordering::SeqCst);
+        w.close();
+        assert_eq!(
+            &*sink.got.lock().unwrap(),
+            &[0x03],
+            "阻塞粘贴应被丢弃，Ctrl-C 必须写出"
+        );
     }
 
     #[test]

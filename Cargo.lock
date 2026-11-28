@@ -944,6 +944,7 @@ version = "0.2.17"
 dependencies = [
  "anyhow",
  "leantty-vt",
+ "libc",
  "portable-pty",
  "thiserror 2.0.21",
 ]

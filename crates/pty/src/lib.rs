@@ -51,12 +51,63 @@ pub trait Pty {
     fn take_writer(&mut self) -> Option<Box<dyn Write + Send>> {
         None
     }
+    /// Unix 主端原始 fd：用于非阻塞写与 Ctrl-C 丢弃已排队输入。Windows 返回 None。
+    fn control_fd(&self) -> Option<std::os::raw::c_int> {
+        None
+    }
+    /// Ctrl-C 且写端阻塞时，中断前台进程组；默认无操作。
+    fn interrupt(&self) {}
     /// 调整 PTY 行列。
     fn resize(&mut self, cols: u16, rows: u16) -> Result<(), Error>;
     /// 非阻塞查询子进程退出状态。
     fn try_wait(&mut self) -> Result<Option<ExitStatus>, Error>;
     /// 释放 PTY 主端并回收子进程（顺序见模块文档）。
     fn close(&mut self) -> Result<(), Error>;
+}
+
+/// 等待 fd 可读或可写；timeout_ms < 0 表示无限等待。仅 Unix。
+#[cfg(unix)]
+pub fn wait_fd(
+    fd: std::os::raw::c_int,
+    events: std::os::raw::c_short,
+    timeout_ms: std::os::raw::c_int,
+) -> std::io::Result<()> {
+    let mut pfd = libc::pollfd {
+        fd,
+        events,
+        revents: 0,
+    };
+    loop {
+        // SAFETY: pfd is valid for the duration of poll; timeout is a plain c_int.
+        let rc = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
+        if rc < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        return Ok(());
+    }
+}
+
+/// 等待 fd 可写；仅 Unix。
+#[cfg(unix)]
+pub fn wait_writable(
+    fd: std::os::raw::c_int,
+    timeout_ms: std::os::raw::c_int,
+) -> std::io::Result<()> {
+    wait_fd(fd, libc::POLLOUT, timeout_ms)
+}
+
+/// 丢弃 PTY 已排队但尚未被子进程读取的输入。仅 Unix。
+#[cfg(unix)]
+pub fn flush_input(fd: std::os::raw::c_int) -> std::io::Result<()> {
+    // SAFETY: fd is the live PTY master owned by NativePty.
+    if unsafe { libc::tcflush(fd, libc::TCIFLUSH) } != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
 }
 
 /// pty crate 错误枚举。

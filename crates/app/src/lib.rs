@@ -1600,7 +1600,9 @@ impl ApplicationHandler for AppHandler {
         // 阶段 4H t3：前台程序不读 stdin 时同步写会阻塞主线程（release 实测 1MB
         // 粘贴停顿 12.9s）。取走可独立持有的写端，交给独立写线程；拿不到
         // （Windows 默认实现返回 None）则继续用同步写路径。
-        self.writer = pty.take_writer().map(writer::PtyWriter::spawn);
+        self.writer = pty
+            .take_writer()
+            .map(|w| writer::PtyWriter::spawn_with_fd(w, pty.control_fd()));
         if let Some(t0) = crate::start_time() {
             eperf!(
                 "[perf] writer_thread_ms={:.2} since_start={:.1} enabled={}",
@@ -4262,6 +4264,9 @@ fn default_key_bindings() -> Vec<config::Binding> {
 /// 这里的同步分支只是兜底：写端不可得（如 spawn 失败后的残留状态）时才走。
 fn write_pty(pty: &mut NativePty, writer: Option<&writer::PtyWriter>, bytes: &[u8]) {
     if let Some(w) = writer {
+        if bytes.len() == 1 && bytes[0] == 0x03 && w.is_blocked() {
+            pty.interrupt();
+        }
         w.enqueue_typed(bytes);
         return;
     }

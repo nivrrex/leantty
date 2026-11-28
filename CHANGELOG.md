@@ -9,6 +9,8 @@
   loop waits for the reader to finish before closing after the child process exits, preserving tail output.
 - Desktop sessions with `SHELL=/bin/sh` now fall back to the user's login shell instead of starting a
   non-interactive POSIX shell.
+- On Unix, a blocked paste no longer prevents Ctrl-C from taking effect: PTY writes are non-blocking,
+  queued input can be discarded, and the foreground process group is interrupted when necessary.
 
 ## 0.2.16
 
