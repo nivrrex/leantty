@@ -58,6 +58,8 @@ cat >"$E2E_CFG" <<'TOML'
 backend = "cpu"
 TOML
 export LEANTTY_CONFIG="$E2E_CFG"
+# 固定交互提示符，避免登录 shell/路径长度改变行号与点击坐标。
+export PS1='# '
 
 # GPU 对拍门禁（阶段 4B t3）：CpuRenderer vs GpuRenderer 离屏逐像素对比。
 # 无真实 Vulkan 适配器时用例显式打印 SKIP —— 这里统计并显示，禁止静默通过。
@@ -118,9 +120,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
     local log=${2:-$OUT/app-run.log}
     local attempt=1
     if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/dash LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
     else
-        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
+        LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/dash env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
     fi
     LEANTTY_PID=$!
     if ! wait_window; then
@@ -131,9 +133,9 @@ start_app() { # $1 = dump 路径, $2 = 日志路径（默认 app-run.log）, $3/
             echo "retry start_app: 第 $((attempt-1)) 次启动进程已退出，1s 后重试" >&2
             sleep 1
             if [ -n "${3:-}" ] && [ -n "${4:-}" ]; then
-                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/dash LEANTTY_COLS="$3" LEANTTY_ROWS="$4" env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
             else
-                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/sh env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
+                LEANTTY_DUMP_SNAPSHOT="$1" SHELL=/bin/dash env -C "$OUT" "$LEANTTY_BIN" >>"$log" 2>&1 &
             fi
             LEANTTY_PID=$!
             if wait_window; then
@@ -391,7 +393,7 @@ L="$OUT/case10-cjk-config.log"
 # CPU 后端的 dump 钩子（# font 行），故派生一份把 backend 固定为 cpu 的副本。
 CFG10="$OUT/case10-cfg.toml"
 sed 's/^backend = "auto"/backend = "cpu"/' "$ROOT/config/leantty.linux.toml" >"$CFG10"
-LEANTTY_DUMP_SNAPSHOT="$D" SHELL=/bin/sh "$LEANTTY_BIN" --config "$CFG10" >>"$L" 2>&1 &
+LEANTTY_DUMP_SNAPSHOT="$D" SHELL=/bin/dash "$LEANTTY_BIN" --config "$CFG10" >>"$L" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -502,7 +504,7 @@ if start_app "$D" "$L"; then
     # 粘贴内容无换行→shell 命令行未提交；补 Return 提交后 ctrl+d 才是 EOF。
     x11 xdotool key --window "$WID" Return
     sleep 0.5
-    if grep -qF "sh-5.2# PASTE_TARGET" "$D" 2>/dev/null; then
+    if grep -qF "# PASTE_TARGET" "$D" 2>/dev/null; then
         echo "PASS case12-paste-exec (粘贴命令行回显)"; PASS=$((PASS+1))
     else
         echo "FAIL case12-paste-exec (dump 无粘贴命令行回显)"
@@ -1149,6 +1151,8 @@ CFG27="$OUT/case27.toml"
 cat >"$CFG27" <<'TOML'
 [renderer]
 backend = "cpu"
+[cursor]
+blink = false
 [window]
 dimensions = { columns = 120, lines = 30 }
 [[keyboard.bindings]]
@@ -1255,7 +1259,7 @@ dimensions = { columns = 100, lines = 30 }
 [colors.primary]
 background = "#008040"
 TOML
-LEANTTY_CONFIG="$CFG29" LEANTTY_DUMP_SNAPSHOT="$D29" SHELL=/bin/sh "$LEANTTY_BIN" >"$L29" 2>&1 &
+LEANTTY_CONFIG="$CFG29" LEANTTY_DUMP_SNAPSHOT="$D29" SHELL=/bin/dash "$LEANTTY_BIN" >"$L29" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     # 强制一个"非整格"窗口尺寸：在网格尺寸上各加 7/5 像素。
@@ -1300,7 +1304,7 @@ backend = "cpu"
 dimensions = { columns = 80, lines = 24 }
 TOML
 # 参照：不注入预编辑，内容固定
-LEANTTY_CONFIG="$CFG30" SHELL=/bin/sh "$LEANTTY_BIN" >"$L30" 2>&1 &
+LEANTTY_CONFIG="$CFG30" SHELL=/bin/dash "$LEANTTY_BIN" >"$L30" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1311,7 +1315,7 @@ if wait_window; then
     stop_app
 fi
 # 注入预编辑，1.2s 后自动清除：先抓"有预编辑"，再抓"清除后"
-LEANTTY_CONFIG="$CFG30" LEANTTY_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" LEANTTY_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/sh "$LEANTTY_BIN" >>"$L30" 2>&1 &
+LEANTTY_CONFIG="$CFG30" LEANTTY_TEST_PREEDIT="WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW" LEANTTY_TEST_PREEDIT_CLEAR_MS=3000 SHELL=/bin/dash "$LEANTTY_BIN" >>"$L30" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1350,7 +1354,7 @@ backend = "cpu"
 [window]
 dimensions = { columns = 80, lines = 24 }
 TOML
-LEANTTY_CONFIG="$CFG31" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_BIN" >"$L31" 2>&1 &
+LEANTTY_CONFIG="$CFG31" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash "$LEANTTY_BIN" >"$L31" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1; x11 xdotool windowfocus "$WID" >/dev/null 2>&1
@@ -1391,7 +1395,7 @@ printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, line
 rm -f "$H32"
 LEANTTY_CONFIG="$CFG32" LEANTTY_PERF_FRAMES=1 LEANTTY_FRAME_HASH="$H32" LEANTTY_DUMP_SNAPSHOT="$OUT/case32-paste.dump" \
   LEANTTY_TEST_PASTE="SILENT_PASTE" LEANTTY_TEST_PASTE_AT_MS=3500 \
-  SHELL=/bin/sh "$LEANTTY_BIN" >"$L32" 2>&1 &
+  SHELL=/bin/dash "$LEANTTY_BIN" >"$L32" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1437,7 +1441,7 @@ D33="$OUT/case33-minimize.dump"
 L33="$OUT/case33-minimize.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG33"
 rm -f "$D33"
-LEANTTY_CONFIG="$CFG33" LEANTTY_DUMP_SNAPSHOT="$D33" SHELL=/bin/sh "$LEANTTY_BIN" >"$L33" 2>&1 &
+LEANTTY_CONFIG="$CFG33" LEANTTY_DUMP_SNAPSHOT="$D33" SHELL=/bin/dash "$LEANTTY_BIN" >"$L33" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1474,7 +1478,7 @@ L34="$OUT/case34-inverse.log"
 S34="$OUT/case34-inverse.png"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG34"
 rm -f "$D34"
-LEANTTY_CONFIG="$CFG34" LEANTTY_DUMP_SNAPSHOT="$D34" SHELL=/bin/sh "$LEANTTY_BIN" >"$L34" 2>&1 &
+LEANTTY_CONFIG="$CFG34" LEANTTY_DUMP_SNAPSHOT="$D34" SHELL=/bin/dash "$LEANTTY_BIN" >"$L34" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1581,7 +1585,7 @@ count_color() { # $1=img $2=#rrggbb
     convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
 }
-LEANTTY_CONFIG="$CFG36" SHELL=/bin/sh "$LEANTTY_BIN" >"$L36" 2>&1 &
+LEANTTY_CONFIG="$CFG36" SHELL=/bin/dash "$LEANTTY_BIN" >"$L36" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1630,7 +1634,7 @@ count_cursor() { # $1=img → 品红像素数（-fuzz 2%；先黑化非目标色
     convert "$1" -fuzz 2% -fill black +opaque "#ff00ff" -fill white -opaque "#ff00ff" \
         -format "%[fx:int(mean*w*h)]" info: 2>/dev/null
 }
-LEANTTY_CONFIG="$CFG37" SHELL=/bin/sh "$LEANTTY_BIN" >"$L37" 2>&1 &
+LEANTTY_CONFIG="$CFG37" SHELL=/bin/dash "$LEANTTY_BIN" >"$L37" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1692,7 +1696,7 @@ D38="$OUT/case38-dump.txt"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG38"
 awk 'BEGIN { for (i = 0; i < 20000; i++) printf "paste38_line_%06d\n", i }' > "$CLIP38"
 LEANTTY_CONFIG="$CFG38" LEANTTY_PERF_FRAMES=1 LEANTTY_TEST_PASTE="@$CLIP38" LEANTTY_TEST_PASTE_AT_MS=2500 \
-    LEANTTY_DUMP_SNAPSHOT="$D38" SHELL=/bin/sh "$LEANTTY_BIN" >"$L38" 2>&1 &
+    LEANTTY_DUMP_SNAPSHOT="$D38" SHELL=/bin/dash "$LEANTTY_BIN" >"$L38" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1730,8 +1734,8 @@ if wait_window; then
     x11 import -window "$WID" "$OUT/case38-cc-b.png" 2>/dev/null
     AE38B=$(compare -metric AE "$OUT/case38-cc-a.png" "$OUT/case38-cc-b.png" null: 2>&1 | head -1)
     DUMP38=$(cat "$D38" 2>/dev/null || echo "")
-    # 提示符返回（sh-5.2# 出现在网格里）
-    HAS_PROMPT=$(printf '%s' "$DUMP38" | grep -c "sh-5.2#" || true)
+    # 提示符返回（固定 PS1 后网格中只留下 #）。
+    HAS_PROMPT=$(printf '%s' "$DUMP38" | grep -c '^#$' || true)
     # 未写出的粘贴数据应被丢弃：1MB 素材的最后一行不得出现在网格里
     HAS_TAIL=$(printf '%s' "$DUMP38" | grep -c "paste38_line_019999" || true)
     A38=$(sed -n '/test_paste_fired/,$p' "$L38")
@@ -1765,7 +1769,7 @@ printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, line
 awk 'BEGIN { for (i = 0; i < 260000; i++) printf "p39_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP39"
 SZ39=$(wc -c < "$CLIP39")
 LEANTTY_CONFIG="$CFG39" LEANTTY_PERF_FRAMES=1 LEANTTY_TEST_PASTE="@$CLIP39" LEANTTY_TEST_PASTE_AT_MS=1500 \
-    SHELL=/bin/sh "$LEANTTY_BIN" >"$L39" 2>&1 &
+    SHELL=/bin/dash "$LEANTTY_BIN" >"$L39" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1806,7 +1810,7 @@ CLIP40="$OUT/case40-clip.txt"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG40"
 awk 'BEGIN { for (i = 0; i < 200000; i++) printf "p40_%06d_xxxxxxxxxxxxxxxx\n", i }' > "$CLIP40"
 LEANTTY_CONFIG="$CFG40" LEANTTY_TEST_PASTE="@$CLIP40" LEANTTY_TEST_PASTE_AT_MS=1500 \
-    SHELL=/bin/sh "$LEANTTY_BIN" >"$L40" 2>&1 &
+    SHELL=/bin/dash "$LEANTTY_BIN" >"$L40" 2>&1 &
 LEANTTY_PID=$!
 if wait_window; then
     x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -1906,7 +1910,7 @@ fi
 CFG42="$OUT/case42-osc-color.toml"
 L42="$OUT/case42-osc-color.log"
 printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[colors.normal]\nred = "#d32f2f"\n' > "$CFG42"
-LEANTTY_CONFIG="$CFG42" LEANTTY_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/sh "$LEANTTY_BIN" >"$L42" 2>&1 &
+LEANTTY_CONFIG="$CFG42" LEANTTY_DUMP_SNAPSHOT="$OUT/case42-dump.txt" SHELL=/bin/dash "$LEANTTY_BIN" >"$L42" 2>&1 &
 LEANTTY_PID=$!
 count42() { # $1=img $2=#rrggbb（先黑化非目标色再白化目标色，与 case36/37 同口径）
     convert "$1" -fuzz 2% -fill black +opaque "$2" -fill white -opaque "$2" \
@@ -2074,7 +2078,7 @@ for c44 in cpu gpu; do
     if [ ! -x "$LEANTTY_REL" ]; then
         echo "FAIL case44-input-follow-$c44 (缺 release 二进制)"; FAIL=$((FAIL+1)); continue
     fi
-    LEANTTY_CONFIG="$CFG44" SHELL=/bin/sh "$LEANTTY_REL" >"$L44" 2>&1 &
+    LEANTTY_CONFIG="$CFG44" SHELL=/bin/dash "$LEANTTY_REL" >"$L44" 2>&1 &
     LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case44-input-follow-$c44 (窗口未出现)"; FAIL=$((FAIL+1)); continue
@@ -2164,7 +2168,7 @@ else
     CLIP45="$OUT/case45-clip.txt"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 120, lines = 30 }\n' > "$CFG45"
     awk 'BEGIN { for (i = 0; i < 20000; i++) printf "case45_paste_line_%06d_xxxx\n", i }' > "$CLIP45"
-    LEANTTY_CONFIG="$CFG45" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L45" 2>&1 &
+    LEANTTY_CONFIG="$CFG45" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash "$LEANTTY_REL" >"$L45" 2>&1 &
     LEANTTY_PID=$!
     if wait_window; then
         x11 xdotool windowactivate "$WID" >/dev/null 2>&1
@@ -2403,8 +2407,8 @@ else
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG48"
     L48A="$OUT/case48-default.err"
     L48B="$OUT/case48-on.err"
-    ( LEANTTY_CONFIG="$CFG48" SHELL=/bin/sh timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48A" ) || true
-    ( LEANTTY_CONFIG="$CFG48" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48B" ) || true
+    ( LEANTTY_CONFIG="$CFG48" SHELL=/bin/dash timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48A" ) || true
+    ( LEANTTY_CONFIG="$CFG48" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash timeout 5 "$LEANTTY_REL" >/dev/null 2>"$L48B" ) || true
     N48A=$(grep -c "\[perf\]" "$L48A" 2>/dev/null || true)
     N48B=$(grep -c "\[perf\]" "$L48B" 2>/dev/null || true)
     FF48=$(grep -c "first_frame_ms" "$L48B" 2>/dev/null || true)
@@ -2435,9 +2439,9 @@ else
         L49="$OUT/case49-$variant.log"
         printf '[renderer]\nbackend = "gpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG49"
         if [ "$variant" = "s15" ]; then
-            WINIT_X11_SCALE_FACTOR=1.5 LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L49" 2>&1 &
+            WINIT_X11_SCALE_FACTOR=1.5 LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash "$LEANTTY_REL" >"$L49" 2>&1 &
         else
-            LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L49" 2>&1 &
+            LEANTTY_CONFIG="$CFG49" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash "$LEANTTY_REL" >"$L49" 2>&1 &
         fi
         LEANTTY_PID=$!
         if ! wait_window; then
@@ -2492,7 +2496,7 @@ else
         CFG50="$OUT/case50-$b50.toml"
         L50="$OUT/case50-$b50.log"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' "$b50" > "$CFG50"
-        LEANTTY_CONFIG="$CFG50" LEANTTY_PERF_FRAMES=1 SHELL=/bin/sh "$LEANTTY_REL" >"$L50" 2>&1 &
+        LEANTTY_CONFIG="$CFG50" LEANTTY_PERF_FRAMES=1 SHELL=/bin/dash "$LEANTTY_REL" >"$L50" 2>&1 &
         LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case50-idle-no-timer-wake-$b50 (窗口未出现)"; continue
@@ -2548,10 +2552,10 @@ else
         if [ "$b51" = "lavapipe" ]; then
             LEANTTY_CONFIG="$CFG51" LEANTTY_PERF_FRAMES=1 LEANTTY_FORCE_LIVENESS_POLL=1 \
                 LEANTTY_GPU_ALLOW_SOFTWARE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+                SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
         else
             LEANTTY_CONFIG="$CFG51" LEANTTY_PERF_FRAMES=1 LEANTTY_FORCE_LIVENESS_POLL=1 \
-                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
+                SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case51-$b51.out" 2>"$L51" &
         fi
         LEANTTY_PID=$!
         if ! wait_window; then
@@ -2597,9 +2601,9 @@ else
         if [ "$b52" = "lavapipe" ]; then
             LEANTTY_CONFIG="$CFG52" LEANTTY_FORCE_LIVENESS_POLL=1 LEANTTY_GPU_ALLOW_SOFTWARE=1 \
                 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-                SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
+                SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
         else
-            LEANTTY_CONFIG="$CFG52" LEANTTY_FORCE_LIVENESS_POLL=1 SHELL=/bin/sh \
+            LEANTTY_CONFIG="$CFG52" LEANTTY_FORCE_LIVENESS_POLL=1 SHELL=/bin/dash \
                 "$LEANTTY_REL" >"$OUT/case52-$b52.out" 2>"$L52" &
         fi
         LEANTTY_PID=$!
@@ -2653,7 +2657,7 @@ else
         rm -f "$M53"
         printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "echo ok > %s; exec sleep 30"]\n' \
             "$b53" "$M53" > "$CFG53"
-        LEANTTY_CONFIG="$CFG53" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case53-$b53.out" 2>"$L53" &
+        LEANTTY_CONFIG="$CFG53" SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case53-$b53.out" 2>"$L53" &
         LEANTTY_PID=$!
         if ! wait_window; then
             echo "FAIL case53-shell-args-$b53 (窗口未出现)"; stop_app; continue
@@ -2688,7 +2692,7 @@ else
             else
                 printf '[renderer]\nbackend = "%s"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = []\n' "$bc" > "$CFGC"
             fi
-            LEANTTY_CONFIG="$CFGC" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case$CID-$bc.out" 2>"$LC" &
+            LEANTTY_CONFIG="$CFGC" SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case$CID-$bc.out" 2>"$LC" &
             LEANTTY_PID=$!
             if ! wait_window; then
                 echo "FAIL case$CID-shell-args-$spec-$bc (窗口未出现)"; stop_app; continue
@@ -2818,7 +2822,7 @@ elif ! command -v xprop >/dev/null 2>&1; then
 else
     CFG62="$OUT/case62.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n' > "$CFG62"
-    LEANTTY_CONFIG="$CFG62" SHELL=/bin/sh "$LEANTTY_BIN" >"$OUT/case62.out" 2>"$OUT/case62.log" &
+    LEANTTY_CONFIG="$CFG62" SHELL=/bin/dash "$LEANTTY_BIN" >"$OUT/case62.out" 2>"$OUT/case62.log" &
     LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case62-window-ident (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
@@ -2871,7 +2875,7 @@ else
     PHOME=$(mktemp -d /tmp/pi-home-XXXXXX)
     CFG64="$OUT/case64-pi.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 30 }\n[terminal.shell]\nprogram = "/usr/bin/env"\nargs = ["HOME=%s", "TERM=xterm-256color", "/root/pi/pi"]\n' "$PHOME" > "$CFG64"
-    LEANTTY_CONFIG="$CFG64" SHELL=/bin/sh "$LEANTTY_REL" >"$OUT/case64.out" 2>"$OUT/case64.err" &
+    LEANTTY_CONFIG="$CFG64" SHELL=/bin/dash "$LEANTTY_REL" >"$OUT/case64.out" 2>"$OUT/case64.err" &
     LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case64-pi-ctrl-d (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
@@ -2916,7 +2920,7 @@ else
     LOG66="$OUT/case66.log"; CFG66="$OUT/case66.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 100, lines = 24 }\n[terminal.shell]\nprogram = "/usr/bin/python3"\nargs = ["%s/scripts/e2e/keyprobe.py", "--mode", "legacy", "--log", "%s", "--settle", "0.4"]\n' "$ROOT" "$LOG66" > "$CFG66"
     rm -f "$LOG66"
-    LEANTTY_CONFIG="$CFG66" SHELL=/bin/sh "$LEANTTY_REL" >/dev/null 2>/dev/null &
+    LEANTTY_CONFIG="$CFG66" SHELL=/bin/dash "$LEANTTY_REL" >/dev/null 2>/dev/null &
     LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case66-shift-pageup-no-pty (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
@@ -3048,7 +3052,7 @@ else
     CFG76="$OUT/case76.toml"
     printf '[renderer]\nbackend = "cpu"\n[window]\ndimensions = { columns = 80, lines = 24 }\n[terminal.shell]\nprogram = "/bin/sh"\nargs = ["-c", "printf \x27aaaaaaaaaa\\nbbbbbbbbbb\\ncccccccccc\\n\x27; sleep 30"]\n' > "$CFG76"
     printf 'SENTINEL-PREV\n' | x11 xclip -selection primary -i >/dev/null 2>&1
-    LEANTTY_CONFIG="$CFG76" SHELL=/bin/sh "$LEANTTY_REL" >/dev/null 2>"$OUT/case76.err" &
+    LEANTTY_CONFIG="$CFG76" SHELL=/bin/dash "$LEANTTY_REL" >/dev/null 2>"$OUT/case76.err" &
     LEANTTY_PID=$!
     if ! wait_window; then
         echo "FAIL case76-stream-selection (窗口未出现)"; stop_app; FAIL=$((FAIL+1))
