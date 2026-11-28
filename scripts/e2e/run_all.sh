@@ -1182,14 +1182,19 @@ scroll_seq() { # $1=png
     sleep 1.5
     x11 xdotool type --window "$WID" "seq 1 300"
     x11 xdotool key --window "$WID" Return
-    sleep 1.0
-    # 上滚/下滚多次（走 ScrollPageUp/Down 绑定，避免滚轮事件抖动）
-    i=0; while [ $i -lt 4 ]; do x11 xdotool key --window "$WID" shift+Page_Up; sleep 0.12; i=$((i+1)); done
-    sleep 0.4
+    wait_dump "$D27" '^300$' || true
+    # 等 shell 提示符也落盘，避免残余输出触发 follow-bottom 把视口拉回底部。
+    i=0
+    while [ $i -lt 30 ]; do
+        last=$(awk 'NF{last=$0} END{print last}' "$D27" 2>/dev/null || true)
+        [ "$last" = "#" ] && break
+        sleep 0.1; i=$((i+1))
+    done
+    # 先到顶部，再用一次 xdotool 重复事件发送两次 PageDown，避免分开发送时丢键。
     reached=0
     for attempt in 1 2 3 4 5; do
         x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
-        i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" shift+Page_Down; sleep 0.12; i=$((i+1)); done
+        x11 xdotool key --window "$WID" --repeat 2 --delay 80 shift+Page_Down
         i=0
         while [ $i -lt 30 ]; do
             first=$(awk 'NR==2{print; exit}' "$D27" 2>/dev/null || true)
