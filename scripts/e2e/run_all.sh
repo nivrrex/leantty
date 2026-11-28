@@ -733,14 +733,20 @@ if start_app "$D" "$L"; then
     # 拖选全部输出（首行提示符→B3 行；x 上界取窗口宽-5 覆盖 80 列全宽，
     # 1000px/13px≈76 列会截断软折行长行导致 A 段不连续）
     GW=$(x11 xdotool getwindowgeometry --shell "$WID" 2>/dev/null | grep '^WIDTH=' | cut -d= -f2)
-    x11 xdotool mousemove --window "$WID" 10 20
-    sleep 0.2
-    x11 xdotool mousedown 1
-    x11 xdotool mousemove --window "$WID" $((GW-5)) 200
-    sleep 0.2
-    x11 xdotool mouseup 1
-    sleep 0.5
-    PRIMARY=$(x11 xclip -o -selection primary 2>/dev/null)
+    PRIMARY=""
+    for attempt in 1 2 3; do
+        x11 xdotool windowactivate --sync "$WID" >/dev/null 2>&1 || true
+        x11 xdotool windowfocus "$WID" >/dev/null 2>&1 || true
+        x11 xdotool mousemove --window "$WID" 10 20
+        sleep 0.2
+        x11 xdotool mousedown 1
+        x11 xdotool mousemove --window "$WID" $((GW-5)) 200
+        sleep 0.2
+        x11 xdotool mouseup 1
+        sleep 0.5
+        PRIMARY=$(x11 xclip -o -selection primary 2>/dev/null)
+        printf '%s' "$PRIMARY" | grep -q 'A\{100\}' && break
+    done
     # 长行软折：A 连续 100 无 \n 打断（若软折误插分隔则 A 段断裂）
     if printf '%s' "$PRIMARY" | grep -q 'A\{100\}'; then
         echo "PASS case19-soft-wrap-join (长行软折拼接无分隔)"; PASS=$((PASS+1))
@@ -1180,15 +1186,19 @@ scroll_seq() { # $1=png
     # 上滚/下滚多次（走 ScrollPageUp/Down 绑定，避免滚轮事件抖动）
     i=0; while [ $i -lt 4 ]; do x11 xdotool key --window "$WID" shift+Page_Up; sleep 0.12; i=$((i+1)); done
     sleep 0.4
-    x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
-    i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" shift+Page_Down; sleep 0.12; i=$((i+1)); done
-    # 等到两次 PageDown 后的确定视口（顶部 60）再截图，避免按键处理时序造成两次视口不同。
-    i=0
-    while [ $i -lt 30 ]; do
-        first=$(awk 'NR==2{print; exit}' "$D27" 2>/dev/null || true)
-        [ "$first" = "60" ] && break
-        sleep 0.1; i=$((i+1))
+    reached=0
+    for attempt in 1 2 3 4 5; do
+        x11 xdotool key --window "$WID" ctrl+Home; sleep 0.3
+        i=0; while [ $i -lt 2 ]; do x11 xdotool key --window "$WID" shift+Page_Down; sleep 0.12; i=$((i+1)); done
+        i=0
+        while [ $i -lt 30 ]; do
+            first=$(awk 'NR==2{print; exit}' "$D27" 2>/dev/null || true)
+            [ "$first" = "60" ] && { reached=1; break; }
+            sleep 0.1; i=$((i+1))
+        done
+        [ "$reached" = 1 ] && break
     done
+    [ "$reached" = 1 ] || { echo "FAIL case27-scroll-target (未到达顶部 60)"; FAIL=$((FAIL+1)); return 1; }
     sleep 0.2
     x11 import -window "$WID" "$1" 2>/dev/null
 }
@@ -2189,10 +2199,12 @@ else
         sleep 0.8
         GEO45=$(x11 xdotool getwindowgeometry --shell "$WID")
         GX5=$(echo "$GEO45" | grep '^X=' | cut -d= -f2); GY5=$(echo "$GEO45" | grep '^Y=' | cut -d= -f2)
+        # 非读取前台进程稳定制造最坏积压；连续粘贴必须被有界队列截住。
+        x11 xdotool type --window "$WID" "sleep 20"
+        x11 xdotool key --window "$WID" Return
+        sleep 0.5
         n=0
-        while [ $n -lt 14 ]; do   # 约 42s，每 3s 一次"seq 800 + 1MB 粘贴"（4J t6 的最小复现组合）
-            x11 xdotool type --window "$WID" "seq 1 800"
-            x11 xdotool key --window "$WID" Return
+        while [ $n -lt 14 ]; do
             x11 xclip -selection clipboard -i "$CLIP45" >/dev/null 2>&1 &
             CLIP_PID=$!
             sleep 0.3
@@ -2468,13 +2480,13 @@ else
         # 判定口径（阶段 4S t2 之后）：完全空闲意味着事件循环不再被唤醒，
         # 也就不会再产生 5 秒统计行。因此"空闲/缩放收尾后 10 秒内无新增统计行"即等价于
         # "0 帧、无定时唤醒"——比统计帧数更强的判据。
-        sleep 8            # 输出结束 + 尾沿收尾
+        sleep 12           # 输出结束 + 尾沿收尾；避免把尾沿帧误计为空闲唤醒
         N1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
         sleep 10
         N2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
         IDLE49=$(( ${N2:-0} - ${N1:-0} ))
         x11 xdotool windowsize "$WID" 700 420
-        sleep 3            # 缩放后收尾（应 1 秒内停止）
+        sleep 5            # 缩放后收尾（应 1 秒内停止）
         M1=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
         sleep 10
         M2=$(grep -c "loop_gap_ms=" "$L49" 2>/dev/null || true)
