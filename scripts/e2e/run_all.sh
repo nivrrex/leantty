@@ -901,7 +901,7 @@ if start_app "$D" "$L"; then
         # 预编辑起点=提示符后一列（dump 首行长度+1），下划线在行 0 底部 2px。
         COL=$(awk 'NR==2{print length($0)+1; exit}' "$D" 2>/dev/null)
         : "${COL:=8}"
-        MAXV=$(convert "$B" -crop $((CW*6))x2+$((WX+COL*CW))+$((WY+CH-2)) -colorspace Gray -format "%[fx:maxima]" info: 2>/dev/null)
+        MAXV=$(convert "$B" -crop $((CW*6))x6+$((WX+COL*CW))+$((WY+CH-4)) -colorspace Gray -format "%[fx:maxima]" info: 2>/dev/null)
         case "$MAXV" in
             1*)
                 echo "PASS case22-preedit-underline (下划线像素存在 maxima=$MAXV)"
@@ -920,8 +920,11 @@ if start_app "$D" "$L"; then
             PASS=$((PASS+1))
         fi
         unset LEANTTY_TEST_PREEDIT
+        x11 xdotool key --window "$WID" Escape
         x11 xdotool key --window "$WID" ctrl+d
-        sleep 0.3
+        sleep 0.5
+        x11 xdotool key --window "$WID" ctrl+d
+        sleep 0.2
         x11 xdotool key --window "$WID" ctrl+d
         assert_app_exits "case22-preedit-exits"
         assert_no_wake "case22-preedit-no-wake" "$L"
@@ -1178,6 +1181,26 @@ key = "End"
 mods = "Control"
 action = "ScrollToBottom"
 TOML
+stable_window_shot() { # $1=png；等两次连续截图一致，避免抓到 present 前的旧帧
+    dest=$1
+    cur="$dest.cur.png"
+    prev="$dest.prev.png"
+    rm -f "$cur" "$prev"
+    i=0
+    while [ $i -lt 12 ]; do
+        x11 import -window "$WID" "$cur" 2>/dev/null || { rm -f "$cur" "$prev"; return 1; }
+        if [ -s "$prev" ] && cmp -s "$cur" "$prev"; then
+            mv "$cur" "$dest"
+            rm -f "$prev"
+            return 0
+        fi
+        mv "$cur" "$prev"
+        sleep 0.4
+        i=$((i+1))
+    done
+    cp "$prev" "$dest"
+    rm -f "$prev"
+}
 scroll_seq() { # $1=png
     sleep 1.5
     x11 xdotool type --window "$WID" "seq 1 300"
@@ -1187,7 +1210,7 @@ scroll_seq() { # $1=png
     i=0
     while [ $i -lt 30 ]; do
         last=$(awk 'NF{last=$0} END{print last}' "$D27" 2>/dev/null || true)
-        [ "$last" = "#" ] && break
+        case "$last" in '#'|'# '*) break;; esac
         sleep 0.1; i=$((i+1))
     done
     # 先到顶部，再用一次 xdotool 重复事件发送两次 PageDown，避免分开发送时丢键。
@@ -1204,8 +1227,7 @@ scroll_seq() { # $1=png
         [ "$reached" = 1 ] && break
     done
     [ "$reached" = 1 ] || { echo "FAIL case27-scroll-target (未到达顶部 60)"; FAIL=$((FAIL+1)); return 1; }
-    sleep 0.2
-    x11 import -window "$WID" "$1" 2>/dev/null
+    stable_window_shot "$1"
 }
 export LEANTTY_CONFIG="$CFG27"
 if start_app "$D27" "$L27"; then
