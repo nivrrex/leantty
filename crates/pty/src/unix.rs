@@ -7,6 +7,7 @@ use portable_pty::{
     Child, CommandBuilder, ExitStatus, MasterPty, PtyPair, PtySize, native_pty_system,
 };
 use std::io::{Read, Write};
+#[cfg(unix)]
 use std::os::raw::c_int;
 use std::time::Duration;
 
@@ -16,11 +17,13 @@ use super::{Error, Pty};
 pub const READER_JOIN_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// 非阻塞 PTY 读端：WouldBlock 时用 poll 等待，避免读线程把正常无数据误报为故障。
+#[cfg(unix)]
 struct UnixReader {
     inner: Box<dyn Read + Send>,
     fd: c_int,
 }
 
+#[cfg(unix)]
 impl Read for UnixReader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         loop {
@@ -34,6 +37,7 @@ impl Read for UnixReader {
     }
 }
 
+#[cfg(unix)]
 fn set_nonblocking(fd: c_int) -> std::io::Result<()> {
     // SAFETY: fd is the live PTY master returned by portable-pty.
     let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
@@ -122,8 +126,11 @@ impl Pty for NativePty {
         }
         let child = slave.spawn_command(cmd)?;
         drop(slave);
-        let fd = master.as_raw_fd().ok_or(Error::NotSpawned)?;
-        set_nonblocking(fd)?;
+        #[cfg(unix)]
+        {
+            let fd = master.as_raw_fd().ok_or(Error::NotSpawned)?;
+            set_nonblocking(fd)?;
+        }
         let writer = master.take_writer()?;
         self.master = Some(master);
         self.child = Some(child);
@@ -133,9 +140,16 @@ impl Pty for NativePty {
 
     fn take_reader(&mut self) -> Result<Box<dyn Read + Send>, Error> {
         let master = self.master.as_ref().ok_or(Error::NotSpawned)?;
-        let fd = master.as_raw_fd().ok_or(Error::NotSpawned)?;
         let reader = master.try_clone_reader()?;
-        Ok(Box::new(UnixReader { inner: reader, fd }))
+        #[cfg(unix)]
+        {
+            let fd = master.as_raw_fd().ok_or(Error::NotSpawned)?;
+            Ok(Box::new(UnixReader { inner: reader, fd }))
+        }
+        #[cfg(not(unix))]
+        {
+            Ok(reader)
+        }
     }
 
     fn writer(&mut self) -> Result<&mut dyn Write, Error> {
@@ -151,10 +165,12 @@ impl Pty for NativePty {
         self.writer.take()
     }
 
+    #[cfg(unix)]
     fn control_fd(&self) -> Option<c_int> {
         self.master.as_ref()?.as_raw_fd()
     }
 
+    #[cfg(unix)]
     fn interrupt(&self) {
         let Some(master) = self.master.as_ref() else {
             return;

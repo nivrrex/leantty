@@ -266,7 +266,7 @@ impl Drop for PtyWriter {
 fn worker(
     mut writer: Box<dyn Write + Send>,
     shared: Arc<Shared>,
-    control_fd: Option<std::os::raw::c_int>,
+    _control_fd: Option<std::os::raw::c_int>,
 ) {
     loop {
         let item = {
@@ -305,7 +305,8 @@ fn worker(
                 false
             };
             if cancel {
-                if let Some(fd) = control_fd {
+                #[cfg(unix)]
+                if let Some(fd) = _control_fd {
                     let _ = pty::flush_input(fd);
                 }
                 break;
@@ -331,9 +332,14 @@ fn worker(
                         let mut st = shared.lock();
                         st.blocked = true;
                     }
-                    if let Some(fd) = control_fd {
+                    #[cfg(unix)]
+                    if let Some(fd) = _control_fd {
                         let _ = pty::wait_writable(fd, 10);
                     } else {
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    #[cfg(not(unix))]
+                    {
                         std::thread::sleep(Duration::from_millis(10));
                     }
                 }
